@@ -1,0 +1,12 @@
+project:
+  output-dir: _output
+
+brand: _extensions/wb-brand/brand.yml
+
+format:
+  typst: 
+    citeproc: true
+    csl: https://www.zotero.org/styles/begell-house-chicago-author-date
+
+bibliography: references.bib
+

@@ -1,0 +1,193 @@
+---
+title: "Scaling Narrative Fiscal Shock Identification with LLMs"
+subtitle: "Concept Note"
+date: today
+date-format: long
+number-sections: true
+number-depth: 2
+brand: false
+---
+
+**Task Team Lead:** Agustín Samano
+
+**Country/Region:** Malaysia (pilot), Southeast Asia (extension)
+
+**Timeline:** Dec 2025 (pilot), June 2026 (core dataset)
+
+## Introduction and Motivation
+
+Fiscal policy plays a central role in macroeconomic stabilization, long-run growth, and private-sector development. Yet we lack credible and comparable **exogenous fiscal shock series** for most emerging markets. Existing international evidence is heavily skewed toward the United States and a few OECD countries, due to the **high cost** of constructing narrative datasets like those of @romer2010 or @mertens2013.
+
+The rise of **Large Language Models (LLMs)** offers a practical pathway to extend the narrative approach systematically to developing countries. Governments now publish large volumes of digitized legislative documents, budget speeches, and parliamentary transcripts, often in multiple languages. Manually processing these sources is infeasible; LLMs can drastically reduce the bottleneck.
+
+This project proposes to **develop and validate an LLM-assisted pipeline** to identify tax and spending shocks for Malaysia (pilot), and subsequently Indonesia, Thailand, the Philippines, and Vietnam. The output will be:
+
+1.  A **narrative episode dataset** based on executive, legislative, and press documents.
+2.  A **shock-event dataset** representing actual changes in fiscal liabilities or expenditure paths, classified into the @romer2010 motivation categories.
+3.  A set of **macro and firm-level impulse responses** to fiscal shocks using local projections and modern difference-in-differences methods.
+
+These will constitute the first systematic narrative fiscal shock series for Southeast Asia.
+
+## Research Questions
+
+The project focuses on three core questions:
+
+1.  **Measurement:** Can we construct reliable narrative-based fiscal shock series for Southeast Asian economies using LLMs, multilingual translation, and human validation?
+
+2.  **Validation:** Do LLM-based classifications align with (i) expert assessments and (ii) contemporaneous news coverage? Are the identified exogenous shocks orthogonal to short-run macro conditions?
+
+3.  **Impact:** What are the dynamic effects of tax and spending shocks on:
+
+    -   GDP, investment, FDI, employment, revenue, and expenditure?
+    -   Firm-level outcomes such as investment and employment?
+
+## Proposed Approach
+
+### Phase 1: Malaysia Pilot (2025)
+
+Malaysia is the optimal starting point due to extensive English-language archives and relatively stable political institutions.
+
+### Data Sources
+
+-   Parliamentary transcripts, Hansards
+-   Budget speeches and fiscal statements
+-   Bills and explanatory memoranda
+-   Prime Minister / Minister of Finance speeches
+-   Official press releases
+-   Secondary validation archives (international/local newspapers)
+
+### Narrative Identification Strategy
+
+The project distinguishes two levels of analysis:
+
+1.  **Narrative Episodes (Talk):** All instances where policymakers discuss tax or spending actions. Output: A comprehensive episode-level dataset with motivation labels.
+
+2.  **Shock Events (Action):** Subset of episodes that result in measurable changes to fiscal liabilities/expenditures (legislated or executive). Output: A shock-event dataset for econometric analysis.
+
+### LLM Pipeline (Human-in-the-Loop)
+
+**Step 1 — Ingestion & Parsing** Automatic collection and segmentation of documents into candidate narrative episodes.
+
+**Step 2 — Translation** LLM-based translation for non-English texts ensuring consistent English analysis.
+
+**Step 3 — Motivation Classification** Each episode classified into Romer and Romer's [-@romer2010] four motivation categories:
+
+-   Spending-driven
+-   Countercyclical
+-   Deficit-driven
+-   Long-run/structural
+
+The LLM produces:
+
+-   a proposed label,
+-   a short justification,
+-   a confidence score,
+-   an “inconsistency flag” comparing stated vs inferred motives.
+
+**Step 4 — Human Validation** Researchers validate and correct classifications for a structured sample, refining prompts and building country-specific guidance.
+
+**Step 5 — Shock Identification** Cross-walk episodes with legislative/executive actions and code whether actual tax/spending liabilities change.
+
+## Validation
+
+The project embeds a rigorous, multi-method validation strategy:
+
+### 1. Expert Review
+
+-   Engage World Bank economists (including KL office) and local experts.
+-   Evaluate a stratified sample of episodes and shocks.
+-   Collect corrections to improve the LLM classification rules.
+
+### 2. News-Based Cross-Validation
+
+-   Use ITAM access to global and regional newspaper archives.
+-   Assess whether contemporaneous reporting aligns with classified motivations.
+-   Particularly important for ambiguous or politically sensitive cases.
+
+### 3. Internal Consistency Checks
+
+-   Test correlation of “exogenous” shocks with real-time macro indicators.
+-   Exogenous shocks should show weak contemporaneous correlation with GDP, unemployment, etc.
+
+This strategy ensures that the final dataset is credible for research and policy.
+
+## Empirical Analysis
+
+### 1 Macro-Level Effects
+
+Use **local projections** to estimate dynamic responses of:
+
+-   GDP growth
+-   Private investment
+-   FDI
+-   Employment
+-   Government revenue and expenditure
+
+Separate estimates will be produced for:
+
+-   tax vs spending shocks,
+-   personal vs corporate income tax shocks (where identifiable),
+-   exogenous vs endogenous shocks.
+
+### 2 Firm-Level Effects
+
+Using firm-level panels (e.g. Orbis, national administrative data where available), estimate how fiscal shocks affect:
+
+-   investment,
+-   employment,
+-   capital formation.
+
+Identification:
+
+-   **LP-DiD (Local Projections DiD)** following @dube.
+-   Treatment assignment based on exposure (e.g., sector-level tax incidence, import/export orientation, foreign ownership).
+
+This will generate the first micro-based fiscal multipliers for these countries.
+
+## Outputs and Deliverables
+
+### By December 2025 (Pilot Completion)
+
+-   Fully operational R-based pipeline for Malaysia
+-   Narrative episode dataset (Malaysia)
+-   First version of the shock-event dataset (Malaysia)
+
+### By early February 2026 (Pilot Validation)
+
+-   Expert- and news-based validation for a subset
+-   Technical documentation and reproducible code
+
+### By June 2026 (Core Dataset Completion)
+
+-   Narrative and shock-event datasets for: Malaysia, Indonesia, Thailand, the Philippines, Vietnam
+-   Harmonized multi-country episode and shock datasets
+-   Fully validated motivation classification framework
+-   Public dissemination-ready code and documentation
+
+### Post-2026 (Analytical Outputs)
+
+-   Macro-level impact study
+-   Firm-level impact study
+-   Methodological paper on LLM-assisted narrative identification
+-   Data package for public release (subject to permissions)
+
+## Risks and Mitigation
+
+| Risk | Mitigation |
+|-------------------------|-----------------------------------------------|
+| Incomplete/uneven archives | Combine multiple sources; transparently document coverage; adjust sample windows. |
+| Translation inaccuracies | Dedicated translation stage; manual checks; standardized prompts. |
+| LLM misclassification | Human-in-the-loop stage; expert validation; conservative thresholds for exogeneity. |
+| Political bias in narrative documents | Cross-check with news; inconsistency flags; robust alternative classifications. |
+| Weak identification for some countries | Use Malaysia as a strong pilot; downweight uncertain periods in pooled analysis. |
+
+## Policy Relevance and Value Added to the World Bank
+
+-   Fills critical data gaps for fiscal-policy modeling in major middle-income economies.
+-   Provides **scalable infrastructure** for narrative shock identification, potentially applicable to Latin America, South Asia, and Africa.
+-   Enhances understanding of **how fiscal policy affects private investment and firm behavior**, central to the Bank’s structural reform and growth agenda.
+-   Supports better macroeconomic forecasting and policy advice in client countries.
+
+The project also showcases responsible, auditable use of LLMs for applied economic research — a frontier methodological contribution with clear operational value.
+
+## References {.unnumbered}
