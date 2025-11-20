@@ -4,5 +4,6 @@
 .httr-oauth
 .DS_Store
 .quarto
+.Rprofile
 _*/
 R_R/
