@@ -1,0 +1,63 @@
+---
+title: "Identify Fiscal Shocks"
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| cache: false
+
+pacman::p_load(
+    tidyverse,
+    targets,
+    tidytext,
+    here,
+    quanteda
+)
+
+here::i_am("notebooks/review_us.qmd")
+
+theme_set(theme_minimal())
+
+tar_config_set(
+    store = here("_targets")
+)
+
+set.seed(20251206)
+
+```
+
+
+```{r}
+pages <- tar_read(pages)
+glimpse(pages)
+```
+
+
+```{r}
+pages |>
+    ggplot(aes(year, tokens, fill = factor(relevant_text))) +
+    stat_summary(fun = sum, geom = "col", position = "stack")
+
+pages |>
+    mutate(per_numbers = number_count / tokens) |>
+    ggplot(aes(per_numbers)) +
+    geom_histogram()
+
+```
+
+
+```{r}
+work <- pages |>
+    mutate(
+        # Detect the mention of acts|reform, as whole word
+        has_act = str_detect(text, regex("\\b(act|reform|reforms)\\b", ignore_case = TRUE)),
+    )
+
+work |>
+    filter(has_act) |>
+    sample_n(1) |>
+    pull(text) |>
+    cat()
+```
+

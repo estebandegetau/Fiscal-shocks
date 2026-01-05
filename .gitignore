@@ -1,9 +1,25 @@
-.Rproj.user
-.Rhistory
-.RData
-.httr-oauth
-.DS_Store
-.quarto
-.Rprofile
+# Created by venv; see https://docs.python.org/3/library/venv.html
+/.quarto/
+**/*.quarto_ipynb
 _*/
+.*/
+Lib/
+renv/
+*.pdf
+*.csv
+data/
+*_cache/
+*.json
+*.png
 R_R/
+*.exe
+*.cfg
+*_files/
+notebooks/scratch/
+scratch/
+# Python virtual environment
+Scripts/
+Lib/
+Include/
+pyvenv.cfg
+tests/

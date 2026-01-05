@@ -1,0 +1,251 @@
+---
+title: Extracting Text from PDF and Images using Gemma3
+author: Esteban Degetau
+date: today
+date-format: long
+execute:
+  cache: true
+---
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(
+    tidyverse,
+    pdftools,
+    here,
+    ollamar,
+    tictoc,
+    tidytext,
+    gt
+)
+
+here::i_am("notebooks/extract_text.qmd")
+
+set.seed(20251120)
+
+theme_set(theme_minimal())
+```
+
+
+Some narrative sources are available in PDF, and are saved as text. The following code extracts the text from a PDF file and saves it into a tibble.
+
+```{r}
+#| label: extract-text-pdf
+file <- "https://phl.hasil.gov.my/pdf/pdfam/Speech2011.pdf"
+tic()
+temp_dir <- tempdir()
+temp_file <- file.path(temp_dir, "Speech2011.pdf")
+download.file(file, destfile = temp_file, mode = "wb")
+text <- pdftools::pdf_text(temp_file)
+
+text_df <- tibble(
+    page = seq_along(text),
+    content = text
+)
+toc()
+text_df
+
+```
+
+
+However, some sources are scanned images embedded in PDFs, so and additional step is required to extract the text from the images. The following code uses the Gemma3 model to extract text from an image. Gemma3 has OCR capabilities that can extract text from images in multiple languages, including Malay.
+
+
+The OCR test image is a screenshot from the Malay website.
+
+![Test OCR Image](../data/raw/test_ocr_1.png)
+
+```{r}
+#| label: ocr-gemma3
+
+test_connection()
+
+list_models()
+
+# Simple text generation test
+tic()
+resp <- ollamar::generate(
+    model = "gemma3:4b",
+    prompt =  "tell me a 5-word story")
+toc()
+resp_process(resp, "text")
+
+
+# Test OCR in Malay language
+tic()
+resp_ocr <- ollamar::generate(
+    model = "gemma3:4b",
+    images = here::here("data/raw/test_ocr_1.png"),
+    prompt = "Extract the text in Malay language from the image provided." 
+)
+toc()
+resp_process(resp_ocr, "text") |>
+    cat()
+
+```
+
+Let´s test Gemma3 translating capabilities as well. The English website is the following:
+
+![Test Translation Image](../data/raw/test_en.png)
+
+
+```{r}
+#| label: translate-gemma3
+#| output: asis
+resp_text <- resp_process(resp_ocr, "text")
+tic()
+resp_translate <- ollamar::generate(
+    model = "gemma3:4b",
+    prompt = paste0(
+        "Translate the following Malay text to English:\n\n",
+        resp_text
+    )
+)
+toc()
+resp_process(resp_translate, "text") |>
+    cat()
+```
+
+## A source from the US
+
+Although this source is scanned, it's text is readable enough for pdftools to extract it without problems. No OCR is needed here.
+
+```{r}
+file <- "https://fraser.stlouisfed.org/files/docs/publications/treasar/AR_TREASURY_1980.pdf"
+temp_dir <- tempdir()
+temp_file_us <- file.path(temp_dir, "AR_TREASURY_1980.pdf")
+tic()
+download.file(file, destfile = temp_file_us, mode = "wb")
+text_us <- pdftools::pdf_text(temp_file_us)
+text_us_df <- tibble(
+    page = seq_along(text_us),
+    content = text_us
+)
+toc()
+text_us_df
+```
+
+
+Could we pass the whole page (row) to Gemma3? That depends on the size of the text in each page.
+
+```{r}
+#| label: fig-tokens
+#| fig-cap: Tokens per page
+text_us_df <- text_us_df |>
+    mutate(
+        n_chars = nchar(content)
+    )
+
+
+tokens <- text_us_df |>
+    unnest_tokens(
+        word,
+        content
+    ) |>
+    mutate(
+        chars = nchar(word)
+    ) |>
+    filter(chars > 1) |>
+    group_by(page) |>
+    summarise(
+        tokens = n()
+    ) 
+
+tokens$tokens |> sum()
+tokens |>
+    ggplot(aes(x = tokens)) +
+    geom_histogram()
+
+```
+
+Gemma3 can handle up to 128k tokens, so we are safe here.
+
+```{r}
+text_subsample <- text_us_df |>
+    sample_n(10)
+
+test_prompt <- "Extract any discussion related to fiscal policy (changes to taxes/spending or forecasts about GDP growth/unemployment) from the following text. If no fiscal discussion is found, reply 'No fiscal discussion found'.\n\n"
+
+my_test <- function(data, model) {
+    data |>
+        mutate(
+            fiscal_discussion = map_chr(
+                content,
+                \(x) {
+                    resp_fiscal <- ollamar::generate(
+                        model = model,
+                        prompt = paste0(
+                            test_prompt,
+                            x
+                        )
+                    )
+                    resp_process(resp_fiscal, "text")
+                },
+                .progress = TRUE
+            ),
+            model = model
+        )
+} 
+```
+
+```{r}
+text_subsample |> 
+    pull(content) |>
+    cat()
+```
+
+```{r}
+#| label: test-gemma3-4b
+#| eval: false
+tic()
+test_1 <- text_subsample |>
+    my_test(model = "gemma3:4b")
+toc()
+test_1 |> 
+    select(page, fiscal_discussion) |>
+    gt()
+```
+
+Scaling up tasks does not seem feasible running Gemma3 locally. Let's try with qwen3 cloud instead.
+
+```{r}
+#| label: test-qwen3-cloud
+#| eval: false
+tic()
+test_2 <- text_subsample |>
+    my_test(model = "qwen3:14b-cloud")
+toc()
+test_2 |> 
+    select(page, fiscal_discussion) |>
+    gt()
+```
+
+This gets the job done, but will incur in costs if scaled up. Use with caution.
+
+Maybe a smaller version of Gemma3 can work faster, at no cloud cost.
+
+
+```{r}
+#| label: test-gemma3-1b
+tic()
+test_3 <- text_subsample |>
+    my_test(model = "gemma3:1b")
+toc()
+test_3 |> 
+    select(page, fiscal_discussion) |>
+    gt()
+```
+ 
+This was indeed faster, but not quite as much as expected. Let's version down further.
+
+
+## Embedding model
+
+```{r}
+#| label: test-gemma3-270m
+
+
+```
+
+

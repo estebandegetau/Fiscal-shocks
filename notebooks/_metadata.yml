@@ -1,0 +1,6 @@
+format:
+  html:
+    lightbox: true
+
+execute:
+  echo: true

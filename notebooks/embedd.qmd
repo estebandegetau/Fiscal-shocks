@@ -1,0 +1,150 @@
+---
+title: "Retrieve fiscal shocks from US legal documents"
+execute:
+    cache: true
+---
+
+
+```{r}
+#| cache: false
+pacman::p_load(
+    tidyverse,
+    ollamar,
+    targets,
+    tictoc,
+    here,
+    reticulate
+)
+here::i_am("notebooks/embedd.qmd")
+
+reticulate::use_virtualenv(here(".venv"), required = TRUE)
+
+theme_set(theme_minimal())
+
+tar_config_set(
+    store = here("_targets")
+)
+
+set.seed(20251203)
+
+
+my_hf_token <- readLines(here("_tokens/hf_token.txt"))
+
+Sys.setenv(HF_TOKEN = my_hf_token)
+```
+
+
+```{r}
+list_models()
+embed_model <- "embeddinggemma:300m"
+```
+
+```{r}
+test_similarity <- function(x1, x2) {
+    # Compute point cosine similarity
+    sim <- sum(x1 * x2) / (sqrt(sum(x1^2)) * sqrt(sum(x2^2)))
+    print(sim)
+}
+```
+
+```{r}
+
+text <- c("apple", "banana", "car")
+
+embeddings <- ollamar::embed(text, model = embed_model)
+
+
+
+test_similarity(embeddings[, 1], embeddings[, 2])
+test_similarity(embeddings[, 1], embeddings[, 3])
+
+```
+
+
+```{python}
+from sentence_transformers import SentenceTransformer
+import os
+
+# Verify token is set
+hf_token = os.environ.get('HF_TOKEN')
+if hf_token:
+    print(f"Token found: {hf_token[:10]}...")
+    # Set it as HF_TOKEN for huggingface_hub
+    os.environ['HUGGING_FACE_HUB_TOKEN'] = hf_token
+else:
+    print("Warning: HF_TOKEN not found in environment")
+
+# Download from the 🤗 Hub
+# Pass token explicitly to ensure authentication
+model = SentenceTransformer("google/embeddinggemma-300m", token=hf_token, trust_remote_code=True)
+
+# Run inference with queries and documents
+query = "Which planet is known as the Red Planet?"
+documents = [
+    "Venus is often called Earth's twin because of its similar size and proximity.",
+    "Mars, known for its reddish appearance, is often referred to as the Red Planet.",
+    "Jupiter, the largest planet in our solar system, has a prominent red spot.",
+    "Saturn, famous for its rings, is sometimes mistaken for the Red Planet."
+]
+query_embeddings = model.encode_query(query)
+document_embeddings = model.encode_document(documents)
+print(query_embeddings.shape, document_embeddings.shape)
+# (768,) (4, 768)
+
+# Compute similarities to determine a ranking
+similarities = model.similarity(query_embeddings, document_embeddings)
+print(similarities)
+# tensor([[0.3011, 0.6359, 0.4930, 0.4889]])
+
+```
+
+```{python}
+# The sentences to encode
+sentence_high = [
+    "The chef prepared a delicious meal for the guests.",
+    "A tasty dinner was cooked by the chef for the visitors."
+]
+sentence_medium = [
+    "She is an expert in machine learning.",
+    "He has a deep interest in artificial intelligence."
+]
+sentence_low = [
+    "The weather in Tokyo is sunny today.",
+    "I need to buy groceries for the week."
+]
+
+for sentence in [sentence_high, sentence_medium, sentence_low]:
+  print("🙋‍♂️")
+  print(sentence)
+  embeddings = model.encode(sentence)
+  similarities = model.similarity(embeddings[0], embeddings[1])
+  print("`-> 🤖 score: ", similarities.numpy()[0][0])
+```
+
+```{r}
+#| eval: false
+
+tic()
+paragraphs <- tar_read(relevant_paragraphs) |>
+    slice_sample(n = 1000) |>
+    mutate(
+        embedding = ollamar::embed(paragraph, model = embed_model)
+    )
+toc()
+paragraphs |>
+    select(paragraph, embedding) |>
+    slice(1:5)
+```
+
+
+```{r}
+#| eval: false
+pages <- tar_read(pages)
+
+pages_embed <- pages |>
+    slice_sample(n = 5) |>
+    mutate(
+        embedding = ollamar::embed(text, model = embed_model)
+    )
+
+```
