@@ -1,0 +1,55 @@
+services:
+  fiscal-shocks:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fiscal-shocks
+    volumes:
+      # Mount data directories for persistence
+      - ./data:/app/data
+      # Mount targets cache to persist pipeline state
+      - ./_targets:/app/_targets
+      # Mount notebooks for development
+      - ./notebooks:/app/notebooks
+      # Mount R source for development
+      - ./R:/app/R
+      # Mount Python scripts for development
+      - ./python:/app/python
+    environment:
+      - TZ=UTC
+      - RENV_PATHS_CACHE=/renv/cache
+      - DOCLING_PYTHON=/opt/venv/bin/python
+      - DOCLING_SCRIPT=/app/python/docling_extract.py
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+
+  # Interactive R session
+  rstudio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fiscal-shocks-interactive
+    volumes:
+      - ./data:/app/data
+      - ./_targets:/app/_targets
+      - ./notebooks:/app/notebooks
+      - ./R:/app/R
+      - ./python:/app/python
+    environment:
+      - TZ=UTC
+      - RENV_PATHS_CACHE=/renv/cache
+      - DOCLING_PYTHON=/opt/venv/bin/python
+      - DOCLING_SCRIPT=/app/python/docling_extract.py
+    stdin_open: true
+    tty: true
+    command: R
+    profiles:
+      - interactive

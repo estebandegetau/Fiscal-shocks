@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# R artifacts
+.Rhistory
+.RData
+.Rproj.user/
+
+# Targets cache (will be regenerated)
+_targets/
+
+# renv library (will be restored from renv.lock)
+renv/library/
+renv/staging/
+renv/python/
+renv/sandbox/
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation build outputs
+_freeze/
+docs/_site/
+*.html
+
+# Large data files (optional - uncomment if you want to exclude)
+# data/raw/*.pdf
+# data/processed/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
