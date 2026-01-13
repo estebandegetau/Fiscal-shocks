@@ -270,8 +270,7 @@ list(
     us_urls_vector,
     command = {
       us_urls |>
-        pull(pdf_url) |>
-        first()
+        pull(pdf_url) 
     },
     iteration = "vector"
   ),

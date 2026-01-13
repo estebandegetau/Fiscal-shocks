@@ -21,15 +21,13 @@ tar_visnetwork()              # Visualize pipeline dependencies
 ```
 
 ### Python Environment
-```bash
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate     # Mac/Linux
-.\.venv\Scripts\activate      # Windows
 
-# Install dependencies
-pip install -r requirements.txt
-```
+**Inside the Dev Container:**
+Python is pre-configured with a virtual environment at `/opt/venv`. No setup needed - just use Python directly:
+```bash
+python python/docling_extract.py --input <pdf_path> --output <json_output>
+pip install <package>  # If you need additional packages
+
 
 ### Docling PDF Extraction (Python subprocess)
 ```bash
