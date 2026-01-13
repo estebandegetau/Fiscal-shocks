@@ -19,28 +19,20 @@ clean_us_shocks <- function(data) {
 } 
 
 clean_us_labels <- function(data, us_shocks) {
-
     long_names <- names(data)
-
-    us_shocks |>
-        select(
-            act_name,
-            category = change_in_liabilities_category,
-            exogenous = change_in_liabilities_exo
-            ) |>
-        distinct() |>
-        View()
 
     data_clean <- data |>
         janitor::clean_names() |>
-        labelled::set_variable_labels(.labels = long_names)
+        labelled::set_variable_labels(.labels = long_names) |>
         mutate(
             date = mdy(date),
             act_name = str_squish(act_name)
         )
+    return(data_clean)
 }
 
 make_pages <- function(data, keys) {
+
     data |>
         filter(n_pages > 0) |>
         mutate(
