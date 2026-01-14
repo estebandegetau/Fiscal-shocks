@@ -1,0 +1,295 @@
+---
+title: "Lambda PDF Extraction Quality Test"
+subtitle: "Validating Docling output for LLM fiscal shock detection"
+author: "Fiscal Shocks Project"
+date: today
+format:
+  html:
+    toc: true
+    code-fold: false
+    code-summary: "Show code"
+execute:
+  warning: false
+  message: false
+---
+
+## Overview
+
+This notebook tests whether the Lambda/Docling PDF extraction produces text that Claude 3.5 Sonnet can effectively use for:
+
+- **Model A**: Act detection (identify fiscal legislation passages)
+- **Model B**: Motivation classification (spending-driven, countercyclical, etc.)
+- **Model C**: Information extraction (timing, magnitudes from tables)
+
+## Setup
+
+```{r setup}
+library(tidyverse)
+library(here)
+here::i_am("notebooks/test_lambda_output.qmd")
+# Load environment variables for AWS
+dotenv::load_dot_env(file = here(".env"))
+
+# Source the Lambda extraction function
+source(here("R/pull_text_lambda.R"))
+
+# Load ground truth data
+us_shocks <- read_csv(here("data/raw/us_shocks.csv"))
+us_labels <- read_csv(here("data/raw/us_labels.csv"))
+```
+
+## Phase 1: Sample Selection
+
+We select documents with well-known fiscal acts that have clear ground truth labels.
+
+```{r sample-selection}
+# Key test cases with known acts
+test_cases <- tribble(
+ ~act_name, ~year, ~motivation, ~expected_url_pattern,
+ "Revenue Act of 1964", 1964, "Long-run", "ERP.*1965",
+ "Tax Reform Act of 1986", 1986, "Long-run", "ERP.*1987",
+ "Economic Recovery Tax Act of 1981", 1981, "Long-run", "ERP.*1982",
+ "Tax Reduction Act of 1975", 1975, "Countercyclical", "ERP.*1976",
+ "Revenue Act of 1950", 1950, "Spending-driven", "ERP.*1951"
+)
+
+test_cases
+```
+
+```{r get-test-urls}
+# Get actual URLs for test documents
+# Using Fraser St. Louis Fed ERP archive
+test_urls <- c(
+ "https://fraser.stlouisfed.org/files/docs/publications/ERP/1965/ERP_1965.pdf",
+ "https://fraser.stlouisfed.org/files/docs/publications/ERP/1982/ERP_1982.pdf"
+)
+
+cat("Test URLs:\n")
+cat(test_urls, sep = "\n")
+```
+
+## Phase 2: Extract Sample Documents
+
+```{r extract-sample, cache=TRUE}
+# Extract text from sample PDFs
+# This may take 2-5 minutes for cold start + processing
+message("Starting Lambda extraction...")
+
+sample_results <- pull_text_lambda(
+ pdf_url = test_urls,
+ max_wait_time = 900,  # 15 minutes for large PDFs
+ do_table_structure = TRUE
+)
+
+message("Extraction complete!")
+```
+
+### Extraction Summary
+
+```{r extraction-summary}
+sample_results |>
+ mutate(
+   url = test_urls,
+   doc_name = basename(url)
+ ) |>
+ select(doc_name, n_pages, n_tables, extracted_at)
+```
+
+## Phase 3: Text Quality Inspection
+
+### 3.1 Basic Text Readability
+
+```{r text-sample}
+# Show first page of first document
+cat("=== First page of ERP 1965 ===\n\n")
+cat(sample_results$text[[1]][1])
+```
+
+### 3.2 Check for Known Act Names
+
+```{r act-name-check}
+# Acts we expect to find in these documents
+expected_acts <- c(
+ "Revenue Act of 1964",
+ "Economic Recovery Tax Act",
+ "Tax Equity and Fiscal Responsibility Act"
+)
+
+# Search for act names in extracted text
+all_text <- unlist(sample_results$text)
+
+act_detection <- map_dfr(expected_acts, function(act) {
+ found <- any(str_detect(all_text, fixed(act)))
+ tibble(
+   act_name = act,
+   found = found,
+   mentions = sum(str_count(all_text, fixed(act)))
+ )
+})
+
+act_detection
+```
+```{r act-detection-rate}
+# Act detection rate
+detection_rate <- mean(act_detection$found)
+cat(sprintf("Act detection rate: %.0f%% (%d/%d)\n",
+           detection_rate * 100,
+           sum(act_detection$found),
+           nrow(act_detection)))
+
+if (detection_rate < 0.8) {
+ warning("Act detection rate below 80% - may need to check extraction quality")
+}
+```
+
+### 3.3 Numeric Value Preservation
+
+```{r numeric-check}
+# Check for dollar amounts (critical for Model C)
+dollar_pattern <- "\\$\\s*\\d+\\.?\\d*\\s*(billion|million|B|M)"
+year_pattern <- "\\b(19[4-9]\\d|20[0-2]\\d)\\b"
+
+numeric_metrics <- tibble(
+ metric = c("Dollar amounts", "Year mentions", "Percentage values"),
+ pattern = c(dollar_pattern, year_pattern, "\\d+\\.?\\d*\\s*percent"),
+ count = c(
+   sum(str_count(all_text, regex(dollar_pattern, ignore_case = TRUE))),
+   sum(str_count(all_text, year_pattern)),
+   sum(str_count(all_text, regex("\\d+\\.?\\d*\\s*percent", ignore_case = TRUE)))
+ )
+)
+
+numeric_metrics
+```
+
+### 3.4 Table Extraction Quality
+
+```{r table-check}
+# Check table extraction
+total_tables <- sum(sample_results$n_tables)
+cat(sprintf("Total tables extracted: %d\n", total_tables))
+
+if (total_tables > 0) {
+ # Show first table's markdown
+ first_doc_tables <- sample_results$tables[[1]]
+
+ if (length(first_doc_tables) > 0) {
+   cat("\n=== Sample table (markdown) ===\n\n")
+   cat(first_doc_tables[[1]]$markdown)
+ }
+} else {
+ warning("No tables extracted - Model C may have limited data")
+}
+```
+
+## Phase 4: LLM Readiness Tests
+
+### 4.1 Passage Length Analysis
+
+```{r passage-length}
+# Check if pages are reasonable length for LLM context
+page_lengths <- map_int(sample_results$text[[1]], nchar)
+
+tibble(
+ metric = c("Min page length", "Max page length", "Mean page length", "Total chars"),
+ value = c(min(page_lengths), max(page_lengths), mean(page_lengths), sum(page_lengths))
+) |>
+ mutate(value = scales::comma(value))
+```
+
+### 4.2 Token Estimation
+
+```{r token-estimate}
+# Rough token estimate (1 token ≈ 4 chars for English)
+total_chars <- sum(map_int(unlist(sample_results$text), nchar))
+estimated_tokens <- total_chars / 4
+
+cat(sprintf("Estimated tokens: %s\n", scales::comma(estimated_tokens)))
+cat(sprintf("Claude 3.5 Sonnet context: 200K tokens\n"))
+cat(sprintf("Fits in context: %s\n", ifelse(estimated_tokens < 200000, "YES", "NO - need chunking")))
+```
+
+### 4.3 Sample Passage for Model A Test
+
+```{r model-a-sample}
+# Find a passage mentioning a fiscal act
+act_passages <- map_dfr(seq_along(sample_results$text[[1]]), function(i) {
+ page_text <- sample_results$text[[1]][i]
+ if (str_detect(page_text, regex("act of \\d{4}", ignore_case = TRUE))) {
+   tibble(
+     page = i,
+     text = str_trunc(page_text, 500),
+     has_act_mention = TRUE
+   )
+ } else {
+   NULL
+ }
+})
+
+if (nrow(act_passages) > 0) {
+ cat("=== Sample passage with act mention (for Model A) ===\n\n")
+ cat(act_passages$text[1])
+} else {
+ cat("No passages with 'Act of YYYY' pattern found")
+}
+```
+
+## Phase 5: Quality Metrics Summary
+
+```{r quality-summary}
+# Compile all quality metrics
+quality_report <- tribble(
+ ~metric, ~value, ~target, ~status,
+ "Documents extracted", nrow(sample_results), 2, "PASS",
+ "Pages extracted", sum(sample_results$n_pages), ">0", ifelse(sum(sample_results$n_pages) > 0, "PASS", "FAIL"),
+ "Tables extracted", total_tables, ">0", ifelse(total_tables > 0, "PASS", "WARN"),
+ "Act name recall", sprintf("%.0f%%", detection_rate * 100), ">80%", ifelse(detection_rate >= 0.8, "PASS", "FAIL"),
+ "Dollar amounts found", numeric_metrics$count[1], ">0", ifelse(numeric_metrics$count[1] > 0, "PASS", "WARN"),
+ "Year mentions", numeric_metrics$count[2], ">10", ifelse(numeric_metrics$count[2] > 10, "PASS", "WARN"),
+ "Fits in LLM context", ifelse(estimated_tokens < 200000, "YES", "NO"), "YES", ifelse(estimated_tokens < 200000, "PASS", "WARN")
+)
+
+quality_report |>
+ knitr::kable()
+```
+
+## Conclusions
+
+```{r conclusions}
+pass_count <- sum(quality_report$status == "PASS")
+warn_count <- sum(quality_report$status == "WARN")
+fail_count <- sum(quality_report$status == "FAIL")
+
+cat(sprintf("\n=== QUALITY ASSESSMENT ===\n"))
+cat(sprintf("PASS: %d | WARN: %d | FAIL: %d\n\n", pass_count, warn_count, fail_count))
+
+if (fail_count == 0) {
+ cat("✓ Extraction quality is SUFFICIENT for LLM processing\n")
+ cat("  Proceed with full 350-document extraction\n")
+} else {
+ cat("✗ Extraction quality needs IMPROVEMENT before full run\n")
+ cat("  Review failed metrics and adjust extraction settings\n")
+}
+```
+
+## Next Steps
+
+Based on the quality assessment:
+
+1. **If PASS**: Run `tar_make(us_text)` to extract all 350 documents
+
+2. **If WARN**: Review warnings but proceed with caution
+3. **If FAIL**: Debug extraction issues before full run
+
+### Recommended Actions
+
+```{r next-steps}
+if (fail_count > 0) {
+ cat("Issues to address:\n")
+ quality_report |>
+   filter(status == "FAIL") |>
+   pull(metric) |>
+   paste("-", .) |>
+   cat(sep = "\n")
+}
+```

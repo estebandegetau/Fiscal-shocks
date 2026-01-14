@@ -23,3 +23,8 @@ Lib/
 Include/
 pyvenv.cfg
 tests/
+
+# Environment variables (API keys, AWS credentials)
+.env
+
+*.log

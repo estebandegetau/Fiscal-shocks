@@ -1,0 +1,35 @@
+# Dockerfile.lambda - AWS Lambda container for Docling PDF extraction
+#
+# Build: docker build -t fiscal-shocks-pdf-extractor -f Dockerfile.lambda .
+# Test:  docker run -p 9000:8080 fiscal-shocks-pdf-extractor
+#        curl -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" \
+#             -d '{"pdf_url":"https://example.com/test.pdf","output_key":"test/out.json"}'
+
+# Stage 1: Builder - install packages with build dependencies
+# Using Python 3.12 for better binary wheel compatibility with docling-parse
+FROM public.ecr.aws/lambda/python:3.12 AS builder
+
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Install Docling and dependencies to /opt/python
+# Using --only-binary to force using pre-built wheels (no compilation)
+# This takes ~5-10 minutes due to PyTorch download
+RUN pip install --target /opt/python \
+    "docling>=2.0" \
+    boto3 \
+    --only-binary=:all: \
+    --no-cache-dir
+
+# Stage 2: Runtime - lean final image
+FROM public.ecr.aws/lambda/python:3.12
+
+# Copy installed packages from builder stage
+COPY --from=builder /opt/python ${LAMBDA_TASK_ROOT}
+
+# Copy only the handler code (not the entire project)
+COPY python/lambda_handler.py ${LAMBDA_TASK_ROOT}/
+
+# Lambda handler entry point
+# Format: <module_name>.<function_name>
+CMD ["lambda_handler.handler"]
