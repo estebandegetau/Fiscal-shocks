@@ -4,6 +4,12 @@
 #   https://books.ropensci.org/targets/walkthrough.html#inspect-the-pipeline
 rm(list = ls())
 gc()
+
+# Load AWS credentials from .env file
+if (file.exists(".env")) {
+  dotenv::load_dot_env()
+}
+
 # Load packages required to define the pipeline:
 pacman::p_load(
   targets,
@@ -172,7 +178,6 @@ list(
     ),
     iteration = "vector"
   ),
-
   tar_target(
     annual_report_late_urls,
     get_annual_report_late_pdf_urls(
@@ -222,7 +227,7 @@ list(
     get_budget_early_pdf_urls(
       start_year = min_year,
       end_year   = 1995
-  ),
+    ),
     iteration = "vector"
   ),
   tar_target(
@@ -239,7 +244,7 @@ list(
       1992, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1992_sec5.pdf",
       1992, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1992_sec6.pdf",
       1991, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1991_sec1.pdf"
-      ) |>
+    ) |>
       mutate(
         package_id = paste0("BUDGET-", year),
         country = "US",
@@ -263,24 +268,28 @@ list(
       budget_early_pdf_urls,
       additional_budget_urls
     ) |>
-    arrange(body, year),
+      arrange(body, year),
     iteration = "vector"
   ),
   tar_target(
     us_urls_vector,
     command = {
       us_urls |>
-        pull(pdf_url) 
+        pull(pdf_url)
     },
     iteration = "vector"
   ),
   tar_target(
     us_text,
-    command = {
-      pull_text_docling(us_urls_vector)
-    },
-    pattern = map(us_urls_vector),
-    iteration = "vector"
+    pull_text_lambda(
+      pdf_url = us_urls_vector,
+      bucket = Sys.getenv("AWS_S3_BUCKET", "fiscal-shocks-pdfs"),
+      lambda_function = Sys.getenv("LAMBDA_FUNCTION_NAME", "fiscal-shocks-pdf-extractor"),
+      poll_interval = 30,
+      max_wait_time = 600,
+      do_table_structure = TRUE
+    )
+    # No pattern = map() - all Lambda invocations happen in parallel
   ),
   tar_target(
     us_body,
