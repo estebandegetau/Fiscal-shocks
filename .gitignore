@@ -17,6 +17,7 @@ R_R/
 *_files/
 notebooks/scratch/
 scratch/
+notebooks/*.rmarkdown
 # Python virtual environment
 Scripts/
 Lib/
