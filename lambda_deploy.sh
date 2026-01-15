@@ -27,7 +27,7 @@ FUNCTION_NAME="${LAMBDA_FUNCTION_NAME:-fiscal-shocks-pdf-extractor}"
 REGION="${AWS_DEFAULT_REGION:-us-east-1}"
 S3_BUCKET="${AWS_S3_BUCKET:-fiscal-shocks-pdfs}"
 MEMORY_SIZE=3008  # MB (3GB)
-TIMEOUT=300  # seconds (5 minutes)
+TIMEOUT=900  # seconds (15 minutes) - large PDFs need more processing time
 ECR_REPO="$FUNCTION_NAME"
 
 # Parse arguments
