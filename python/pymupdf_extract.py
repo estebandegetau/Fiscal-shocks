@@ -26,7 +26,7 @@ import json
 import sys
 import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from urllib.request import urlretrieve
@@ -120,12 +120,13 @@ def extract_pdf(pdf_path: str, force_ocr: bool = False, ocr_dpi: int = 200,
         print(f"Scanned document detected - using OCR ({n_pages} pages)...", file=sys.stderr)
         doc.close()
 
-        # Use parallel OCR for scanned documents
+        # Use process-based parallelism for OCR (Tesseract/Leptonica is not thread-safe)
         pages_text = [""] * n_pages
         args_list = [(pdf_path, i, ocr_dpi) for i in range(n_pages)]
 
         completed = 0
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # ProcessPoolExecutor avoids Leptonica threading issues
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
             futures = {executor.submit(extract_page_with_ocr, args): args[1]
                       for args in args_list}
 

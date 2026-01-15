@@ -248,17 +248,18 @@ if (nrow(act_passages) > 0) {
 total_pages <- sum(sample_results$n_pages)
 total_tables <- 0  # PyMuPDF doesn't extract tables separately
 
+# Convert all values to character to avoid type mismatch in tribble
 quality_report <- tribble(
  ~metric, ~value, ~target, ~status,
- "Documents extracted", nrow(sample_results), 2, "PASS",
- "Pages extracted", total_pages, ">0",
+ "Documents extracted", as.character(nrow(sample_results)), "2", "PASS",
+ "Pages extracted", as.character(total_pages), ">0",
    ifelse(total_pages > 0, "PASS", "FAIL"),
- "OCR used", sum(sample_results$ocr_used), "as needed", "INFO",
+ "OCR used", as.character(sum(sample_results$ocr_used)), "as needed", "INFO",
  "Act name recall", sprintf("%.0f%%", detection_rate * 100), ">80%",
    ifelse(detection_rate >= 0.8, "PASS", "FAIL"),
- "Dollar amounts found", numeric_metrics$count[1], ">0",
+ "Dollar amounts found", as.character(numeric_metrics$count[1]), ">0",
    ifelse(numeric_metrics$count[1] > 0, "PASS", "WARN"),
- "Year mentions", numeric_metrics$count[2], ">10",
+ "Year mentions", as.character(numeric_metrics$count[2]), ">10",
    ifelse(numeric_metrics$count[2] > 10, "PASS", "WARN"),
  "Fits in LLM context", ifelse(estimated_tokens < 200000, "YES", "NO"), "YES",
    ifelse(estimated_tokens < 200000, "PASS", "WARN")
