@@ -89,10 +89,11 @@ pull_text_lambda <- function(
 
     # Try to extract year and source from URL
     year <- stringr::str_extract(url, "\\d{4}") %||% "unknown"
+    # Use case-insensitive matching for source detection
     source <- dplyr::case_when(
-      stringr::str_detect(url, "govinfo|erp") ~ "erp",
-      stringr::str_detect(url, "treasury") ~ "treasury",
-      stringr::str_detect(url, "budget") ~ "budget",
+      stringr::str_detect(url, stringr::regex("govinfo|erp", ignore_case = TRUE)) ~ "erp",
+      stringr::str_detect(url, stringr::regex("treasury", ignore_case = TRUE)) ~ "treasury",
+      stringr::str_detect(url, stringr::regex("budget", ignore_case = TRUE)) ~ "budget",
       TRUE ~ "other"
     )
 
@@ -232,6 +233,20 @@ pull_text_lambda <- function(
   output <- purrr::map2_dfr(results, pdf_url, parse_result)
 
   message("Extraction complete: ", sum(output$n_pages > 0), "/", nrow(output), " successful")
+
+  # Error if any extractions failed
+
+  failed_count <- sum(output$n_pages == 0)
+  if (failed_count > 0) {
+    failed_urls <- pdf_url[output$n_pages == 0]
+    stop(
+      "Lambda extraction failed for ", failed_count, "/", nrow(output), " PDFs:\n",
+      paste("  -", utils::head(failed_urls, 5), collapse = "\n"),
+      if (failed_count > 5) paste0("\n  ... and ", failed_count - 5, " more"),
+      "\n\nCheck CloudWatch logs: /aws/lambda/", lambda_function,
+      call. = FALSE
+    )
+  }
 
   return(output)
 }
