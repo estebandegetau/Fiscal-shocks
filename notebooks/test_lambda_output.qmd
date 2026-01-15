@@ -1,6 +1,6 @@
 ---
-title: "Lambda PDF Extraction Quality Test"
-subtitle: "Validating Docling output for LLM fiscal shock detection"
+title: "PDF Extraction Quality Test"
+subtitle: "Validating PyMuPDF+OCR output for LLM fiscal shock detection"
 author: "Fiscal Shocks Project"
 date: today
 format:
@@ -9,13 +9,14 @@ format:
     code-fold: false
     code-summary: "Show code"
 execute:
+  cache: true
   warning: false
   message: false
 ---
 
 ## Overview
 
-This notebook tests whether the Lambda/Docling PDF extraction produces text that Claude 3.5 Sonnet can effectively use for:
+This notebook tests whether the local PyMuPDF PDF extraction (with OCR for scanned documents) produces text that Claude 3.5 Sonnet can effectively use for:
 
 - **Model A**: Act detection (identify fiscal legislation passages)
 - **Model B**: Motivation classification (spending-driven, countercyclical, etc.)
@@ -27,11 +28,9 @@ This notebook tests whether the Lambda/Docling PDF extraction produces text that
 library(tidyverse)
 library(here)
 here::i_am("notebooks/test_lambda_output.qmd")
-# Load environment variables for AWS
-dotenv::load_dot_env(file = here(".env"))
 
-# Source the Lambda extraction function
-source(here("R/pull_text_lambda.R"))
+# Source the local extraction function
+source(here("R/pull_text_local.R"))
 
 # Load ground truth data
 us_shocks <- read_csv(here("data/raw/us_shocks.csv"))
@@ -71,14 +70,15 @@ cat(test_urls, sep = "\n")
 ## Phase 2: Extract Sample Documents
 
 ```{r extract-sample, cache=TRUE}
-# Extract text from sample PDFs
-# This may take 2-5 minutes for cold start + processing
-message("Starting Lambda extraction...")
+# Extract text from sample PDFs using local PyMuPDF+OCR
+# This may take 5-15 minutes for scanned documents (OCR needed)
+message("Starting local extraction...")
 
-sample_results <- pull_text_lambda(
+sample_results <- pull_text_local(
  pdf_url = test_urls,
- max_wait_time = 900,  # 15 minutes for large PDFs
- do_table_structure = TRUE
+ output_dir = here("data/extracted"),
+ workers = 4,
+ ocr_dpi = 200
 )
 
 message("Extraction complete!")
@@ -89,10 +89,9 @@ message("Extraction complete!")
 ```{r extraction-summary}
 sample_results |>
  mutate(
-   url = test_urls,
-   doc_name = basename(url)
+   doc_name = basename(test_urls)
  ) |>
- select(doc_name, n_pages, n_tables, extracted_at)
+ select(doc_name, n_pages, ocr_used, extraction_time, extracted_at)
 ```
 
 ## Phase 3: Text Quality Inspection
@@ -100,9 +99,10 @@ sample_results |>
 ### 3.1 Basic Text Readability
 
 ```{r text-sample}
-# Show first page of first document
-cat("=== First page of ERP 1965 ===\n\n")
-cat(sample_results$text[[1]][1])
+# Show sample text from first document
+cat("=== Sample text from ERP 1965 (first 2000 chars) ===\n\n")
+first_doc_text <- unlist(sample_results$text[[1]])
+cat(substr(paste(first_doc_text, collapse = "\n\n"), 1, 2000))
 ```
 
 ### 3.2 Check for Known Act Names
@@ -116,10 +116,10 @@ expected_acts <- c(
 )
 
 # Search for act names in extracted text
-all_text <- unlist(sample_results$text)
+all_text <- paste(unlist(sample_results$text), collapse = " ")
 
 act_detection <- map_dfr(expected_acts, function(act) {
- found <- any(str_detect(all_text, fixed(act)))
+ found <- str_detect(all_text, fixed(act))
  tibble(
    act_name = act,
    found = found,
@@ -129,6 +129,7 @@ act_detection <- map_dfr(expected_acts, function(act) {
 
 act_detection
 ```
+
 ```{r act-detection-rate}
 # Act detection rate
 detection_rate <- mean(act_detection$found)
@@ -162,24 +163,26 @@ numeric_metrics <- tibble(
 numeric_metrics
 ```
 
-### 3.4 Table Extraction Quality
+### 3.4 Fiscal Policy Terms
 
-```{r table-check}
-# Check table extraction
-total_tables <- sum(sample_results$n_tables)
-cat(sprintf("Total tables extracted: %d\n", total_tables))
+```{r fiscal-terms}
+# Check for key fiscal policy terminology
+fiscal_terms <- c(
+  "tax cut", "tax reduction", "fiscal policy",
+  "federal budget", "deficit", "expenditure",
+  "revenue", "appropriation"
+)
 
-if (total_tables > 0) {
- # Show first table's markdown
- first_doc_tables <- sample_results$tables[[1]]
+term_counts <- map_dfr(fiscal_terms, function(term) {
+  tibble(
+    term = term,
+    count = sum(str_count(all_text, regex(term, ignore_case = TRUE)))
+  )
+})
 
- if (length(first_doc_tables) > 0) {
-   cat("\n=== Sample table (markdown) ===\n\n")
-   cat(first_doc_tables[[1]]$markdown)
- }
-} else {
- warning("No tables extracted - Model C may have limited data")
-}
+term_counts |>
+  filter(count > 0) |>
+  arrange(desc(count))
 ```
 
 ## Phase 4: LLM Readiness Tests
@@ -188,7 +191,8 @@ if (total_tables > 0) {
 
 ```{r passage-length}
 # Check if pages are reasonable length for LLM context
-page_lengths <- map_int(sample_results$text[[1]], nchar)
+first_doc_pages <- sample_results$text[[1]]
+page_lengths <- map_int(first_doc_pages, nchar)
 
 tibble(
  metric = c("Min page length", "Max page length", "Mean page length", "Total chars"),
@@ -200,21 +204,24 @@ tibble(
 ### 4.2 Token Estimation
 
 ```{r token-estimate}
-# Rough token estimate (1 token ≈ 4 chars for English)
+# Rough token estimate (1 token ~ 4 chars for English)
 total_chars <- sum(map_int(unlist(sample_results$text), nchar))
 estimated_tokens <- total_chars / 4
 
 cat(sprintf("Estimated tokens: %s\n", scales::comma(estimated_tokens)))
 cat(sprintf("Claude 3.5 Sonnet context: 200K tokens\n"))
-cat(sprintf("Fits in context: %s\n", ifelse(estimated_tokens < 200000, "YES", "NO - need chunking")))
+cat(sprintf("Fits in context: %s\n",
+            ifelse(estimated_tokens < 200000, "YES", "NO - need chunking")))
 ```
 
 ### 4.3 Sample Passage for Model A Test
 
 ```{r model-a-sample}
 # Find a passage mentioning a fiscal act
-act_passages <- map_dfr(seq_along(sample_results$text[[1]]), function(i) {
- page_text <- sample_results$text[[1]][i]
+first_doc_pages <- sample_results$text[[1]]
+
+act_passages <- map_dfr(seq_along(first_doc_pages), function(i) {
+ page_text <- first_doc_pages[[i]]
  if (str_detect(page_text, regex("act of \\d{4}", ignore_case = TRUE))) {
    tibble(
      page = i,
@@ -238,15 +245,23 @@ if (nrow(act_passages) > 0) {
 
 ```{r quality-summary}
 # Compile all quality metrics
+total_pages <- sum(sample_results$n_pages)
+total_tables <- 0  # PyMuPDF doesn't extract tables separately
+
 quality_report <- tribble(
  ~metric, ~value, ~target, ~status,
  "Documents extracted", nrow(sample_results), 2, "PASS",
- "Pages extracted", sum(sample_results$n_pages), ">0", ifelse(sum(sample_results$n_pages) > 0, "PASS", "FAIL"),
- "Tables extracted", total_tables, ">0", ifelse(total_tables > 0, "PASS", "WARN"),
- "Act name recall", sprintf("%.0f%%", detection_rate * 100), ">80%", ifelse(detection_rate >= 0.8, "PASS", "FAIL"),
- "Dollar amounts found", numeric_metrics$count[1], ">0", ifelse(numeric_metrics$count[1] > 0, "PASS", "WARN"),
- "Year mentions", numeric_metrics$count[2], ">10", ifelse(numeric_metrics$count[2] > 10, "PASS", "WARN"),
- "Fits in LLM context", ifelse(estimated_tokens < 200000, "YES", "NO"), "YES", ifelse(estimated_tokens < 200000, "PASS", "WARN")
+ "Pages extracted", total_pages, ">0",
+   ifelse(total_pages > 0, "PASS", "FAIL"),
+ "OCR used", sum(sample_results$ocr_used), "as needed", "INFO",
+ "Act name recall", sprintf("%.0f%%", detection_rate * 100), ">80%",
+   ifelse(detection_rate >= 0.8, "PASS", "FAIL"),
+ "Dollar amounts found", numeric_metrics$count[1], ">0",
+   ifelse(numeric_metrics$count[1] > 0, "PASS", "WARN"),
+ "Year mentions", numeric_metrics$count[2], ">10",
+   ifelse(numeric_metrics$count[2] > 10, "PASS", "WARN"),
+ "Fits in LLM context", ifelse(estimated_tokens < 200000, "YES", "NO"), "YES",
+   ifelse(estimated_tokens < 200000, "PASS", "WARN")
 )
 
 quality_report |>
@@ -259,15 +274,17 @@ quality_report |>
 pass_count <- sum(quality_report$status == "PASS")
 warn_count <- sum(quality_report$status == "WARN")
 fail_count <- sum(quality_report$status == "FAIL")
+info_count <- sum(quality_report$status == "INFO")
 
 cat(sprintf("\n=== QUALITY ASSESSMENT ===\n"))
-cat(sprintf("PASS: %d | WARN: %d | FAIL: %d\n\n", pass_count, warn_count, fail_count))
+cat(sprintf("PASS: %d | WARN: %d | FAIL: %d | INFO: %d\n\n",
+            pass_count, warn_count, fail_count, info_count))
 
 if (fail_count == 0) {
- cat("✓ Extraction quality is SUFFICIENT for LLM processing\n")
- cat("  Proceed with full 350-document extraction\n")
+ cat("Extraction quality is SUFFICIENT for LLM processing\n")
+ cat("  Proceed with full pipeline: tar_make(us_text)\n")
 } else {
- cat("✗ Extraction quality needs IMPROVEMENT before full run\n")
+ cat("Extraction quality needs IMPROVEMENT before full run\n")
  cat("  Review failed metrics and adjust extraction settings\n")
 }
 ```
@@ -277,7 +294,6 @@ if (fail_count == 0) {
 Based on the quality assessment:
 
 1. **If PASS**: Run `tar_make(us_text)` to extract all 350 documents
-
 2. **If WARN**: Review warnings but proceed with caution
 3. **If FAIL**: Debug extraction issues before full run
 
@@ -292,4 +308,20 @@ if (fail_count > 0) {
    paste("-", .) |>
    cat(sep = "\n")
 }
+```
+
+## Extraction Performance
+
+```{r performance-summary}
+# Summary of extraction times
+cat("=== Extraction Performance ===\n")
+cat(sprintf("Total documents: %d\n", nrow(sample_results)))
+cat(sprintf("Total pages: %d\n", sum(sample_results$n_pages)))
+cat(sprintf("Total extraction time: %.1f seconds\n",
+            sum(sample_results$extraction_time, na.rm = TRUE)))
+cat(sprintf("Average time per document: %.1f seconds\n",
+            mean(sample_results$extraction_time, na.rm = TRUE)))
+cat(sprintf("Average time per page: %.2f seconds\n",
+            sum(sample_results$extraction_time, na.rm = TRUE) /
+              sum(sample_results$n_pages)))
 ```

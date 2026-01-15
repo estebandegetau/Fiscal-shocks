@@ -81,7 +81,8 @@ tar_source()
 max_year <- lubridate::year(lubridate::today())
 min_year <- 1946
 
-use_docling <- TRUE
+# Extraction method: TRUE = local PyMuPDF+OCR, FALSE = AWS Lambda+Docling
+use_local_extraction <- TRUE
 
 list(
   tar_target(
@@ -281,15 +282,23 @@ list(
   ),
   tar_target(
     us_text,
-    pull_text_lambda(
-      pdf_url = us_urls_vector,
-      bucket = Sys.getenv("AWS_S3_BUCKET", "fiscal-shocks-pdfs"),
-      lambda_function = Sys.getenv("LAMBDA_FUNCTION_NAME", "fiscal-shocks-pdf-extractor"),
-      poll_interval = 30,
-      max_wait_time = 600,
-      do_table_structure = TRUE
-    )
-    # No pattern = map() - all Lambda invocations happen in parallel
+    if (use_local_extraction) {
+      pull_text_local(
+        pdf_url = us_urls_vector,
+        output_dir = here::here("data/extracted"),
+        workers = 4,
+        ocr_dpi = 200
+      )
+    } else {
+      pull_text_lambda(
+        pdf_url = us_urls_vector,
+        bucket = Sys.getenv("AWS_S3_BUCKET", "fiscal-shocks-pdfs"),
+        lambda_function = Sys.getenv("LAMBDA_FUNCTION_NAME"),
+        poll_interval = 30,
+        max_wait_time = 600,
+        do_table_structure = TRUE
+      )
+    }
   ),
   tar_target(
     us_body,
