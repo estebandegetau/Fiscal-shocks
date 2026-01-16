@@ -305,7 +305,7 @@ if (fail_count > 0) {
  cat("Issues to address:\n")
  quality_report |>
    filter(status == "FAIL") |>
-   pull(metric) |>
+   pull(metric) %>%
    paste("-", .) |>
    cat(sep = "\n")
 }
