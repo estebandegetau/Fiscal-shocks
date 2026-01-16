@@ -1,1 +1,16 @@
-sentence-transformers
+# Python dependencies for Fiscal Shocks project
+# PDF extraction and text processing pipeline
+
+# Core PDF extraction
+docling>=2.60.0
+
+# Embeddings and NLP
+sentence-transformers>=5.0.0
+
+# Deep learning (auto-installed by sentence-transformers, but specified for clarity)
+torch>=2.0.0
+
+# Optional: Additional utilities for text processing
+# Uncomment if needed in your workflow
+# pandas>=2.0.0
+# numpy>=1.24.0

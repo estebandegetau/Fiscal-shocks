@@ -47,23 +47,24 @@ docs/_site/
 *.temp
 
 # Lambda build exclusions (for Dockerfile.lambda)
-# Only python/lambda_handler.py is needed for Lambda
-renv/
-notebooks/
-docs/
-data/
-tests/
-*.Rmd
-*.qmd
-*.md
-R/
-_targets.R
-_targets.yaml
-references.bib
-index.qmd
-_quarto.yml
-docker-compose.yml
-Dockerfile
-.devcontainer/
-tmux_guide.md
-lambda_deploy.log
+# IMPORTANT: These exclusions are for Lambda builds only
+# If you're building with the main Dockerfile, comment these out or use a separate .dockerignore
+# Uncomment the lines below ONLY when building Dockerfile.lambda:
+# notebooks/
+# docs/
+# data/
+# tests/
+# *.Rmd
+# *.qmd
+# *.md
+# R/
+# _targets.R
+# _targets.yaml
+# references.bib
+# index.qmd
+# _quarto.yml
+# docker-compose.yml
+# Dockerfile
+# .devcontainer/
+# tmux_guide.md
+# lambda_deploy.log

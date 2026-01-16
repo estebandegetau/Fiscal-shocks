@@ -28,6 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2-dev \
     zlib1g-dev \
     libv8-dev \
+    # Additional R package dependencies (igraph, clipr, etc.)
+    libglpk-dev \
+    libx11-dev \
     # PDF processing (pdftools, qpdf)
     libpoppler-cpp-dev \
     poppler-data \
@@ -60,6 +63,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Note: libnode-dev is NOT installed here due to nodejs version conflicts
+# in Ubuntu Noble. This may affect the V8 R package if used.
+# Node.js is installed separately from NodeSource below for Claude Code CLI.
 
 # Install Node.js (required for Claude Code)
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
