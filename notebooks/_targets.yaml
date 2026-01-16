@@ -1,5 +1,3 @@
 main:
-  store: C:/Users/L E N O V O/OneDrive - INSTITUTO TECNOLOGICO AUTONOMO DE MEXICO/Documentos/WB/Fiscal
-    shocks/_targets
-  script: C:/Users/L E N O V O/OneDrive - INSTITUTO TECNOLOGICO AUTONOMO DE MEXICO/Documentos/WB/Fiscal
-    shocks/R
+  store: _targets
+  script: R
