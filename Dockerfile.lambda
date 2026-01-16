@@ -1,35 +1,38 @@
-# Dockerfile.lambda - AWS Lambda container for Docling PDF extraction
+# Dockerfile.lambda - AWS Lambda container for PyMuPDF PDF extraction with OCR
 #
-# Build: docker build -t fiscal-shocks-pdf-extractor -f Dockerfile.lambda .
+# Build: docker build --platform linux/amd64 --provenance=false -t fiscal-shocks-pdf-extractor -f Dockerfile.lambda .
 # Test:  docker run -p 9000:8080 fiscal-shocks-pdf-extractor
 #        curl -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" \
 #             -d '{"pdf_url":"https://example.com/test.pdf","output_key":"test/out.json"}'
 
-# Stage 1: Builder - install packages with build dependencies
-# Using Python 3.12 for better binary wheel compatibility with docling-parse
-FROM public.ecr.aws/lambda/python:3.12 AS builder
+FROM public.ecr.aws/lambda/python:3.11
 
-# Upgrade pip
-RUN pip install --upgrade pip
+# Install EPEL repository from Fedora archives (EPEL 7 for Amazon Linux 2)
+# Then install Tesseract OCR
+RUN rpm -Uvh https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/e/epel-release-7-14.noarch.rpm && \
+    yum install -y tesseract tesseract-langpack-eng && \
+    yum clean all
 
-# Install Docling and dependencies to /opt/python
-# Using --only-binary to force using pre-built wheels (no compilation)
-# This takes ~5-10 minutes due to PyTorch download
-RUN pip install --target /opt/python \
-    "docling>=2.0" \
-    boto3 \
-    --only-binary=:all: \
-    --no-cache-dir
+# Verify Tesseract installation (fail build if not working)
+RUN tesseract --version && \
+    ls -la /usr/share/tesseract/tessdata/eng.traineddata
 
-# Stage 2: Runtime - lean final image
-FROM public.ecr.aws/lambda/python:3.12
+# Install build dependencies for PyMuPDF (needs C compiler)
+RUN yum install -y gcc gcc-c++ make && \
+    yum clean all
 
-# Copy installed packages from builder stage
-COPY --from=builder /opt/python ${LAMBDA_TASK_ROOT}
+# Upgrade pip and install Python dependencies
+# Use --prefer-binary to avoid compiling from source when possible
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir --prefer-binary \
+    pymupdf \
+    boto3
 
-# Copy only the handler code (not the entire project)
+# Set Tesseract data path
+ENV TESSDATA_PREFIX=/usr/share/tesseract/tessdata
+
+# Copy the handler code
 COPY python/lambda_handler.py ${LAMBDA_TASK_ROOT}/
 
 # Lambda handler entry point
-# Format: <module_name>.<function_name>
 CMD ["lambda_handler.handler"]

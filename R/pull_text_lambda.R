@@ -75,9 +75,10 @@ pull_text_lambda <- function(
     stop("Package 'paws.compute' is required. Install with: install.packages('paws.compute')")
   }
 
-  # Initialize AWS clients
-  s3 <- paws.storage::s3()
-  lambda <- paws.compute::lambda()
+  # Initialize AWS clients with region configuration
+  region <- Sys.getenv("AWS_DEFAULT_REGION", unset = "us-east-1")
+  s3 <- paws.storage::s3(config = list(region = region))
+  lambda <- paws.compute::lambda(config = list(region = region))
 
   # Generate S3 output key from URL
   # Format: extracted/{year}/{source}/{filename}.json

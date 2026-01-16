@@ -1,7 +1,7 @@
 #!/bin/bash
 # AWS Lambda Container Deployment Script for Fiscal Shocks PDF Extraction
 #
-# This script packages the Docling PDF extractor as an AWS Lambda container image
+# This script packages the PyMuPDF+Tesseract PDF extractor as an AWS Lambda container image
 # and deploys it via ECR (Elastic Container Registry).
 #
 # Prerequisites:
@@ -126,7 +126,7 @@ echo "  ✓ Docker authenticated"
 # Step 4: Build container image
 echo ""
 echo "[4/6] Building container image..."
-echo "  This may take 5-10 minutes (downloading PyTorch + Docling)..."
+echo "  This may take 2-3 minutes (installing PyMuPDF + Tesseract)..."
 # Force linux/amd64 platform for Lambda compatibility (required even on ARM Macs)
 # --provenance=false disables BuildKit attestations that create OCI index manifests
 # Lambda requires simple Docker v2 schema manifests, not OCI image indexes
