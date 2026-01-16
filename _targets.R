@@ -286,7 +286,7 @@ list(
       pull_text_local(
         pdf_url = us_urls_vector,
         output_dir = here::here("data/extracted"),
-        workers = 4,
+        workers = 6,
         ocr_dpi = 200
       )
     } else {
@@ -320,5 +320,21 @@ list(
   tar_target(
     relevant_paragraphs,
     make_relevant_paragraphs(paragraphs)
+  ),
+  tar_target(
+    # Sliding window chunks for LLM context fitting
+    # 50 pages per chunk with 10-page overlap
+    # Target ~40K tokens per chunk (Claude context = 200K)
+    chunks,
+    make_chunks(
+      us_body,
+      window_size = 50,   # pages per chunk
+      overlap = 10,       # overlapping pages
+      max_tokens = 40000  # ~40K tokens per chunk
+    )
+  ),
+  tar_target(
+    chunks_summary,
+    summarize_chunks(chunks)
   )
 )
