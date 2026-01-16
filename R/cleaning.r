@@ -32,7 +32,6 @@ clean_us_labels <- function(data, us_shocks) {
 }
 
 make_pages <- function(data, keys) {
-
     data |>
         filter(n_pages > 0) |>
         mutate(
@@ -101,7 +100,6 @@ make_paragraphs <- function(data, keys) {
 }
 
 make_relevant_paragraphs <- function(data) {
-
     relevant_paragraphs <- data |>
         filter(relevant_text == 1) |>
         filter(is_duplicate == 0) |>

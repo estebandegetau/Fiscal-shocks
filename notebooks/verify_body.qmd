@@ -1,0 +1,926 @@
+---
+title: "Document Extraction Verification: `r params$country`"
+subtitle: "Data completeness and parsing quality checks"
+author: "Fiscal Shocks Project"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show code"
+    theme: cosmo
+    self-contained: true
+params:
+  country: "US"
+  body_target: "us_body"
+  labels_target: "us_labels"
+  min_year: 1946
+  max_year: !expr lubridate::year(Sys.Date())
+  fiscal_vocab:
+    - "tax"
+    - "fiscal"
+    - "budget"
+    - "deficit"
+    - "revenue"
+    - "spending"
+    - "expenditure"
+    - "appropriation"
+execute:
+  cache: true
+  warning: false
+  message: false
+---
+
+## Setup
+
+```{r setup}
+library(tidyverse)
+library(targets)
+library(here)
+library(quanteda)
+library(kableExtra)
+library(digest)
+pacman::p_load(quarto)
+
+here::i_am("notebooks/verify_body.qmd")
+tar_config_set(store = here("_targets"))
+
+if(interactive()) {
+  params <- list()
+  params$body_target <- "us_body"
+  params$labels_target <- "us_labels"
+}
+
+# Load data - tar_read_raw accepts character strings
+body_data <- tar_read_raw(params$body_target)
+
+# Load labels if available
+has_labels <- FALSE
+if (!is.null(params$labels_target) && params$labels_target != "") {
+  tryCatch({
+    labels_data <- tar_read_raw(params$labels_target)
+    has_labels <- TRUE
+  }, error = function(e) {
+    message("Labels target not found - skipping known act validation")
+    has_labels <<- FALSE
+  })
+}
+
+# Fiscal vocabulary
+fiscal_terms <- params$fiscal_vocab
+
+# Test results storage
+test_results <- list()
+```
+
+## Overview Statistics
+
+```{r overview}
+# Total documents, pages, sources
+overview_stats <- body_data %>%
+  summarize(
+    total_documents = n(),
+    successful_extractions = sum(n_pages > 0),
+    total_pages = sum(n_pages),
+    years_covered = n_distinct(year),
+    year_range = sprintf("%d-%d", min(year), max(year)),
+    sources_used = n_distinct(source),
+    document_types = n_distinct(body),
+    ocr_documents = sum(ocr_used, na.rm = TRUE)
+  )
+
+overview_stats %>%
+  mutate(across(everything(), as.character)) %>%
+  pivot_longer(everything(), names_to = "Metric", values_to = "Value") %>%
+  mutate(Metric = str_replace_all(Metric, "_", " ") %>% str_to_title()) %>%
+  kable(caption = "Extraction Overview") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+### Page Distribution by Source and Body
+
+```{r overview-viz}
+# Pages by year, body, and source
+body_data %>%
+  filter(n_pages > 0) %>%
+  ggplot(aes(x = year, y = n_pages, fill = body)) +
+  geom_col() +
+  facet_wrap(~source, ncol = 1) +
+  labs(
+    title = "Pages Extracted by Year, Source, and Body",
+    x = "Year",
+    y = "Number of Pages",
+    fill = "Document Type"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Page count distribution
+body_data %>%
+  filter(n_pages > 0) %>%
+  ggplot(aes(x = n_pages, fill = body)) +
+  geom_histogram(bins = 50, alpha = 0.7) +
+  facet_wrap(~body, ncol = 1, scales = "free_y") +
+  labs(
+    title = "Distribution of Page Counts by Document Type",
+    x = "Number of Pages",
+    y = "Count"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Test (i): PDF URL Resolution & Page Count Validation
+
+```{r test-i}
+# Identify failed extractions
+failed_extractions <- body_data %>%
+  filter(n_pages == 0) %>%
+  select(year, body, source, pdf_url, n_pages)
+
+# Summary by source
+url_resolution_summary <- body_data %>%
+  group_by(source, body) %>%
+  summarize(
+    total_docs = n(),
+    successful = sum(n_pages > 0),
+    failed = sum(n_pages == 0),
+    success_rate = mean(n_pages > 0),
+    ocr_docs = sum(ocr_used, na.rm = TRUE),
+    ocr_rate = mean(ocr_used, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Overall success rate
+overall_success_rate <- mean(body_data$n_pages > 0)
+
+# Determine status
+test_i_status <- case_when(
+  overall_success_rate >= 0.95 ~ "PASS",
+  overall_success_rate >= 0.85 ~ "WARN",
+  TRUE ~ "FAIL"
+)
+
+# Store result
+test_results$test_i <- list(
+  metric = "URL resolution success rate",
+  value = sprintf("%.1f%%", overall_success_rate * 100),
+  target = "≥95%",
+  status = test_i_status
+)
+```
+
+### Results
+
+**Overall Success Rate:** `r sprintf("%.1f%%", overall_success_rate * 100)` **Status:** `r test_i_status`
+
+```{r test-i-display}
+if (nrow(failed_extractions) > 0) {
+  cat("\n### Failed Extractions\n\n")
+  failed_extractions %>%
+    kable(caption = sprintf("Failed PDF extractions (%d documents)", nrow(failed_extractions))) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"))
+} else {
+  cat("\n✅ All PDFs successfully extracted!\n\n")
+}
+
+# Success rate by source/body
+url_resolution_summary %>%
+  mutate(success_rate = sprintf("%.1f%%", success_rate * 100)) %>%
+  kable(caption = "Success Rate by Source and Body") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# OCR usage visualization
+body_data %>%
+  filter(n_pages > 0) %>%
+  count(source, ocr_used) %>%
+  ggplot(aes(x = source, y = n, fill = ocr_used)) +
+  geom_col(position = "stack") +
+  labs(
+    title = "OCR Usage by Source",
+    x = "Source",
+    y = "Number of Documents",
+    fill = "OCR Used"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Test (ii): Boundary Document Verification
+
+```{r test-ii}
+# Get boundary documents (earliest and latest per source/body)
+boundary_docs <- bind_rows(
+  body_data %>%
+    filter(n_pages > 0) %>%
+    group_by(source, body) %>%
+    slice_min(year, n = 1, with_ties = FALSE) %>%
+    mutate(boundary_type = "Earliest"),
+  body_data %>%
+    filter(n_pages > 0) %>%
+    group_by(source, body) %>%
+    slice_max(year, n = 1, with_ties = FALSE) %>%
+    mutate(boundary_type = "Latest")
+) %>%
+  ungroup()
+
+# Extract sample pages
+extract_sample_pages <- function(text_list) {
+  if (is.null(text_list) || length(text_list) == 0) {
+    return(list(first = NA, middle = NA, last = NA))
+  }
+
+  pages <- text_list[[1]]
+  n <- length(pages)
+
+  if (n == 0) {
+    return(list(first = NA, middle = NA, last = NA))
+  }
+
+  list(
+    first = pages[1],
+    middle = if (n > 1) pages[ceiling(n/2)] else NA,
+    last = if (n > 1) pages[n] else NA
+  )
+}
+
+boundary_docs <- boundary_docs %>%
+  mutate(sample_pages = map(text, extract_sample_pages))
+
+# Check if all boundary docs have sufficient pages
+boundary_valid <- all(boundary_docs$n_pages >= 10, na.rm = TRUE)
+
+test_ii_status <- case_when(
+  boundary_valid ~ "PASS",
+  any(boundary_docs$n_pages < 10 & boundary_docs$n_pages > 0) ~ "WARN",
+  TRUE ~ "FAIL"
+)
+
+test_results$test_ii <- list(
+  metric = "Boundary documents valid",
+  value = sprintf("%d/%d valid", sum(boundary_docs$n_pages >= 10), nrow(boundary_docs)),
+  target = "All ≥10 pages",
+  status = test_ii_status
+)
+```
+
+### Results
+
+**Status:** `r test_ii_status`
+
+```{r test-ii-display}
+# Summary table
+boundary_docs %>%
+  select(body, source, year, boundary_type, n_pages, ocr_used) %>%
+  arrange(body, source, boundary_type) %>%
+  kable(caption = "Boundary Documents") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+### Sample Pages from Boundary Documents
+
+```{r test-ii-samples}
+# Display sample text from first few boundary documents
+display_sample_text <- function(text, label, max_chars = 1000) {
+  if (is.na(text) || is.null(text) || nchar(text) == 0) {
+    cat(sprintf("\n**%s:** (No text available)\n\n", label))
+    return()
+  }
+
+  truncated <- str_trunc(text, max_chars)
+  cat(sprintf("\n**%s:**\n\n", label))
+  cat("```text\n")
+  cat(truncated)
+  cat("\n```\n\n")
+
+  if (nchar(text) > max_chars) {
+    cat(sprintf("*(Truncated: showing %d of %d characters)*\n\n", max_chars, nchar(text)))
+  }
+}
+
+# Show samples from first 3 boundary documents
+for (i in seq_len(min(3, nrow(boundary_docs)))) {
+  row <- boundary_docs[i, ]
+  cat(sprintf("\n### %s - %s %d (%s)\n\n",
+              row$body, row$boundary_type, row$year, row$source))
+
+  samples <- row$sample_pages[[1]]
+  display_sample_text(samples$first, "First Page", 800)
+}
+```
+
+## Test (iii): Known Act Validation
+
+```{r test-iii}
+if (has_labels) {
+  # Prepare labels data with expected year
+  labels_prepared <- labels_data %>%
+    mutate(expected_year = year(date))
+
+  # Get unique acts with their years
+  acts_by_year <- labels_prepared %>%
+    distinct(act_name, expected_year)
+
+  # Join with body data (focus on ERP as primary source)
+  known_acts <- acts_by_year %>%
+    left_join(
+      body_data %>%
+        filter(n_pages > 0) %>%
+        mutate(full_text = map_chr(text, function(pages) {
+          if (length(pages) == 0) return("")
+          paste(pages, collapse = " ")
+        })),
+      by = c("expected_year" = "year"),
+      relationship = "many-to-many"
+    ) %>%
+    filter(!is.na(full_text))
+
+  # Check for act names in text
+  act_name_validation <- known_acts %>%
+    mutate(
+      act_name_found = str_detect(full_text, fixed(act_name, ignore_case = TRUE))
+    ) %>%
+    group_by(act_name, expected_year) %>%
+    summarize(
+      n_docs = n(),
+      found_in_any = any(act_name_found),
+      .groups = "drop"
+    )
+
+  # Calculate recall
+  act_name_recall <- mean(act_name_validation$found_in_any)
+
+  # For passage recall, check labeled text passages
+  passage_validation <- labels_prepared %>%
+    left_join(
+      body_data %>%
+        filter(n_pages > 0) %>%
+        select(year, body, text),
+      by = c("expected_year" = "year"),
+      relationship = "many-to-many"
+    ) %>%
+    filter(!is.na(text)) %>%
+    mutate(
+      full_text = map_chr(text, function(pages) {
+        if (length(pages) == 0) return("")
+        paste(pages, collapse = " ")
+      }),
+      # Fuzzy match: check if 80% of significant words from passage appear
+      passage_found = map2_lgl(Text, full_text, function(passage, doc_text) {
+        if (is.na(passage) || nchar(passage) == 0 || nchar(doc_text) == 0) return(FALSE)
+
+        # Extract significant words (>4 characters)
+        passage_words <- str_extract_all(passage, "\\b\\w{5,}\\b")[[1]]
+        if (length(passage_words) == 0) return(FALSE)
+
+        # Check how many appear in document
+        matches <- sum(str_detect(doc_text, fixed(passage_words, ignore_case = TRUE)))
+        matches / length(passage_words) >= 0.8
+      })
+    )
+
+  passage_recall <- mean(passage_validation$passage_found, na.rm = TRUE)
+
+  # Determine status
+  test_iii_status <- case_when(
+    act_name_recall >= 0.90 & passage_recall >= 0.70 ~ "PASS",
+    act_name_recall >= 0.80 | passage_recall >= 0.50 ~ "WARN",
+    TRUE ~ "FAIL"
+  )
+
+  test_results$test_iii_acts <- list(
+    metric = "Known act name recall",
+    value = sprintf("%.1f%%", act_name_recall * 100),
+    target = "≥90%",
+    status = test_iii_status
+  )
+
+  test_results$test_iii_passages <- list(
+    metric = "Known passage recall",
+    value = sprintf("%.1f%%", passage_recall * 100),
+    target = "≥70%",
+    status = test_iii_status
+  )
+} else {
+  test_iii_status <- "SKIP"
+  act_name_recall <- NA
+  passage_recall <- NA
+
+  test_results$test_iii_acts <- list(
+    metric = "Known act validation",
+    value = "N/A",
+    target = "N/A",
+    status = "SKIP"
+  )
+}
+```
+
+### Results
+
+```{r test-iii-display}
+if (has_labels) {
+  cat(sprintf("\n**Act Name Recall:** %.1f%% **Status:** %s\n\n",
+              act_name_recall * 100, test_iii_status))
+  cat(sprintf("**Passage Recall:** %.1f%% **Status:** %s\n\n",
+              passage_recall * 100, test_iii_status))
+
+  # Show act validation summary
+  cat("\n### Act Name Validation Summary\n\n")
+  act_name_validation %>%
+    mutate(
+      Status = if_else(found_in_any, "✓ Found", "✗ Not found")
+    ) %>%
+    arrange(desc(found_in_any), expected_year) %>%
+    head(20) %>%
+    kable(caption = "Known Acts Validation (first 20)") %>%
+    kable_styling(bootstrap_options = c("striped", "hover"))
+
+  # Show passage validation summary
+  cat("\n### Passage Validation Summary\n\n")
+  passage_summary <- passage_validation %>%
+    group_by(act_name, expected_year) %>%
+    summarize(
+      n_passages = n(),
+      passages_found = sum(passage_found, na.rm = TRUE),
+      recall_rate = mean(passage_found, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  passage_summary %>%
+    mutate(recall_rate = sprintf("%.1f%%", recall_rate * 100)) %>%
+    arrange(desc(passages_found)) %>%
+    head(15) %>%
+    kable(caption = "Passage Recall by Act (top 15)") %>%
+    kable_styling(bootstrap_options = c("striped", "hover"))
+} else {
+  cat("\n⚠️ Skipping: No ground truth labels available for this country\n\n")
+}
+```
+
+## Test (iv): Temporal & Source Coverage
+
+```{r test-iv}
+# Define expected coverage
+# ERP and Budget: every year from min_year to max_year
+# Treasury: 1946-1980 and 2011-present (gap 1981-2010)
+expected_coverage <- bind_rows(
+  expand_grid(
+    year = params$min_year:params$max_year,
+    body = c("Economic Report of the President", "Budget of the United States Government")
+  ) %>%
+    mutate(expected = year <= lubridate::year(Sys.Date())),
+  expand_grid(
+    year = params$min_year:params$max_year,
+    body = "Annual Report of the Treasury"
+  ) %>%
+    mutate(expected = (year <= 1980 | year >= 2011) & year <= lubridate::year(Sys.Date()))
+)
+
+# Actual coverage
+actual_coverage <- body_data %>%
+  filter(n_pages > 0) %>%
+  count(year, body, name = "n_docs")
+
+# Join and analyze
+coverage_analysis <- expected_coverage %>%
+  left_join(actual_coverage, by = c("year", "body")) %>%
+  mutate(
+    n_docs = replace_na(n_docs, 0),
+    status = case_when(
+      !expected ~ "Not expected",
+      n_docs > 0 ~ "Present",
+      TRUE ~ "Missing"
+    )
+  )
+
+# Calculate coverage rate
+coverage_gaps <- coverage_analysis %>%
+  filter(expected & n_docs == 0)
+
+total_expected <- sum(coverage_analysis$expected)
+total_present <- sum(coverage_analysis$expected & coverage_analysis$n_docs > 0)
+coverage_rate <- total_present / total_expected
+
+test_iv_status <- case_when(
+  coverage_rate >= 0.95 ~ "PASS",
+  coverage_rate >= 0.85 ~ "WARN",
+  TRUE ~ "FAIL"
+)
+
+test_results$test_iv <- list(
+  metric = "Coverage rate",
+  value = sprintf("%.1f%%", coverage_rate * 100),
+  target = "≥95%",
+  status = test_iv_status
+)
+```
+
+### Results
+
+**Coverage Rate:** `r sprintf("%.1f%%", coverage_rate * 100)` (`r total_present` of `r total_expected` expected documents) **Status:** `r test_iv_status`
+
+```{r test-iv-display}
+# Coverage heatmap
+coverage_analysis %>%
+  filter(year >= max(params$min_year, 1946)) %>%
+  mutate(
+    status_color = case_when(
+      status == "Not expected" ~ 0,
+      status == "Present" ~ 1,
+      TRUE ~ -1
+    )
+  ) %>%
+  ggplot(aes(x = year, y = body, fill = status_color)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  scale_fill_gradient2(
+    low = "red", mid = "grey90", high = "green",
+    midpoint = 0,
+    breaks = c(-1, 0, 1),
+    labels = c("Missing", "Not expected", "Present"),
+    name = "Status"
+  ) +
+  labs(
+    title = "Document Coverage by Year and Type",
+    x = "Year",
+    y = "Document Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  )
+
+# Show gaps if any
+if (nrow(coverage_gaps) > 0) {
+  cat("\n### Coverage Gaps\n\n")
+  coverage_gaps %>%
+    select(year, body) %>%
+    arrange(body, year) %>%
+    kable(caption = sprintf("Missing expected documents (%d gaps)", nrow(coverage_gaps))) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"))
+} else {
+  cat("\n✅ No coverage gaps! All expected documents are present.\n\n")
+}
+```
+
+## Test (v): Text Quality Indicators
+
+```{r test-v}
+# Calculate page-level quality metrics
+quality_metrics <- body_data %>%
+  filter(n_pages > 0) %>%
+  mutate(
+    page_metrics = map(text, function(pages) {
+      if (length(pages) == 0) return(NULL)
+
+      tibble(
+        page_num = seq_along(pages),
+        page_text = pages,
+        n_chars = nchar(page_text),
+        n_tokens = quanteda::ntoken(quanteda::tokens(page_text)),
+        special_char_rate = str_count(page_text, "[^a-zA-Z0-9\\s.,!?;:'-]") / pmax(n_chars, 1),
+        whitespace_rate = str_count(page_text, "\\s") / pmax(n_chars, 1),
+        non_ascii_rate = str_count(page_text, "[^\x01-\x7F]") / pmax(n_chars, 1),
+        has_fiscal_terms = str_detect(
+          page_text,
+          regex(paste(fiscal_terms, collapse = "|"), ignore_case = TRUE)
+        )
+      )
+    })
+  ) %>%
+  unnest(page_metrics)
+
+# Identify suspicious pages
+suspicious_pages <- quality_metrics %>%
+  filter(
+    n_chars < 100 |
+    special_char_rate > 0.1 |
+    non_ascii_rate > 0.05 |
+    (!has_fiscal_terms & page_num > 5)
+  )
+
+# Document-level quality summary
+doc_quality <- quality_metrics %>%
+  group_by(year, body, package_id) %>%
+  summarize(
+    total_pages = n(),
+    avg_tokens_per_page = mean(n_tokens, na.rm = TRUE),
+    pct_fiscal_pages = mean(has_fiscal_terms, na.rm = TRUE),
+    suspicious_pages_count = sum(
+      n_chars < 100 | special_char_rate > 0.1 | non_ascii_rate > 0.05,
+      na.rm = TRUE
+    ),
+    quality_score = (pmin(avg_tokens_per_page / 300, 1)) * pct_fiscal_pages *
+                    (1 - suspicious_pages_count / total_pages),
+    .groups = "drop"
+  )
+
+# Calculate metrics
+pct_suspicious <- nrow(suspicious_pages) / nrow(quality_metrics)
+pct_fiscal <- mean(quality_metrics$has_fiscal_terms, na.rm = TRUE)
+
+test_v_status <- case_when(
+  pct_suspicious < 0.05 & pct_fiscal > 0.70 ~ "PASS",
+  pct_suspicious < 0.10 | pct_fiscal > 0.50 ~ "WARN",
+  TRUE ~ "FAIL"
+)
+
+test_results$test_v_quality <- list(
+  metric = "Text quality - suspicious pages",
+  value = sprintf("%.1f%%", pct_suspicious * 100),
+  target = "<5%",
+  status = test_v_status
+)
+
+test_results$test_v_fiscal <- list(
+  metric = "Text quality - fiscal pages",
+  value = sprintf("%.1f%%", pct_fiscal * 100),
+  target = ">70%",
+  status = test_v_status
+)
+```
+
+### Results
+
+**Suspicious Pages:** `r sprintf("%.1f%%", pct_suspicious * 100)` **Fiscal Term Coverage:** `r sprintf("%.1f%%", pct_fiscal * 100)` **Status:** `r test_v_status`
+
+```{r test-v-display}
+# Token distribution
+quality_metrics %>%
+  ggplot(aes(x = n_tokens)) +
+  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7) +
+  labs(
+    title = "Distribution of Tokens per Page",
+    x = "Tokens per Page",
+    y = "Count"
+  ) +
+  theme_minimal()
+
+# Special character rates by source
+quality_metrics %>%
+  left_join(body_data %>% select(package_id, source), by = "package_id") %>%
+  ggplot(aes(x = source, y = special_char_rate)) +
+  geom_boxplot(fill = "coral", alpha = 0.7) +
+  labs(
+    title = "Special Character Rate by Source",
+    x = "Source",
+    y = "Special Character Rate"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Show low quality documents
+low_quality_docs <- doc_quality %>%
+  filter(quality_score < 0.5) %>%
+  arrange(quality_score)
+
+if (nrow(low_quality_docs) > 0) {
+  cat("\n### Low Quality Documents\n\n")
+  low_quality_docs %>%
+    select(year, body, total_pages, avg_tokens_per_page, pct_fiscal_pages, quality_score) %>%
+    mutate(
+      avg_tokens_per_page = round(avg_tokens_per_page, 0),
+      pct_fiscal_pages = sprintf("%.1f%%", pct_fiscal_pages * 100),
+      quality_score = round(quality_score, 2)
+    ) %>%
+    head(10) %>%
+    kable(caption = "Documents with quality_score < 0.5 (top 10)") %>%
+    kable_styling(bootstrap_options = c("striped", "hover"))
+} else {
+  cat("\n✅ No low-quality documents found!\n\n")
+}
+```
+
+## Test (vi): Anomaly Detection
+
+```{r test-vi}
+# Document-level anomalies
+doc_anomalies <- body_data %>%
+  filter(n_pages > 0) %>%
+  mutate(
+    too_short = n_pages < 10,
+    too_long = n_pages > 1000,
+    first_pages = map_chr(text, function(pages) {
+      if (length(pages) == 0) return("")
+      paste(pages[1:min(5, length(pages))], collapse = " ")
+    }),
+    has_title_indicators = str_detect(
+      first_pages,
+      regex("(report|budget|economic|president|treasury|united states)", ignore_case = TRUE)
+    ),
+    extraction_time_z = if (sd(extraction_time, na.rm = TRUE) > 0) {
+      scale(extraction_time)[,1]
+    } else {
+      0
+    },
+    slow_extraction = ocr_used & extraction_time_z > 3
+  )
+
+# Duplicate detection (hash first 5 pages)
+duplicate_check <- body_data %>%
+  filter(n_pages > 0) %>%
+  mutate(
+    text_hash = map_chr(text, function(pages) {
+      if (length(pages) == 0) return("")
+      first_pages <- pages[1:min(5, length(pages))]
+      digest::digest(paste(first_pages, collapse = ""))
+    })
+  ) %>%
+  group_by(text_hash) %>%
+  filter(n() > 1, text_hash != "") %>%
+  ungroup() %>%
+  select(year, body, package_id, text_hash)
+
+# Year-level trends
+year_trends <- body_data %>%
+  filter(n_pages > 0) %>%
+  group_by(year, body) %>%
+  summarize(
+    total_pages = sum(n_pages),
+    n_docs = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(body, year) %>%
+  group_by(body) %>%
+  mutate(
+    yoy_change = (total_pages - lag(total_pages)) / lag(total_pages),
+    sudden_drop = !is.na(yoy_change) & yoy_change < -0.5
+  ) %>%
+  ungroup()
+
+# Anomaly counts
+n_too_short <- sum(doc_anomalies$too_short, na.rm = TRUE)
+n_too_long <- sum(doc_anomalies$too_long, na.rm = TRUE)
+n_no_title <- sum(!doc_anomalies$has_title_indicators, na.rm = TRUE)
+n_duplicates <- nrow(duplicate_check)
+n_sudden_drops <- sum(year_trends$sudden_drop, na.rm = TRUE)
+
+test_results$test_vi <- list(
+  metric = "Anomalies detected",
+  value = sprintf("%d issues", n_too_short + n_too_long + n_duplicates + n_sudden_drops),
+  target = "Manual review",
+  status = "INFO"
+)
+```
+
+### Results
+
+**Status:** INFO (anomalies flagged for manual review)
+
+```{r test-vi-display}
+# Anomaly summary
+anomaly_summary <- tribble(
+  ~Anomaly, ~Count,
+  "Too short (< 10 pages)", n_too_short,
+  "Too long (> 1000 pages)", n_too_long,
+  "Missing title indicators", n_no_title,
+  "Duplicate documents", n_duplicates,
+  "Sudden year drops (>50%)", n_sudden_drops
+)
+
+anomaly_summary %>%
+  kable(caption = "Anomaly Summary") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Show anomalous documents
+if (n_too_short > 0 || n_too_long > 0 || n_no_title > 0) {
+  cat("\n### Anomalous Documents\n\n")
+  doc_anomalies %>%
+    filter(too_short | too_long | !has_title_indicators) %>%
+    select(year, body, package_id, n_pages, too_short, too_long, has_title_indicators) %>%
+    arrange(desc(too_short), desc(too_long)) %>%
+    head(10) %>%
+    kable(caption = "Documents with anomalies (top 10)") %>%
+    kable_styling(bootstrap_options = c("striped", "hover"))
+}
+
+# Show duplicates
+if (n_duplicates > 0) {
+  cat("\n### Duplicate Documents\n\n")
+  duplicate_check %>%
+    kable(caption = sprintf("Potential duplicates (%d documents)", n_duplicates)) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"))
+}
+
+# Year trends
+year_trends %>%
+  ggplot(aes(x = year, y = total_pages, color = body)) +
+  geom_line(linewidth = 1) +
+  geom_point(data = year_trends %>% filter(sudden_drop),
+             color = "red", size = 3, shape = 1) +
+  labs(
+    title = "Total Pages by Year and Body",
+    subtitle = "Red circles indicate sudden drops (>50%)",
+    x = "Year",
+    y = "Total Pages",
+    color = "Document Type"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Summary Report & Pass/Fail Dashboard
+
+```{r summary}
+# Compile test results
+test_summary <- bind_rows(
+  lapply(names(test_results), function(name) {
+    as_tibble(test_results[[name]]) %>%
+      mutate(test = name)
+  })
+) %>%
+  select(test, metric, value, target, status)
+
+# Determine overall status
+status_priority <- c("FAIL" = 3, "WARN" = 2, "PASS" = 1, "INFO" = 0, "SKIP" = 0)
+overall_status <- test_summary %>%
+  filter(status != "SKIP", status != "INFO") %>%
+  pull(status) %>%
+  {names(which.max(status_priority[.]))}
+
+if (length(overall_status) == 0) overall_status <- "PASS"
+```
+
+### Overall Status: **`r overall_status`**
+
+```{r summary-display}
+# Display results table
+test_summary %>%
+  mutate(
+    Status = cell_spec(
+      status,
+      color = case_when(
+        status == "PASS" ~ "green",
+        status == "WARN" ~ "orange",
+        status == "FAIL" ~ "red",
+        status == "INFO" ~ "blue",
+        status == "SKIP" ~ "grey",
+        TRUE ~ "black"
+      ),
+      bold = TRUE
+    )
+  ) %>%
+  select(-status) %>%
+  kable(escape = FALSE, caption = "Verification Test Results") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+### Recommendations
+
+```{r recommendations}
+if (overall_status == "PASS") {
+  cat("\n✅ **READY FOR LLM PROCESSING**\n\n")
+  cat("All verification tests passed. Proceed with:\n\n")
+  cat("- `tar_make(chunks)` to create LLM-ready chunks\n")
+  cat("- Days 2-3: Training data preparation\n")
+  cat("- LLM-based fiscal shock identification\n\n")
+} else if (overall_status == "WARN") {
+  cat("\n⚠️ **PROCEED WITH CAUTION**\n\n")
+  cat("Some tests raised warnings. Review flagged issues before full run:\n\n")
+
+  test_summary %>%
+    filter(status == "WARN") %>%
+    pull(metric) %>%
+    paste("-", .) %>%
+    cat(sep = "\n")
+
+  cat("\n\nConsider re-running extractions for problematic documents.\n\n")
+} else {
+  cat("\n❌ **MANUAL REVIEW REQUIRED**\n\n")
+  cat("Critical issues detected. Address the following before proceeding:\n\n")
+
+  test_summary %>%
+    filter(status == "FAIL") %>%
+    pull(metric) %>%
+    paste("-", .) %>%
+    cat(sep = "\n")
+
+  cat("\n\nReview extraction settings and re-run failed documents.\n\n")
+}
+```
+
+### Next Steps
+
+```{r next-steps}
+cat("\n**Based on this verification:**\n\n")
+cat(sprintf("- Total documents verified: %d\n", nrow(body_data)))
+cat(sprintf("- Successful extractions: %d (%.1f%%)\n",
+            sum(body_data$n_pages > 0),
+            mean(body_data$n_pages > 0) * 100))
+cat(sprintf("- Total pages extracted: %s\n",
+            scales::comma(sum(body_data$n_pages))))
+cat(sprintf("- Documents using OCR: %d\n", sum(body_data$ocr_used, na.rm = TRUE)))
+cat(sprintf("- Overall status: **%s**\n\n", overall_status))
+
+cat("**Recommended actions:**\n\n")
+if (overall_status == "PASS") {
+  cat("1. Proceed to Days 2-3 implementation (training data preparation)\n")
+  cat("2. Run `tar_make(chunks)` to create document chunks\n")
+  cat("3. Begin Model A development (act detection)\n")
+} else {
+  cat("1. Review failed/warned tests above\n")
+  cat("2. Address extraction issues for flagged documents\n")
+  cat("3. Re-run verification before proceeding\n")
+}
+```

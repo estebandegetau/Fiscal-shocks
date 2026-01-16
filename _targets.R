@@ -305,22 +305,22 @@ list(
     us_urls |>
       bind_cols(us_text)
   ),
-  tar_target(
-    pages,
-    make_pages(us_body, relevance_keys)
-  ),
-  tar_target(
-    documents,
-    make_documents(pages)
-  ),
-  tar_target(
-    paragraphs,
-    make_paragraphs(documents, relevance_keys)
-  ),
-  tar_target(
-    relevant_paragraphs,
-    make_relevant_paragraphs(paragraphs)
-  ),
+  # tar_target(
+  #   pages,
+  #   make_pages(us_body, relevance_keys)
+  # ),
+  # tar_target(
+  #   documents,
+  #   make_documents(pages)
+  # ),
+  # tar_target(
+  #   paragraphs,
+  #   make_paragraphs(documents, relevance_keys)
+  # ),
+  # tar_target(
+  #   relevant_paragraphs,
+  #   make_relevant_paragraphs(paragraphs)
+  # ),
   tar_target(
     # Sliding window chunks for LLM context fitting
     # 50 pages per chunk with 10-page overlap
