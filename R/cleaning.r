@@ -26,8 +26,15 @@ clean_us_labels <- function(data, us_shocks) {
         labelled::set_variable_labels(.labels = long_names) |>
         mutate(
             date = mdy(date),
+            date = case_when(
+                date > today() ~ date - years(100),
+                TRUE ~ date
+            ),
             act_name = str_squish(act_name)
-        )
+        ) |>
+        group_by(act_name) |>
+        fill(date, .direction = "down") |>
+        ungroup()
     return(data_clean)
 }
 

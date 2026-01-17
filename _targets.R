@@ -78,7 +78,7 @@ tar_source()
 # tar_source("other_functions.R") # Source other scripts as needed.
 
 # Replace the target list below with your own:
-max_year <- lubridate::year(lubridate::today())
+max_year <- 2022
 min_year <- 1946
 
 # Extraction method: TRUE = local PyMuPDF+OCR, FALSE = AWS Lambda+Docling
