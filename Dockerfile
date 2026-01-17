@@ -4,7 +4,7 @@
 FROM rocker/r-ver:4.5.0
 
 LABEL maintainer="Esteban Degetau"
-LABEL description="Research pipeline for fiscal shock identification from historical US government documents"
+LABEL description="Research pipeline for fiscal shock identification from historical US government documents (Quarto 1.8.27, R 4.5.0, Python 3)"
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -77,7 +77,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 RUN npm install -g @anthropic-ai/claude-code
 
 # Install Quarto
-ARG QUARTO_VERSION=1.6.40
+ARG QUARTO_VERSION=1.8.27
 RUN wget -q https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.deb \
     && dpkg -i quarto-${QUARTO_VERSION}-linux-amd64.deb \
     && rm quarto-${QUARTO_VERSION}-linux-amd64.deb
