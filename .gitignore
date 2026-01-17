@@ -26,6 +26,7 @@ pyvenv.cfg
 tests/
 docs/claude_plans/
 notebooks/unused/
+*.html
 # Environment variables (API keys, AWS credentials)
 .env
 

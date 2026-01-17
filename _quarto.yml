@@ -8,8 +8,10 @@ project:
 
 title: "Scaling Narrative Fiscal Shock Identification with LLMs"
 author: 
- - "Esteban Degetau"
- - "Agustín Samano"
+  - name: "Esteban Degetau"
+    email: "estebandegetau@gmail.com"
+  - name: "Agustín Samano"
+    email: "asamanopenaloza@worldbank.org"
 date: today
 date-format: long
 
