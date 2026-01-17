@@ -4,6 +4,7 @@ project:
   render:
     - docs/*.qmd
     - notebooks/**/*.qmd
+    - reports/*.qmd
     - index.qmd
 
 title: "Scaling Narrative Fiscal Shock Identification with LLMs"

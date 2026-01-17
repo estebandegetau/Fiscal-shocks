@@ -1,18 +1,13 @@
 ---
 title: "Phase 0 Progress Report: Data Extraction and Validation"
 subtitle: "Major Breakthroughs in US Benchmark Preparation"
-date: 2025-01-17
 format:
   html:
     toc: true
     toc-depth: 3
-    code-fold: true
-    code-summary: "Show code"
+    echo: false
     theme: cosmo
     self-contained: true
-  hikmah-pdf: default
-bibliography: ../references.bib
-csl: https://www.zotero.org/styles/chicago-author-date
 execute:
   cache: false
   warning: false
@@ -37,7 +32,7 @@ We report substantial progress in **Phase 0 (US Benchmark)** of the Fiscal Shock
 
 **We are ready to proceed with LLM model development** (Models A, B, and C). The foundation for narrative fiscal shock identification is validated and operational, positioning us to meet our **Malaysia Pilot (Phase 1) deployment target in February 2026**.
 
----
+
 
 ## Background and Context
 
@@ -52,7 +47,7 @@ This approach has never been replicated systematically for emerging markets due 
 
 Success in Phase 0 enables deployment to Southeast Asia (Malaysia, Indonesia, Thailand, Philippines, Vietnam) in 2026.
 
----
+
 
 ## Data Extraction Results
 
@@ -155,7 +150,7 @@ body_data %>%
 
 As shown in @tbl-source-breakdown and @fig-temporal-coverage, all three primary sources (Economic Reports of the President, Budget Documents, Treasury Annual Reports) show high extraction success across the full 76-year period. OCR was successfully deployed for `r overview$ocr_documents` documents, primarily from the pre-1980 period when scanned images predominate.
 
----
+
 
 ## Validation Results: Known Act Detection
 
@@ -193,7 +188,7 @@ We validated extraction quality against **`r n_unique_acts` known fiscal acts** 
 
 The ~15% of acts not found in the expanded window are primarily due to: (1) non-standard naming conventions in source documents, (2) informal references without explicit act names, (3) OCR challenges in pre-1950 scanned documents, and (4) potential year mismatches in the reference dataset. This is within acceptable bounds for LLM training, as the model will learn from the 85%+ successfully validated examples.
 
----
+
 
 ## Text Quality Assessment
 
@@ -228,7 +223,7 @@ cat("\n\n[...truncated...]")
 
 **Quality Assessment**: Text is clean, readable, and preserves both narrative context and fiscal policy details necessary for LLM comprehension.
 
----
+
 
 ## Training Data: Romer & Romer Motivation Dataset
 
@@ -291,7 +286,7 @@ All three models can now proceed to implementation:
 | **Model B** | Motivation Classification | Motivation Dataset (4-way classification + exogeneity) | ✅ Ready |
 | **Model C** | Information Extraction | Motivation Dataset + timing/magnitude data | ✅ Ready |
 
----
+
 
 ## Strategic Path Forward
 
@@ -345,7 +340,7 @@ We have completed the foundation phase ahead of schedule:
 
 8. **Scaling to Southeast Asia** (June 2026): Indonesia, Thailand, Philippines, Vietnam with harmonized multi-country fiscal shock dataset
 
----
+
 
 ## Conclusion
 
@@ -360,7 +355,7 @@ We have completed the foundation phase ahead of schedule:
 
 This progress positions the World Bank to pioneer responsible, auditable LLM use for economic analysis while creating a transferable framework that can serve as a global public good for fiscal policy research.
 
----
+
 
 ## Project Resources
 
@@ -372,14 +367,14 @@ For questions or collaboration inquiries:
 - **Esteban Degetau**: estebandegetau@gmail.com
 - **Agustín Samano**: asamanopenaloza@worldbank.org
 
----
+
 
 **Report Date**: January 17, 2025
 **Phase**: 0 (US Benchmark)
 **Next Milestone**: Model A Development (Act Detection)
 **Target Completion**: Phase 0 by end of January 2026
 
----
+
 
 ## References
 
