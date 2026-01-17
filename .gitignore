@@ -24,7 +24,7 @@ Lib/
 Include/
 pyvenv.cfg
 tests/
-
+docs/claude_plans/
 # Environment variables (API keys, AWS credentials)
 .env
 
