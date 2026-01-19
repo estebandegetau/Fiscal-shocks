@@ -2,14 +2,6 @@
 title: "Document Extraction Verification: `r params$country`"
 subtitle: "Data completeness and parsing quality checks"
 date: today
-format:
-  html:
-    toc: true
-    toc-depth: 3
-    code-fold: true
-    code-summary: "Show code"
-    theme: cosmo
-    self-contained: true
 params:
   country: "US"
   body_target: "us_body"

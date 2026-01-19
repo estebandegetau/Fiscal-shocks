@@ -1,5 +1,22 @@
 ---
 title: "Scaling Narrative Fiscal Shock Identification with LLMs"
+author: 
+  - name: "Esteban Degetau"
+    email: "estebandegetau@gmail.com"
+    affiliation: "World Bank"
+  - name: "Agustín Samano"
+    email: "asamanopenaloza@worldbank.org"
+    affiliation: "World Bank"
+date: last-modified
+date-format: long
+format:
+  html:
+    toc: true
+    comments:
+      hypothesis: true
+  docx: default
+  jats: default
+  hikmah-manuscript-pdf: default
 ---
 
-Article content goes here.
+Article text goes here.

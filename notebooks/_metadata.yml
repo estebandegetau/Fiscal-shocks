@@ -1,6 +1,11 @@
 format:
   html:
     lightbox: true
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show code"
+    self-contained: true
 
 execute:
   echo: true

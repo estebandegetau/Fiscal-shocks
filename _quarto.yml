@@ -1,29 +1,30 @@
 project:
-  type: default
+  type: website
   output-dir: _manuscript
   render:
     - docs/*.qmd
-    - notebooks/**/*.qmd
+    - notebooks/*.qmd
     - reports/*.qmd
     - index.qmd
+    - "!*unused/"
 
-title: "Scaling Narrative Fiscal Shock Identification with LLMs"
-author: 
-  - name: "Esteban Degetau"
-    email: "estebandegetau@gmail.com"
-  - name: "Agustín Samano"
-    email: "asamanopenaloza@worldbank.org"
-date: today
-date-format: long
+website: 
+  sidebar: 
+    style: "floating"
+    search: true
+    contents: auto
+    title: "Scaling Fiscal Shocks"
+
+
+title-block-banner: true
+lightbox: true
+reference-location: margin
 
 code-links: repo
 
 execute:
   freeze: auto  # re-render only when source changes
 
-format:
-  typst: default
-  html: default
 
 citeproc: true
 csl: https://www.zotero.org/styles/chicago-author-date-classic-no-url
