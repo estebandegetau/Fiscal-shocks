@@ -53,7 +53,7 @@ library(targets)
 library(here)
 library(gt)
 
-here::i_am("reports/20250117.qmd")
+here::i_am("reports/20260117.qmd")
 tar_config_set(store = here("_targets"))
 
 # Load extracted documents
