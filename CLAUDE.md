@@ -79,9 +79,16 @@ US Government Documents (1946-present):
 
 ## Technology Stack
 
-- **R**: targets, crew, tidyverse, pdftools, quanteda, tidytext, rvest, googledrive
+- **R**: targets, crew, tidyverse, pdftools, quanteda, tidytext, rvest, googledrive, gt (for tables in .qmd files)
 - **Python**: docling (PDF extraction), sentence-transformers (embeddings), torch
 - **Documentation**: Quarto with Typst and HTML output, Chicago Author-Date citations
+
+### Table Rendering
+
+**Use gt package for all tables in .qmd files:**
+- gt works with both HTML and Typst output formats
+- Basic pattern: `data %>% gt() %>% cols_label(...) %>% tab_options(table.width = pct(100))`
+- Do NOT use kableExtra (incompatible with Typst rendering)
 
 ## {targets} Pipeline Conventions
 

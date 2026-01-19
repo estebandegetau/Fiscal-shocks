@@ -1,13 +1,6 @@
 ---
 title: "Phase 0 Progress Report: Data Extraction and Validation"
 subtitle: "Major Breakthroughs in US Benchmark Preparation"
-format:
-  html:
-    toc: true
-    toc-depth: 3
-    echo: false
-    theme: cosmo
-    self-contained: true
 execute:
   cache: false
   warning: false
@@ -57,7 +50,7 @@ Success in Phase 0 enables deployment to Southeast Asia (Malaysia, Indonesia, Th
 library(tidyverse)
 library(targets)
 library(here)
-library(kableExtra)
+library(gt)
 
 here::i_am("reports/20250117.qmd")
 tar_config_set(store = here("_targets"))
@@ -91,8 +84,8 @@ overview %>%
   ) %>%
   pivot_longer(everything(), names_to = "Metric", values_to = "Value") %>%
   mutate(Metric = str_replace_all(Metric, "_", " ") %>% str_to_title()) %>%
-  kable() %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  gt() %>%
+  tab_options(table.width = pct(100))
 ```
 
 @tbl-corpus-overview presents extraction statistics for the full document corpus. We successfully extracted `r scales::comma(overview$total_pages)` pages from `r scales::comma(overview$successful_extractions)` documents, representing a **`r sprintf("%.1f%%", overview$success_rate * 100)` success rate**. This exceeds our 95% target and demonstrates robust PDF extraction across multiple document sources and time periods.
@@ -121,10 +114,17 @@ source_summary %>%
     success_rate = sprintf("%.1f%%", success_rate * 100),
     total_pages = scales::comma(total_pages)
   ) %>%
-  kable(
-    col.names = c("Source", "Document Type", "Total Docs", "Successful", "Success Rate", "Total Pages", "OCR Used")
+  gt() %>%
+  cols_label(
+    source = "Source",
+    body = "Document Type",
+    total_docs = "Total Docs",
+    successful = "Successful",
+    success_rate = "Success Rate",
+    total_pages = "Total Pages",
+    ocr_used = "OCR Used"
   ) %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  tab_options(table.width = pct(100))
 ```
 
 ```{r}
@@ -247,8 +247,12 @@ category_dist <- labels_data %>%
   arrange(desc(n_acts))
 
 category_dist %>%
-  kable(col.names = c("Category", "Number of Acts")) %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  gt() %>%
+  cols_label(
+    category = "Category",
+    n_acts = "Number of Acts"
+  ) %>%
+  tab_options(table.width = pct(100))
 ```
 
 As shown in @tbl-category-distribution, the dataset provides relatively balanced coverage across motivation categories, facilitating stratified sampling for model training and evaluation.
