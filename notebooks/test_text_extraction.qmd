@@ -27,7 +27,7 @@ This notebook tests whether the local PyMuPDF PDF extraction (with OCR for scann
 ```{r setup}
 library(tidyverse)
 library(here)
-here::i_am("notebooks/test_test_extraction.qmd")
+here::i_am("notebooks/test_text_extraction.qmd")
 
 # Source the local extraction function
 source(here("R/pull_text_local.R"))
