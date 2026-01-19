@@ -1,6 +1,7 @@
 ---
 title: "Phase 0 Progress Report: Data Extraction and Validation"
 subtitle: "Major Breakthroughs in US Benchmark Preparation"
+date: 2026-01-17
 execute:
   cache: false
   warning: false
