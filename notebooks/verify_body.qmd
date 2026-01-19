@@ -211,17 +211,6 @@ boundary_docs <- bind_rows(
 ) %>%
   ungroup()
 
-boundary_docs |>
-  slice_min(n_pages) |>
-  pull(pdf_url)
-
-
-boundary_docs |> unnest(text) |>
-  group_by(pdf_url) |>
-  sample_n(size = 5, replace = T) |>
-  pull(text) |>
-  unlist() |>
-  cat()
 
 # Extract sample pages
 extract_sample_pages <- function(text_list) {
