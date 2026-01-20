@@ -336,5 +336,42 @@ list(
   tar_target(
     chunks_summary,
     summarize_chunks(chunks)
+  ),
+
+  # Phase 0 Training Data Preparation (Days 2-3)
+  tar_target(
+    aligned_data,
+    align_labels_shocks(us_labels, us_shocks, threshold = 0.85),
+    packages = c("tidyverse", "stringdist")
+  ),
+  tar_target(
+    aligned_data_split,
+    create_train_val_test_splits(
+      aligned_data,
+      ratios = c(0.6, 0.2, 0.2),
+      seed = 20251206,
+      stratify_by = "motivation_category"
+    ),
+    packages = "tidyverse"
+  ),
+  tar_target(
+    negative_examples,
+    generate_negative_examples(us_body, n = 200, seed = 20251206),
+    packages = "tidyverse"
+  ),
+  tar_target(
+    training_data_a,
+    prepare_model_a_data(aligned_data_split, negative_examples),
+    packages = "tidyverse"
+  ),
+  tar_target(
+    training_data_b,
+    prepare_model_b_data(aligned_data_split),
+    packages = "tidyverse"
+  ),
+  tar_target(
+    training_data_c,
+    prepare_model_c_data(aligned_data_split),
+    packages = "tidyverse"
   )
 )
