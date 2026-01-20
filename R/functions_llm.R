@@ -41,8 +41,9 @@ call_claude_api <- function(messages,
   # Retry loop with exponential backoff
   for (attempt in seq_len(max_retries)) {
     tryCatch({
-      # Rate limiting: 50 RPM = 1.2s between calls
-      Sys.sleep(1.2)
+      # Rate limiting: Conservative 30 RPM = 2s between calls
+      # (Tier 1 limit is 50 RPM, but safer to be conservative)
+      Sys.sleep(2)
 
       # Make API request with detailed error handling
       response <- httr2::request("https://api.anthropic.com/v1/messages") |>
@@ -88,10 +89,17 @@ call_claude_api <- function(messages,
         stop("API call failed after ", max_retries, " attempts: ", e$message)
       }
 
-      # Exponential backoff: 2s, 4s, 8s
-      wait_time <- 2^attempt
-      message("API error (attempt ", attempt, "/", max_retries,
-              "), retrying in ", wait_time, "s...")
+      # Special handling for rate limit errors (429)
+      if (grepl("429|Too Many Requests", e$message)) {
+        wait_time <- 60  # Wait 60 seconds for rate limit
+        message("Rate limit hit (attempt ", attempt, "/", max_retries,
+                "), waiting ", wait_time, "s...")
+      } else {
+        # Exponential backoff for other errors: 2s, 4s, 8s
+        wait_time <- 2^attempt
+        message("API error (attempt ", attempt, "/", max_retries,
+                "), retrying in ", wait_time, "s...")
+      }
       message("Error: ", e$message)
       Sys.sleep(wait_time)
     })

@@ -408,7 +408,8 @@ list(
       )
       val_data |> bind_cols(predictions)
     },
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here")
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here"),
+    deployment = "main"  # Run sequentially to avoid parallel API rate limits
   ),
   tar_target(
     model_a_eval_val,
@@ -430,7 +431,8 @@ list(
       )
       test_data |> bind_cols(predictions)
     },
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here")
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here"),
+    deployment = "main"  # Run sequentially to avoid parallel API rate limits
   ),
   tar_target(
     model_a_eval_test,
