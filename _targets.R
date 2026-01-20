@@ -442,5 +442,27 @@ list(
       threshold = 0.5
     ),
     packages = "tidyverse"
-  )
+  ),
+  # Notebooks -------------------------
+  tar_quarto(
+    test_text_extraction,
+    path = here("notebooks/test_text_extraction.qmd"),
+    cache = F
+  ),
+  tar_quarto(
+    verify_us_body,
+    path = here("notebooks/verify_body.qmd"),
+    cache = F
+  ),
+  tar_quarto(
+    review_training_data,
+    path = here("notebooks/review_training_data.qmd"),
+    cache = FALSE
+  ),
+  tar_quarto(
+    review_model_a,
+    path = here("notebooks/review_model_a.qmd"),
+    cache = FALSE
+  ),
+  tar_quarto(manuscript)
 )
