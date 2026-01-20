@@ -152,7 +152,7 @@ list(
     early_erp_urls,
     get_erp_early_pdf_urls(
       start_year = 1953,
-      end_year   = 1995
+      end_year   = 1986  # Exclude 1987-1988 (handled by additional_erp_urls with correct filenames)
     ),
     iteration = "vector"
   ),
