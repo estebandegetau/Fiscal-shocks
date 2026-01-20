@@ -33,6 +33,7 @@ This notebook verifies that the training data generated for Models A, B, and C s
 - `negative_examples` - Non-act paragraphs (200)
 
 **Success Criteria:**
+
 - All tests must PASS for data to be suitable for LLM training
 - WARN indicates potential issues requiring review
 - FAIL indicates critical problems requiring fixes
@@ -863,6 +864,7 @@ The training data quality assessment completed **18 of 19 tests** with passing s
 - Deviation: Test set -6.4% (exceeds ±5% tolerance)
 
 **Test 2.2 - Stratification:**
+
 - Result: Max deviation 13.3% across motivation categories
 
 - Status: PASS ✓
@@ -870,6 +872,7 @@ The training data quality assessment completed **18 of 19 tests** with passing s
 - Finding: Despite imperfect ratios, stratification is maintained within acceptable bounds (<15%)
 
 **Test 2.3 - No Data Leakage:**
+
 - Result: Each act appears in exactly one split
 
 - Status: PASS ✓
@@ -976,6 +979,7 @@ training_data_a %>%
 **Dataset:** 44 acts across 4 motivation categories
 
 **Test 4.1 - All Categories Represented:**
+
 - Categories: Spending-driven (15), Long-run (14), Deficit-driven (9), Countercyclical (6)
 
 - Status: PASS ✓
@@ -1033,6 +1037,7 @@ training_data_b %>%
 ```
 
 **Observations:**
+
 - **Countercyclical** has smallest sample (6 acts) with 0 in test set
 
   - Risk: Limited test examples for this category
@@ -1050,16 +1055,19 @@ training_data_b %>%
 **Dataset:** 41 acts with complete timing and magnitude information
 
 **Test 5.1 - Complete Timing Data:**
+
 - Result: 41/41 acts (100%) have change_quarter and present_value_quarter
 
 - Status: PASS ✓
 
 **Test 5.2 - Complete Magnitude Data:**
+
 - Result: 41/41 acts (100%) have magnitude_billions and present_value_billions
 
 - Status: PASS ✓
 
 **Test 5.3 - Date Consistency:**
+
 - Result: 100% of acts have change_quarter within 3 years of date_signed
 
 - Status: PASS ✓
@@ -1067,6 +1075,7 @@ training_data_b %>%
 - Finding: No temporal anomalies (e.g., 1960s act with 2000s implementation date)
 
 **Test 5.4 - Magnitude Sign Distribution:**
+
 - Tax increases: 25 acts (61%)
 
 - Tax cuts: 16 acts (39%)
@@ -1112,6 +1121,7 @@ training_data_c %>%
 #### ✅ Cross-Dataset Consistency (2/2 PASS)
 
 **Test 6.1 - Act Name Consistency:**
+
 - Result: All acts in training_data_{a,b,c} traceable to aligned_data
 
 - Status: PASS ✓
@@ -1119,6 +1129,7 @@ training_data_c %>%
 - Finding: No orphaned acts; complete lineage
 
 **Test 6.2 - Split Consistency:**
+
 - Result: 100% match - same act has same split assignment across all datasets
 
 - Status: PASS ✓
@@ -1157,6 +1168,7 @@ training_data_c %>%
 **Root Cause:** Historical reality - fewer countercyclical fiscal policies than other types
 
 **Impact on Model B:**
+
 - Cannot evaluate Countercyclical classification on test set
 - Must rely on validation set (2 acts) for this category
 - May see lower recall for Countercyclical in production
@@ -1284,6 +1296,7 @@ Use validation set (n=10 acts, 45 negative paragraphs) for initial prompt tuning
 **Limitation 1: Small Test Set (6 acts)**
 
 **Adjustment:**
+
 - Use validation set (10 acts) extensively during development
 
 - Reserve test set for final evaluation only
@@ -1374,14 +1387,17 @@ tibble(
 From plan_phase0.md, Day 9 targets:
 
 **Model A (Act Detection):**
+
 - Target: F1 > 0.85 on test set
 - With 6 test acts: May need to also report val set F1 for confidence
 
 **Model B (Motivation):**
+
 - Target: Accuracy > 0.75, all classes F1 > 0.70 on test set
 - Exception: Countercyclical F1 will be reported on val set (0 test examples)
 
 **Model C (Information Extraction):**
+
 - Target: MAPE < 30%, ±1 quarter > 85%
 - 5 test acts available for evaluation
 
