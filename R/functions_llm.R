@@ -44,7 +44,7 @@ call_claude_api <- function(messages,
       # Rate limiting: 50 RPM = 1.2s between calls
       Sys.sleep(1.2)
 
-      # Make API request
+      # Make API request with detailed error handling
       response <- httr2::request("https://api.anthropic.com/v1/messages") |>
         httr2::req_headers(
           `x-api-key` = api_key,
@@ -52,6 +52,15 @@ call_claude_api <- function(messages,
           `content-type` = "application/json"
         ) |>
         httr2::req_body_json(body) |>
+        httr2::req_error(body = function(resp) {
+          # Extract detailed error message from API response
+          error_body <- httr2::resp_body_json(resp)
+          if (!is.null(error_body$error$message)) {
+            error_body$error$message
+          } else {
+            paste("HTTP", httr2::resp_status(resp), httr2::resp_status_desc(resp))
+          }
+        }) |>
         httr2::req_retry(max_tries = 1) |>
         httr2::req_perform()
 

@@ -11,7 +11,7 @@
 #' @return List with classification results (contains_act, act_name, confidence, reasoning)
 #' @export
 model_a_detect_acts <- function(text,
-                                model = "claude-3-5-sonnet-20241022",
+                                model = "claude-sonnet-4-20250514",
                                 examples = NULL,
                                 system_prompt = NULL) {
 
@@ -69,7 +69,7 @@ model_a_detect_acts <- function(text,
 #' @return Tibble with results for each text
 #' @export
 model_a_detect_acts_batch <- function(texts,
-                                      model = "claude-3-5-sonnet-20241022",
+                                      model = "claude-sonnet-4-20250514",
                                       show_progress = TRUE) {
 
   # Load examples and system prompt once

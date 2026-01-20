@@ -59,7 +59,7 @@ Model A classifies a passage as containing a fiscal act if it meets ALL criteria
 
 ### API Configuration
 
-- **Model:** Claude 3.5 Sonnet (claude-3-5-sonnet-20241022)
+- **Model:** Claude Sonnet 4 (claude-sonnet-4-20250514)
 - **Temperature:** 0.0 (deterministic)
 - **Max tokens:** 500 (output)
 - **Rate limit:** 50 RPM (1.2s sleep between calls)

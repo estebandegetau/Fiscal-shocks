@@ -403,7 +403,7 @@ list(
       val_data <- training_data_a |> filter(split == "val")
       predictions <- model_a_detect_acts_batch(
         texts = val_data$text,
-        model = "claude-3-5-sonnet-20241022",
+        model = "claude-sonnet-4-20250514",
         show_progress = TRUE
       )
       val_data |> bind_cols(predictions)
@@ -425,7 +425,7 @@ list(
       test_data <- training_data_a |> filter(split == "test")
       predictions <- model_a_detect_acts_batch(
         texts = test_data$text,
-        model = "claude-3-5-sonnet-20241022",
+        model = "claude-sonnet-4-20250514",
         show_progress = TRUE
       )
       test_data |> bind_cols(predictions)
