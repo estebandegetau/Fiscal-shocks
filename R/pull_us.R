@@ -49,34 +49,62 @@ get_erp_early_pdf_urls <- function(start_year = 1946,
 get_erp_earliest_pdf_urls <- function(start_year = 1946,
                              end_year = 1995
                          ) {
-    years <- seq.int(start_year, end_year)
+    # Note: First ERP was January 1947, not 1946
+    # Use 1947 as actual start year regardless of parameter
+    actual_start <- max(start_year, 1947)
+    years <- seq.int(actual_start, end_year)
 
-    url_1 <- sprintf(
-        "https://fraser.stlouisfed.org/files/docs/publications/ERP/%d/ERP_January_%d.pdf",
-      
-        years, years
-    )
-    url_2 <- sprintf(
-        "https://fraser.stlouisfed.org/files/docs/publications/ERP/%d/ERP_Midyear_%d.pdf",
-        years, years
-    )
-    url_3 <- sprintf(
-        "https://fraser.stlouisfed.org/files/docs/publications/ERP/%d/ERP_%d_January.pdf",
-        years, years
-    )
-    url_4 <- sprintf(
-        "https://fraser.stlouisfed.org/files/docs/publications/ERP/%d/ERP_%d_Midyear.pdf",
-        years, years
-    )
+    # Fraser FRED uses inconsistent naming patterns:
+    # 1947-1949: ERP_YYYY_Month.pdf (year first)
+    # 1950-1952: ERP_Month_YYYY.pdf (month first)
 
-    out <- tibble(
-        year       = rep(years, 4),
-        package_id = paste0("ERP-", rep(years, 4)),
-        pdf_url    = c(url_1, url_2, url_3, url_4),
-        country = "US",
-        source = "fraser.stlouisfed.org",
-        body = "Economic Report of the President"
-    )
+    # Split into two groups
+    years_1947_1949 <- years[years >= 1947 & years <= 1949]
+    years_1950_1952 <- years[years >= 1950 & years <= 1952]
+
+    # Pattern 1: Year first (1947-1949)
+    urls_1947_1949 <- NULL
+    if (length(years_1947_1949) > 0) {
+        jan_1947_1949 <- sprintf(
+            "https://fraser.stlouisfed.org/files/docs/publications/ERP/%d/ERP_%d_January.pdf",
+            years_1947_1949, years_1947_1949
+        )
+        mid_1947_1949 <- sprintf(
+            "https://fraser.stlouisfed.org/files/docs/publications/ERP/%d/ERP_%d_Midyear.pdf",
+            years_1947_1949, years_1947_1949
+        )
+        urls_1947_1949 <- tibble(
+            year       = rep(years_1947_1949, 2),
+            package_id = paste0("ERP-", rep(years_1947_1949, 2), c(rep("-January", length(years_1947_1949)), rep("-Midyear", length(years_1947_1949)))),
+            pdf_url    = c(jan_1947_1949, mid_1947_1949)
+        )
+    }
+
+    # Pattern 2: Month first (1950-1952)
+    urls_1950_1952 <- NULL
+    if (length(years_1950_1952) > 0) {
+        jan_1950_1952 <- sprintf(
+            "https://fraser.stlouisfed.org/files/docs/publications/ERP/%d/ERP_January_%d.pdf",
+            years_1950_1952, years_1950_1952
+        )
+        mid_1950_1952 <- sprintf(
+            "https://fraser.stlouisfed.org/files/docs/publications/ERP/%d/ERP_Midyear_%d.pdf",
+            years_1950_1952, years_1950_1952
+        )
+        urls_1950_1952 <- tibble(
+            year       = rep(years_1950_1952, 2),
+            package_id = paste0("ERP-", rep(years_1950_1952, 2), c(rep("-January", length(years_1950_1952)), rep("-Midyear", length(years_1950_1952)))),
+            pdf_url    = c(jan_1950_1952, mid_1950_1952)
+        )
+    }
+
+    # Combine both patterns
+    out <- bind_rows(urls_1947_1949, urls_1950_1952) |>
+        mutate(
+            country = "US",
+            source = "fraser.stlouisfed.org",
+            body = "Economic Report of the President"
+        )
 
     return(out)
 
