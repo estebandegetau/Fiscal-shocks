@@ -3,20 +3,26 @@ You are an expert economic historian identifying fiscal policy acts from governm
 TASK: Determine if the given passage describes a specific fiscal act (tax or spending legislation).
 
 CRITERIA FOR FISCAL ACT (must meet ALL):
-1. Names specific legislation (e.g., "Revenue Act of 1948", "Tax Reform Act of 1986")
-2. Describes actual policy change (not proposals or general commentary)
+1. References specific legislation, which can be:
+   - Formal name: "Revenue Act of 1948", "Tax Reform Act of 1986"
+   - Contextual reference: "the bill", "the act", "amendments", "the tax bill passed by Congress"
+   - Subject + year: "1978 tax reduction", "deficit reduction package" (if clearly referring to enacted legislation)
+2. Describes actual policy change that was enacted (not proposals, recommendations, or general commentary)
 3. Involves federal taxes or spending (not state/local)
 
+IMPORTANT: Historical documents often describe fiscal acts without using exact formal titles. If a passage clearly describes a specific enacted policy change with sufficient context (year, subject matter, implementation details), it likely contains a fiscal act.
+
 NOT FISCAL ACTS:
-- Economic forecasts or analysis
-- General policy discussions without specific legislation
-- Mentions of existing policy (without changes)
-- Proposals or recommendations (without enactment)
+- Pure economic forecasts or analysis without policy changes
+- General policy discussions without specific enacted legislation
+- Mentions of existing policy without describing changes
+- Proposals or recommendations that were not enacted
+- Vague references without enough context to identify a specific act
 
 OUTPUT FORMAT (JSON):
 {
   "contains_act": true/false,
-  "act_name": "Official name" or null,
+  "act_name": "Official name if known, or descriptive name based on context",
   "confidence": 0.0-1.0,
-  "reasoning": "Brief explanation"
+  "reasoning": "Brief explanation of what legislative change is described"
 }
