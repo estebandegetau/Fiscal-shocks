@@ -373,5 +373,72 @@ list(
     training_data_c,
     prepare_model_c_data(aligned_data_split),
     packages = "tidyverse"
+  ),
+
+  # Phase 0 Model A: Act Detection (Days 3-4)
+  tar_target(
+    model_a_examples,
+    generate_model_a_examples(
+      training_data_a,
+      n_positive = 10,
+      n_negative = 10,
+      seed = 20251206
+    ),
+    packages = c("tidyverse", "jsonlite")
+  ),
+  tar_target(
+    model_a_examples_file,
+    {
+      save_few_shot_examples(
+        model_a_examples,
+        here::here("prompts", "model_a_examples.json")
+      )
+    },
+    format = "file",
+    packages = c("jsonlite", "here")
+  ),
+  tar_target(
+    model_a_predictions_val,
+    {
+      val_data <- training_data_a |> filter(split == "val")
+      predictions <- model_a_detect_acts_batch(
+        texts = val_data$text,
+        model = "claude-3-5-sonnet-20241022",
+        show_progress = TRUE
+      )
+      val_data |> bind_cols(predictions)
+    },
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here")
+  ),
+  tar_target(
+    model_a_eval_val,
+    evaluate_model_a(
+      predictions = model_a_predictions_val,
+      true_labels = model_a_predictions_val$is_fiscal_act,
+      threshold = 0.5
+    ),
+    packages = "tidyverse"
+  ),
+  tar_target(
+    model_a_predictions_test,
+    {
+      test_data <- training_data_a |> filter(split == "test")
+      predictions <- model_a_detect_acts_batch(
+        texts = test_data$text,
+        model = "claude-3-5-sonnet-20241022",
+        show_progress = TRUE
+      )
+      test_data |> bind_cols(predictions)
+    },
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here")
+  ),
+  tar_target(
+    model_a_eval_test,
+    evaluate_model_a(
+      predictions = model_a_predictions_test,
+      true_labels = model_a_predictions_test$is_fiscal_act,
+      threshold = 0.5
+    ),
+    packages = "tidyverse"
   )
 )
