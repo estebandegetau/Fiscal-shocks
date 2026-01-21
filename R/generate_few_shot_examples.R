@@ -35,9 +35,34 @@ generate_model_a_examples <- function(training_data_a,
     dplyr::select(input, output)
 
   # Sample negative examples (does not contain fiscal act)
-  negative_examples <- training_data_a |>
+  # Prioritize edge cases for better precision training
+  negative_pool <- training_data_a |>
     dplyr::filter(is_fiscal_act == 0, split == "train") |>
-    dplyr::slice_sample(n = n_negative) |>
+    dplyr::mutate(
+      # Score examples by edge case keywords to prioritize tricky negatives
+      edge_case_score =
+        stringr::str_count(tolower(text), "\\bpropose[ds]?\\b") * 3 +  # Proposals (high priority)
+        stringr::str_count(tolower(text), "\\brecommend[s|ed|ation|ations]?\\b") * 3 +  # Recommendations
+        stringr::str_count(tolower(text), "\\bshould\\b") * 2 +  # Suggestions
+        stringr::str_count(tolower(text), "\\b(act|legislation)\\s+of\\s+\\d{4}\\b") * 2 +  # Named acts (likely historical)
+        stringr::str_count(tolower(text), "\\bsince\\s+(the|\\d{4})\\b") * 2 +  # Retrospective language
+        stringr::str_count(tolower(text), "\\bprevious(ly)?\\b") * 2 +  # Historical references
+        stringr::str_count(tolower(text), "\\benacted\\s+(in|to)\\b") * 1.5  # Past enactment (retrospective)
+    )
+
+  # Select mix: 2/3 edge cases, 1/3 random negatives
+  n_edge <- round(n_negative * 0.67)
+  n_random <- n_negative - n_edge
+
+  edge_examples <- negative_pool |>
+    dplyr::filter(edge_case_score > 0) |>
+    dplyr::slice_max(edge_case_score, n = n_edge, with_ties = FALSE)
+
+  random_examples <- negative_pool |>
+    dplyr::filter(!text %in% edge_examples$text) |>
+    dplyr::slice_sample(n = n_random)
+
+  negative_examples <- dplyr::bind_rows(edge_examples, random_examples) |>
     dplyr::rowwise() |>
     dplyr::mutate(
       input = text,

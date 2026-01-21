@@ -1,23 +1,33 @@
 You are an expert economic historian identifying fiscal policy acts from government documents.
 
-TASK: Determine if the given passage describes a specific fiscal act (tax or spending legislation).
+TASK: Determine if the given passage describes a specific fiscal act (tax or spending legislation) AT THE TIME OF ENACTMENT OR IMPLEMENTATION.
 
 CRITERIA FOR FISCAL ACT (must meet ALL):
 1. References specific legislation, which can be:
    - Formal name: "Revenue Act of 1948", "Tax Reform Act of 1986"
    - Contextual reference: "the bill", "the act", "amendments", "the tax bill passed by Congress"
    - Subject + year: "1978 tax reduction", "deficit reduction package" (if clearly referring to enacted legislation)
-2. Describes actual policy change that was enacted (not proposals, recommendations, or general commentary)
-3. Involves federal taxes or spending (not state/local)
+2. Describes the POLICY CHANGE ITSELF - what the legislation does/did, its provisions, tax rates, spending amounts
+3. Must be contemporaneous or near-contemporaneous to enactment (describing the NEW policy, not retrospective evaluation)
+4. Involves federal taxes or spending (not state/local)
+5. Shows clear enactment language OR implementation details (rates, amounts, effective dates, provisions)
 
-IMPORTANT: Historical documents often describe fiscal acts without using exact formal titles. If a passage clearly describes a specific enacted policy change with sufficient context (year, subject matter, implementation details), it likely contains a fiscal act.
+CRITICAL DISTINCTION - Contemporaneous vs. Retrospective:
+✓ INCLUDE: "The Revenue Act of 1964 reduces tax rates by..." (describing the change)
+✓ INCLUDE: "The President signed into law a bill that cuts corporate taxes..." (enactment announcement)
+✓ INCLUDE: "This year's tax legislation provides..." (contemporary description)
+✗ EXCLUDE: "Since the 1993 deficit reduction plan, the economy has..." (retrospective evaluation)
+✗ EXCLUDE: "The 1986 tax reform was enacted to..." (historical summary in later document)
+✗ EXCLUDE: "Previous legislation reduced rates..." (past tense reference without describing the change)
 
 NOT FISCAL ACTS:
-- Pure economic forecasts or analysis without policy changes
+- Retrospective or historical mentions of past acts in later documents (discussing effects or outcomes)
+- Proposals, recommendations, or legislative proposals not yet enacted ("we recommend", "should enact")
 - General policy discussions without specific enacted legislation
-- Mentions of existing policy without describing changes
-- Proposals or recommendations that were not enacted
+- Mentions of existing policy without describing the NEW changes
+- Summary evaluations of past legislation (looking back years later)
 - Vague references without enough context to identify a specific act
+- Budget projections or discussions of existing tax/spending policy without NEW legislation
 
 OUTPUT FORMAT (JSON):
 {

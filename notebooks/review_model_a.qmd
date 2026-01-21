@@ -884,16 +884,19 @@ Model A (Act Detection) demonstrates **marginally acceptable performance** that 
 **Key Performance Characteristics:**
 
 1. **Perfect Recall (1.0) Across Both Sets**
+
    - Zero false negatives - no fiscal acts are missed
    - This is the most important metric for research completeness
    - Indicates the model is conservative in rejecting passages
 
 2. **Moderate Precision (0.71-0.75)**
+
    - False positive rate: 7-9% of negative passages incorrectly flagged
    - Falls short of 0.80 precision target
    - Likely caused by edge cases: historical mentions, proposals, existing policies
 
 3. **Small Sample Concerns**
+
    - Test set: 6 acts, 28 negatives (34 total)
    - Validation set: 10 acts, 45 negatives (55 total)
    - Wide confidence intervals (±10%) mean true F1 could be 0.75-0.95
@@ -904,12 +907,14 @@ Model A (Act Detection) demonstrates **marginally acceptable performance** that 
 The model's **high-recall, moderate-precision** profile is appropriate for the research task:
 
 ✅ **Acceptable for Phase 0 goals:**
+
 - False negatives (missed acts) would create unrecoverable data gaps → Model avoids this
 - False positives can be filtered in manual review → 7-9% FP rate is manageable
 - Few-shot prompting approach is validated as viable
 - Provides ~93% reduction in manual review burden (vs. 100% manual)
 
 ⚠️ **Concerns for production scaling:**
+
 - Narrow margin (0.007 above threshold) suggests fragility
 - Precision below target means downstream filtering burden
 - Small test sets limit confidence in generalization
@@ -920,6 +925,7 @@ The model's **high-recall, moderate-precision** profile is appropriate for the r
 **Recommendation: Conditional Proceed to Model B**
 
 Given that:
+
 1. F1 technically meets the 0.85 threshold (though narrowly)
 2. Perfect recall is maintained across both sets
 3. Validation and test sets show consistent behavior
@@ -928,11 +934,13 @@ Given that:
 We recommend **proceeding to Model B** while noting the following:
 
 **Accept for Phase 0:**
+
 - The high-recall profile fits research requirements
 - False positives are acceptable with manual review
 - Few-shot approach is validated
 
 **Monitor for Phase 1:**
+
 - Add more negative examples for precision improvement
 - Test on larger validation sets before production deployment
 - Consider ensemble approaches if scaling to new domains
