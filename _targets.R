@@ -400,6 +400,9 @@ list(
   tar_target(
     model_a_predictions_val,
     {
+      # Force dependency on examples file
+      examples_file <- model_a_examples_file
+
       val_data <- training_data_a |> filter(split == "val")
       predictions <- model_a_detect_acts_batch(
         texts = val_data$text,
@@ -423,6 +426,9 @@ list(
   tar_target(
     model_a_predictions_test,
     {
+      # Force dependency on examples file
+      examples_file <- model_a_examples_file
+
       test_data <- training_data_a |> filter(split == "test")
       predictions <- model_a_detect_acts_batch(
         texts = test_data$text,
