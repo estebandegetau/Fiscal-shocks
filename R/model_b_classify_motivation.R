@@ -146,7 +146,7 @@ model_b_classify_motivation_batch <- function(act_names,
 
 #' Evaluate Model B predictions against ground truth
 #'
-#' @param predictions Tibble with predicted motivation and exogenous flag
+#' @param predictions Tibble with predicted motivation and exogenous flag (columns: pred_motivation, pred_exogenous)
 #' @param true_motivation Character vector of true motivation labels
 #' @param true_exogenous Logical vector of true exogenous flags
 #' @param motivation_levels Character vector of valid motivation categories
@@ -160,7 +160,7 @@ evaluate_model_b <- function(predictions,
                                                    "Deficit-driven", "Long-run")) {
 
   # Ensure factor levels are consistent
-  pred_motivation <- factor(predictions$motivation, levels = motivation_levels)
+  pred_motivation <- factor(predictions$pred_motivation, levels = motivation_levels)
   true_motivation <- factor(true_motivation, levels = motivation_levels)
 
   # Confusion matrix for motivation
@@ -198,7 +198,7 @@ evaluate_model_b <- function(predictions,
   macro_f1 <- mean(per_class_metrics$f1_score, na.rm = TRUE)
 
   # Exogenous flag accuracy
-  exogenous_accuracy <- mean(predictions$exogenous == true_exogenous, na.rm = TRUE)
+  exogenous_accuracy <- mean(predictions$pred_exogenous == true_exogenous, na.rm = TRUE)
 
   # Confidence calibration
   calibration <- predictions |>
@@ -207,7 +207,7 @@ evaluate_model_b <- function(predictions,
       predicted = pred_motivation,
       correct = (predicted == true_motivation)
     ) |>
-    dplyr::group_by(confidence_bin = cut(confidence, breaks = seq(0, 1, 0.1))) |>
+    dplyr::group_by(confidence_bin = cut(pred_confidence, breaks = seq(0, 1, 0.1))) |>
     dplyr::summarize(
       n = dplyr::n(),
       accuracy = mean(correct, na.rm = TRUE),

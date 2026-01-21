@@ -484,7 +484,14 @@ list(
         years = val_data$year,
         model = "claude-sonnet-4-20250514",
         show_progress = TRUE
-      )
+      ) |>
+        rename(
+          pred_motivation = motivation,
+          pred_exogenous = exogenous,
+          pred_confidence = confidence,
+          pred_reasoning = reasoning,
+          pred_evidence = evidence
+        )
       val_data |> bind_cols(predictions)
     },
     packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
@@ -512,7 +519,14 @@ list(
         years = test_data$year,
         model = "claude-sonnet-4-20250514",
         show_progress = TRUE
-      )
+      ) |>
+        rename(
+          pred_motivation = motivation,
+          pred_exogenous = exogenous,
+          pred_confidence = confidence,
+          pred_reasoning = reasoning,
+          pred_evidence = evidence
+        )
       test_data |> bind_cols(predictions)
     },
     packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
