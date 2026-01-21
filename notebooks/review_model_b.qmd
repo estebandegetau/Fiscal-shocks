@@ -123,7 +123,13 @@ val_overall %>%
 
 **Validation Set Interpretation:**
 
-*To be filled after analyzing results*
+The validation set shows **strong performance** that **meets most Phase 0 success criteria**:
+
+- **Overall Accuracy: 90%** ✅ Exceeds the 75% target by +15 percentage points
+- **Macro F1: 0.881** ✅ Exceeds the 0.70 target, showing good balance across classes
+- **Exogenous Accuracy: 90%** ✅ Exceeds the 85% target by +5 percentage points
+
+The model correctly classified 9 out of 10 acts in the validation set. The single misclassification was a Countercyclical act predicted as Long-run, indicating some difficulty distinguishing between cycle-motivated and efficiency-motivated reforms.
 
 ### Per-Class Performance (Validation)
 
@@ -131,7 +137,11 @@ val_overall %>%
 # Per-class metrics
 model_b_eval_val$per_class_metrics %>%
   mutate(
-    Status = map2_chr(f1_score, 0.70, ~status_badge(.x, .y))
+    Status = case_when(
+      is.na(f1_score) ~ "N/A (no support)",
+      f1_score >= 0.70 ~ sprintf("✅ PASS (%.3f ≥ 0.70)", f1_score),
+      TRUE ~ sprintf("❌ FAIL (%.3f < 0.70)", f1_score)
+    )
   ) %>%
   gt() %>%
   cols_label(
@@ -156,7 +166,18 @@ model_b_eval_val$per_class_metrics %>%
 
 **Per-Class Interpretation:**
 
-*To be filled after analyzing results*
+Class-level performance on the validation set:
+
+- **Spending-driven (n=3):** Perfect classification (F1=1.0, Precision=1.0, Recall=1.0) ✅
+- **Countercyclical (n=2):** F1=0.667 ⚠️ Slightly below 0.70 target
+  - Missed 1 out of 2 acts (50% recall)
+  - The missed act was classified as Long-run instead
+- **Deficit-driven (n=2):** Perfect classification (F1=1.0) ✅
+- **Long-run (n=3):** Strong performance (F1=0.857) ✅
+  - Precision=0.75 (1 false positive: Countercyclical act misclassified as Long-run)
+  - Recall=1.0 (found all Long-run acts)
+
+**Key Finding:** Countercyclical classification is the weak point, with one instance confused with Long-run. This suggests the model has difficulty distinguishing cycle-motivated reforms from efficiency-motivated reforms when the language is ambiguous.
 
 ### Confusion Matrix (Validation)
 
@@ -185,7 +206,16 @@ cm_val %>%
 
 **Common Misclassifications:**
 
-*To be filled after analyzing confusion matrix*
+The validation set confusion matrix shows **1 misclassification pattern**:
+
+- **Countercyclical → Long-run (1 instance):** One cycle-motivated reform was classified as a long-run efficiency reform
+
+This error pattern suggests the model may struggle when:
+- Acts have mixed motivations (e.g., recession response + structural reform)
+- The contemporaneous language emphasizes efficiency gains over cycle stabilization
+- The distinction between "improving the economy now" vs. "improving long-run growth" is subtle
+
+**Overall:** With only 1 error out of 10 predictions, the validation set demonstrates strong generalization.
 
 ---
 
@@ -234,7 +264,17 @@ test_overall %>%
 
 **Test Set Interpretation:**
 
-*To be filled after analyzing results*
+The test set shows **below-target performance** that **does NOT meet Phase 0 success criteria**:
+
+- **Overall Accuracy: 66.7%** ❌ Below the 75% target by -8.3 percentage points
+- **Macro F1: 1.0** ✅ This metric is misleading due to missing categories (see per-class analysis)
+- **Exogenous Accuracy: 66.7%** ❌ Below the 85% target by -18.3 percentage points
+
+**Critical Issue:** The model correctly classified only 4 out of 6 acts (66.7%). The **two misclassifications were both Long-run acts predicted as Countercyclical**, creating a systematic error pattern.
+
+**Cascading Error Impact:** Because Long-run acts should be classified as exogenous (TRUE) but Countercyclical is endogenous (FALSE), these motivation errors automatically create exogenous flag errors, dropping exogenous accuracy to 66.7%.
+
+**Important Context:** The test set contains only 6 acts with an imbalanced distribution (3 Spending-driven, 0 Countercyclical, 1 Deficit-driven, 2 Long-run). Small sample size means each error has outsized impact (1 error = 16.7% drop in accuracy).
 
 ### Per-Class Performance (Test)
 
@@ -242,7 +282,11 @@ test_overall %>%
 # Per-class metrics
 model_b_eval_test$per_class_metrics %>%
   mutate(
-    Status = map2_chr(f1_score, 0.70, ~status_badge(.x, .y))
+    Status = case_when(
+      is.na(f1_score) ~ "N/A (no support or 0 recall)",
+      f1_score >= 0.70 ~ sprintf("✅ PASS (%.3f ≥ 0.70)", f1_score),
+      TRUE ~ sprintf("❌ FAIL (%.3f < 0.70)", f1_score)
+    )
   ) %>%
   gt() %>%
   cols_label(
@@ -292,7 +336,21 @@ cm_test %>%
 
 **Common Misclassifications:**
 
-*To be filled after analyzing confusion matrix*
+The test set confusion matrix reveals a **systematic misclassification pattern**:
+
+- **Long-run → Countercyclical (2 instances):** BOTH Long-run acts in the test set were incorrectly classified as Countercyclical
+  - This represents 100% failure rate on Long-run classification (0/2 recall)
+  - Both predictions had high confidence (0.85 and 0.90), suggesting the model is confidently wrong
+
+**Root Cause Hypothesis:** The model appears to confuse:
+- **Long-run reforms** aimed at improving efficiency and fairness (exogenous)
+- **Countercyclical reforms** aimed at stimulating the economy during recessions (endogenous)
+
+When an act discusses "improving economic conditions" or "raising growth," the model may incorrectly interpret this as countercyclical stabilization rather than long-run structural reform.
+
+**Correct Classifications:**
+- Spending-driven: 3/3 perfect (100% precision and recall)
+- Deficit-driven: 1/1 perfect (100% precision and recall)
 
 ---
 
@@ -303,15 +361,15 @@ cm_test %>%
 ```{r test-errors}
 # Identify misclassified acts
 test_errors <- model_b_predictions_test %>%
-  filter(motivation != motivation.1) %>%  # motivation.1 is predicted
+  filter(motivation != pred_motivation) %>%  # pred_motivation is predicted
   select(
     act_name,
     year,
     true_motivation = motivation,
-    predicted_motivation = motivation.1,
-    confidence,
+    predicted_motivation = pred_motivation,
+    confidence = pred_confidence,
     exogenous_true = exogenous,
-    exogenous_pred = exogenous.1
+    exogenous_pred = pred_exogenous
   ) %>%
   arrange(desc(confidence))
 
@@ -344,7 +402,25 @@ if (nrow(test_errors) > 0) {
 
 **Error Patterns:**
 
-*To be filled after analyzing errors*
+Analyzing the 2 misclassified acts reveals a clear pattern:
+
+**Both errors follow the same pattern: Long-run → Countercyclical**
+
+1. **Public Law 99-514** (likely Tax Reform Act of 1986)
+   - True: Long-run (exogenous=TRUE)
+   - Predicted: Countercyclical (exogenous=FALSE)
+   - Confidence: 0.85
+
+2. **Revenue Act** (year and context needed)
+   - True: Long-run (exogenous=TRUE)
+   - Predicted: Countercyclical (exogenous=FALSE)
+   - Confidence: 0.90
+
+**Why This Matters:**
+- Both acts are major tax reforms aimed at long-term efficiency gains
+- The model incorrectly interpreted them as recession-fighting measures
+- High confidence scores (0.85-0.90) indicate the model is *systematically* wrong, not uncertain
+- This creates cascading errors: motivation error → automatic exogenous flag error
 
 ### Confidence Calibration
 
@@ -375,7 +451,13 @@ model_b_eval_test$calibration %>%
 
 Well-calibrated model: predictions with 90% confidence should be 90% accurate.
 
-*To be filled after analyzing calibration*
+The test set shows **poor calibration**:
+- 5 predictions at 80-90% confidence → 60% actual accuracy (should be ~85%)
+- 1 prediction at 90-100% confidence → 100% actual accuracy ✅
+
+**Key Finding:** The model is **overconfident** in its incorrect predictions. The two Long-run misclassifications had 0.85-0.90 confidence, yet were wrong. This indicates the model doesn't recognize when it's uncertain about Long-run vs. Countercyclical distinctions.
+
+**Implication:** We cannot rely on confidence scores to filter questionable predictions—the model is confident even when systematically wrong.
 
 ---
 
@@ -386,7 +468,7 @@ Well-calibrated model: predictions with 90% confidence should be 90% accurate.
 ```{r exogenous-analysis}
 # Exogenous flag confusion
 exo_confusion <- model_b_predictions_test %>%
-  count(exogenous_true = exogenous, exogenous_pred = exogenous.1) %>%
+  count(exogenous_true = exogenous, exogenous_pred = pred_exogenous) %>%
   mutate(
     exogenous_true = ifelse(exogenous_true, "Exogenous", "Endogenous"),
     exogenous_pred = ifelse(exogenous_pred, "Exogenous", "Endogenous")
@@ -409,15 +491,15 @@ exo_confusion %>%
 ```{r exo-errors}
 # Acts where exogenous flag was misclassified
 exo_errors <- model_b_predictions_test %>%
-  filter(exogenous != exogenous.1) %>%
+  filter(exogenous != pred_exogenous) %>%
   select(
     act_name,
     year,
     motivation,
-    predicted_motivation = motivation.1,
+    predicted_motivation = pred_motivation,
     exogenous_true = exogenous,
-    exogenous_pred = exogenous.1,
-    confidence
+    exogenous_pred = pred_exogenous,
+    confidence = pred_confidence
   )
 
 if (nrow(exo_errors) > 0) {
@@ -499,7 +581,25 @@ criteria %>%
 
 **Overall Assessment:**
 
-*To be filled after analyzing all results*
+Model B presents a **mixed performance** with strong validation results but **failing test set performance**:
+
+**✅ Validation Set (10 acts):**
+- Accuracy: 90% (target: 75%) - Strong pass
+- Macro F1: 0.881 (target: 0.70) - Strong pass
+- Exogenous Accuracy: 90% (target: 85%) - Pass
+- Only 1 misclassification out of 10
+
+**❌ Test Set (6 acts):**
+- Accuracy: 66.7% (target: 75%) - **FAIL by -8.3 points**
+- Exogenous Accuracy: 66.7% (target: 85%) - **FAIL by -18.3 points**
+- 2 misclassifications out of 6 (33% error rate)
+- **Both errors follow same pattern:** Long-run → Countercyclical
+
+**Root Cause:** The model systematically confuses Long-run efficiency reforms with Countercyclical stabilization policies. This appears to be a conceptual failure in distinguishing "improving growth" (long-run) from "fighting recession" (countercyclical).
+
+**Small Sample Size Impact:** With only 6 test acts, each error carries heavy weight (16.7% per error). The validation set's larger size (10 acts) and different class distribution may not have exposed this weakness.
+
+**Status:** Model B **does NOT meet Phase 0 success criteria** for production deployment and requires improvement before proceeding to Model C or Southeast Asia deployment.
 
 ---
 
@@ -518,10 +618,10 @@ sample_preds <- model_b_predictions_test %>%
     act_name,
     year,
     true_motivation = motivation,
-    predicted_motivation = motivation.1,
-    confidence,
+    predicted_motivation = pred_motivation,
+    confidence = pred_confidence,
     exogenous_true = exogenous,
-    exogenous_pred = exogenous.1
+    exogenous_pred = pred_exogenous
   )
 
 sample_preds %>%
@@ -553,24 +653,81 @@ sample_preds %>%
 
 ### Next Steps
 
-Based on the evaluation results:
+Based on the test set failure, **Model B requires improvement before production deployment**. Recommended actions in priority order:
 
-*To be filled with specific recommendations*
+#### Immediate Actions (High Priority)
 
-**If all criteria met:**
+**1. Enhance System Prompt for Long-run vs. Countercyclical Distinction**
 
-- ✅ Proceed to Model C (Information Extraction)
-- Document Model B configuration for production deployment
-- Archive few-shot examples and prompts
+Add explicit clarification to `prompts/model_b_system.txt`:
+- **Long-run:** "Improving potential GDP, efficiency, fairness" - would be enacted regardless of current cycle
+- **Countercyclical:** "Responding to current recession/boom" - timing depends on cycle position
+- Add contrasting examples:
+  - ✓ Long-run: "Tax Reform Act of 1986 - simplify code, improve efficiency (enacted during expansion)"
+  - ✓ Countercyclical: "Tax Reduction Act of 1975 - stimulate recovery (enacted during recession)"
+  - ✗ Common confusion: Acts that mention "growth" aren't automatically countercyclical
 
-**If criteria not met:**
+**2. Add More Long-run Few-Shot Examples**
 
-- Analyze error patterns to identify improvements needed
-- Consider:
-  - Adding more few-shot examples for underperforming classes
-  - Enhancing system prompt with more explicit criteria
-  - Reviewing borderline cases in training data
-  - Adjusting confidence thresholds
+Current: 5 examples per class (20 total)
+Recommended: Increase Long-run examples to 8-10, focusing on:
+- Tax Reform Act of 1986 (efficiency/fairness)
+- Revenue Act of 1964 (long-run growth, NOT countercyclical despite growth language)
+- Other structural reforms with explicit "long-run" or "efficiency" motivation
+
+**3. Add Negative Examples (Countercyclical → Long-run Contrasts)**
+
+Similar to Model A's edge case strategy, add 3-5 examples showing:
+- "This passage mentions growth BUT is Long-run because [efficiency focus]"
+- "This passage mentions recession response, therefore Countercyclical"
+
+#### Validation Actions (Medium Priority)
+
+**4. Re-examine Training Data Labels**
+
+Manually review the 2 misclassified acts:
+- Public Law 99-514 (likely Tax Reform Act of 1986)
+- The Revenue Act in test set
+
+Questions to verify:
+- Are the ground truth labels correct? (Could these legitimately have mixed motivations?)
+- Do the source passages contain language that could mislead the model?
+- Should we add contextual clues (year, economic conditions) to help disambiguation?
+
+**5. Increase Test Set Size** (if possible)
+
+Current test set (6 acts) is too small for reliable evaluation:
+- Consider redistributing: 70% train / 15% val / 15% test (larger absolute test size)
+- OR: Combine val + test for final evaluation (16 acts total) if we're confident in current approach
+
+#### Alternative Approaches (If Simple Fixes Fail)
+
+**6. Add Temporal Context to Model Input**
+
+Current input: ACT + YEAR + PASSAGES
+
+Enhanced input: ACT + YEAR + **ECONOMIC CONTEXT** + PASSAGES
+- "1986: Economy in expansion, unemployment falling"
+- "1975: Deep recession, unemployment 9%"
+
+This gives the model explicit cycle context to distinguish:
+- Long-run reforms during expansions (exogenous)
+- Countercyclical reforms during recessions (endogenous)
+
+**7. Two-Stage Classification**
+
+- **Stage 1:** Exogenous vs. Endogenous (simpler binary)
+- **Stage 2:** Within endogenous: Spending-driven vs. Countercyclical
+- **Stage 2:** Within exogenous: Deficit-driven vs. Long-run
+
+This may reduce confusion between categories with different exogeneity.
+
+#### What NOT to Do
+
+❌ **Don't proceed to Model C** until Model B passes test criteria
+❌ **Don't ignore the test set failure** - validation success alone is insufficient
+❌ **Don't just add more training examples** without addressing the conceptual confusion
+❌ **Don't deploy to Southeast Asia** with 66.7% test accuracy
 
 ---
 
