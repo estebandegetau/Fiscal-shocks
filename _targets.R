@@ -448,6 +448,84 @@ list(
       threshold = 0.5
     ),
     packages = "tidyverse"
+  ),
+
+  # Phase 0 Model B: Motivation Classification (Days 4-6)
+  tar_target(
+    model_b_examples,
+    generate_model_b_examples(
+      training_data_b,
+      n_per_class = 5,  # 5 examples per motivation category (20 total)
+      seed = 20251206
+    ),
+    packages = c("tidyverse", "jsonlite", "glue")
+  ),
+  tar_target(
+    model_b_examples_file,
+    {
+      save_few_shot_examples(
+        model_b_examples,
+        here::here("prompts", "model_b_examples.json")
+      )
+    },
+    format = "file",
+    packages = c("jsonlite", "here")
+  ),
+  tar_target(
+    model_b_predictions_val,
+    {
+      # Force dependency on examples file
+      examples_file <- model_b_examples_file
+
+      val_data <- training_data_b |> filter(split == "val")
+      predictions <- model_b_classify_motivation_batch(
+        act_names = val_data$act_name,
+        passages_texts = val_data$passages_text,
+        years = val_data$year,
+        model = "claude-sonnet-4-20250514",
+        show_progress = TRUE
+      )
+      val_data |> bind_cols(predictions)
+    },
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
+    deployment = "main"  # Run sequentially to avoid parallel API rate limits
+  ),
+  tar_target(
+    model_b_eval_val,
+    evaluate_model_b(
+      predictions = model_b_predictions_val,
+      true_motivation = model_b_predictions_val$motivation,
+      true_exogenous = model_b_predictions_val$exogenous
+    ),
+    packages = "tidyverse"
+  ),
+  tar_target(
+    model_b_predictions_test,
+    {
+      # Force dependency on examples file
+      examples_file <- model_b_examples_file
+
+      test_data <- training_data_b |> filter(split == "test")
+      predictions <- model_b_classify_motivation_batch(
+        act_names = test_data$act_name,
+        passages_texts = test_data$passages_text,
+        years = test_data$year,
+        model = "claude-sonnet-4-20250514",
+        show_progress = TRUE
+      )
+      test_data |> bind_cols(predictions)
+    },
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
+    deployment = "main"  # Run sequentially to avoid parallel API rate limits
+  ),
+  tar_target(
+    model_b_eval_test,
+    evaluate_model_b(
+      predictions = model_b_predictions_test,
+      true_motivation = model_b_predictions_test$motivation,
+      true_exogenous = model_b_predictions_test$exogenous
+    ),
+    packages = "tidyverse"
   )
   # Notebooks -------------------------
   # tar_quarto(

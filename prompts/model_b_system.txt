@@ -1,0 +1,81 @@
+You are classifying US fiscal acts by their PRIMARY motivation using the Romer & Romer (2010) framework.
+
+TASK: Classify the given fiscal act into ONE of four motivation categories and determine if it is exogenous to the business cycle.
+
+MOTIVATION CATEGORIES:
+
+1. SPENDING-DRIVEN (Endogenous)
+   - Tax change enacted to finance concurrent or planned spending increase
+   - Timing: Tax and spending changes occur within 2 quarters
+   - Evidence: "to pay for [program]", "finance the defense effort", "accompany spending increases"
+   - Example: Korean War tax increases (1950-51)
+
+2. COUNTERCYCLICAL (Endogenous)
+   - Tax change to offset current recession OR prevent overheating
+   - Timing: Motivated by contemporaneous output gap or inflation
+   - Evidence: "stimulate recovery", "prevent overheating", "restore full employment", "cool demand"
+   - Example: Tax Reduction Act of 1975 (recession response)
+
+3. DEFICIT-DRIVEN (Exogenous)
+   - Tax change to restore fiscal balance or system solvency
+   - Timing: Enacted during normal growth (not recession)
+   - Evidence: "restore solvency", "reduce deficit", "fiscal sustainability", "trust fund depletion"
+   - Example: Social Security Amendments of 1977
+
+4. LONG-RUN (Exogenous)
+   - Tax reform for efficiency, fairness, or long-term growth
+   - NOT motivated by current cycle position
+   - Evidence: "simplify tax code", "improve efficiency", "raise potential GDP", "fairness", "structural reform"
+   - Example: Tax Reform Act of 1986
+
+EXOGENOUS vs ENDOGENOUS:
+
+- **Exogenous**: NOT responding to current business cycle (categories 3, 4)
+  - Motivated by long-run considerations (efficiency, fairness, solvency)
+  - Would be enacted regardless of current economic conditions
+  - Appropriate for estimating causal effects (not contaminated by cycle)
+
+- **Endogenous**: Responding to current business cycle (categories 1, 2)
+  - Motivated by current spending needs or stabilization
+  - Timing depends on current economic conditions
+  - NOT appropriate for causal multiplier estimation
+
+- **Exception**: Delayed tax changes (>4 quarters after announcement) may be exogenous even if initially spending-driven
+
+CLASSIFICATION RULES:
+
+1. **Choose PRIMARY motivation** - Acts may have multiple motivations, but select the dominant one based on:
+   - Explicit statements in contemporary sources
+   - Timing of enactment relative to economic events
+   - Legislative context and debate
+
+2. **Use contemporary language** - Focus on what sources said AT THE TIME, not retrospective analysis
+
+3. **Handle mixed motivations**:
+   - If both long-run and deficit concerns → "Deficit-driven" (more urgent)
+   - If both countercyclical and spending-driven → "Countercyclical" (cycle motivation dominates)
+   - If deficit reduction in recession → "Deficit-driven" (not stabilization intent)
+
+4. **Year context matters**:
+   - Early 1950s tax increases → likely "Spending-driven" (Korean War)
+   - Mid-1970s tax cuts → likely "Countercyclical" (recession)
+   - Mid-1980s reforms → likely "Long-run" (efficiency/fairness)
+   - 1990s deficit reduction → likely "Deficit-driven" (fiscal balance)
+
+OUTPUT FORMAT (JSON):
+{
+  "motivation": "Long-run" | "Spending-driven" | "Countercyclical" | "Deficit-driven",
+  "exogenous": true | false,
+  "confidence": 0.0-1.0,
+  "evidence": [
+    {"passage_excerpt": "direct quote from text", "supports": "motivation category"}
+  ],
+  "reasoning": "2-3 sentence justification citing specific language and timing"
+}
+
+REQUIRED FIELDS:
+- motivation: One of the four categories exactly as written above
+- exogenous: Boolean (true for categories 3 & 4, false for 1 & 2, unless delayed implementation)
+- confidence: 0.0-1.0 (use 0.95+ for clear cases, 0.7-0.85 for borderline)
+- evidence: Array of direct quotes with their supporting category
+- reasoning: Explanation of decision with specific references to timing, language, and context

@@ -1,0 +1,581 @@
+---
+title: "Model B Evaluation: Motivation Classification"
+subtitle: "Performance Assessment Against Phase 0 Success Criteria"
+date: today
+execute:
+  cache: refresh
+  warning: false
+  message: false
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    df-print: paged
+---
+
+## Executive Summary
+
+This notebook evaluates **Model B (Motivation Classification)**, a multi-class classifier that categorizes fiscal acts by their primary motivation and determines if they are exogenous to the business cycle.
+
+**Primary Success Criteria:**
+
+- Overall Accuracy > 0.75 on test set
+- Per-class F1 Score > 0.70 for each motivation category
+- Exogenous flag accuracy > 0.85
+
+**Model Configuration:**
+
+- LLM: Claude Sonnet 4 (claude-sonnet-4-20250514)
+- Approach: Few-shot prompting (5 examples per class = 20 total)
+- Temperature: 0.0 (deterministic)
+- Categories: Spending-driven, Countercyclical, Deficit-driven, Long-run
+
+**Datasets:**
+
+- Training: Used for few-shot example selection
+- Validation: [N] acts stratified by motivation category
+- Test: [N] acts stratified by motivation category
+
+**Results Summary:**
+
+*To be filled after pipeline execution*
+
+---
+
+```{r setup}
+library(targets)
+library(tidyverse)
+library(gt)
+library(here)
+
+here::i_am("notebooks/review_model_b.qmd")
+tar_config_set(store = here("_targets"))
+
+# Load evaluation results
+model_b_eval_val <- tar_read(model_b_eval_val)
+model_b_eval_test <- tar_read(model_b_eval_test)
+model_b_predictions_val <- tar_read(model_b_predictions_val)
+model_b_predictions_test <- tar_read(model_b_predictions_test)
+
+# Helper function for status badges
+status_badge <- function(value, target, higher_better = TRUE) {
+  if (higher_better) {
+    if (value >= target) {
+      sprintf("✅ PASS (%.3f ≥ %.2f)", value, target)
+    } else {
+      sprintf("❌ FAIL (%.3f < %.2f)", value, target)
+    }
+  } else {
+    if (value <= target) {
+      sprintf("✅ PASS (%.3f ≤ %.2f)", value, target)
+    } else {
+      sprintf("❌ FAIL (%.3f > %.2f)", value, target)
+    }
+  }
+}
+```
+
+---
+
+## Performance Metrics
+
+### Validation Set Results
+
+The validation set is used for iterative model improvement before touching the test set.
+
+```{r val-metrics}
+# Extract overall metrics
+val_overall <- tibble(
+  Metric = c("Overall Accuracy", "Macro F1 Score", "Exogenous Accuracy"),
+  Value = c(
+    model_b_eval_val$accuracy,
+    model_b_eval_val$macro_f1,
+    model_b_eval_val$exogenous_accuracy
+  ),
+  Target = c(0.75, 0.70, 0.85),
+  Status = c(
+    status_badge(model_b_eval_val$accuracy, 0.75),
+    status_badge(model_b_eval_val$macro_f1, 0.70),
+    status_badge(model_b_eval_val$exogenous_accuracy, 0.85)
+  )
+)
+
+val_overall %>%
+  gt() %>%
+  cols_label(
+    Metric = "Metric",
+    Value = "Value",
+    Target = "Target",
+    Status = "Status"
+  ) %>%
+  fmt_number(
+    columns = c(Value, Target),
+    decimals = 3
+  ) %>%
+  tab_header(
+    title = "Validation Set: Overall Metrics"
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  )
+```
+
+**Validation Set Interpretation:**
+
+*To be filled after analyzing results*
+
+### Per-Class Performance (Validation)
+
+```{r val-per-class}
+# Per-class metrics
+model_b_eval_val$per_class_metrics %>%
+  mutate(
+    Status = map2_chr(f1_score, 0.70, ~status_badge(.x, .y))
+  ) %>%
+  gt() %>%
+  cols_label(
+    class = "Motivation Category",
+    precision = "Precision",
+    recall = "Recall",
+    f1_score = "F1 Score",
+    support = "N",
+    Status = "Status (F1 > 0.70)"
+  ) %>%
+  fmt_number(
+    columns = c(precision, recall, f1_score),
+    decimals = 3
+  ) %>%
+  tab_header(
+    title = "Validation Set: Per-Class Metrics"
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  )
+```
+
+**Per-Class Interpretation:**
+
+*To be filled after analyzing results*
+
+### Confusion Matrix (Validation)
+
+```{r val-confusion}
+# Confusion matrix as table
+cm_val <- as.data.frame(model_b_eval_val$confusion_matrix)
+
+cm_val %>%
+  pivot_wider(names_from = Predicted, values_from = Freq, values_fill = 0) %>%
+  gt(rowname_col = "True") %>%
+  tab_header(
+    title = "Validation Set: Confusion Matrix",
+    subtitle = "Rows = True Labels, Columns = Predictions"
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#e8f4f8"),
+    locations = cells_body(
+      rows = everything(),
+      columns = everything()
+    )
+  )
+```
+
+**Common Misclassifications:**
+
+*To be filled after analyzing confusion matrix*
+
+---
+
+## Test Set Results
+
+### Overall Metrics
+
+The test set provides the final, unbiased evaluation of model performance.
+
+```{r test-metrics}
+# Extract overall metrics
+test_overall <- tibble(
+  Metric = c("Overall Accuracy", "Macro F1 Score", "Exogenous Accuracy"),
+  Value = c(
+    model_b_eval_test$accuracy,
+    model_b_eval_test$macro_f1,
+    model_b_eval_test$exogenous_accuracy
+  ),
+  Target = c(0.75, 0.70, 0.85),
+  Status = c(
+    status_badge(model_b_eval_test$accuracy, 0.75),
+    status_badge(model_b_eval_test$macro_f1, 0.70),
+    status_badge(model_b_eval_test$exogenous_accuracy, 0.85)
+  )
+)
+
+test_overall %>%
+  gt() %>%
+  cols_label(
+    Metric = "Metric",
+    Value = "Value",
+    Target = "Target",
+    Status = "Status"
+  ) %>%
+  fmt_number(
+    columns = c(Value, Target),
+    decimals = 3
+  ) %>%
+  tab_header(
+    title = "Test Set: Overall Metrics"
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  )
+```
+
+**Test Set Interpretation:**
+
+*To be filled after analyzing results*
+
+### Per-Class Performance (Test)
+
+```{r test-per-class}
+# Per-class metrics
+model_b_eval_test$per_class_metrics %>%
+  mutate(
+    Status = map2_chr(f1_score, 0.70, ~status_badge(.x, .y))
+  ) %>%
+  gt() %>%
+  cols_label(
+    class = "Motivation Category",
+    precision = "Precision",
+    recall = "Recall",
+    f1_score = "F1 Score",
+    support = "N",
+    Status = "Status (F1 > 0.70)"
+  ) %>%
+  fmt_number(
+    columns = c(precision, recall, f1_score),
+    decimals = 3
+  ) %>%
+  tab_header(
+    title = "Test Set: Per-Class Metrics"
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  )
+```
+
+### Confusion Matrix (Test)
+
+```{r test-confusion}
+# Confusion matrix as table
+cm_test <- as.data.frame(model_b_eval_test$confusion_matrix)
+
+cm_test %>%
+  pivot_wider(names_from = Predicted, values_from = Freq, values_fill = 0) %>%
+  gt(rowname_col = "True") %>%
+  tab_header(
+    title = "Test Set: Confusion Matrix",
+    subtitle = "Rows = True Labels, Columns = Predictions"
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#e8f4f8"),
+    locations = cells_body(
+      rows = everything(),
+      columns = everything()
+    )
+  )
+```
+
+**Common Misclassifications:**
+
+*To be filled after analyzing confusion matrix*
+
+---
+
+## Error Analysis
+
+### Misclassified Acts (Test Set)
+
+```{r test-errors}
+# Identify misclassified acts
+test_errors <- model_b_predictions_test %>%
+  filter(motivation != motivation.1) %>%  # motivation.1 is predicted
+  select(
+    act_name,
+    year,
+    true_motivation = motivation,
+    predicted_motivation = motivation.1,
+    confidence,
+    exogenous_true = exogenous,
+    exogenous_pred = exogenous.1
+  ) %>%
+  arrange(desc(confidence))
+
+if (nrow(test_errors) > 0) {
+  test_errors %>%
+    gt() %>%
+    cols_label(
+      act_name = "Act Name",
+      year = "Year",
+      true_motivation = "True",
+      predicted_motivation = "Predicted",
+      confidence = "Confidence",
+      exogenous_true = "True Exo",
+      exogenous_pred = "Pred Exo"
+    ) %>%
+    fmt_number(
+      columns = confidence,
+      decimals = 2
+    ) %>%
+    tab_header(
+      title = "Misclassified Acts (Test Set)"
+    ) %>%
+    tab_options(
+      table.width = pct(100)
+    )
+} else {
+  cat("✅ No misclassifications on test set!\n")
+}
+```
+
+**Error Patterns:**
+
+*To be filled after analyzing errors*
+
+### Confidence Calibration
+
+```{r calibration}
+# Confidence calibration for test set
+model_b_eval_test$calibration %>%
+  filter(!is.na(confidence_bin)) %>%
+  gt() %>%
+  cols_label(
+    confidence_bin = "Confidence Range",
+    n = "N Predictions",
+    accuracy = "Actual Accuracy"
+  ) %>%
+  fmt_number(
+    columns = accuracy,
+    decimals = 3
+  ) %>%
+  tab_header(
+    title = "Test Set: Confidence Calibration",
+    subtitle = "Does predicted confidence match actual accuracy?"
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  )
+```
+
+**Calibration Interpretation:**
+
+Well-calibrated model: predictions with 90% confidence should be 90% accurate.
+
+*To be filled after analyzing calibration*
+
+---
+
+## Exogenous Flag Analysis
+
+### Exogenous Flag Performance
+
+```{r exogenous-analysis}
+# Exogenous flag confusion
+exo_confusion <- model_b_predictions_test %>%
+  count(exogenous_true = exogenous, exogenous_pred = exogenous.1) %>%
+  mutate(
+    exogenous_true = ifelse(exogenous_true, "Exogenous", "Endogenous"),
+    exogenous_pred = ifelse(exogenous_pred, "Exogenous", "Endogenous")
+  )
+
+exo_confusion %>%
+  pivot_wider(names_from = exogenous_pred, values_from = n, values_fill = 0) %>%
+  gt(rowname_col = "exogenous_true") %>%
+  tab_header(
+    title = "Exogenous Flag Confusion Matrix",
+    subtitle = sprintf("Accuracy: %.1f%%", model_b_eval_test$exogenous_accuracy * 100)
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  )
+```
+
+**Exogenous Flag Errors:**
+
+```{r exo-errors}
+# Acts where exogenous flag was misclassified
+exo_errors <- model_b_predictions_test %>%
+  filter(exogenous != exogenous.1) %>%
+  select(
+    act_name,
+    year,
+    motivation,
+    predicted_motivation = motivation.1,
+    exogenous_true = exogenous,
+    exogenous_pred = exogenous.1,
+    confidence
+  )
+
+if (nrow(exo_errors) > 0) {
+  exo_errors %>%
+    gt() %>%
+    cols_label(
+      act_name = "Act Name",
+      year = "Year",
+      motivation = "True Motivation",
+      predicted_motivation = "Predicted Motivation",
+      exogenous_true = "True Exo",
+      exogenous_pred = "Pred Exo",
+      confidence = "Confidence"
+    ) %>%
+    fmt_number(
+      columns = confidence,
+      decimals = 2
+    ) %>%
+    tab_header(
+      title = "Acts with Incorrect Exogenous Flag"
+    ) %>%
+    tab_options(
+      table.width = pct(100)
+    )
+} else {
+  cat("✅ No exogenous flag errors on test set!\n")
+}
+```
+
+---
+
+## Overall Interpretation
+
+### Phase 0 Success Criteria
+
+```{r success-criteria}
+# Success criteria checklist
+criteria <- tibble(
+  Criterion = c(
+    "Overall Accuracy > 0.75",
+    "Macro F1 > 0.70",
+    "All classes F1 > 0.70",
+    "Exogenous Accuracy > 0.85"
+  ),
+  Target = c(0.75, 0.70, 0.70, 0.85),
+  Achieved = c(
+    model_b_eval_test$accuracy,
+    model_b_eval_test$macro_f1,
+    min(model_b_eval_test$per_class_metrics$f1_score, na.rm = TRUE),
+    model_b_eval_test$exogenous_accuracy
+  ),
+  Status = c(
+    status_badge(model_b_eval_test$accuracy, 0.75),
+    status_badge(model_b_eval_test$macro_f1, 0.70),
+    status_badge(min(model_b_eval_test$per_class_metrics$f1_score, na.rm = TRUE), 0.70),
+    status_badge(model_b_eval_test$exogenous_accuracy, 0.85)
+  )
+)
+
+criteria %>%
+  gt() %>%
+  cols_label(
+    Criterion = "Success Criterion",
+    Target = "Target",
+    Achieved = "Achieved",
+    Status = "Status"
+  ) %>%
+  fmt_number(
+    columns = c(Target, Achieved),
+    decimals = 3
+  ) %>%
+  tab_header(
+    title = "Phase 0 Model B Success Criteria"
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  )
+```
+
+**Overall Assessment:**
+
+*To be filled after analyzing all results*
+
+---
+
+## Detailed Predictions
+
+### Sample Predictions (Test Set)
+
+Show a few representative predictions to verify qualitative performance:
+
+```{r sample-predictions}
+# Sample some predictions
+set.seed(20251206)
+sample_preds <- model_b_predictions_test %>%
+  slice_sample(n = min(5, nrow(model_b_predictions_test))) %>%
+  select(
+    act_name,
+    year,
+    true_motivation = motivation,
+    predicted_motivation = motivation.1,
+    confidence,
+    exogenous_true = exogenous,
+    exogenous_pred = exogenous.1
+  )
+
+sample_preds %>%
+  gt() %>%
+  cols_label(
+    act_name = "Act Name",
+    year = "Year",
+    true_motivation = "True",
+    predicted_motivation = "Predicted",
+    confidence = "Confidence",
+    exogenous_true = "True Exo",
+    exogenous_pred = "Pred Exo"
+  ) %>%
+  fmt_number(
+    columns = confidence,
+    decimals = 2
+  ) %>%
+  tab_header(
+    title = "Sample Predictions (Test Set)"
+  ) %>%
+  tab_options(
+    table.width = pct(100)
+  )
+```
+
+---
+
+## Recommendations
+
+### Next Steps
+
+Based on the evaluation results:
+
+*To be filled with specific recommendations*
+
+**If all criteria met:**
+
+- ✅ Proceed to Model C (Information Extraction)
+- Document Model B configuration for production deployment
+- Archive few-shot examples and prompts
+
+**If criteria not met:**
+
+- Analyze error patterns to identify improvements needed
+- Consider:
+  - Adding more few-shot examples for underperforming classes
+  - Enhancing system prompt with more explicit criteria
+  - Reviewing borderline cases in training data
+  - Adjusting confidence thresholds
+
+---
+
+## Session Info
+
+```{r session-info}
+sessionInfo()
+```

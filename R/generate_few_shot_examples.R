@@ -91,9 +91,71 @@ generate_model_a_examples <- function(training_data_a,
 }
 
 
+#' Generate few-shot examples for Model B from training data
+#'
+#' @param training_data_b Tibble with Model B training examples (from tar_read(training_data_b))
+#' @param n_per_class Integer number of examples per motivation category (default 5)
+#' @param seed Integer for reproducibility (default 20251206)
+#'
+#' @return List of examples with input/output structure
+#' @export
+generate_model_b_examples <- function(training_data_b,
+                                      n_per_class = 5,
+                                      seed = 20251206) {
+
+  set.seed(seed)
+
+  # Sample examples from each motivation category (stratified)
+  examples_by_class <- training_data_b |>
+    dplyr::filter(split == "train") |>
+    dplyr::group_by(motivation) |>
+    dplyr::slice_sample(n = n_per_class) |>
+    dplyr::ungroup() |>
+    dplyr::rowwise() |>
+    dplyr::mutate(
+      input = glue::glue("
+ACT: {act_name}
+YEAR: {year}
+
+PASSAGES FROM ORIGINAL SOURCES:
+{passages_text}
+
+Classify this act's PRIMARY motivation.
+      "),
+      output = list(list(
+        motivation = motivation,
+        exogenous = exogenous,
+        confidence = 0.95,
+        evidence = list(
+          list(
+            passage_excerpt = stringr::str_sub(passages_text, 1, 150),  # First 150 chars as example
+            supports = motivation
+          )
+        ),
+        reasoning = glue::glue("This act is classified as {motivation} based on the legislative context and timing.")
+      ))
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::select(input, output)
+
+  # Convert to nested list structure for JSON export
+  examples_list <- purrr::map(seq_len(nrow(examples_by_class)), function(i) {
+    list(
+      input = as.character(examples_by_class$input[[i]]),
+      output = examples_by_class$output[[i]]
+    )
+  })
+
+  message(sprintf("Generated %d Model B examples (%d per class)",
+                  length(examples_list), n_per_class))
+
+  examples_list
+}
+
+
 #' Save few-shot examples to JSON file
 #'
-#' @param examples List of examples from generate_model_a_examples()
+#' @param examples List of examples from generate_model_a_examples() or generate_model_b_examples()
 #' @param output_path Character path to output JSON file
 #'
 #' @return Character path to saved file (invisibly)
