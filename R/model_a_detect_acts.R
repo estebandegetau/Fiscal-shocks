@@ -103,9 +103,26 @@ model_a_detect_acts_batch <- function(texts,
 
     # Return as tibble row
     # Use null-coalescing to handle missing fields
+    # Normalize act_name to character (handle cases where LLM returns array)
+    act_name_value <- result$act_name
+    if (!is.null(act_name_value)) {
+      if (is.list(act_name_value)) {
+        # If LLM returned an array, take the first element
+        act_name_value <- if (length(act_name_value) > 0) {
+          as.character(act_name_value[[1]])
+        } else {
+          NA_character_
+        }
+      } else {
+        act_name_value <- as.character(act_name_value)
+      }
+    } else {
+      act_name_value <- NA_character_
+    }
+
     tibble::tibble(
       contains_act = if (!is.null(result$contains_act)) result$contains_act else NA,
-      act_name = if (!is.null(result$act_name)) result$act_name else NA_character_,
+      act_name = act_name_value,
       confidence = if (!is.null(result$confidence)) result$confidence else NA_real_,
       reasoning = if (!is.null(result$reasoning)) result$reasoning else NA_character_
     )

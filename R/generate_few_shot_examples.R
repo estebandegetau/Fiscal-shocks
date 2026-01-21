@@ -21,6 +21,7 @@ generate_model_a_examples <- function(training_data_a,
   positive_examples <- training_data_a |>
     dplyr::filter(is_fiscal_act == 1, split == "train") |>
     dplyr::slice_sample(n = n_positive) |>
+    dplyr::rowwise() |>
     dplyr::mutate(
       input = text,
       output = list(list(
@@ -30,12 +31,14 @@ generate_model_a_examples <- function(training_data_a,
         reasoning = sprintf("This passage clearly describes %s, which is a specific piece of federal fiscal legislation.", act_name)
       ))
     ) |>
+    dplyr::ungroup() |>
     dplyr::select(input, output)
 
   # Sample negative examples (does not contain fiscal act)
   negative_examples <- training_data_a |>
     dplyr::filter(is_fiscal_act == 0, split == "train") |>
     dplyr::slice_sample(n = n_negative) |>
+    dplyr::rowwise() |>
     dplyr::mutate(
       input = text,
       output = list(list(
@@ -45,6 +48,7 @@ generate_model_a_examples <- function(training_data_a,
         reasoning = "This passage contains general economic discussion but does not describe a specific fiscal policy act."
       ))
     ) |>
+    dplyr::ungroup() |>
     dplyr::select(input, output)
 
   # Combine and convert to list
