@@ -1,6 +1,6 @@
 ---
-title: "Training Data Quality Review"
-subtitle: "Verification of Phase 0 Training Data Requirements"
+title: "Training Data Quality Tests"
+subtitle: "Comprehensive Test Suites for Phase 0 Training Data"
 date: today
 execute:
   cache: true
@@ -16,27 +16,25 @@ format:
 
 ## Overview
 
-This notebook verifies that the training data generated for Models A, B, and C satisfies all requirements specified in the Phase 0 plan.
+This notebook executes comprehensive quality tests on the training data generated for Models A, B, and C to verify that all requirements specified in the Phase 0 plan are satisfied.
 
-**Data Sources:**
+**Test Coverage:**
 
-- `aligned_data` - Base alignment of us_labels with us_shocks
-
-- `aligned_data_split` - Stratified train/val/test splits
-
-- `training_data_a` - Binary act detection (244 examples)
-
-- `training_data_b` - 4-way motivation classification (44 acts)
-
-- `training_data_c` - Information extraction (41 acts)
-
-- `negative_examples` - Non-act paragraphs (200)
+- **Test Suite 1:** Alignment Quality (3 tests)
+- **Test Suite 2:** Split Quality (3 tests)
+- **Test Suite 3:** Model A Data Quality (4 tests)
+- **Test Suite 4:** Model B Data Quality (4 tests)
+- **Test Suite 5:** Model C Data Quality (4 tests)
+- **Test Suite 6:** Chunks Quality (4 tests) - Production inference only
+- **Test Suite 7:** Cross-Dataset Consistency (2 tests)
 
 **Success Criteria:**
 
-- All tests must PASS for data to be suitable for LLM training
-- WARN indicates potential issues requiring review
-- FAIL indicates critical problems requiring fixes
+- ✅ **PASS:** Requirement met
+- ⚠️ **WARN:** Potential issue requiring review
+- ❌ **FAIL:** Critical problem requiring fixes
+
+All tests must PASS for data to be suitable for LLM training.
 
 ```{r setup}
 library(targets)
@@ -44,7 +42,7 @@ library(tidyverse)
 library(gt)
 library(here)
 
-here::i_am("notebooks/review_training_data.qmd")
+here::i_am("notebooks/test_training_data.qmd")
 tar_config_set(store = here("_targets"))
 
 # Load all training data
@@ -54,6 +52,12 @@ negative_examples <- tar_read(negative_examples)
 training_data_a <- tar_read(training_data_a)
 training_data_b <- tar_read(training_data_b)
 training_data_c <- tar_read(training_data_c)
+
+# Load source data for tests
+us_labels <- tar_read(us_labels)
+us_shocks <- tar_read(us_shocks)
+us_body <- tar_read(us_body)
+chunks <- tar_read(chunks)
 
 # Test results storage
 test_results <- list()
