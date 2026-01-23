@@ -28,32 +28,32 @@ This project proposes to build a **validated, scalable LLM pipeline** for fiscal
 
 ### A. A US-Trained LLM Core
 
-The project begins by training and benchmarking an LLM on the US narrative corpus with Romer & Romer’s original tax-shock labels. This ensures:
+The project begins by training few-shot models on 44 US fiscal acts with Romer & Romer's original labels. This ensures:
 
 -   we anchor the method in a gold-standard dataset,
 -   we quantify model accuracy against known results,
--   we avoid region-specific overfitting and ensure robustness.
+-   we test transfer learning with realistic data constraints.
 
-This step is essential for **credibility**: the model must reproduce known US results before we trust it elsewhere.
+This step is essential for **credibility**: the model must demonstrate strong performance on US data before cross-country deployment.
 
-### B. A Scalable Pipeline for Emerging Markets
+### B. Transfer Learning with Expert Validation
 
-We adapt the US-trained model to Malaysia, where English-language archives are extensive. The pipeline automatically:
+We deploy the US-trained model to Malaysia, where English-language archives are extensive. The pipeline:
 
 1.  extracts narrative episodes where fiscal policy is discussed,
-2.  classifies motivations using Romer & Romer’s categories,
+2.  classifies motivations using Romer & Romer's categories,
 3.  identifies actual tax or spending changes, their timing, and magnitude,
 4.  flags potential political or cyclical influences, and
-5.  integrates human expert review at critical points.
+5.  integrates systematic expert validation to assess cross-country transfer performance.
 
-Once validated on Malaysia, the pipeline extends to Indonesia, Thailand, the Philippines, and Vietnam, with built-in multilingual translation capability.
+Once methodology is validated on Malaysia (estimated 20-40 acts, 1980-2022), the pipeline extends to Indonesia, Thailand, the Philippines, and Vietnam, with built-in multilingual capability.
 
 ## Project Outputs (June 2026)
 
 ### A. New Data Assets
 
--   Narrative fiscal episode datasets for 5 Southeast Asian economies.
--   Shock-event datasets identifying exogenous tax and spending changes: timing, size, and motivation.
+-   Narrative fiscal episode datasets for 5 Southeast Asian economies (estimated 20-60 acts per country depending on political stability and archive quality).
+-   Expert-validated shock-event datasets identifying exogenous tax and spending changes: timing, size, and motivation.
 -   Harmonized multi-country panel suitable for macro and micro analysis.
 
 ### B. Analytical Products
@@ -72,23 +72,25 @@ Once validated on Malaysia, the pipeline extends to Indonesia, Thailand, the Phi
 
 ### Phase 0 – US Benchmark (Jan 2026) {.unnumbered}
 
-Reconstruct the US narrative corpus used by @romer2010; train LLMs to identify fiscal acts, classify motivations, and extract timing/magnitude of shocks. Validate by testing against known labels.
+Train few-shot LLM models on 44 US fiscal acts with Romer & Romer labels to identify acts, classify motivations, and extract timing/magnitude. Validate performance against ground truth.
 
 ### Phase 1 – Malaysia Pilot (Feb 2026) {.unnumbered}
 
-Deploy the pipeline, adapt models to local documents, and complete the first full narrative and shock-event datasets.
+Deploy US-trained models to Malaysia documents (1980-2022), generating candidate fiscal shock dataset. Engage local expert to validate outputs and assess cross-country transfer performance. Refine prompts based on expert feedback.
 
 ### Phase 2 – Southeast Asia Scaling (June 2026) {.unnumbered}
 
 Extend to Indonesia, Thailand, the Philippines, and Vietnam, incorporating expert review and news-based cross-checks.
 
-## Risk Managemen
+## Risk Management
 
 | Risk | Mitigation |
 |---------------------------|---------------------------------------------|
+| Limited training data (44 US acts) | Few-shot learning; expert validation loop; focus on methodology over scale. |
 | Weak or uneven archives | Combine parliamentary, budget, and press sources; clearly document gaps. |
-| LLM misclassification | US benchmarking + targeted human review; conservative thresholds for exogeneity. |
-| Translation quality for non-English sources | Dedicated translation stage; multilingual adaptation; manual review of samples. |
+| Cross-country transfer failure | Expert validation quantifies performance; error analysis informs refinement. |
+| LLM misclassification | US benchmarking + systematic expert review; conservative thresholds for exogeneity. |
+| Translation quality for non-English sources | Native multilingual LLMs (Claude/GPT-4); manual review of samples. |
 | Political bias in source documents | Independent cross-validation with contemporaneous news archives. |
 
 ## Strategic Value for the World Bank
@@ -101,7 +103,7 @@ Extend to Indonesia, Thailand, the Philippines, and Vietnam, incorporating exper
 
 ## Conclusion {.unnumbered}
 
-This project brings together frontier methodology, practical policy relevance, and global scalability. The US-benchmarked LLM pipeline ensures methodological rigor; the Malaysia pilot provides a clear proof of concept; and the multi-country rollout fills a large and longstanding data gap.
+This project brings together frontier methodology, practical policy relevance, and realistic scalability. The US-benchmarked LLM pipeline demonstrates few-shot learning effectiveness; the Malaysia pilot tests cross-country transfer with expert validation; and the multi-country rollout provides methodology replicable beyond Southeast Asia. The contribution is methodological: showing LLMs can assist experts in fiscal shock identification, reducing effort from months to weeks, even with limited training data.
 
 {{< pagebreak >}}
 

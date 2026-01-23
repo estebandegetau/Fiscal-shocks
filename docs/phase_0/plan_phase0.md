@@ -1180,9 +1180,12 @@ Multilingual processing with Claude 3.5 Sonnet:
 ## Next Steps After Phase 0
 
 **If successful** (all model criteria met):
-- **Phase 1 (Malaysia)**: Adapt pipeline to Malaysian documents
-- **Fine-tuning**: Train Mistral 7B on US examples for local deployment
-- **Scale**: Process 5 SEA countries in parallel
+- **Phase 1 (Malaysia)**: Deploy US-trained models to Malaysia documents with expert validation
+  - See **[docs/phase_1/malaysia_strategy.md](../phase_1/malaysia_strategy.md)** for full strategic plan
+  - Key constraint: Limited training data (44 US acts) + no Malaysia ground truth
+  - Approach: Cross-country transfer learning with iterative expert review
+  - Expected output: 20-40 expert-validated Malaysia acts (1980-2022)
+- **Phase 2 (SEA Scaling)**: Extend methodology to Indonesia, Thailand, Philippines, Vietnam
 - **Optional**: Run fiscal multiplier regressions to validate economic consistency
 
 **If failed** (models below threshold):
@@ -1192,6 +1195,23 @@ Multilingual processing with Claude 3.5 Sonnet:
   - Fine-tune instead of few-shot (if accuracy way below)
   - Hybrid: Human + LLM workflow (LLM proposes, human reviews borderline cases)
   - Focus on subset: Modern era only (1980-present, better PDF quality)
+
+## Phase 1 Strategic Considerations
+
+**IMPORTANT**: Phase 0 plan originally assumed 126 labeled US acts. **Reality**: We have 44 labeled acts.
+
+**Implications for Phase 1**:
+- Cannot expect 100+ acts per country (Malaysia likely has 20-40 acts)
+- Must emphasize **methodology validation** over pure scale
+- Expert validation is **required**, not optional
+- Research contribution is **transfer learning**, not just data generation
+
+See **[docs/phase_1/malaysia_strategy.md](../phase_1/malaysia_strategy.md)** for:
+- Four strategic options evaluated
+- Recommended approach (Option 1: Cross-Country Transfer Learning)
+- 12-week implementation timeline
+- Adjusted success criteria
+- Paper framing revisions
 
 ---
 
