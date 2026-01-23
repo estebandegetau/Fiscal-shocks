@@ -31,4 +31,4 @@ notebooks/unused/
 .env
 
 *.log
-_targets.yaml
+*_targets.yaml

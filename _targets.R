@@ -540,6 +540,38 @@ list(
       true_exogenous = model_b_predictions_test$exogenous
     ),
     packages = "tidyverse"
+  ),
+
+  # Phase 0 Model C: Multi-Quarter Information Extraction (Days 6-7)
+  tar_target(
+    model_c_predictions_val,
+    model_c_extract_batch(
+      training_data_c |> filter(split == "val"),
+      model = "claude-sonnet-4-20250514",
+      show_progress = TRUE
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite", "here", "glue", "lubridate", "progress"),
+    deployment = "main"  # Run sequentially to avoid parallel API rate limits
+  ),
+  tar_target(
+    model_c_eval_val,
+    evaluate_model_c(model_c_predictions_val),
+    packages = c("tidyverse", "lubridate")
+  ),
+  tar_target(
+    model_c_predictions_test,
+    model_c_extract_batch(
+      training_data_c |> filter(split == "test"),
+      model = "claude-sonnet-4-20250514",
+      show_progress = TRUE
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite", "here", "glue", "lubridate", "progress"),
+    deployment = "main"  # Run sequentially to avoid parallel API rate limits
+  ),
+  tar_target(
+    model_c_eval_test,
+    evaluate_model_c(model_c_predictions_test),
+    packages = c("tidyverse", "lubridate")
   )
   # Notebooks -------------------------
   # tar_quarto(

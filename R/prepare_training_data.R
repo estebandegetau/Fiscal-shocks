@@ -27,17 +27,38 @@ align_labels_shocks <- function(us_labels, us_shocks, threshold = 0.9) {
   labels_clean <- us_labels %>%
     mutate(act_name_clean = clean_act_name(act_name))
 
-  # Collapse shocks to one row per act (acts can have multiple quarters/shocks)
-  # Keep first shock for primary metadata, nest all shocks for Model C
-  shocks_collapsed <- us_shocks %>%
+  # Prepare shocks data:
+  # 1. For each act, nest all quarters for Model C multi-quarter extraction
+  # 2. Keep first quarter metadata for joining with labels (backward compatibility)
+
+  # Clean and group shocks by act
+  shocks_clean <- us_shocks %>%
     mutate(act_name_clean = clean_act_name(act_name)) %>%
     group_by(act_name_clean) %>%
-    mutate(shock_number = row_number()) %>%
-    ungroup()
-
-  shocks_clean <- shocks_collapsed %>%
-    filter(shock_number == 1) %>%  # Use first shock for joining
-    select(-shock_number)
+    arrange(change_in_liabilities_quarter, .by_group = TRUE) %>%
+    summarize(
+      # Take first quarter's metadata for backward compatibility
+      act_name = first(act_name),
+      date_signed = first(date_signed),
+      change_quarter = first(change_in_liabilities_quarter),
+      magnitude_billions = first(change_in_liabilities_billion),
+      motivation_category = first(change_in_liabilities_category),
+      exogenous_flag = first(change_in_liabilities_exo),
+      present_value_quarter = first(present_value_quarter),
+      present_value_billions = first(present_value_billion),
+      reasoning = first(reasoning),
+      # Nest ALL quarters for Model C
+      ground_truth_quarters = list(tibble(
+        change_in_liabilities_quarter = change_in_liabilities_quarter,
+        change_in_liabilities_billion = change_in_liabilities_billion,
+        change_in_liabilities_category = change_in_liabilities_category,
+        change_in_liabilities_exo = change_in_liabilities_exo,
+        present_value_quarter = present_value_quarter,
+        present_value_billion = present_value_billion,
+        reasoning = reasoning
+      )),
+      .groups = "drop"
+    )
 
   # Get unique acts from labels (with their original passages)
   # Note: labels has multiple rows per act (one per passage)
@@ -50,13 +71,14 @@ align_labels_shocks <- function(us_labels, us_shocks, threshold = 0.9) {
         select(
           act_name_clean,
           date_signed,
-          change_quarter = change_in_liabilities_quarter,
-          magnitude_billions = change_in_liabilities_billion,
-          motivation_category = change_in_liabilities_category,
-          exogenous_flag = change_in_liabilities_exo,
+          change_quarter,
+          magnitude_billions,
+          motivation_category,
+          exogenous_flag,
           present_value_quarter,
-          present_value_billions = present_value_billion,
-          reasoning
+          present_value_billions,
+          reasoning,
+          ground_truth_quarters  # NEW: Include nested quarters
         ),
       by = "act_name_clean",
       relationship = "many-to-one"
@@ -109,13 +131,14 @@ align_labels_shocks <- function(us_labels, us_shocks, threshold = 0.9) {
             select(
               act_name_clean,
               date_signed,
-              change_quarter = change_in_liabilities_quarter,
-              magnitude_billions = change_in_liabilities_billion,
-              motivation_category = change_in_liabilities_category,
-              exogenous_flag = change_in_liabilities_exo,
+              change_quarter,
+              magnitude_billions,
+              motivation_category,
+              exogenous_flag,
               present_value_quarter,
-              present_value_billions = present_value_billion,
-              reasoning
+              present_value_billions,
+              reasoning,
+              ground_truth_quarters  # NEW: Include nested quarters
             ),
           by = c("best_match" = "act_name_clean"),
           relationship = "many-to-one"
@@ -128,6 +151,7 @@ align_labels_shocks <- function(us_labels, us_shocks, threshold = 0.9) {
   }
 
   # Group by act_name and concatenate passages
+  # Note: ground_truth_quarters is a list-column that's preserved through grouping
   aligned_data <- exact_match %>%
     group_by(
       act_name,
@@ -138,7 +162,8 @@ align_labels_shocks <- function(us_labels, us_shocks, threshold = 0.9) {
       exogenous_flag,
       present_value_quarter,
       present_value_billions,
-      reasoning
+      reasoning,
+      ground_truth_quarters  # NEW: Preserve nested quarters
     ) %>%
     summarize(
       n_passages = n(),
@@ -386,32 +411,40 @@ prepare_model_b_data <- function(aligned_data) {
   return(model_b_data)
 }
 
-#' Prepare Model C training data (information extraction)
+#' Prepare Model C training data (information extraction with multi-quarter support)
 #'
-#' @param aligned_data Output from align_labels_shocks() with split column
-#' @return Tibble ready for Model C training (only acts with complete timing + magnitude)
+#' @param aligned_data Output from align_labels_shocks() with split column and ground_truth_quarters
+#' @return Tibble ready for Model C training with nested ground truth quarters
 prepare_model_c_data <- function(aligned_data) {
 
-  # Filter for acts with complete timing and magnitude data
+  # Filter for acts with at least ONE complete quarter
+  # Uses nested ground_truth_quarters instead of first quarter metadata
   model_c_data <- aligned_data %>%
     filter(
-      !is.na(change_quarter),
-      !is.na(magnitude_billions),
-      !is.na(present_value_quarter),
-      !is.na(present_value_billions)
+      # Has ground truth quarters AND at least one quarter has complete data
+      !is.na(ground_truth_quarters),
+      purrr::map_lgl(ground_truth_quarters, ~ {
+        nrow(.x) > 0 &&
+        !all(is.na(.x$change_in_liabilities_quarter)) &&
+        !all(is.na(.x$change_in_liabilities_billion))
+      })
     ) %>%
     select(
       act_name,
       passages_text,
+      year,
       date_signed,
-      change_quarter,
-      magnitude_billions,
-      present_value_quarter,
-      present_value_billions,
+      ground_truth_quarters,  # Full time series for multi-quarter evaluation
       split
     )
 
+  # Calculate total quarters available
+  total_quarters <- sum(purrr::map_int(model_c_data$ground_truth_quarters, nrow))
+
   message(sprintf("Model C data: %d acts with complete data", nrow(model_c_data)))
+  message(sprintf("Total quarters across all acts: %d", total_quarters))
+  message(sprintf("Median quarters per act: %.1f",
+                  median(purrr::map_int(model_c_data$ground_truth_quarters, nrow))))
   message(sprintf("Filtered out: %d acts with incomplete timing/magnitude",
                   nrow(aligned_data) - nrow(model_c_data)))
 
