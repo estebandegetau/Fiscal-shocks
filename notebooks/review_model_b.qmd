@@ -211,6 +211,7 @@ The validation set confusion matrix shows **1 misclassification pattern**:
 - **Countercyclical → Long-run (1 instance):** One cycle-motivated reform was classified as a long-run efficiency reform
 
 This error pattern suggests the model may struggle when:
+
 - Acts have mixed motivations (e.g., recession response + structural reform)
 - The contemporaneous language emphasizes efficiency gains over cycle stabilization
 - The distinction between "improving the economy now" vs. "improving long-run growth" is subtle
@@ -339,16 +340,19 @@ cm_test %>%
 The test set confusion matrix reveals a **systematic misclassification pattern**:
 
 - **Long-run → Countercyclical (2 instances):** BOTH Long-run acts in the test set were incorrectly classified as Countercyclical
+
   - This represents 100% failure rate on Long-run classification (0/2 recall)
   - Both predictions had high confidence (0.85 and 0.90), suggesting the model is confidently wrong
 
 **Root Cause Hypothesis:** The model appears to confuse:
+
 - **Long-run reforms** aimed at improving efficiency and fairness (exogenous)
 - **Countercyclical reforms** aimed at stimulating the economy during recessions (endogenous)
 
 When an act discusses "improving economic conditions" or "raising growth," the model may incorrectly interpret this as countercyclical stabilization rather than long-run structural reform.
 
 **Correct Classifications:**
+
 - Spending-driven: 3/3 perfect (100% precision and recall)
 - Deficit-driven: 1/1 perfect (100% precision and recall)
 
@@ -407,16 +411,19 @@ Analyzing the 2 misclassified acts reveals a clear pattern:
 **Both errors follow the same pattern: Long-run → Countercyclical**
 
 1. **Public Law 99-514** (likely Tax Reform Act of 1986)
+
    - True: Long-run (exogenous=TRUE)
    - Predicted: Countercyclical (exogenous=FALSE)
    - Confidence: 0.85
 
 2. **Revenue Act** (year and context needed)
+
    - True: Long-run (exogenous=TRUE)
    - Predicted: Countercyclical (exogenous=FALSE)
    - Confidence: 0.90
 
 **Why This Matters:**
+
 - Both acts are major tax reforms aimed at long-term efficiency gains
 - The model incorrectly interpreted them as recession-fighting measures
 - High confidence scores (0.85-0.90) indicate the model is *systematically* wrong, not uncertain
@@ -452,6 +459,7 @@ model_b_eval_test$calibration %>%
 Well-calibrated model: predictions with 90% confidence should be 90% accurate.
 
 The test set shows **poor calibration**:
+
 - 5 predictions at 80-90% confidence → 60% actual accuracy (should be ~85%)
 - 1 prediction at 90-100% confidence → 100% actual accuracy ✅
 
@@ -660,9 +668,11 @@ Based on the test set failure, **Model B requires improvement before production 
 **1. Enhance System Prompt for Long-run vs. Countercyclical Distinction**
 
 Add explicit clarification to `prompts/model_b_system.txt`:
+
 - **Long-run:** "Improving potential GDP, efficiency, fairness" - would be enacted regardless of current cycle
 - **Countercyclical:** "Responding to current recession/boom" - timing depends on cycle position
 - Add contrasting examples:
+
   - ✓ Long-run: "Tax Reform Act of 1986 - simplify code, improve efficiency (enacted during expansion)"
   - ✓ Countercyclical: "Tax Reduction Act of 1975 - stimulate recovery (enacted during recession)"
   - ✗ Common confusion: Acts that mention "growth" aren't automatically countercyclical
@@ -671,6 +681,7 @@ Add explicit clarification to `prompts/model_b_system.txt`:
 
 Current: 5 examples per class (20 total)
 Recommended: Increase Long-run examples to 8-10, focusing on:
+
 - Tax Reform Act of 1986 (efficiency/fairness)
 - Revenue Act of 1964 (long-run growth, NOT countercyclical despite growth language)
 - Other structural reforms with explicit "long-run" or "efficiency" motivation
@@ -678,6 +689,7 @@ Recommended: Increase Long-run examples to 8-10, focusing on:
 **3. Add Negative Examples (Countercyclical → Long-run Contrasts)**
 
 Similar to Model A's edge case strategy, add 3-5 examples showing:
+
 - "This passage mentions growth BUT is Long-run because [efficiency focus]"
 - "This passage mentions recession response, therefore Countercyclical"
 
@@ -686,10 +698,12 @@ Similar to Model A's edge case strategy, add 3-5 examples showing:
 **4. Re-examine Training Data Labels**
 
 Manually review the 2 misclassified acts:
+
 - Public Law 99-514 (likely Tax Reform Act of 1986)
 - The Revenue Act in test set
 
 Questions to verify:
+
 - Are the ground truth labels correct? (Could these legitimately have mixed motivations?)
 - Do the source passages contain language that could mislead the model?
 - Should we add contextual clues (year, economic conditions) to help disambiguation?
@@ -697,6 +711,7 @@ Questions to verify:
 **5. Increase Test Set Size** (if possible)
 
 Current test set (6 acts) is too small for reliable evaluation:
+
 - Consider redistributing: 70% train / 15% val / 15% test (larger absolute test size)
 - OR: Combine val + test for final evaluation (16 acts total) if we're confident in current approach
 
@@ -707,10 +722,12 @@ Current test set (6 acts) is too small for reliable evaluation:
 Current input: ACT + YEAR + PASSAGES
 
 Enhanced input: ACT + YEAR + **ECONOMIC CONTEXT** + PASSAGES
+
 - "1986: Economy in expansion, unemployment falling"
 - "1975: Deep recession, unemployment 9%"
 
 This gives the model explicit cycle context to distinguish:
+
 - Long-run reforms during expansions (exogenous)
 - Countercyclical reforms during recessions (endogenous)
 
@@ -725,14 +742,11 @@ This may reduce confusion between categories with different exogeneity.
 #### What NOT to Do
 
 ❌ **Don't proceed to Model C** until Model B passes test criteria
+
 ❌ **Don't ignore the test set failure** - validation success alone is insufficient
+
 ❌ **Don't just add more training examples** without addressing the conceptual confusion
+
 ❌ **Don't deploy to Southeast Asia** with 66.7% test accuracy
 
----
 
-## Session Info
-
-```{r session-info}
-sessionInfo()
-```
