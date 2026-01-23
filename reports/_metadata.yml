@@ -4,5 +4,3 @@ format:
     toc-depth: 3
     echo: false
     self-contained: true
-
-  typst: default
