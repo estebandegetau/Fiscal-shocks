@@ -4,7 +4,56 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Research data pipeline for identifying fiscal shocks (tax and spending policy changes) from historical US government documents (1946-present) using text extraction and LLM-based analysis. The project is titled "Scaling Narrative Fiscal Shock Identification with LLMs" by Esteban Degetau and Agustín Samano.
+**Title**: "Scaling Narrative Fiscal Shock Identification with LLMs"
+**Authors**: Esteban Degetau and Agustín Samano
+**Affiliation**: World Bank
+**Region**: Malaysia (pilot) → Southeast Asia (extension)
+
+### Research Problem
+
+For most emerging markets, we lack **consistent and comparable measures of exogenous fiscal shocks** — the cornerstone input required for credible fiscal policy analysis. The United States is the only country where this has been done systematically, through the "narrative approach" pioneered by Romer & Romer (2010). Their method uses historical documents to identify why taxes or spending changed, distinguishing exogenous shocks from policy actions responding to the business cycle.
+
+Replicating this approach manually is costly. For low- and middle-income countries, it has simply never been feasible.
+
+### Our Solution
+
+Recent advances in Large Language Models (LLMs) make this possible for the first time. This project builds a **validated, LLM-assisted pipeline** for fiscal shock identification:
+
+1. **Phase 0 (US Benchmark)**: Train few-shot LLM models on 44 US fiscal acts with Romer & Romer labels to identify acts, classify motivations, and extract timing/magnitude
+2. **Phase 1 (Malaysia Pilot)**: Deploy US-trained models to Malaysia documents (1980-2022), generating candidate dataset with expert validation to test cross-country transfer learning
+3. **Phase 2 (SEA Scaling)**: Extend methodology to Indonesia, Thailand, Philippines, Vietnam
+
+### Key Innovation
+
+**Transfer Learning with Limited Training Data**: We demonstrate that LLMs trained on limited US data (44 labeled acts) can assist experts in identifying fiscal shocks cross-country with ≥80% agreement, reducing manual effort from months to weeks.
+
+### Research Contribution
+
+The contribution is **methodological**, not just dataset scale:
+- Shows LLMs can transfer across countries without retraining
+- Quantifies performance via expert agreement rates and error analysis
+- Identifies where models succeed (act detection, motivation classification) and struggle (magnitude extraction)
+- Methodology replicable beyond Southeast Asia
+
+### Current Status
+
+- **Phase 0**: IN PROGRESS (Model A complete, Model B training, Model C not started)
+- **Phase 1**: Planning stage (see `docs/phase_1/malaysia_strategy.md`)
+- **Phase 2**: Not yet started
+
+### Data Constraints (IMPORTANT)
+
+- **US training data**: 44 labeled fiscal acts (1945-2022), not 126 as originally assumed
+- **Malaysia estimate**: 20-40 acts (1980-2022, 42-year political stable window)
+- **Other SEA countries**: 20-60 acts each depending on political stability and archive quality
+- **No ground truth labels** for Malaysia or other SEA countries (expert validation required)
+
+### Strategic Framing
+
+❌ **NOT**: "Fully automated pipeline generating 100+ acts per country"
+✅ **YES**: "LLM-assisted methodology with expert validation, demonstrating cross-country transfer learning"
+
+See `docs/two_pager.qmd` for full project description and `docs/phase_1/malaysia_strategy.md` for Phase 1 strategic plan.
 
 ## Development Commands
 
