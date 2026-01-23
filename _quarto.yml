@@ -12,8 +12,10 @@ website:
   sidebar: 
     style: "floating"
     search: true
-    contents: auto
     title: "Scaling Fiscal Shocks"
+    contents:
+      - index.qmd
+      - auto: "*.qmd"
 
 
 title-block-banner: true
