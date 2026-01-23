@@ -1247,7 +1247,7 @@ tibble(
 - Reduce few-shot examples across all models
 - Use validation set heavily for prompt tuning
 - Consider 5-fold cross-validation for Model B
-- Plan for **100+ acts in Malaysia** to validate scalability claims
+- **Malaysia Phase 1:** Focus on transfer learning methodology with expert validation (expect 20-40 acts, not 100+)
 
 ---
 
@@ -1385,9 +1385,11 @@ And Model C output schema supports it (line 519-529):
    - Comparison: Expected (126 acts) vs Actual (44 acts)
 
 5. **Malaysia Planning (Phase 1):**
-   - **Target: 100+ acts** to validate scalability
-   - **Prioritize Countercyclical** examples
+   - **Expected: 20-40 acts** (1980-2022 political stable window)
+   - **Approach:** Cross-country transfer learning with expert validation (≥80% agreement target)
+   - **Focus:** Methodology validation, not scale
    - **Extract all implementation phases** (not just first quarter)
+   - See `docs/phase_1/malaysia_strategy.md` for full strategic plan
 
 ---
 
@@ -1463,13 +1465,13 @@ The concept note states:
 **Reality Check:**
 
 - ✅ **Gold-standard benchmark:** Yes, but with **44 acts** (subset of 126-act corpus)
-- ⚠️ **Scalability claim:** Need to acknowledge sample size in US benchmark
-- ✅ **Core validation sound:** 44 acts sufficient for methodology testing
-- 🔴 **Malaysia must be larger:** Phase 1 needs 100+ acts to demonstrate scalability
+- ✅ **Transfer learning framing:** 44 acts sufficient for few-shot methodology testing
+- ✅ **Core validation sound:** Tests cross-country transfer, not just scale
+- ✅ **Malaysia realistic:** Phase 1 expects 20-40 acts with expert validation (not 100+)
 
 **Recommended Addition:**
 
-Add footnote: "US benchmark validated on 44 labeled acts (Romer & Romer's narrative passages subset with complete ground truth). Malaysia pilot will expand to 100+ acts to demonstrate full scalability."
+Add footnote: "US benchmark validated on 44 labeled acts (Romer & Romer's narrative passages subset with complete ground truth). Phase 1 tests cross-country transfer to Malaysia (estimated 20-40 acts, 1980-2022) with expert validation to demonstrate methodology generalizability."
 
 ---
 
@@ -1491,10 +1493,12 @@ The training data is **production-ready for Phase 0 proof-of-concept**, with the
 3. **Use validation set** for Countercyclical evaluation
 4. **Document limitations** clearly in Phase 0 report
 
-**Critical for Malaysia:**
+**Critical for Malaysia (Phase 1):**
 
-- **Target 100+ acts** with human labeling
-- **Prioritize Countercyclical** examples (currently under-represented)
+- **Expected: 20-40 acts** (1980-2022 political stable window, not 100+)
+- **Approach:** Deploy US-trained models with expert validation (target ≥80% agreement)
+- **Focus:** Test cross-country transfer learning, not dataset scale
 - **Extract all implementation phases** (not just first quarter)
+- See `docs/phase_1/malaysia_strategy.md` for full strategic plan
 
-🎯 **Bottom Line:** Proceed with Phase 0 with adjusted expectations. The methodology is sound, but **Malaysia (Phase 1) is critical** for validating the "scalable LLM pipeline" claim in the two-pager.
+🎯 **Bottom Line:** Proceed with Phase 0 with adjusted expectations. The methodology is sound, and **Malaysia (Phase 1) is critical** for validating cross-country transfer learning (not "scalable pipeline generating 100+ acts per country").
