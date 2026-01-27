@@ -28,6 +28,26 @@ MOTIVATION CATEGORIES:
    - Evidence: "simplify tax code", "improve efficiency", "raise potential GDP", "fairness", "structural reform"
    - Example: Tax Reform Act of 1986
 
+CRITICAL DISTINCTION - LONG-RUN vs COUNTERCYCLICAL:
+
+This is the most commonly confused pair. Use these guidelines:
+
+LONG-RUN (Exogenous): Permanent structural reforms for efficiency/growth
+- Key phrases: "reform", "simplify", "broaden base", "competitiveness", "efficiency", "fairness", "equity", "long-term growth", "structural", "regardless of economic conditions"
+- Time horizon: PERMANENT changes, multi-year implementation
+- Context: Enacted during normal growth OR expansion, NOT responding to recession
+- Ask: Would this change be enacted regardless of the current business cycle?
+- Example: "This bill is a long overdue reform measure which is vitally necessary regardless of the momentary economic conditions"
+
+COUNTERCYCLICAL (Endogenous): Temporary response to recession/overheating
+- Key phrases: "stimulus", "recovery", "temporary", "until economy improves", "prevent overheating", "restore full employment", "combat inflation", "recession", "contraction"
+- Time horizon: TEMPORARY until economic conditions normalize
+- Context: Direct response to current recession OR inflation/overheating
+- Ask: Is this responding to a specific economic shock or cycle position?
+- Example: "to check the drastic downward slide in our economy and to restore economic growth"
+
+KEY DIFFERENTIATOR: Is the motivation PERMANENT structural improvement (Long-run) or TEMPORARY stabilization (Countercyclical)?
+
 EXOGENOUS vs ENDOGENOUS:
 
 - **Exogenous**: NOT responding to current business cycle (categories 3, 4)

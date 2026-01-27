@@ -1,0 +1,363 @@
+[
+  {
+    "input": "ACT: Public Law 89-800 (Suspension of Investment Tax Credit)\nYEAR: 1966\n\nPASSAGES FROM ORIGINAL SOURCES:\nToday the strength of the American economy exceeds all records and all expectations\n\nCaution signs became visible early this year. Responsible fiscal policy required prudent action\n\nthe Congress promptly make inoperative, for a temporary period, those special incentives for plant and equipment investment and commercial construction that currently contribute to overheating the economy\n\na vital part of our effort to combat inflationary pressures and to preserve the strength of our dynamic economy\n\nAs private demand and Vietnam requirements exceeded forecasts, policy was adjusted to the new developments. … In September, the President proposed additional selective fiscal measures to alleviate excessive demands for funds and for capital goods\n\nA healthy advance of demand in pace with the growth of potential output would permit gradual restoration of price stability. … The fiscal program for 1967 is designed to meet these objectives\n\nOur machinery and equipment industries cannot digest the demands currently thrust upon them. … Our capital markets are clogged with excessive demands for funds to finance investment. These demands bid interest rates higher and higher, and draw too large a share of credit from other important uses\n\nThe investment boom put severe strain on the plant capacity\n\nadded mightily to the pressures on financial markets\n\nThe proposal [suspension of the ITC] is basically an anti-inflationary measure designed to relieve the pressures, clearly observable in the money markets and capital goods sector, which are producing unusual strains, the highest interest rates in 40 years and a perceptible trend toward a general condition of economic instability\n\nH.R. 17607 is designed to moderate the pace of the economy to a more sustainable level of economic growth. This bill is an integral part of a coordinated anti-inflationary program of the administration\n\nthe bill will affect those sectors of the economy where inflationary pressures are strongest\n\nThe application of fiscal restraints will help to keep the recent rate of increase in prices from accelerating and developing into a serious wage-price spiral\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Countercyclical",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "Today the strength of the American economy exceeds all records and all expectations\n\nCaution signs became visible early this year. Responsible fiscal ",
+          "supports": "Countercyclical"
+        }
+      ],
+      "reasoning": "This act is classified as Countercyclical based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Tax Reform Act of 1969\nYEAR: 1969\n\nPASSAGES FROM ORIGINAL SOURCES:\nAs we enter 1970 continuation of a low rate of growth of sales, production, and employment for several months seems probable. Thereafter, the performance of the economy will depend on both the continued resolve of the Government and the difficult-to-predict behavior of the private sector\n\nAfter some months of slow expansion of sales, output, and employment, which seems likely, a moderately quicker pace later in the year would be consistent with continued progress in reducing the rate of inflation\n\nThe overall program will be equitable and essentially neutral in its revenue impact [relative to his previous proposal]\n\nThe revenue effect of the repeal of the investment tax credit will begin to be significant during calendar year 1970. Therefore, I recommend that investment tax credit repeal be accompanied by extension of the full surcharge only to January 1, 1970, with a reduction to 5% on January 1. … If economic and fiscal conditions permit, we can look forward to elimination of the remaining surtax on June 30, 1970\n\nThe tax bill passed in December reduced revenues for the next fiscal year by close to $3 billion, compared to my original proposals\n\nalmost $3 billion\n\ninflationary pressures in the period immediately ahead\n\nTax reform is necessary … to be sure that those with substantially the same incomes are paying substantially the same tax\n\nin order to make general tax reductions possible\n\nI think our problem concerns the situation that will develop as a result of the long-range impact of some of the provisions of this legislation that will take effect in 1972, in 1973, and 1974. In the long run there is the potential of inflationary problems\n\nthe Senate has turned what was supposed to be a tax reform bill into a political Christmas package which promises everything to everybody\n\nWe have responded—responsibly or not—to what we have read as our constituents’ political demands for Federal tax relief\n\nThis bill itself is not inflationary. It is the combination of all things that one has to consider. … The expenditure side must be added to it. … I think the Congress is just as much in the right to establish as a No. 1 priority the return of some of the increment in taxes to the taxpayers\n\nthe income tax surcharge … is expected to yield $9½ billion\n\nForces now present in the economy … make economic expansion in 1971 probable\n\nThese are powerful upward pressures, but existing and foreseeable expansionary forces in the economy are not strong enough to assure that output will rise as much as is desired and feasible\n\nTotal output would have to rise significantly faster than the growth rate of potential output\n\ntotal spending and total output should rise as rapidly as possible to lift the economy to full employment and full production. Fiscal policy must play its full and responsible role\n\nto stimulate investment, jobs, and growth\n\n[c]oncerted policies of expansion are needed now to lift the economy fast enough to make rapid progress toward full employment\n\nhelp create jobs for the unemployed\n\na stimulant to economic recovery,\n\na means of increasing competitiveness of U.S. goods in world markets,\n\na major force for long-run economic growth\n\nThese rules are part of our plan to expand the economy and help the Nation achieve full employment without inflation\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Countercyclical",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "As we enter 1970 continuation of a low rate of growth of sales, production, and employment for several months seems probable. Thereafter, the performa",
+          "supports": "Countercyclical"
+        }
+      ],
+      "reasoning": "This act is classified as Countercyclical based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Tax Reduction Act of 1975\nYEAR: 1975\n\nPASSAGES FROM ORIGINAL SOURCES:\nAs 1975 begins, … production and employment are declining sharply. … It is quite likely … that the contraction of business activity and rising unemployment will continue for several more months\n\nIt must be clearly understood that these problems are serious and that strong remedies are fully justified. The economy is now in a recession\n\n[t]o provide support for the economy\n\nThe tax cut will not prevent a decline in real output from 1974 to 1975 but it will reduce the extent of the year-over-year decline\n\nCutting taxes now is essential if we are to turn the economy around. A tax cut offers the best hope of creating more jobs\n\nThese policies call for decisive action to restore economic growth\n\ninclude a one-time $16 billion tax cut … to stimulate economic recovery\n\nOur country needs the stimulus and the support of a tax cut and needs it now\n\nthe $23 billion tax reduction is within reason\n\na lot of extraneous changes in our tax laws\n\nThis is no way to legislate fundamental tax reforms\n\nto check the drastic downward slide in our economy and to restore economic growth\n\nThe overall tax cut provided by your committee’s bill is larger than the $16 billion tax cut recommended by the administration. However, your committee believes that the larger tax cut is more appropriate in the present situation, because the economic situation has deteriorated and forecasts of future economic activity in absence of remedial action are more pessimistic than at the time the administration presented its recommendations\n\nIn all, the Tax Reduction Act of 1975 lowered receipts by around $42 billion at an annual rate in the second quarter of 1975, but most of this drop was temporary. The tax cuts that remained in effect during the last half of 1975 amounted to around $15 billion (annual rate)\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Countercyclical",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "As 1975 begins, … production and employment are declining sharply. … It is quite likely … that the contraction of business activity and rising unemplo",
+          "supports": "Countercyclical"
+        }
+      ],
+      "reasoning": "This act is classified as Countercyclical based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Revenue and Expenditure Control Act of 1968\nYEAR: 1968\n\nPASSAGES FROM ORIGINAL SOURCES:\nshift toward restraint in fiscal policy is appropriate at that time to assure that demand does not outrun capacity, that movement toward restoration of price stability is maintained\n\nthe fiscal program we are recommending is consistent with a sound and healthy economic advance during the year ahead\n\na return of strong inflationary pressures,\n\n[a]n excessive expansion of domestic markets,\n\n[s]piraling interest rates\n\nMost experienced observers agree that the pace [of economic growth] now is—and in the months ahead will be—too fast for safety\n\nrestraint is essential to our economic health\n\nThe problems of rising prices and interest rates, and a worsening balance of payments, arise from many causes. … But central to any attack upon them is a fiscal policy which … sharply reduces the inappropriate stimulus of a large Federal budget deficit in today’s vigorous economy\n\nThe Nation’s economy is moving too fast because of an unacceptable budgetary deficit. We must now apply the fiscal brakes\n\nIt represents the minimum action we should take at this time to preserve the security of our dollar and prevent runaway inflation\n\na threat to the dollar’s role as the keystone of international trade and finance in the world\n\nthe reason why we are acting … is that we feel the country and the world are in a very serious situation with respect to the inflationary surge in our country, with respect to the serious imbalance of international payments, and with respect to the very serious imbalance in our budget\n\nthis proposal will aggravate that increase in cost pressures against prices, because taxes are a cost\n\nThe tax surcharge alone is currently withdrawing about $10½ billion (annual rate) from the income stream\n\nfull year liability at 1968 income levels\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Countercyclical",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "shift toward restraint in fiscal policy is appropriate at that time to assure that demand does not outrun capacity, that movement toward restoration o",
+          "supports": "Countercyclical"
+        }
+      ],
+      "reasoning": "This act is classified as Countercyclical based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Social Security Amendments of 1977\nYEAR: 1977\n\nPASSAGES FROM ORIGINAL SOURCES:\nrestore the financial integrity of the Social Security system\n\nthat the social security system will be financially sound well into the next century\n\nThe Social Security Amendments of 1977 were designed primarily to prevent the assets of the OASDI trust funds from being depleted in the next few years and to eliminate most of the long-range deficit. Since the Congress has always believed that the social security system should be fully financed by earmarked payroll taxes, substantial increases in OASDHI taxes were necessary\n\nIn order to eliminate the short-range deficit due to recent and current economic experience and to reduce the longer-range deficit due to demographic shifts and disability experience, the committee bill includes changes in social security tax rates for employees, employers, and the self-employed, and increases in the contribution and benefit base for employees, employers, and the self-employed\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Deficit-driven",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "restore the financial integrity of the Social Security system\n\nthat the social security system will be financially sound well into the next century\n\nT",
+          "supports": "Deficit-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Deficit-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Social Security Amendments of 1947\nYEAR: 1947\n\nPASSAGES FROM ORIGINAL SOURCES:\nThe war and its aftermath, as well as the recovery from the depression of the early thirties, have been accompanied by important changes in many of the factors which determine the benefits 20 and contributions under the program.\n\ncost of benefits under the system [as a percent of payroll] … are lower than the estimated costs of the program when it was adopted\n\nincreased the annual rate of cash receipts by about three-quarters of a billion dollars\n\nremove the deterrents to managerial efforts and to the investment of venture capital\n\nIt is the additional tax taken out of the extra dollar of income … that determines whether or not it is worth while to make the effort or incur the risk\n\nH. R. 4790 provides tax reduction, relief, and equalization. It reduces the present extremely high rates of the individual income tax. These rates were a product of wartime conditions, and constitute a serious obstacle to the increase in production needed to relieve current inflationary pressures. The reduction of these rates also is essential to the long-run improvement in the American standard of living\n\nYour committee’s bill is designed to provide a stimulus to labor, management, and venture capital\n\nyour committee believes that increased production [from improved incentives] is the most satisfactory answer to the high prices resulting from the pressure of pent-up demand on a limited supply\n\nThis tax bill is being presented at a time when the future of business conditions is extremely difficult to predict\n\nshould business begin to taper off, the effects of the tax reduction upon incentives to work and to invest would be extremely important, as would also the additional purchasing power generated by the increase in exemptions\n\nThere is no justification now for tax reduction,\n\n[s]hould such a recession occur, it would be a temporary slump growing out of transition period difficulties and would call for no revision in our budget policy\n\nthe bill would greatly increase the danger of further inflation, by adding billions of dollars of purchasing power at a time when demand already exceeds supply at many strategic points in the economy\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Deficit-driven",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "The war and its aftermath, as well as the recovery from the depression of the early thirties, have been accompanied by important changes in many of th",
+          "supports": "Deficit-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Deficit-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Tax Equity and Fiscal Responsibility Act of 1982\nYEAR: 1982\n\nPASSAGES FROM ORIGINAL SOURCES:\nNot only must those deficits be reduced, they must show a decline over the next 3 years\n\nThe most essential thing is to send a message to the money market that we, Democrats and Republicans alike, can agree on reducing the deficit and continuing to hold down inflation\n\nFor many months now we’ve been working to get a compromise budget that would further reduce spending and thus reduce the deficits\n\nI support it [TEFRA] because it will, when combined with our cuts in government spending, reduce interest rates and put more Americans back to work again\n\nNow, there won’t be a sudden boom or upsurge. But slowly and surely, we’ll have a sound and lasting recovery based on solid values and increased 18 The 1983 Budget shows liabilities declining further in calendar 1985 and 1986. These declines were due to projected income growth and to further accelerations in the accelerated cost recovery system (ACRS) scheduled for 1985 and 1986. Because the accelerations in ACRS for 1985 and 1986 were repealed by the Tax Equity and Fiscal Responsibility Act of 1982, we do not include the projected tax cuts in 1985 and 1986 in our estimates of the effect of Economic Recovery Tax Act of 1981. 71 productivity and an end to deficit spending\n\nSome regulations have been regulated or interpreted in such a way as to provide tax advantages which were never intended\n\n[p]ossibly … the greatest tax reform in history\n\na matter of simple fairness\n\nSo, more than 80 percent of the tax bill is not new tax at all, but is better collecting and correcting of flaws in the system\n\nvery high interest rates\n\ncosts of servicing what would become a crushing burden of the national debt\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Deficit-driven",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "Not only must those deficits be reduced, they must show a decline over the next 3 years\n\nThe most essential thing is to send a message to the money ma",
+          "supports": "Deficit-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Deficit-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Social Security Amendments of 1983\nYEAR: 1983\n\nPASSAGES FROM ORIGINAL SOURCES:\npropose realistic, long-term reforms to put social security back on a sound financial footing\n\nIt is critically important at this time to make changes in social security programs that will protect their solvency and financial viability for the years to come\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Deficit-driven",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "propose realistic, long-term reforms to put social security back on a sound financial footing\n\nIt is critically important at this time to make changes",
+          "supports": "Deficit-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Deficit-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Omnibus Budget Reconciliation Act of 1993\nYEAR: 1993\n\nPASSAGES FROM ORIGINAL SOURCES:\na deficit reduction program that will increase the savings available for the private sector to invest, will lower interest rates, will decrease the percentage of the Federal budget claimed by interest payments, and decrease the risk of financial market disruptions that could adversely affect our economy\n\nOver the long run, all this will bring us a higher rate of economic growth, improved productivity, more high-quality jobs, and an improved economic competitive position in the world\n\na little more in deficit 23 The report also argued for some of the revenue measures (including the increase in gasoline taxes) on the grounds that some of the additional revenues could be used for valuable spending projects. As described below, however, the overall effect of the bill was to reduce spending. 81 reduction today, so that we can all enjoy better jobs and higher incomes tomorrow\n\nReducing the budget deficit was a necessary part of clearing away the financial underbrush … so that economic growth could be put on a sounder and more sustained footing\n\nThis bill embodies all the basic elements of President Clinton’s program to turn our country away from being an excess-consumption economy and toward investment in the future productivity of our people\n\nthe necessary first step in long-run deficit control\n\n[i]t reduces the huge drain on the nation’s savings pool that the deficit represents\n\nThe tax package restores tax code progressivity lost in recent years\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Deficit-driven",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "a deficit reduction program that will increase the savings available for the private sector to invest, will lower interest rates, will decrease the pe",
+          "supports": "Deficit-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Deficit-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Revenue Act of 1971\nYEAR: 1971\n\nPASSAGES FROM ORIGINAL SOURCES:\nNew Economic Policy\n\nAs the summer of 1971 progressed, these facts became increasingly clear: 1. The economy was rising, and a continued rise could be expected; but the rise was not as fast as was desirable, especially from the standpoint of reducing unemployment\n\nThe Challenge of Peace,\n\nthis broad upturn of the economy which has taken place in the first half of this year\n\nThe decision to embark on the New Economic Policy (NEP) came from an increasing awareness in the Administration that the ambitious goals it had set at the beginning of the year were not being met. … [T]he recovery was also progressing, but not fast enough to cut the rate of unemployment\n\nThe Administration’s goals went beyond this common appraisal of the year 1971. It believed that a more rapid expansion of the economy than was generally forecast was desirable and feasible. The desirable and feasible path was believed to be one that would bring the unemployment rate down to the zone of 4½ percent [from its current rate of about 6 percent] by the middle of 1972\n\nThe fiscal package … was primarily motivated by the desire to stimulate at once a more rapid expansion of the economy\n\na critical part of the program I announced then to create new jobs and build a new prosperity\n\nYour committee believes that this bill is necessary because the performance of the economy in recent months has been unsatisfactory. The growth in our gross national product has been small, unemployment has remained too high\n\n[i]n the first half of 1971 … the 56 economy grew at a real rate of only about 3 percent\n\nput our present lagging economy on the high growth path,\n\nthe unemployment rate has shown no inclination to return to the 4-percent level which represents the rate generally viewed as the full employment rate\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Long-run",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "New Economic Policy\n\nAs the summer of 1971 progressed, these facts became increasingly clear: 1. The economy was rising, and a continued rise could be",
+          "supports": "Long-run"
+        }
+      ],
+      "reasoning": "This act is classified as Long-run based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Economic Recovery Tax Act of 1981\nYEAR: 1981\n\nPASSAGES FROM ORIGINAL SOURCES:\nI have long advocated a 30 percent reduction in income tax rates\n\n[w]e are taxing ourselves into economic exhaustion and stagnation, crushing our ability and incentive to save, invest, and produce. This must stop. We must halt this fiscal self-destruction\n\nfierce inflation for all of us\n\nthe audit presented to me found government policies of the last few decades responsible for our economic troubles\n\nOver the past decades we’ve talked of curtailing government spending so that we can then lower the tax burden. … Well, you know, we can lecture our children about extravagance until we run out of voice and breath. Or we can cure their extravagance by simply reducing their allowance\n\nHigh taxes and excess spending growth created our present economic mess …. The answer to a government that’s too big is to stop feeding its growth\n\nwe have set in place a fundamental reorientation of our tax laws. … [W]e have significantly restructured it to encourage people to work, save, and invest more\n\ndesigned to increase long-term economic growth and to reduce inflation. Uniformly favorable near-term effects were not expected\n\nThis Administration intends to place emphasis on long-run policies. For example, the Economic Recovery Tax Act of 1981 cuts tax rates over a 3-year period, after which the personal income tax structure will be indexed so that inflation will not increase marginal tax rates on real income\" (p. 44). That the tax cuts were phased in over three years does suggest that they were part of a long-term strategy, not an emergency response to current and prospective short-run conditions. Reagan emphasized this point in his Address Before a Joint Session of the Congress Reporting on the State of the Union just shortly after the bill was signed. He stated: “We have an economic program in place, completely different from the artificial quick fixes of the past\n\nIt is time to reawaken this industrial giant, to get government back within its means, and to lighten our punitive tax burden\n\nwill expand our national prosperity, enlarge national incomes, and increase opportunities for all Americans.\n\nThe Federal Government, through tax, spending, regulatory, and monetary polices, has sacrificed long-term growth and price stability for ephemeral short term goals\n\nthe tax system has been a key cause of our stagnation. Restoring the proper incentives will make a major contribution to the long-run vitality of our economy\n\nencourage economic growth through reductions in individual income tax rates, the expensing of depreciable property, incentives for small businesses, and incentives for savings\n\nThe intent of the committee has been to structure tax reductions for stimulating saving, investment, and productivity that are appropriate in the different circumstances under which different businesses operate. Long-term economic growth requires the effort of all persons and all businesses\n\nThe committee believes that the tax burden on individuals has become excessive\n\nFor the third consecutive year, the rate of economic growth is likely to be below its postwar average. The committee believes that a major tax cut is essential to a solid economic recovery\n\nMultiyear cuts give stronger incentives for individuals to make the long-run commitments that sustain economic growth\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Long-run",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "I have long advocated a 30 percent reduction in income tax rates\n\n[w]e are taxing ourselves into economic exhaustion and stagnation, crushing our abil",
+          "supports": "Long-run"
+        }
+      ],
+      "reasoning": "This act is classified as Long-run based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Tax Adjustment Act of 1966\nYEAR: 1966\n\nPASSAGES FROM ORIGINAL SOURCES:\nTax policy, however, must be used flexibly. We must be equally prepared to employ it in restraint of an overly rapid economic expansion as we were to use it as a stimulus to a lagging economy. The current situation calls for a modest measure of fiscal restraint\n\nThe combined effect of budgeted expenditures … and tax laws now in effect would be more stimulative than now seems appropriate for the period ahead\n\nThe aim of fiscal policies in the next 18 months is to preserve the sound expansion enjoyed in 1965—to maintain a strong and healthy prosperity; to promote a cautious movement toward lower unemployment without moving so far or so fast that bottlenecks and inflationary pressures arise\n\nthe tax adjustment bill of 1966, is designed to contribute revenues to aid in financing the increased costs of government associated with operations in Vietnam. It is designed to help finance these costs in a manner which will avoid the creation of serious inflationary pressures\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Long-run",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "Tax policy, however, must be used flexibly. We must be equally prepared to employ it in restraint of an overly rapid economic expansion as we were to ",
+          "supports": "Long-run"
+        }
+      ],
+      "reasoning": "This act is classified as Long-run based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Internal Revenue Code of 1954\nYEAR: 1954\n\nPASSAGES FROM ORIGINAL SOURCES:\nFurthermore, this change provides a more equitable tax system by leveling down those rates which are now excessively high and thus removes discrimination\n\nIt is a law which will help millions of Americans by giving them fairer tax treatment than they now receive.\n\neconomic growth will be fostered by such provisions as more flexible depreciation and better tax treatment of research and development costs, thus encouraging all business—large and small—to modernize and expand\n\nIn general, the purpose of these changes has been to remove inequities, to end harassment of the taxpayer and to reduce tax barriers to future expansion of production and employment\n\nA number of additional tax measures should now be taken in order to strengthen the forces of growth in employment and production. These measures, which involve some immediate sacrifices of revenue, contain the seeds of important future revenue gains to be reaped from the economic growth they will stimulate\n\nto stimulate competitive enterprise, to strengthen the floor of security for the individual, and to curb tendencies toward either depression or inflation,\n\nthe loss of 1.4 billion dollars as a result of enacting structural tax changes\n\nat this time economic conditions do not call for an emergency program that would justify larger Federal deficits and further inflation through large additional tax reductions\n\nThis bill is a long overdue reform measure which is vitally necessary regardless of the momentary economic conditions and should not be confused with other measures which may be, or might become, appropriate in the light of a particular short-run situation\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Long-run",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "Furthermore, this change provides a more equitable tax system by leveling down those rates which are now excessively high and thus removes discriminat",
+          "supports": "Long-run"
+        }
+      ],
+      "reasoning": "This act is classified as Long-run based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Tax Reform Act of 1976\nYEAR: 1976\n\nPASSAGES FROM ORIGINAL SOURCES:\nthe first extensive changes in the tax code since 1969\n\ndesigned to close the loopholes and ensure that each taxpayer bears his or her fair share of the overall tax burden\n\nliberalize the marital deduction for the transfer of property between spouses, and to provide special relief to the owners of family farms and business\n\nProvide substantial relief for modest-sized estates, farms and other closely held businesses\n\n[r]emove tax avoidance devices from the present estate and gift tax system\n\ndesigned to serve four major purposes. First, it is intended to improve the equity of the tax system …. Second, the committee amendment effects important simplifications of the tax system …. Third, the amendment extends for one additional year the fiscal stimulus provided by the Tax Reduction Act of 1975 …. Fourth, the committee amendment improves the administration of the tax laws, making it more efficient and strengthening taxpayers’ rights\n\nextremely serious economic situation\n\nunacceptably high\n\nThe committee does not believe that a permanent extension of the entire $20 billion in tax reductions now in effect is appropriate at this time. There is uncertainty about just how much excess capacity now exists in the economy, how serious will be the inflation problem in the years ahead\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Long-run",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "the first extensive changes in the tax code since 1969\n\ndesigned to close the loopholes and ensure that each taxpayer bears his or her fair share of t",
+          "supports": "Long-run"
+        }
+      ],
+      "reasoning": "This act is classified as Long-run based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Revenue Act of 1951\nYEAR: 1951\n\nPASSAGES FROM ORIGINAL SOURCES:\nThese new taxes are required to finance the defense effort; and to help keep total spending within the capacity of current production, so that inflation does not reduce the purchasing power\n\nIf we do not tax ourselves enough to pay for defense expenditures, the Government will … add to total purchasing power and inflationary pressures\n\nPay as We Go\n\nThe military action in Korea, coupled with the general threat to world peace, has made it necessary to provide extraordinary increases in revenues to meet essential national defense expenditures\n\nThe 12½-percent flat across-the-board increase [in individual income tax rates] was selected as the form of increase, since it is not intended that this increase will be permanent, and therefore, it was desired to provide an increase which would not become an integral part of the rate structure\n\nthe post-Korea tax increases are not allowed to run off as provided by present law\n\nThe Secretary of the Treasury therefore announced in the plainest possible language that the Administration, besides relinquishing the excess-profits tax, would not seek to postpone the reduction of the personal income tax, averaging approximately 10 percent, scheduled for January 1, 1954\n\nBecause of billions of dollars of savings in Government spending made in this Administration’s first year, major tax cuts went into effect on January 1\n\nThese tax reductions are justified only because of the substantial reductions we already have made and are making in governmental expenditures\n\nBy late September [1953] it was clear that the existing danger of inflation had passed, and that the prospective reduction of Federal expenditure would justify some tax reduction,\n\nThis unequivocal promise of tax relief … bolstered confidence at a time when trade and employment were slipping slightly,\n\nwelltimed\n\n[m]ore than 5 billion dollars\n\nOn January 1st this year your taxes were cut by five billion dollars\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Spending-driven",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "These new taxes are required to finance the defense effort; and to help keep total spending within the capacity of current production, so that inflati",
+          "supports": "Spending-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Spending-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Social Security Amendments of 1958\nYEAR: 1958\n\nPASSAGES FROM ORIGINAL SOURCES:\nThe increase in social security 34 contribution rates and the accelerated tax schedule in the bill will further strengthen the financial condition of this system in the years immediately ahead and over the long-term future. It is, of course, essential that the old-age, survivors, and disability insurance program … remain financially sound and self-supporting\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Spending-driven",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "The increase in social security 34 contribution rates and the accelerated tax schedule in the bill will further strengthen the financial condition of ",
+          "supports": "Spending-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Spending-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Social Security Amendments of 1967\nYEAR: 1968\n\nPASSAGES FROM ORIGINAL SOURCES:\nremaining cost of the cash benefit provisions and the cost of the hospital insurance provisions will be financed by: (1) an increase in the contribution and benefit base … and (2) a revised contribution rate schedule for the cash benefits\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Spending-driven",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "remaining cost of the cash benefit provisions and the cost of the hospital insurance provisions will be financed by: (1) an increase in the contributi",
+          "supports": "Spending-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Spending-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Revenue Act of 1950\nYEAR: 1950\n\nPASSAGES FROM ORIGINAL SOURCES:\nAfter the communist aggression in Korea last summer, the Congress recognized the need for greatly increasing the Government’s revenues to meet the grave dangers that confront our country\n\nAn adequate tax program is our strongest weapon in preventing inflation\n\nMilitary action in Korea coupled with substantial increases in defense and related expenditures has made it necessary to convert the excise tax reduction bill passed by the House in June of this year into a bill to raise revenues\n\nthere is general agreement that these rates must be raised in view of the new expenditures required by the crisis in international affairs\n\nThis bill is a first step in the financing of the expanded military program resulting from the war in Korea\n\nIt seems to me that the tax bill … will raise only a small fraction of the revenue which is needed. It will necessitate borrowing, and will therefore create inflation\n\nIt is not anticipated that these [tax] increases will be of sufficient size to offset the new defense and related expenditures. However, this bill accomplishes all that can be done quickly\n\n4.6 billion dollars of additional revenue annually\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Spending-driven",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "After the communist aggression in Korea last summer, the Congress recognized the need for greatly increasing the Government’s revenues to meet the gra",
+          "supports": "Spending-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Spending-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997\nYEAR: 1997\n\nPASSAGES FROM ORIGINAL SOURCES:\nthe President continues to seek cuts in unnecessary and lower-priority spending …, and to eliminate unwarranted tax loopholes and preferences. His $388 billion in total savings would do more than bring the budget into balance by 2002. They also would provide enough savings to finance a modest tax cut\n\nWe must balance the budget to keep interest rates down and investment up and jobs coming in. … This month I submitted my plan to balance the budget by 2002. … It saves $350 billion over the next 5 years, enough not only to balance the budget but also to cut taxes\n\nWe abandoned trickle-down and the big deficits and instead adopted an invest and grow strategy …. The agreement that we signed with the Republican and Democratic leaders of Congress reflects the invest and grow strategy. … It eliminates the deficit, it invests in education, it extends health care for more of our children while securing Medicare for our parents, and it provides for an affordable tax cut for the American people\n\nbalancing the Federal budget is only half the job. Congress and the administration must, at the same time, let Americans keep more of their own money …. That is the principle behind this legislation …. This bill and its twin measure, the Balanced Budget Act of 1997, seek jointly … to balance the Federal budget by 2002 and provide much-needed tax relief for America’s middle-income working families\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Spending-driven",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "the President continues to seek cuts in unnecessary and lower-priority spending …, and to eliminate unwarranted tax loopholes and preferences. His $38",
+          "supports": "Spending-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Spending-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Revenue Act of 1964\nYEAR: 1964\n\nPASSAGES FROM ORIGINAL SOURCES:\nLet me emphasize, however, that I have not been talking about a different kind of tax cut, a quick, temporary tax cut, to prevent a new recession\n\nWe approach the issue of tax revision, not in an atmosphere of haste and panic brought on by recession or depression, but in a period of comparative calm\n\nWhile the basic purpose of my tax program is to meet our longer run economic challenges, we should not forget its role in strengthening our defenses against recession\n\nThis is a record of strong expansion\n\nthis administration intends to cut taxes in order to build the fundamental strength of our economy, to remove a serious barrier to long-term growth\n\nThe tax cut will give a sustained lift, year-in and year-out, to the American economy\n\nAmerica has enjoyed 22 months of uninterrupted economic recovery. But recovery is not enough. If we are to prevail in the long run, we must expand the long-run strength of our economy. We must move along the path to a higher rate of growth and full employment\n\nThe principal purpose of the revenue bill of 1963 is to remove from the private sector of the American economy its present high-tax straitjacket; that is, to lessen restraints which prevent the American free-enterprise system from itself generating necessary growth. A purpose of this bill also is to improve the equity of the tax laws\n\nThe bill will cut back on excessive tax rates which unnecessarily restrain individual and business incentives, it will provide the increased consumer and business purchasing power to assure continued expansion, and it will improve the equity of the tax system\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Long-run",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "We approach the issue of tax revision, not in an atmosphere of haste and panic brought on by recession or depression, but in a period of comparative calm",
+          "supports": "Long-run"
+        },
+        {
+          "passage_excerpt": "this administration intends to cut taxes in order to build the fundamental strength of our economy, to remove a serious barrier to long-term growth",
+          "supports": "Long-run"
+        }
+      ],
+      "reasoning": "This act is clearly Long-run (exogenous) because it was explicitly NOT a response to recession - it was enacted during 'strong expansion' and 'comparative calm'. The stated purpose was to 'build fundamental strength' and enable 'long-run growth', not to provide temporary stimulus. Key differentiator: permanent structural reform during expansion, not temporary fix for recession."
+    }
+  },
+  {
+    "input": "ACT: Excise Tax Reduction Act of 1965\nYEAR: 1965\n\nPASSAGES FROM ORIGINAL SOURCES:\nThis reduction will spur the continued growth of our economy. It will lower prices. It will raise business profits. It will create new jobs. It will end an unfair burden on many businesses and many workers. It will cut the Government's costs of tax collection and enforcements. It will reduce the burden of regressive taxation on low and moderate income families\n\nWe must continually adjust our tax system to assure that it makes a maximum contribution to our economic growth\n\ncreditable record of achievement\n\nBut as we look ahead to 1966, we must be alert to the possibility that our taxes will take too much buying power out of the private economy\n\nThe elimination of all other excise taxes will improve the fairness of the tax system and substantially simplify the administration of the tax law, as well as contribute to the economic well-being of the Nation\n\nthese excises also now are objectionable in that they are generally regressive in their impact\n\nThe $1.75 billion tax reduction provided by this bill effective this July 1 will help to insure that the growth in the rate of economic activity does not fall short of growth in the size of the productive capacity of the Nation, and in the size of the labor force\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Long-run",
+      "exogenous": true,
+      "confidence": 0.90,
+      "evidence": [
+        {
+          "passage_excerpt": "The elimination of all other excise taxes will improve the fairness of the tax system and substantially simplify the administration of the tax law",
+          "supports": "Long-run"
+        },
+        {
+          "passage_excerpt": "these excises also now are objectionable in that they are generally regressive in their impact",
+          "supports": "Long-run"
+        }
+      ],
+      "reasoning": "This act is Long-run (exogenous) because the primary motivation was improving tax system 'fairness', 'simplification', and removing 'regressive' taxes - structural improvements to the tax code. It was enacted during a 'creditable record of achievement', not during recession. While economic growth is mentioned, the emphasis on permanent structural reform (fairness, simplification) marks this as Long-run rather than Countercyclical."
+    }
+  },
+  {
+    "input": "ACT: Tax Reform Act of 1969\nYEAR: 1969\n\nPASSAGES FROM ORIGINAL SOURCES:\nThe overall program will be equitable and essentially neutral in its revenue impact\n\nTax reform is necessary to be sure that those with substantially the same incomes are paying substantially the same tax\n\nin order to make general tax reductions possible\n\nI think our problem concerns the situation that will develop as a result of the long-range impact of some of the provisions of this legislation that will take effect in 1972, in 1973, and 1974. In the long run there is the potential of inflationary problems\n\nthe Senate has turned what was supposed to be a tax reform bill into a political Christmas package which promises everything to everybody\n\nWe have responded—responsibly or not—to what we have read as our constituents' political demands for Federal tax relief\n\nThis bill itself is not inflationary. It is the combination of all things that one has to consider. The expenditure side must be added to it. I think the Congress is just as much in the right to establish as a No. 1 priority the return of some of the increment in taxes to the taxpayers\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Long-run",
+      "exogenous": true,
+      "confidence": 0.85,
+      "evidence": [
+        {
+          "passage_excerpt": "Tax reform is necessary to be sure that those with substantially the same incomes are paying substantially the same tax",
+          "supports": "Long-run"
+        },
+        {
+          "passage_excerpt": "the long-range impact of some of the provisions of this legislation that will take effect in 1972, in 1973, and 1974",
+          "supports": "Long-run"
+        }
+      ],
+      "reasoning": "This act is Long-run (exogenous) because its stated purpose was 'tax reform' for 'equity' - ensuring equal treatment of equal incomes. The focus on long-range impacts (1972-1974) and structural reform distinguishes this from Countercyclical. Despite political pressures, the reform motivation ('equitable', 'fair share') indicates permanent structural improvement rather than temporary stabilization."
+    }
+  },
+  {
+    "input": "ACT: Public Law 90-26 (Restoration of the Investment Tax Credit)\nYEAR: 1967\n\nPASSAGES FROM ORIGINAL SOURCES:\nA shift toward restraint in fiscal policy is appropriate to assure that demand does not outrun capacity\n\nrestraint is essential to our economic health\n\nIt was an economic measure, with a limited, well defined purpose: namely, to relieve the excessive pressures that were clearly observable in the capital goods market\n\npromote a more sustainable rate of balanced economic growth\n\nOn the basis of this evidence, it is clear that the investment credit and accelerated depreciation should now be safely restored. Although the demand for capital goods continues to be strong and remains at record levels, it no longer threatens to strain our growing ability to produce\n\nthe suspension of the investment credit had done its job\n\nThe termination of the suspension of the investment credit, of course, restores some incentive to investment that was inoperative during the suspension period. I do not, however, consider that such action is being taken for the purpose of stimulating the economy. Rather, I view it as simply restoring to its normal, functioning role what is essentially an integral part of the permanent tax structure\n\nThe suspensions have played an important part in reducing the volume of new orders of capital goods to levels that can be sustained without inflationary strain on available capacity. Restoration of these provisions now is appropriate to encourage a resumption of balanced, economic growth\n\nthe investment tax credit is an essential, and should be an enduring part of our tax system\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Long-run",
+      "exogenous": true,
+      "confidence": 0.90,
+      "evidence": [
+        {
+          "passage_excerpt": "I view it as simply restoring to its normal, functioning role what is essentially an integral part of the permanent tax structure",
+          "supports": "Long-run"
+        },
+        {
+          "passage_excerpt": "the investment tax credit is an essential, and should be an enduring part of our tax system",
+          "supports": "Long-run"
+        }
+      ],
+      "reasoning": "This act is Long-run (exogenous) because it explicitly restored a 'permanent tax structure' element, not as economic stimulus but as part of normal policy. The key quote distinguishes this from Countercyclical: 'I do not consider that such action is being taken for the purpose of stimulating the economy. Rather, I view it as simply restoring to its normal, functioning role what is essentially an integral part of the permanent tax structure.' This emphasis on permanent structure over temporary stimulus is definitive."
+    }
+  }
+]

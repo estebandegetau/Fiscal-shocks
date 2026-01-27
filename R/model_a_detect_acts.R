@@ -7,13 +7,20 @@
 #' @param model Character string for Claude model ID
 #' @param examples List of few-shot examples (optional, loaded from JSON if NULL)
 #' @param system_prompt Character string for system prompt (optional, loaded from file if NULL)
+#' @param use_self_consistency Logical, use self-consistency sampling (default TRUE)
+#' @param n_samples Integer number of samples for self-consistency (default 5)
+#' @param temperature Numeric sampling temperature (default 0.7 for self-consistency)
 #'
 #' @return List with classification results (contains_act, act_name, confidence, reasoning)
+#'   When using self-consistency, also includes agreement_rate and all_predictions
 #' @export
 model_a_detect_acts <- function(text,
                                 model = "claude-sonnet-4-20250514",
                                 examples = NULL,
-                                system_prompt = NULL) {
+                                system_prompt = NULL,
+                                use_self_consistency = TRUE,
+                                n_samples = 5,
+                                temperature = 0.7) {
 
   # Load system prompt if not provided
   if (is.null(system_prompt)) {
@@ -35,6 +42,20 @@ model_a_detect_acts <- function(text,
     }
   }
 
+  # Use self-consistency if enabled
+  if (use_self_consistency) {
+    # Use self-consistency wrapper
+    return(model_a_with_self_consistency(
+      text = text,
+      model = model,
+      n_samples = n_samples,
+      temperature = temperature,
+      examples = examples,
+      system_prompt = system_prompt
+    ))
+  }
+
+  # Standard single-shot classification (temperature = 0)
   # Format prompt with few-shot examples
   full_prompt <- format_few_shot_prompt(
     system = system_prompt,
@@ -65,12 +86,18 @@ model_a_detect_acts <- function(text,
 #' @param texts Character vector of passages to classify
 #' @param model Character string for Claude model ID
 #' @param show_progress Logical, show progress bar (default TRUE)
+#' @param use_self_consistency Logical, use self-consistency sampling (default TRUE)
+#' @param n_samples Integer number of samples for self-consistency (default 5)
+#' @param temperature Numeric sampling temperature (default 0.7 for self-consistency)
 #'
 #' @return Tibble with results for each text
 #' @export
 model_a_detect_acts_batch <- function(texts,
                                       model = "claude-sonnet-4-20250514",
-                                      show_progress = TRUE) {
+                                      show_progress = TRUE,
+                                      use_self_consistency = TRUE,
+                                      n_samples = 5,
+                                      temperature = 0.7) {
 
   # Load examples and system prompt once
   system_prompt_file <- here::here("prompts", "model_a_system.txt")
@@ -98,7 +125,10 @@ model_a_detect_acts_batch <- function(texts,
       text = text,
       model = model,
       examples = examples,
-      system_prompt = system_prompt
+      system_prompt = system_prompt,
+      use_self_consistency = use_self_consistency,
+      n_samples = n_samples,
+      temperature = temperature
     )
 
     # Return as tibble row
@@ -124,6 +154,7 @@ model_a_detect_acts_batch <- function(texts,
       contains_act = if (!is.null(result$contains_act)) result$contains_act else NA,
       act_name = act_name_value,
       confidence = if (!is.null(result$confidence)) result$confidence else NA_real_,
+      agreement_rate = if (!is.null(result$agreement_rate)) result$agreement_rate else NA_real_,
       reasoning = if (!is.null(result$reasoning)) result$reasoning else NA_character_
     )
   })

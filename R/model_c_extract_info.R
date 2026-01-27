@@ -10,6 +10,9 @@
 #' @param model Character string for Claude model ID
 #' @param examples List of few-shot examples (optional, loaded from JSON if NULL)
 #' @param system_prompt Character string for system prompt (optional, loaded from file if NULL)
+#' @param use_self_consistency Logical, use self-consistency sampling (default TRUE)
+#' @param n_samples Integer number of samples for self-consistency (default 5)
+#' @param temperature Numeric sampling temperature (default 0.7 for self-consistency)
 #'
 #' @return Tibble with nested predictions (one row with predicted_quarters list-column)
 #' @export
@@ -19,7 +22,10 @@ model_c_extract_info <- function(act_name,
                                  tables = NULL,
                                  model = "claude-sonnet-4-20250514",
                                  examples = NULL,
-                                 system_prompt = NULL) {
+                                 system_prompt = NULL,
+                                 use_self_consistency = TRUE,
+                                 n_samples = 5,
+                                 temperature = 0.7) {
 
   # Load system prompt if not provided
   if (is.null(system_prompt)) {
@@ -73,6 +79,31 @@ PASSAGES FROM ORIGINAL SOURCES:
 Extract ALL implementation phases with timing, magnitude, and present value.
   ")
 
+  # Use self-consistency if enabled
+  if (use_self_consistency) {
+    # Use self-consistency wrapper (with median aggregation for numeric values)
+    sc_result <- model_c_with_self_consistency(
+      act_name = act_name,
+      passages_text = passages_text,
+      date_signed = date_signed,
+      tables = tables,
+      model = model,
+      n_samples = n_samples,
+      temperature = temperature,
+      examples = examples,
+      system_prompt = system_prompt
+    )
+
+    # Return as single-row tibble with self-consistency results
+    return(tibble::tibble(
+      act_name = act_name,
+      prediction_json = jsonlite::toJSON(sc_result$all_results, auto_unbox = TRUE),
+      predicted_quarters = list(sc_result$predicted_quarters),
+      reasoning = sc_result$reasoning %||% NA_character_
+    ))
+  }
+
+  # Standard single-shot extraction (temperature = 0)
   # Format prompt with few-shot examples
   full_prompt <- format_few_shot_prompt(
     system = system_prompt,
@@ -148,12 +179,18 @@ parse_model_c_output <- function(result) {
 #' @param training_data Tibble with act_name, passages_text, date_signed, ground_truth_quarters, split
 #' @param model Character string for Claude model ID
 #' @param show_progress Logical, show progress bar (default TRUE)
+#' @param use_self_consistency Logical, use self-consistency sampling (default TRUE)
+#' @param n_samples Integer number of samples for self-consistency (default 5)
+#' @param temperature Numeric sampling temperature (default 0.7 for self-consistency)
 #'
 #' @return Tibble with predictions joined to ground truth
 #' @export
 model_c_extract_batch <- function(training_data,
                                    model = "claude-sonnet-4-20250514",
-                                   show_progress = TRUE) {
+                                   show_progress = TRUE,
+                                   use_self_consistency = TRUE,
+                                   n_samples = 5,
+                                   temperature = 0.7) {
 
   # Set up progress bar if requested
   if (show_progress) {
@@ -178,7 +215,10 @@ model_c_extract_batch <- function(training_data,
           act_name = act_name,
           passages_text = passages_text,
           date_signed = date_signed,
-          model = model
+          model = model,
+          use_self_consistency = use_self_consistency,
+          n_samples = n_samples,
+          temperature = temperature
         )
       }, error = function(e) {
         warning("Failed to extract for ", act_name, ": ", e$message)

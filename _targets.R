@@ -407,7 +407,10 @@ list(
       predictions <- model_a_detect_acts_batch(
         texts = val_data$text,
         model = "claude-sonnet-4-20250514",
-        show_progress = TRUE
+        show_progress = TRUE,
+        use_self_consistency = TRUE,
+        n_samples = 5,
+        temperature = 0.7
       )
       val_data |> bind_cols(predictions)
     },
@@ -433,7 +436,10 @@ list(
       predictions <- model_a_detect_acts_batch(
         texts = test_data$text,
         model = "claude-sonnet-4-20250514",
-        show_progress = TRUE
+        show_progress = TRUE,
+        use_self_consistency = TRUE,
+        n_samples = 5,
+        temperature = 0.7
       )
       test_data |> bind_cols(predictions)
     },
@@ -483,12 +489,16 @@ list(
         passages_texts = val_data$passages_text,
         years = val_data$year,
         model = "claude-sonnet-4-20250514",
-        show_progress = TRUE
+        show_progress = TRUE,
+        use_self_consistency = TRUE,
+        n_samples = 5,
+        temperature = 0.7
       ) |>
         rename(
           pred_motivation = motivation,
           pred_exogenous = exogenous,
           pred_confidence = confidence,
+          pred_agreement_rate = agreement_rate,
           pred_reasoning = reasoning,
           pred_evidence = evidence
         )
@@ -518,12 +528,16 @@ list(
         passages_texts = test_data$passages_text,
         years = test_data$year,
         model = "claude-sonnet-4-20250514",
-        show_progress = TRUE
+        show_progress = TRUE,
+        use_self_consistency = TRUE,
+        n_samples = 5,
+        temperature = 0.7
       ) |>
         rename(
           pred_motivation = motivation,
           pred_exogenous = exogenous,
           pred_confidence = confidence,
+          pred_agreement_rate = agreement_rate,
           pred_reasoning = reasoning,
           pred_evidence = evidence
         )
@@ -548,7 +562,10 @@ list(
     model_c_extract_batch(
       training_data_c |> filter(split == "val"),
       model = "claude-sonnet-4-20250514",
-      show_progress = TRUE
+      show_progress = TRUE,
+      use_self_consistency = TRUE,
+      n_samples = 5,
+      temperature = 0.7
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "here", "glue", "lubridate", "progress"),
     deployment = "main"  # Run sequentially to avoid parallel API rate limits
@@ -563,7 +580,10 @@ list(
     model_c_extract_batch(
       training_data_c |> filter(split == "test"),
       model = "claude-sonnet-4-20250514",
-      show_progress = TRUE
+      show_progress = TRUE,
+      use_self_consistency = TRUE,
+      n_samples = 5,
+      temperature = 0.7
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "here", "glue", "lubridate", "progress"),
     deployment = "main"  # Run sequentially to avoid parallel API rate limits
