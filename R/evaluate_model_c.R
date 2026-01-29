@@ -109,6 +109,67 @@ evaluate_model_c <- function(predictions) {
 }
 
 
+#' Parse quarter date strings in various formats
+#'
+#' Handles multiple date formats:
+#' - "YYYY-MM-DD" (full date like "1972-01-01")
+#' - "YYYY-MM" (year-month like "1971-04")
+#' - "YYYYQN" or "YYYY QN" (quarter format like "1971Q2")
+#'
+#' @param x Character vector of date strings
+#'
+#' @return Date vector
+#' @keywords internal
+parse_quarter_date <- function(x) {
+  # Handle NA values
+  if (all(is.na(x))) return(as.Date(rep(NA, length(x))))
+
+  # Try different formats
+  result <- rep(as.Date(NA), length(x))
+
+  for (i in seq_along(x)) {
+    if (is.na(x[i])) next
+
+    # Already a Date
+    if (inherits(x[i], "Date")) {
+      result[i] <- x[i]
+      next
+    }
+
+    val <- as.character(x[i])
+
+    # Try YYYY-MM-DD format first (full date)
+    if (grepl("^\\d{4}-\\d{2}-\\d{2}$", val)) {
+      result[i] <- as.Date(val)
+      next
+    }
+
+    # Try YYYY-MM format (year-month)
+    if (grepl("^\\d{4}-\\d{2}$", val)) {
+      result[i] <- as.Date(paste0(val, "-01"))
+      next
+    }
+
+    # Try quarter format YYYYQN or YYYY QN
+    if (grepl("^\\d{4}\\s*Q\\d$", val, ignore.case = TRUE)) {
+      result[i] <- lubridate::yq(val)
+      next
+    }
+
+    # Fallback: try lubridate's flexible parser
+    parsed <- tryCatch(
+      lubridate::parse_date_time(val, orders = c("Ymd", "Ym", "yq")),
+      error = function(e) NA
+    )
+    if (!is.na(parsed)) {
+      result[i] <- as.Date(parsed)
+    }
+  }
+
+  result
+}
+
+
 #' Match predicted quarters to ground truth quarters with fuzzy tolerance
 #'
 #' @param ground_truth Tibble with true quarters (quarter, magnitude, pv_quarter, pv_magnitude)
@@ -139,7 +200,7 @@ match_quarters <- function(ground_truth, predictions, tolerance_quarters = 1) {
     # Only predictions (false positives)
     return(tibble::tibble(
       true_quarter = NA_character_,
-      pred_quarter = predictions$quarter,
+      pred_quarter = as.character(predictions$quarter),
       true_magnitude = NA_real_,
       pred_magnitude = predictions$magnitude,
       quarter_exact_match = FALSE,
@@ -154,7 +215,7 @@ match_quarters <- function(ground_truth, predictions, tolerance_quarters = 1) {
   if (nrow(predictions) == 0) {
     # Only ground truth (false negatives / misses)
     return(tibble::tibble(
-      true_quarter = ground_truth$quarter,
+      true_quarter = as.character(ground_truth$quarter),
       pred_quarter = NA_character_,
       true_magnitude = ground_truth$magnitude,
       pred_magnitude = NA_real_,
@@ -168,26 +229,64 @@ match_quarters <- function(ground_truth, predictions, tolerance_quarters = 1) {
   }
 
   # Convert quarters to dates for distance calculation
-  true_dates <- lubridate::yq(ground_truth$quarter)
-  pred_dates <- lubridate::yq(predictions$quarter)
+  # Handle different date formats:
+  # - Ground truth: "YYYY-MM-DD" (full date)
+  # - Predictions: "YYYY-MM" (year-month)
+  true_dates <- parse_quarter_date(ground_truth$quarter)
+  pred_dates <- parse_quarter_date(predictions$quarter)
 
   # For each predicted quarter, find closest true quarter
   matched_rows <- purrr::map_dfr(seq_len(nrow(predictions)), function(i) {
     pred_date <- pred_dates[i]
-    pred_quarter <- predictions$quarter[i]
+    pred_quarter <- as.character(predictions$quarter[i])
     pred_magnitude <- predictions$magnitude[i]
 
+    # Handle NA prediction date (unparseable)
+    if (is.na(pred_date)) {
+      return(tibble::tibble(
+        true_quarter = NA_character_,
+        pred_quarter = pred_quarter,
+        true_magnitude = NA_real_,
+        pred_magnitude = pred_magnitude,
+        quarter_exact_match = FALSE,
+        quarter_within_1q = FALSE,
+        quarter_error_q = NA_real_,
+        magnitude_pct_error = NA_real_,
+        sign_correct = NA,
+        is_matched = FALSE
+      ))
+    }
+
     # Calculate quarter distance to all true quarters
-    quarter_diffs <- as.numeric(difftime(pred_date, true_dates, units = "weeks")) / 13
+    quarter_diffs <- as.numeric(
+      difftime(pred_date, true_dates, units = "weeks")
+    ) / 13
     abs_quarter_diffs <- abs(quarter_diffs)
     closest_idx <- which.min(abs_quarter_diffs)
+
+    # Handle case where no valid true dates exist
+    if (length(closest_idx) == 0) {
+      return(tibble::tibble(
+        true_quarter = NA_character_,
+        pred_quarter = pred_quarter,
+        true_magnitude = NA_real_,
+        pred_magnitude = pred_magnitude,
+        quarter_exact_match = FALSE,
+        quarter_within_1q = FALSE,
+        quarter_error_q = NA_real_,
+        magnitude_pct_error = NA_real_,
+        sign_correct = NA,
+        is_matched = FALSE
+      ))
+    }
+
     min_distance <- abs_quarter_diffs[closest_idx]
 
     # Match if within tolerance
     is_match <- min_distance <= tolerance_quarters
 
     if (is_match) {
-      true_quarter <- ground_truth$quarter[closest_idx]
+      true_quarter <- as.character(ground_truth$quarter[closest_idx])
       true_magnitude <- ground_truth$magnitude[closest_idx]
       quarter_error <- quarter_diffs[closest_idx]
 
@@ -239,9 +338,9 @@ match_quarters <- function(ground_truth, predictions, tolerance_quarters = 1) {
     dplyr::pull(true_quarter)
 
   unmatched_true <- ground_truth %>%
-    dplyr::filter(!quarter %in% matched_true_quarters) %>%
+    dplyr::filter(!as.character(quarter) %in% matched_true_quarters) %>%
     dplyr::mutate(
-      true_quarter = quarter,
+      true_quarter = as.character(quarter),
       pred_quarter = NA_character_,
       true_magnitude = magnitude,
       pred_magnitude = NA_real_,

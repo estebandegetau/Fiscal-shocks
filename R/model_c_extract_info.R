@@ -97,7 +97,7 @@ Extract ALL implementation phases with timing, magnitude, and present value.
     # Return as single-row tibble with self-consistency results
     return(tibble::tibble(
       act_name = act_name,
-      prediction_json = jsonlite::toJSON(sc_result$all_results, auto_unbox = TRUE),
+      prediction_json = as.character(jsonlite::toJSON(sc_result$all_results, auto_unbox = TRUE)),
       predicted_quarters = list(sc_result$predicted_quarters),
       reasoning = sc_result$reasoning %||% NA_character_
     ))
@@ -131,7 +131,7 @@ Extract ALL implementation phases with timing, magnitude, and present value.
   # Return as single-row tibble
   tibble::tibble(
     act_name = act_name,
-    prediction_json = jsonlite::toJSON(result, auto_unbox = TRUE),
+    prediction_json = as.character(jsonlite::toJSON(result, auto_unbox = TRUE)),
     predicted_quarters = list(predicted_quarters),
     reasoning = result$reasoning %||% NA_character_
   )
