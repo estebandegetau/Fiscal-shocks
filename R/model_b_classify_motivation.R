@@ -12,9 +12,15 @@
 #' @param use_self_consistency Logical, use self-consistency sampling (default TRUE)
 #' @param n_samples Integer number of samples for self-consistency (default 5)
 #' @param temperature Numeric sampling temperature (default 0.7 for self-consistency)
+#' @param economic_context Character string with economic context for the year (optional).
+#'   E.g., "Recession year - GDP contracted 2.5%" or "Expansion - GDP growth 4.2%".
+#'   When provided, the model will use this to apply additional scrutiny to exogenous
+#'   classifications during recession/crisis years and flag for expert review.
 #'
 #' @return List with classification results (motivation, exogenous, confidence, evidence, reasoning)
-#'   When using self-consistency, also includes agreement_rate and all_predictions
+#'   When using self-consistency, also includes agreement_rate and all_predictions.
+#'   Also includes needs_expert_review (boolean) and review_reason (character or NULL)
+#'   when exogenous classification occurs during recession/crisis year.
 #' @export
 model_b_classify_motivation <- function(act_name,
                                         passages_text,
@@ -24,7 +30,8 @@ model_b_classify_motivation <- function(act_name,
                                         system_prompt = NULL,
                                         use_self_consistency = TRUE,
                                         n_samples = 5,
-                                        temperature = 0.7) {
+                                        temperature = 0.7,
+                                        economic_context = NULL) {
 
   # Load system prompt if not provided
   if (is.null(system_prompt)) {
@@ -47,10 +54,17 @@ model_b_classify_motivation <- function(act_name,
   }
 
   # Format input with act context
+  # Include economic context if provided (for Phase 1 deployment)
+  economic_context_section <- if (!is.null(economic_context) && nchar(economic_context) > 0) {
+    glue::glue("\nECONOMIC CONTEXT: {economic_context}\n")
+  } else {
+    ""
+  }
+
   user_input <- glue::glue("
 ACT: {act_name}
 YEAR: {year}
-
+{economic_context_section}
 PASSAGES FROM ORIGINAL SOURCES:
 {passages_text}
 
@@ -69,7 +83,8 @@ Classify this act's PRIMARY motivation.
       n_samples = n_samples,
       temperature = temperature,
       examples = examples,
-      system_prompt = system_prompt
+      system_prompt = system_prompt,
+      economic_context = economic_context
     ))
   }
 
@@ -109,8 +124,11 @@ Classify this act's PRIMARY motivation.
 #' @param use_self_consistency Logical, use self-consistency sampling (default TRUE)
 #' @param n_samples Integer number of samples for self-consistency (default 5)
 #' @param temperature Numeric sampling temperature (default 0.7 for self-consistency)
+#' @param economic_contexts Character vector of economic context strings (optional).
+#'   Should be same length as act_names. Use NULL for acts without context.
+#'   E.g., c("Recession year", NA, "Expansion - GDP 4.2%").
 #'
-#' @return Tibble with results for each act
+#' @return Tibble with results for each act, including needs_expert_review flag
 #' @export
 model_b_classify_motivation_batch <- function(act_names,
                                               passages_texts,
@@ -119,11 +137,20 @@ model_b_classify_motivation_batch <- function(act_names,
                                               show_progress = TRUE,
                                               use_self_consistency = TRUE,
                                               n_samples = 5,
-                                              temperature = 0.7) {
+                                              temperature = 0.7,
+                                              economic_contexts = NULL) {
 
   # Validate inputs
-  if (length(act_names) != length(passages_texts) || length(act_names) != length(years)) {
+  n_acts <- length(act_names)
+  if (length(passages_texts) != n_acts || length(years) != n_acts) {
     stop("act_names, passages_texts, and years must have the same length")
+  }
+
+  # Handle economic_contexts - default to NULL for each act if not provided
+  if (is.null(economic_contexts)) {
+    economic_contexts <- rep(list(NULL), n_acts)
+  } else if (length(economic_contexts) != n_acts) {
+    stop("economic_contexts must have same length as act_names")
   }
 
   # Load examples and system prompt once
@@ -141,13 +168,13 @@ model_b_classify_motivation_batch <- function(act_names,
   if (show_progress) {
     pb <- progress::progress_bar$new(
       format = "  Processing [:bar] :percent eta: :eta",
-      total = length(act_names)
+      total = n_acts
     )
   }
 
   results <- purrr::pmap(
-    list(act_names, passages_texts, years),
-    function(act_name, passages_text, year) {
+    list(act_names, passages_texts, years, economic_contexts),
+    function(act_name, passages_text, year, economic_context) {
       if (show_progress) pb$tick()
 
       result <- model_b_classify_motivation(
@@ -159,23 +186,30 @@ model_b_classify_motivation_batch <- function(act_names,
         system_prompt = system_prompt,
         use_self_consistency = use_self_consistency,
         n_samples = n_samples,
-        temperature = temperature
+        temperature = temperature,
+        economic_context = economic_context
       )
 
-      # Return as tibble row
-      # Include agreement_rate if using self-consistency
+      # Return as tibble row with expert review fields
       tibble::tibble(
-        motivation = if (!is.null(result$motivation)) result$motivation else NA_character_,
-        exogenous = if (!is.null(result$exogenous)) result$exogenous else NA,
-        confidence = if (!is.null(result$confidence)) result$confidence else NA_real_,
-        agreement_rate = if (!is.null(result$agreement_rate)) result$agreement_rate else NA_real_,
-        reasoning = if (!is.null(result$reasoning)) result$reasoning else NA_character_,
-        evidence = if (!is.null(result$evidence)) list(result$evidence) else list(NULL)
+        motivation = result$motivation %||% NA_character_,
+        exogenous = result$exogenous %||% NA,
+        confidence = result$confidence %||% NA_real_,
+        agreement_rate = result$agreement_rate %||% NA_real_,
+        needs_expert_review = result$needs_expert_review %||% FALSE,
+        review_reason = result$review_reason %||% NA_character_,
+        reasoning = result$reasoning %||% NA_character_,
+        evidence = list(result$evidence %||% NULL)
       )
     }
   )
 
   dplyr::bind_rows(results)
+}
+
+# Null coalescing operator (if not already defined in this file)
+if (!exists("%||%", mode = "function", envir = environment())) {
+  `%||%` <- function(x, y) if (is.null(x)) y else x
 }
 
 

@@ -193,8 +193,13 @@ model_a_with_self_consistency <- function(text,
 #' @param temperature Numeric sampling temperature (default 0.7)
 #' @param examples List of few-shot examples
 #' @param system_prompt Character string for system prompt
+#' @param economic_context Character string with economic context for the year
+#'   (optional). E.g., "Recession year - GDP contracted 2.5%". When provided,
+#'   the model will flag exogenous classifications during recession/crisis years
+#'   for expert review.
 #'
-#' @return List with prediction, agreement_rate, and detailed results
+#' @return List with prediction, agreement_rate, and detailed results.
+#'   Includes needs_expert_review and review_reason fields.
 #' @export
 model_b_with_self_consistency <- function(act_name,
                                           passages_text,
@@ -203,7 +208,8 @@ model_b_with_self_consistency <- function(act_name,
                                           n_samples = 5,
                                           temperature = 0.7,
                                           examples = NULL,
-                                          system_prompt = NULL) {
+                                          system_prompt = NULL,
+                                          economic_context = NULL) {
 
   # Load system prompt if not provided
   if (is.null(system_prompt)) {
@@ -224,11 +230,18 @@ model_b_with_self_consistency <- function(act_name,
     }
   }
 
-  # Format input
+  # Format input with optional economic context
+  economic_context_section <- if (!is.null(economic_context) &&
+                                   nchar(economic_context) > 0) {
+    glue::glue("\nECONOMIC CONTEXT: {economic_context}\n")
+  } else {
+    ""
+  }
+
   user_input <- glue::glue("
 ACT: {act_name}
 YEAR: {year}
-
+{economic_context_section}
 PASSAGES FROM ORIGINAL SOURCES:
 {passages_text}
 
@@ -276,12 +289,18 @@ Classify this act's PRIMARY motivation.
     NA
   }
 
+  # Aggregate expert review flags from all samples
+  needs_expert_review <- aggregate_expert_review(result$all_results)
+  review_reason <- aggregate_review_reason(result$all_results)
+
   # Format for Model B output
   list(
     motivation = result$prediction,
     exogenous = exogenous,
     confidence = result$confidence,
     agreement_rate = result$agreement_rate,
+    needs_expert_review = needs_expert_review,
+    review_reason = review_reason,
     evidence = aggregate_evidence(result$all_results),
     reasoning = aggregate_reasoning(result$all_results),
     n_samples = n_samples,
@@ -444,6 +463,32 @@ aggregate_evidence <- function(results) {
     }
   }
   list()
+}
+
+
+#' Aggregate expert review flag from multiple samples (Model B)
+#' @param results List of parsed results
+#' @return TRUE if any sample flagged for expert review
+aggregate_expert_review <- function(results) {
+  for (r in results) {
+    if (!is.null(r$needs_expert_review) && isTRUE(r$needs_expert_review)) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+
+
+#' Aggregate review reason from multiple samples (Model B)
+#' @param results List of parsed results
+#' @return First non-null review reason, or NULL if none
+aggregate_review_reason <- function(results) {
+  for (r in results) {
+    if (!is.null(r$review_reason) && nchar(r$review_reason) > 0) {
+      return(r$review_reason)
+    }
+  }
+  NULL
 }
 
 

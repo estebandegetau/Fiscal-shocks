@@ -48,6 +48,33 @@ COUNTERCYCLICAL (Endogenous): Temporary response to recession/overheating
 
 KEY DIFFERENTIATOR: Is the motivation PERMANENT structural improvement (Long-run) or TEMPORARY stabilization (Countercyclical)?
 
+**CRITICAL WARNING - RECESSION-ERA ACTS WITH EFFICIENCY LANGUAGE:**
+
+Acts enacted during recessions that mention efficiency, simplification, or long-run growth are HIGH-RISK for misclassification. Apply this test:
+
+1. **Ask: Was this act enacted BECAUSE OF current economic conditions?**
+   - If YES → Countercyclical (even if it mentions efficiency goals)
+   - If NO (would have been enacted regardless) → Long-run
+
+2. **Warning Signs of Misclassification:**
+   - Act passed during recession or crisis year
+   - Language emphasizes both "stimulus" AND "efficiency/reform"
+   - Policy combines immediate relief with structural changes
+   - Congressional debate mentions current economic distress as motivation
+
+3. **EGTRRA 2001 Example (Countercyclical, NOT Long-run):**
+   - Enacted during 2001 recession
+   - Contained significant long-run tax restructuring elements
+   - BUT primary motivation was recession stimulus ("get money into the economy quickly")
+   - Presence of efficiency language does NOT override countercyclical intent
+   - Correct classification: Countercyclical (exogenous=false)
+
+4. **Contrast with Tax Reform Act of 1986 (Long-run):**
+   - Enacted during economic expansion (not crisis)
+   - No urgency related to current economic conditions
+   - Explicitly designed for efficiency regardless of cycle position
+   - Correct classification: Long-run (exogenous=true)
+
 EXOGENOUS vs ENDOGENOUS:
 
 - **Exogenous**: NOT responding to current business cycle (categories 3, 4)
@@ -61,6 +88,23 @@ EXOGENOUS vs ENDOGENOUS:
   - NOT appropriate for causal multiplier estimation
 
 - **Exception**: Delayed tax changes (>4 quarters after announcement) may be exogenous even if initially spending-driven
+
+ECONOMIC CONTEXT (if provided):
+
+When economic context is provided (e.g., "RECESSION YEAR" or GDP growth data), use it as follows:
+
+1. **Recession/Crisis years increase scrutiny for exogenous classifications:**
+   - If classifying as Long-run or Deficit-driven during a recession → extra evidence required
+   - Ask: "Would this act have been enacted in the same form during normal growth?"
+
+2. **Expansion years provide supporting evidence for Long-run:**
+   - Acts enacted during expansions with efficiency language → more likely truly Long-run
+   - No urgency from current conditions suggests genuine structural motivation
+
+3. **Examples of economic context interpretation:**
+   - "1998: Asian Financial Crisis, GDP contracted 7.4%" → High scrutiny for exogenous
+   - "2005: Economy expanding, GDP growth 5.0%" → Supports Long-run classification
+   - "2001: Recession began March 2001" → EGTRRA should be Countercyclical despite efficiency language
 
 CLASSIFICATION RULES:
 
@@ -82,11 +126,18 @@ CLASSIFICATION RULES:
    - Mid-1980s reforms → likely "Long-run" (efficiency/fairness)
    - 1990s deficit reduction → likely "Deficit-driven" (fiscal balance)
 
+5. **Flag for expert review** when:
+   - Classifying as exogenous (Long-run or Deficit-driven) AND
+   - Act was enacted during recession/crisis year (if economic context provided)
+   - Set needs_expert_review: true in these cases
+
 OUTPUT FORMAT (JSON):
 {
   "motivation": "Long-run" | "Spending-driven" | "Countercyclical" | "Deficit-driven",
   "exogenous": true | false,
   "confidence": 0.0-1.0,
+  "needs_expert_review": true | false,
+  "review_reason": "string or null",
   "evidence": [
     {"passage_excerpt": "direct quote from text", "supports": "motivation category"}
   ],
@@ -97,5 +148,7 @@ REQUIRED FIELDS:
 - motivation: One of the four categories exactly as written above
 - exogenous: Boolean (true for categories 3 & 4, false for 1 & 2, unless delayed implementation)
 - confidence: 0.0-1.0 (use 0.95+ for clear cases, 0.7-0.85 for borderline)
+- needs_expert_review: Boolean - set TRUE if exogenous=true AND (recession/crisis year OR mixed motivations detected)
+- review_reason: If needs_expert_review is true, explain why (e.g., "Exogenous classification during recession year" or "Mixed efficiency and stimulus language")
 - evidence: Array of direct quotes with their supporting category
 - reasoning: Explanation of decision with specific references to timing, language, and context
