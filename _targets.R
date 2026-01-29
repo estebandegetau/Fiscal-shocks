@@ -50,7 +50,7 @@ tar_option_set(
   #
   #   controller = crew::crew_controller_local(workers = 2, seconds_idle = 60)
   controller = crew_controller_local(workers = 2),
-  error = "trim"
+  error = "abridge"
   #
   # Alternatively, if you want workers to run on a high-performance computing
   # cluster, select a controller from the {crew.cluster} package.
@@ -462,6 +462,10 @@ list(
     generate_model_b_examples(
       training_data_b,
       n_per_class = 5,  # 5 examples per motivation category (20 total)
+      required_acts = c(
+        "Economic Growth and Tax Relief Reconciliation Act of 2001",
+        "Tax Reform Act of 1986"
+      ),
       seed = 20251206
     ),
     packages = c("tidyverse", "jsonlite", "glue")

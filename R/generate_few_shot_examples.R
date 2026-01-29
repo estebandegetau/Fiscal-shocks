@@ -91,65 +91,233 @@ generate_model_a_examples <- function(training_data_a,
 }
 
 
+#' Generate economic context string for a given year
+#'
+#' @param year Integer year to get context for
+#' @param recession_data Tibble with year, recession, and context columns
+#'
+#' @return Character string describing economic context
+#' @export
+get_economic_context <- function(year, recession_data) {
+  if (is.null(recession_data)) {
+    return(NULL)
+  }
+  if (year %in% recession_data$year) {
+    ctx <- recession_data$context[recession_data$year == year]
+    return(paste0("RECESSION YEAR: ", ctx))
+  } else {
+    return("Economic expansion - no recession")
+  }
+}
+
+
+#' Generate detailed reasoning for contrasting examples
+#'
+#' Provides comprehensive reasoning for acts that are commonly misclassified,
+#' explaining why they belong to their assigned category despite potentially
+#' misleading features.
+#'
+#' @param act_name Character name of the act
+#' @param motivation Character motivation category
+#' @param year Integer year of the act
+#' @param economic_context Character economic context string (optional)
+#'
+#' @return Character string with detailed reasoning
+generate_contrasting_reasoning <- function(act_name, motivation, year,
+                                           economic_context = NULL) {
+  # EGTRRA 2001 - Countercyclical despite efficiency/long-run language
+  if (grepl("Economic Growth and Tax Relief Reconciliation Act of 2001|EGTRRA",
+            act_name)) {
+    return(paste0(
+      "CRITICAL REASONING: Despite containing language about 'economic growth' and ",
+      "long-term tax reform, EGTRRA 2001 is classified as COUNTERCYCLICAL. ",
+      "Key evidence: (1) Enacted during the 2001 recession following the dot-com bust; ",
+      "(2) Congress explicitly designed the rebate checks to provide immediate stimulus; ",
+      "(3) The timing was accelerated specifically to address the economic downturn; ",
+      "(4) Contemporary documents describe it as a response to weakening economic ",
+      "conditions. The 'growth' framing was political; the economic substance was ",
+      "countercyclical stimulus."
+    ))
+  }
+
+  # TRA 1986 - Long-run despite being during expansion
+  if (grepl("Tax Reform Act of 1986", act_name)) {
+    return(paste0(
+      "CRITICAL REASONING: The Tax Reform Act of 1986 is classified as LONG-RUN ",
+      "despite being enacted during economic expansion. Key evidence: (1) The act was ",
+      "designed to be revenue-neutral, explicitly NOT intended to stimulate or contract ",
+      "the economy; (2) Its primary goal was structural reform - broadening the tax base ",
+      "while lowering rates; (3) The reform process began years earlier and was not ",
+      "triggered by current economic conditions; (4) Contemporary documents emphasize ",
+      "efficiency, fairness, and simplification - not cyclical management. Economic ",
+      "expansion is the NEUTRAL baseline; Long-run reforms happen when there is no ",
+      "cyclical pressure requiring immediate response."
+    ))
+  }
+
+  # Default reasoning for other acts
+  glue::glue("This act is classified as {motivation} based on the legislative context and timing.")
+}
+
+
 #' Generate few-shot examples for Model B from training data
+#'
+#' Creates examples for few-shot learning with support for required contrasting
+#' examples and economic context to improve classification of boundary cases.
 #'
 #' @param training_data_b Tibble with Model B training examples (from tar_read(training_data_b))
 #' @param n_per_class Integer number of examples per motivation category (default 5)
+#' @param required_acts Character vector of act names that must be included
+#' @param recession_years Tibble with recession year data (optional)
 #' @param seed Integer for reproducibility (default 20251206)
 #'
 #' @return List of examples with input/output structure
 #' @export
 generate_model_b_examples <- function(training_data_b,
                                       n_per_class = 5,
+                                      required_acts = NULL,
+                                      recession_years = NULL,
                                       seed = 20251206) {
 
   set.seed(seed)
 
-  # Sample examples from each motivation category (stratified)
-  examples_by_class <- training_data_b |>
-    dplyr::filter(split == "train") |>
-    dplyr::group_by(motivation) |>
-    dplyr::slice_sample(n = n_per_class) |>
-    dplyr::ungroup() |>
-    dplyr::rowwise() |>
-    dplyr::mutate(
-      input = glue::glue("
-ACT: {act_name}
-YEAR: {year}
+  # Helper function to build example from row
+  build_example <- function(row, recession_years, is_required = FALSE) {
+    economic_ctx <- get_economic_context(row$year, recession_years)
+
+    # Build input with economic context if available
+    if (!is.null(economic_ctx)) {
+      input_text <- glue::glue("
+ACT: {row$act_name}
+YEAR: {row$year}
+ECONOMIC CONTEXT: {economic_ctx}
 
 PASSAGES FROM ORIGINAL SOURCES:
-{passages_text}
+{row$passages_text}
 
 Classify this act's PRIMARY motivation.
-      "),
-      output = list(list(
-        motivation = motivation,
-        exogenous = exogenous,
+      ")
+    } else {
+      input_text <- glue::glue("
+ACT: {row$act_name}
+YEAR: {row$year}
+
+PASSAGES FROM ORIGINAL SOURCES:
+{row$passages_text}
+
+Classify this act's PRIMARY motivation.
+      ")
+    }
+
+    # Generate reasoning - detailed for required acts, standard for others
+    if (is_required) {
+      reasoning <- generate_contrasting_reasoning(
+        row$act_name, row$motivation, row$year, economic_ctx
+      )
+    } else {
+      reasoning <- glue::glue(
+        "This act is classified as {row$motivation} based on the legislative context and timing."
+      )
+    }
+
+    list(
+      input = as.character(input_text),
+      output = list(
+        motivation = row$motivation,
+        exogenous = row$exogenous,
         confidence = 0.95,
         evidence = list(
           list(
-            passage_excerpt = stringr::str_sub(passages_text, 1, 150),  # First 150 chars as example
-            supports = motivation
+            passage_excerpt = stringr::str_sub(row$passages_text, 1, 150),
+            supports = row$motivation
           )
         ),
-        reasoning = glue::glue("This act is classified as {motivation} based on the legislative context and timing.")
-      ))
-    ) |>
-    dplyr::ungroup() |>
-    dplyr::select(input, output)
-
-  # Convert to nested list structure for JSON export
-  examples_list <- purrr::map(seq_len(nrow(examples_by_class)), function(i) {
-    list(
-      input = as.character(examples_by_class$input[[i]]),
-      output = examples_by_class$output[[i]]
+        reasoning = as.character(reasoning)
+      )
     )
-  })
+  }
 
-  message(sprintf("Generated %d Model B examples (%d per class)",
-                  length(examples_list), n_per_class))
+  # Step 1: Include required acts first (from any split)
+  required_examples <- list()
+  required_motivations <- character()
 
-  examples_list
+  if (!is.null(required_acts) && length(required_acts) > 0) {
+    for (act in required_acts) {
+      # Find the act in any split
+      act_row <- training_data_b |>
+        dplyr::filter(grepl(act, act_name, fixed = TRUE)) |>
+        dplyr::slice(1)
+
+      if (nrow(act_row) == 1) {
+        example <- build_example(
+          as.list(act_row),
+          recession_years,
+          is_required = TRUE
+        )
+        required_examples <- append(required_examples, list(example))
+        required_motivations <- c(required_motivations, act_row$motivation)
+        message(sprintf("Including required act: %s (%s)", act, act_row$motivation))
+      } else {
+        warning(sprintf("Required act not found: %s", act))
+      }
+    }
+  }
+
+  # Step 2: Sample remaining examples from training split
+  # Count how many more we need per class
+  motivation_counts <- table(required_motivations)
+  all_motivations <- unique(training_data_b$motivation)
+
+  sampled_examples <- list()
+
+  for (motiv in all_motivations) {
+    # How many required examples do we have for this motivation?
+    n_required <- ifelse(motiv %in% names(motivation_counts),
+                         motivation_counts[[motiv]], 0)
+    n_needed <- max(0, n_per_class - n_required)
+
+    if (n_needed > 0) {
+      # Sample from training split, excluding required acts
+      pool <- training_data_b |>
+        dplyr::filter(
+          split == "train",
+          motivation == motiv
+        )
+
+      if (!is.null(required_acts)) {
+        for (act in required_acts) {
+          pool <- pool |>
+            dplyr::filter(!grepl(act, act_name, fixed = TRUE))
+        }
+      }
+
+      sampled <- pool |>
+        dplyr::slice_sample(n = min(n_needed, nrow(pool)))
+
+      for (i in seq_len(nrow(sampled))) {
+        example <- build_example(
+          as.list(sampled[i, ]),
+          recession_years,
+          is_required = FALSE
+        )
+        sampled_examples <- append(sampled_examples, list(example))
+      }
+    }
+  }
+
+  # Step 3: Combine required and sampled examples
+  all_examples <- c(required_examples, sampled_examples)
+
+  # Count by motivation for reporting
+  motivation_summary <- sapply(all_examples, function(x) x$output$motivation)
+  summary_table <- table(motivation_summary)
+
+  message(sprintf("Generated %d Model B examples:", length(all_examples)))
+  for (m in names(summary_table)) {
+    message(sprintf("  %s: %d", m, summary_table[[m]]))
+  }
+
+  all_examples
 }
 
 
