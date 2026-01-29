@@ -3,7 +3,7 @@ title: "Model B Evaluation: Motivation Classification"
 subtitle: "Performance Assessment Against Phase 0 Success Criteria"
 date: today
 execute:
-  cache: refresh
+  cache: false
   warning: false
   message: false
 format:
@@ -29,7 +29,7 @@ This notebook evaluates **Model B (Motivation Classification)**, a multi-class c
 
 - LLM: Claude Sonnet 4 (claude-sonnet-4-20250514)
 - Approach: Few-shot prompting (5 examples per class = 20 total)
-- Temperature: 0.0 (deterministic)
+- **Self-Consistency:** 5 samples at temperature 0.7, majority vote
 - Categories: Spending-driven, Countercyclical, Deficit-driven, Long-run
 
 **Datasets:**
@@ -48,6 +48,8 @@ This notebook evaluates **Model B (Motivation Classification)**, a multi-class c
 | Exogenous Accuracy | 90.0% | 83.3% | >85% | ⚠️ Near-miss |
 
 **Key Finding:** Model B achieves **100% exogenous precision on the test set**—no false positives that would contaminate the shock series. The validation set has one false positive (EGTRRA 2001), suggesting caution with acts that combine recession stimulus and efficiency reforms.
+
+**Self-Consistency Note:** Unlike Model A, self-consistency does NOT provide useful uncertainty signals for Model B. All 16 predictions (including 2 errors) show **100% agreement** across samples. The model is highly confident even when incorrect. For Phase 1, use **economic context flags** (exogenous prediction during recession year) instead of agreement rate to identify cases needing expert review.
 
 ---
 
@@ -465,6 +467,353 @@ The test set shows **reasonable but slightly overconfident calibration**:
 
 ---
 
+## Self-Consistency Analysis
+
+The model uses **self-consistency sampling** (Wang et al., 2022) to improve calibration and provide uncertainty estimates. For each prediction:
+
+- **5 samples** are drawn at temperature 0.7
+- The **majority vote** determines the final motivation classification
+- The **agreement rate** (proportion agreeing with majority) serves as an uncertainty indicator
+
+### Agreement Rate Distribution
+
+```{r agreement-distribution, fig.width=8, fig.height=5}
+# Combine predictions for analysis
+all_predictions_b <- bind_rows(
+  model_b_predictions_val %>% mutate(dataset = "Validation"),
+  model_b_predictions_test %>% mutate(dataset = "Test")
+) %>%
+  mutate(
+    prediction_correct = (motivation == pred_motivation),
+    exogenous_correct = (exogenous == pred_exogenous)
+  )
+
+# Check if agreement_rate column exists
+if ("pred_agreement_rate" %in% colnames(all_predictions_b)) {
+  ggplot(all_predictions_b, aes(x = pred_agreement_rate, fill = prediction_correct)) +
+    geom_histogram(bins = 10, alpha = 0.7, position = "identity") +
+    facet_wrap(~dataset, ncol = 1) +
+    scale_fill_manual(
+      values = c("TRUE" = "#4caf50", "FALSE" = "#f44336"),
+      labels = c("Incorrect", "Correct"),
+      name = "Prediction"
+    ) +
+    scale_x_continuous(labels = scales::percent, limits = c(0.4, 1.05)) +
+    labs(
+      title = "Self-Consistency Agreement Rate Distribution",
+      subtitle = "Higher agreement = more consistent predictions across samples",
+      x = "Agreement Rate (proportion of samples agreeing with majority)",
+      y = "Count"
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5),
+      legend.position = "top"
+    )
+} else {
+  cat("⚠️ Agreement rate data not available in predictions.\n")
+}
+```
+
+### Agreement Rate vs Accuracy
+
+Do predictions with higher agreement rates tend to be more accurate?
+
+```{r agreement-accuracy-b}
+if ("pred_agreement_rate" %in% colnames(all_predictions_b)) {
+  agreement_accuracy_b <- all_predictions_b %>%
+    mutate(
+      agreement_bin = cut(
+        pred_agreement_rate,
+        breaks = c(0.4, 0.6, 0.8, 1.0),
+        labels = c("Low (0.4-0.6)", "Medium (0.6-0.8)", "High (0.8-1.0)"),
+        include.lowest = TRUE
+      )
+    ) %>%
+    filter(!is.na(agreement_bin)) %>%
+    group_by(dataset, agreement_bin) %>%
+    summarize(
+      n = n(),
+      n_correct = sum(prediction_correct),
+      accuracy = mean(prediction_correct),
+      exo_accuracy = mean(exogenous_correct),
+      .groups = "drop"
+    )
+
+  agreement_accuracy_b %>%
+    mutate(
+      accuracy_pct = sprintf("%.1f%%", accuracy * 100),
+      exo_accuracy_pct = sprintf("%.1f%%", exo_accuracy * 100),
+      correct_ratio = sprintf("%d/%d", n_correct, n)
+    ) %>%
+    select(dataset, agreement_bin, n, correct_ratio, accuracy_pct, exo_accuracy_pct) %>%
+    gt() %>%
+    tab_header(
+      title = "Accuracy by Agreement Rate",
+      subtitle = "Higher agreement should correlate with higher accuracy"
+    ) %>%
+    cols_label(
+      dataset = "Dataset",
+      agreement_bin = "Agreement Level",
+      n = "N",
+      correct_ratio = "Correct/Total",
+      accuracy_pct = "Motivation Accuracy",
+      exo_accuracy_pct = "Exogenous Accuracy"
+    ) %>%
+    tab_options(table.width = pct(100))
+} else {
+  cat("⚠️ Agreement rate data not available.\n")
+}
+```
+
+```{r agreement-interpretation-b, results='asis'}
+if ("pred_agreement_rate" %in% colnames(all_predictions_b)) {
+  # Calculate correlation between agreement and correctness
+  agreement_cor <- cor(
+    all_predictions_b$pred_agreement_rate,
+    as.numeric(all_predictions_b$prediction_correct),
+    use = "complete.obs"
+  )
+
+  mean_agreement_correct <- all_predictions_b %>%
+    filter(prediction_correct) %>%
+    pull(pred_agreement_rate) %>%
+    mean(na.rm = TRUE)
+
+  mean_agreement_incorrect <- all_predictions_b %>%
+    filter(!prediction_correct) %>%
+    pull(pred_agreement_rate) %>%
+    mean(na.rm = TRUE)
+
+  cat("**Self-Consistency Calibration:**\n\n")
+
+  # Check for zero variance (all same agreement rate)
+  agreement_sd <- sd(all_predictions_b$pred_agreement_rate, na.rm = TRUE)
+  all_unanimous <- !is.na(agreement_sd) && agreement_sd == 0
+
+  if (all_unanimous) {
+    cat(sprintf("- **All predictions have %.0f%% agreement** (unanimous across all 5 samples)\n",
+                mean(all_predictions_b$pred_agreement_rate, na.rm = TRUE) * 100))
+    cat("- Correlation: **N/A** (no variance in agreement rate)\n")
+    cat(sprintf("- Mean agreement for correct predictions: **%.1f%%**\n", mean_agreement_correct * 100))
+    if (!is.na(mean_agreement_incorrect)) {
+      cat(sprintf("- Mean agreement for incorrect predictions: **%.1f%%**\n\n", mean_agreement_incorrect * 100))
+    } else {
+      cat("- Mean agreement for incorrect predictions: **N/A** (no errors)\n\n")
+    }
+    cat("⚠️ **Perfect consistency but no discrimination:** The model shows 100% agreement even on incorrect predictions.\n")
+    cat("Self-consistency cannot flag uncertain cases for Model B. Use **economic context flags** instead:\n\n")
+    cat("- Flag exogenous predictions during recession/crisis years for expert review\n")
+    cat("- The Countercyclical ↔ Long-run boundary is the main error source\n\n")
+  } else {
+    cat(sprintf("- Correlation (agreement rate vs correctness): **%.3f**\n", agreement_cor))
+    cat(sprintf("- Mean agreement for correct predictions: **%.1f%%**\n", mean_agreement_correct * 100))
+    if (!is.na(mean_agreement_incorrect)) {
+      cat(sprintf("- Mean agreement for incorrect predictions: **%.1f%%**\n\n", mean_agreement_incorrect * 100))
+    } else {
+      cat("- Mean agreement for incorrect predictions: **N/A** (no errors)\n\n")
+    }
+
+    if (!is.na(agreement_cor) && agreement_cor > 0.2) {
+      cat("✅ **Self-consistency is well-calibrated:** Higher agreement rates correlate with higher accuracy.\n")
+      cat("Agreement rate can be used as a reliable uncertainty indicator for flagging low-confidence predictions.\n\n")
+    } else if (!is.na(agreement_cor) && agreement_cor > 0) {
+      cat("⚠️ **Weak calibration:** Agreement rate shows only modest correlation with accuracy.\n")
+      cat("Self-consistency provides some signal but should be combined with other uncertainty indicators.\n\n")
+    } else if (is.na(agreement_cor)) {
+      cat("ℹ️ **Cannot compute correlation:** Insufficient variation in data.\n\n")
+    } else {
+      cat("❌ **Poor calibration:** Agreement rate does not correlate with accuracy.\n")
+      cat("Self-consistency may not be providing useful uncertainty estimates for this task.\n\n")
+    }
+  }
+}
+```
+
+### Low-Agreement Cases (Uncertainty Flags)
+
+Predictions with low agreement (< 80%) indicate the model is uncertain and may benefit from expert review. For Model B, this is especially important for the **exogenous classification** which is critical for shock identification.
+
+```{r low-agreement-b}
+if ("pred_agreement_rate" %in% colnames(all_predictions_b)) {
+  low_agreement_b <- all_predictions_b %>%
+    filter(pred_agreement_rate < 0.8) %>%
+    mutate(
+      agreement_pct = sprintf("%.0f%%", pred_agreement_rate * 100),
+      status = ifelse(prediction_correct, "✅ Correct", "❌ Incorrect"),
+      exo_status = ifelse(exogenous_correct, "✅", "❌")
+    ) %>%
+    select(
+      dataset,
+      act_name,
+      year,
+      agreement_pct,
+      motivation,
+      pred_motivation,
+      status,
+      exo_status
+    )
+
+  if (nrow(low_agreement_b) > 0) {
+    low_agreement_b %>%
+      gt() %>%
+      tab_header(
+        title = "Low-Agreement Predictions (< 80%)",
+        subtitle = "These predictions have high uncertainty — recommend expert review"
+      ) %>%
+      cols_label(
+        dataset = "Dataset",
+        act_name = "Act Name",
+        year = "Year",
+        agreement_pct = "Agreement",
+        motivation = "True",
+        pred_motivation = "Predicted",
+        status = "Motivation",
+        exo_status = "Exogenous"
+      ) %>%
+      tab_spanner(
+        label = "Correct?",
+        columns = c(status, exo_status)
+      ) %>%
+      tab_options(table.width = pct(100))
+  } else {
+    cat("✅ **No low-agreement predictions.** All predictions have ≥80% agreement across samples.\n")
+    cat("This indicates high model confidence and consistency.\n")
+  }
+} else {
+  cat("⚠️ Agreement rate data not available.\n")
+}
+```
+
+### Agreement Rate and Problematic Boundaries
+
+The EGTRRA 2001 error (Countercyclical → Long-run) and Revenue Act 1978 error (Long-run → Countercyclical) both involve the **Countercyclical ↔ Long-run boundary**. Do these misclassifications have lower agreement rates?
+
+```{r boundary-agreement, results='asis'}
+if ("pred_agreement_rate" %in% colnames(all_predictions_b)) {
+  # Check if errors have lower agreement than correct predictions
+  boundary_analysis <- all_predictions_b %>%
+    mutate(
+      involves_boundary = (motivation %in% c("Countercyclical", "Long-run") |
+                          pred_motivation %in% c("Countercyclical", "Long-run"))
+    ) %>%
+    group_by(prediction_correct, involves_boundary) %>%
+    summarize(
+      n = n(),
+      mean_agreement = mean(pred_agreement_rate, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  cat("**Agreement Rate by Prediction Status and Boundary Involvement:**\n\n")
+
+  boundary_analysis %>%
+    mutate(
+      status = ifelse(prediction_correct, "Correct", "Incorrect"),
+      boundary = ifelse(involves_boundary, "Countercyclical/Long-run", "Other classes"),
+      mean_agreement_pct = sprintf("%.1f%%", mean_agreement * 100)
+    ) %>%
+    select(status, boundary, n, mean_agreement_pct) %>%
+    gt() %>%
+    cols_label(
+      status = "Status",
+      boundary = "Classes Involved",
+      n = "N",
+      mean_agreement_pct = "Mean Agreement"
+    ) %>%
+    tab_options(table.width = pct(100))
+
+  # Check if misclassifications have lower agreement
+  errors <- all_predictions_b %>% filter(!prediction_correct)
+  correct <- all_predictions_b %>% filter(prediction_correct)
+
+  if (nrow(errors) > 0 && nrow(correct) > 0) {
+    mean_error_agreement <- mean(errors$pred_agreement_rate, na.rm = TRUE)
+    mean_correct_agreement <- mean(correct$pred_agreement_rate, na.rm = TRUE)
+
+    cat("\n**Key Finding:**\n\n")
+    if (mean_error_agreement < mean_correct_agreement - 0.05) {
+      cat(sprintf("✅ Misclassifications have **lower agreement** (%.1f%%) than correct predictions (%.1f%%).\n",
+                  mean_error_agreement * 100, mean_correct_agreement * 100))
+      cat("Self-consistency can help identify uncertain predictions for expert review.\n\n")
+    } else {
+      cat(sprintf("⚠️ Misclassifications have **similar agreement** (%.1f%%) to correct predictions (%.1f%%).\n",
+                  mean_error_agreement * 100, mean_correct_agreement * 100))
+      cat("Self-consistency alone may not reliably flag errors; combine with economic context flags.\n\n")
+    }
+  }
+}
+```
+
+### Self-Consistency Summary
+
+```{r self-consistency-summary-b, results='asis'}
+if ("pred_agreement_rate" %in% colnames(all_predictions_b)) {
+  overall_mean_agreement <- mean(all_predictions_b$pred_agreement_rate, na.rm = TRUE)
+  pct_high_agreement <- mean(all_predictions_b$pred_agreement_rate >= 0.8, na.rm = TRUE)
+  pct_unanimous <- mean(all_predictions_b$pred_agreement_rate == 1.0, na.rm = TRUE)
+
+  cat("| Metric | Value |\n")
+  cat("|--------|-------|\n")
+  cat(sprintf("| Mean agreement rate | %.1f%% |\n", overall_mean_agreement * 100))
+  cat(sprintf("| High agreement (≥80%%) | %.1f%% of predictions |\n", pct_high_agreement * 100))
+  cat(sprintf("| Unanimous agreement (100%%) | %.1f%% of predictions |\n", pct_unanimous * 100))
+  cat(sprintf("| Low agreement (<80%%) | %.1f%% of predictions |\n\n", (1 - pct_high_agreement) * 100))
+
+  if (pct_unanimous == 1.0) {
+    cat("⚠️ **Perfectly consistent but overconfident:** All predictions have 100% agreement.\n")
+    cat("The model shows no uncertainty even on incorrect predictions—self-consistency cannot flag errors.\n")
+  } else if (pct_high_agreement >= 0.9) {
+    cat("✅ **Highly consistent model:** >90% of predictions have high agreement.\n")
+  } else if (pct_high_agreement >= 0.7) {
+    cat("⚠️ **Moderately consistent:** 70-90% of predictions have high agreement.\n")
+    cat("Consider flagging low-agreement cases for expert review.\n")
+  } else {
+    cat("❌ **Low consistency:** <70% of predictions have high agreement.\n")
+    cat("Model may benefit from more few-shot examples or prompt refinement.\n")
+  }
+}
+```
+
+### Self-Consistency Interpretation
+
+**Key Finding: Self-consistency does NOT provide useful uncertainty signals for Model B.**
+
+Unlike Model A (where agreement rate correlates with accuracy at r ≈ 0.35), Model B shows **100% agreement on all predictions**, including the 2 incorrect ones. This means:
+
+1. **No discrimination:** Self-consistency cannot distinguish correct from incorrect predictions
+2. **Overconfidence:** The model is certain even when wrong (e.g., EGTRRA 2001, Revenue Act 1978)
+3. **Alternative flags needed:** Economic context must be used instead of agreement rate
+
+**Why Model B differs from Model A:**
+
+- Model A (binary classification) has clearer decision boundaries—some passages are genuinely ambiguous
+- Model B (4-class motivation) involves more nuanced reasoning where the model commits fully to one interpretation
+- The Countercyclical ↔ Long-run boundary requires subtle historical judgment that the model resolves confidently but sometimes incorrectly
+
+### Implications for Expert Review Protocol
+
+Since self-consistency cannot flag uncertain Model B predictions, the expert review protocol for Phase 1 must rely on **alternative uncertainty indicators**:
+
+1. ~~**Low Agreement Flag:**~~ Not useful—all predictions have 100% agreement
+2. **Economic Context Flag (PRIMARY):** Flag any exogenous prediction during recession/crisis years
+   - EGTRRA 2001 false positive: enacted during 2001 recession
+   - Revenue Act 1978 false negative: enacted during stagflation
+3. **Boundary Flag:** Flag predictions involving Countercyclical or Long-run categories for secondary review
+4. **Efficiency Language in Crisis:** Flag acts that mention "efficiency" or "long-run" during economic downturns
+
+**Recommended Protocol:**
+
+| Condition | Action |
+|-----------|--------|
+| Predicted exogenous + recession year | **Mandatory expert review** |
+| Countercyclical/Long-run boundary | Secondary review queue |
+| All other predictions | Auto-accept |
+
+This protocol would have caught both errors (EGTRRA 2001 and Revenue Act 1978) while flagging only ~20-30% of predictions for review.
+
+---
+
 ## Exogenous Flag Analysis
 
 ### Why Precision Matters Most
@@ -872,12 +1221,19 @@ Add pairs showing the distinction:
 
 #### Low Priority: Future Improvements
 
-**6. Confidence Calibration for Uncertainty Flagging**
+**6. Self-Consistency Provides No Signal for Model B**
 
-All predictions have 1.0 confidence, preventing uncertainty-based flagging. Consider:
+Unlike Model A (where agreement rate correlates with accuracy at r ≈ 0.35), Model B shows **100% agreement on all predictions**, including the 2 incorrect ones:
 
-- Self-consistency voting (already implemented) to generate empirical confidence
-- Temperature sampling to capture edge-case uncertainty
+- Self-consistency voting is implemented but all 16 predictions are unanimous
+- The model is overconfident even on errors (EGTRRA 2001, Revenue Act 1978)
+- **Conclusion:** Agreement rate cannot flag uncertain Model B predictions
+
+**Alternative uncertainty indicators for Model B:**
+
+- Economic context (recession/expansion) — **most effective**
+- Motivation category (Countercyclical/Long-run boundary) — secondary flag
+- Confidence score — not useful (all predictions at 1.0)
 
 **7. Larger Evaluation Set**
 
@@ -895,7 +1251,12 @@ With 16 total acts (10 val + 6 test), each error has high impact. Options:
 - Economic context added to model input
 - Expert review of exogenous predictions during crisis years
 - Monitoring for EGTRRA-like false positives
+- **Note:** Do NOT use agreement rate for uncertainty flagging (100% agreement on all predictions)
 
-✅ **Documentation** should emphasize the precision-focused evaluation methodology
+✅ **Documentation** should emphasize:
+
+- Precision-focused evaluation methodology
+- Self-consistency limitation: works for Model A, not Model B
+- Economic context as primary uncertainty indicator for motivation classification
 
 
