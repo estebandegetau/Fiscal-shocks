@@ -556,6 +556,34 @@ list(
     packages = "tidyverse"
   ),
 
+  # Model B LOOCV: Robust evaluation with Leave-One-Out Cross-Validation
+  # Replaces fragile train/val/test split - all 44 acts serve as test points
+  # Uses training_data_b (which has correct column names: motivation, exogenous)
+  tar_target(
+    model_b_loocv_results,
+    model_b_loocv(
+      aligned_data = training_data_b |> select(-split),  # Remove split column, use all 44 acts
+      model = "claude-sonnet-4-20250514",
+      n_per_class = 5,
+      seed = 20251206,
+      use_self_consistency = TRUE,
+      n_samples = 5,
+      temperature = 0.7,
+      show_progress = TRUE
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
+    deployment = "main"  # Run sequentially to avoid parallel API rate limits
+  ),
+  tar_target(
+    model_b_loocv_eval,
+    evaluate_model_b_loocv(
+      loocv_results = model_b_loocv_results,
+      n_bootstrap = 1000,
+      ci_level = 0.95
+    ),
+    packages = "tidyverse"
+  ),
+
   # Phase 0 Model C: Multi-Quarter Information Extraction (Days 6-7)
   tar_target(
     model_c_predictions_val,

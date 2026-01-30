@@ -1428,3 +1428,369 @@ This distinction requires understanding legislative intent and counterfactual re
 3. **Stratify by difficulty** — Identify hard cases a priori (acts with ambiguous features) and ensure balanced representation
 
 4. **Error analysis before prompt changes** — Document why each error occurred before attempting fixes to avoid overfitting to specific cases
+
+---
+
+## LOOCV Evaluation Results
+
+Leave-One-Out Cross-Validation provides a more robust performance estimate than the fragile train/val/test split. With only 44 labeled acts, LOOCV uses each act as a test point exactly once, giving 44 evaluation samples instead of 6.
+
+### LOOCV Overall Metrics
+
+```{r loocv-setup}
+# Check if LOOCV results are available
+loocv_available <- tryCatch({
+  tar_read(model_b_loocv_eval)
+  TRUE
+}, error = function(e) FALSE)
+```
+
+```{r loocv-metrics, eval=loocv_available}
+loocv_eval <- tar_read(model_b_loocv_eval)
+
+# Overall metrics table
+loocv_overall <- tibble(
+
+  Metric = c("Overall Accuracy", "Macro F1 Score", "Exogenous Accuracy",
+             "Exogenous Precision", "Exogenous Recall"),
+  Value = c(
+    loocv_eval$accuracy,
+    loocv_eval$macro_f1,
+    loocv_eval$exogenous_accuracy,
+    loocv_eval$exogenous_precision,
+    loocv_eval$exogenous_recall
+  ),
+  `95% CI Lower` = c(
+    loocv_eval$accuracy_ci[1],
+    loocv_eval$macro_f1_ci[1],
+    loocv_eval$exogenous_accuracy_ci[1],
+    NA_real_,
+    NA_real_
+  ),
+  `95% CI Upper` = c(
+    loocv_eval$accuracy_ci[2],
+    loocv_eval$macro_f1_ci[2],
+    loocv_eval$exogenous_accuracy_ci[2],
+    NA_real_,
+    NA_real_
+  ),
+  Target = c(0.75, 0.70, 0.85, 0.90, NA_real_),
+  Status = c(
+    status_badge(loocv_eval$accuracy, 0.75),
+    status_badge(loocv_eval$macro_f1, 0.70),
+    status_badge(loocv_eval$exogenous_accuracy, 0.85),
+    status_badge(loocv_eval$exogenous_precision, 0.90),
+    "N/A"
+  )
+)
+
+loocv_overall %>%
+  gt() %>%
+  fmt_percent(
+    columns = c(Value, `95% CI Lower`, `95% CI Upper`, Target),
+    decimals = 1
+  ) %>%
+  sub_missing(missing_text = "—") %>%
+  tab_header(
+    title = "LOOCV: Overall Metrics",
+    subtitle = sprintf("N = %d acts evaluated with bootstrap 95%% confidence intervals",
+                       loocv_eval$n_valid)
+  ) %>%
+  tab_footnote(
+    footnote = "Exogenous Precision is the PRIMARY metric for fiscal shock identification",
+    locations = cells_body(columns = Metric, rows = 4)
+  ) %>%
+  tab_options(table.width = pct(100))
+```
+
+```{r loocv-not-available, eval=!loocv_available, results='asis'}
+cat("⚠️ **LOOCV results not yet available.** Run `tar_make(model_b_loocv_eval)` to generate.\n")
+```
+
+**LOOCV Interpretation:**
+
+```{r loocv-interpretation, eval=loocv_available, results='asis'}
+cat(sprintf("The LOOCV evaluation on all 44 acts provides a more robust estimate than the 6-act test set:\n\n"))
+
+cat(sprintf("- **Overall Accuracy: %.1f%%** [%.1f%%, %.1f%%] — %s the 75%% target\n",
+            loocv_eval$accuracy * 100,
+            loocv_eval$accuracy_ci[1] * 100,
+            loocv_eval$accuracy_ci[2] * 100,
+            ifelse(loocv_eval$accuracy >= 0.75, "meets", "below")))
+
+cat(sprintf("- **Exogenous Precision: %.1f%%** — %s the critical 90%% target\n",
+            loocv_eval$exogenous_precision * 100,
+            ifelse(loocv_eval$exogenous_precision >= 0.90, "meets", "below")))
+
+cat(sprintf("- **%d of 44 acts misclassified** (%.1f%% error rate)\n\n",
+            nrow(loocv_eval$error_analysis),
+            (1 - loocv_eval$accuracy) * 100))
+
+cat("The 95% confidence intervals reflect uncertainty due to small sample size. ")
+if (loocv_eval$accuracy_ci[2] < 0.75) {
+  cat("Even the upper bound of the CI does not reach the 75% accuracy target, confirming the model needs improvement.\n")
+} else {
+  cat("The CI overlaps with the 75% target, suggesting performance may be acceptable with more data.\n")
+}
+```
+
+### LOOCV Per-Class Performance
+
+```{r loocv-per-class, eval=loocv_available}
+loocv_eval$per_class_metrics %>%
+  mutate(
+    Status = case_when(
+      is.na(f1_score) ~ "N/A",
+      f1_score >= 0.70 ~ sprintf("✅ PASS (%.2f)", f1_score),
+      TRUE ~ sprintf("❌ FAIL (%.2f)", f1_score)
+    )
+  ) %>%
+  gt() %>%
+  cols_label(
+    class = "Motivation Category",
+    precision = "Precision",
+    recall = "Recall",
+    f1_score = "F1 Score",
+    support = "N",
+    Status = "Status (F1 > 0.70)"
+  ) %>%
+  fmt_percent(
+    columns = c(precision, recall, f1_score),
+    decimals = 1
+  ) %>%
+  tab_header(
+    title = "LOOCV: Per-Class Metrics"
+  ) %>%
+  tab_options(table.width = pct(100))
+```
+
+**Per-Class Interpretation:**
+
+```{r loocv-class-interpretation, eval=loocv_available, results='asis'}
+# Find best and worst performing classes
+best_class <- loocv_eval$per_class_metrics %>%
+  slice_max(f1_score, n = 1)
+worst_class <- loocv_eval$per_class_metrics %>%
+  slice_min(f1_score, n = 1)
+
+cat(sprintf("- **Best performing class:** %s (F1 = %.2f, Precision = %.1f%%, Recall = %.1f%%)\n",
+            best_class$class, best_class$f1_score,
+            best_class$precision * 100, best_class$recall * 100))
+
+cat(sprintf("- **Worst performing class:** %s (F1 = %.2f, Precision = %.1f%%, Recall = %.1f%%)\n\n",
+            worst_class$class, worst_class$f1_score,
+            worst_class$precision * 100, worst_class$recall * 100))
+
+# Check for systematic issues
+counter_metrics <- loocv_eval$per_class_metrics %>% filter(class == "Countercyclical")
+if (nrow(counter_metrics) > 0 && counter_metrics$precision < 0.5) {
+  cat(sprintf("⚠️ **Countercyclical has low precision (%.1f%%)** — the model predicts Countercyclical too often, capturing many Long-run acts incorrectly.\n\n",
+              counter_metrics$precision * 100))
+}
+```
+
+### LOOCV Confusion Matrix
+
+```{r loocv-confusion, eval=loocv_available}
+cm_loocv <- as.data.frame(loocv_eval$confusion_matrix)
+
+cm_loocv %>%
+  pivot_wider(names_from = Predicted, values_from = Freq, values_fill = 0) %>%
+  gt(rowname_col = "True") %>%
+  tab_header(
+    title = "LOOCV: Confusion Matrix",
+    subtitle = "Rows = True Labels, Columns = Predictions (N = 44)"
+  ) %>%
+  tab_options(table.width = pct(100)) %>%
+  tab_style(
+    style = cell_fill(color = "#e8f4f8"),
+    locations = cells_body(rows = everything(), columns = everything())
+  )
+```
+
+### LOOCV Error Analysis
+
+```{r loocv-error-patterns, eval=loocv_available}
+# Error pattern summary
+error_patterns <- loocv_eval$error_analysis %>%
+  count(true_motivation, pred_motivation, name = "n_errors") %>%
+  arrange(desc(n_errors)) %>%
+  mutate(
+    error_type = paste(true_motivation, "→", pred_motivation),
+    pct_of_errors = n_errors / sum(n_errors)
+  )
+
+error_patterns %>%
+  select(error_type, n_errors, pct_of_errors) %>%
+  gt() %>%
+  cols_label(
+    error_type = "Error Pattern",
+    n_errors = "Count",
+    pct_of_errors = "% of Errors"
+  ) %>%
+  fmt_percent(columns = pct_of_errors, decimals = 1) %>%
+  tab_header(
+    title = "LOOCV: Error Patterns",
+    subtitle = sprintf("%d total misclassifications", nrow(loocv_eval$error_analysis))
+  ) %>%
+  tab_options(table.width = pct(100))
+```
+
+**Dominant Error Pattern:**
+
+```{r loocv-dominant-error, eval=loocv_available, results='asis'}
+top_error <- error_patterns %>% slice(1)
+
+cat(sprintf("The most common error is **%s** (%d of %d errors, %.0f%%).\n\n",
+            top_error$error_type,
+            top_error$n_errors,
+            nrow(loocv_eval$error_analysis),
+            top_error$pct_of_errors * 100))
+
+if (grepl("Long-run → Countercyclical", top_error$error_type)) {
+  cat("This pattern indicates the model **over-applies countercyclical classification** to acts with economic improvement language. ")
+  cat("Many Long-run structural reforms mention economic benefits, which the model interprets as countercyclical intent.\n\n")
+
+  cat("**Affected acts include:**\n\n")
+  loocv_eval$error_analysis %>%
+    filter(true_motivation == "Long-run", pred_motivation == "Countercyclical") %>%
+    select(act_name, year) %>%
+    mutate(entry = sprintf("- %s (%d)\n", act_name, year)) %>%
+    pull(entry) %>%
+    cat()
+}
+```
+
+### LOOCV Misclassified Acts
+
+```{r loocv-errors-table, eval=loocv_available}
+loocv_eval$error_analysis %>%
+  select(act_name, year, true_motivation, pred_motivation, pred_confidence) %>%
+  arrange(true_motivation, year) %>%
+  gt() %>%
+  cols_label(
+    act_name = "Act Name",
+    year = "Year",
+    true_motivation = "True",
+    pred_motivation = "Predicted",
+    pred_confidence = "Confidence"
+  ) %>%
+  fmt_percent(columns = pred_confidence, decimals = 0) %>%
+  tab_header(
+    title = "LOOCV: All Misclassified Acts",
+    subtitle = sprintf("%d acts with incorrect predictions", nrow(loocv_eval$error_analysis))
+  ) %>%
+  tab_options(table.width = pct(100))
+```
+
+### LOOCV Summary
+
+```{r loocv-summary, eval=loocv_available, results='asis'}
+cat("**Key Findings from LOOCV:**\n\n")
+
+cat(sprintf("1. **Performance is below Phase 0 thresholds** — %.1f%% accuracy vs 75%% target, %.1f%% exogenous precision vs 90%% target\n\n",
+            loocv_eval$accuracy * 100, loocv_eval$exogenous_precision * 100))
+
+cat(sprintf("2. **Primary error pattern: Long-run → Countercyclical** — %d of %d errors (%.0f%%) involve misclassifying structural reforms as countercyclical\n\n",
+            error_patterns %>% filter(grepl("Long-run → Countercyclical", error_type)) %>% pull(n_errors),
+            nrow(loocv_eval$error_analysis),
+            error_patterns %>% filter(grepl("Long-run → Countercyclical", error_type)) %>% pull(pct_of_errors) * 100))
+
+cat("3. **More reliable than test set** — LOOCV uses all 44 acts as test points, avoiding the sampling issues of the 6-act test set\n\n")
+
+cat("4. **Confidence intervals are wide** — reflects genuine uncertainty with small sample; larger training sets would help\n\n")
+
+cat("**Implications for Phase 1:**\n\n")
+
+cat("- The expert review protocol should flag **all Countercyclical predictions** for secondary review\n")
+cat("- Economic context (recession indicators) may help distinguish genuine countercyclical acts\n")
+cat("- Current performance is acceptable for **LLM-assisted** workflow where experts validate ~35% of predictions\n")
+```
+
+---
+
+## Implementation Status
+
+### Completed Implementations (2026-01-30)
+
+Based on the recommendations in this notebook, the following implementations have been completed:
+
+#### 1. Baseline Reversion (Commit ce060a8)
+
+The `required_acts` parameter was removed from `_targets.R`, reverting to the original few-shot example generation without forced contrasting examples. Current metrics:
+
+- **Validation:** 90% accuracy, 90% macro F1, 90% exogenous accuracy (n=10)
+- **Test:** 33.3% accuracy, 50% macro F1, 33.3% exogenous accuracy (n=6)
+
+#### 2. LOOCV Implementation and Execution ✅
+
+A new file `R/model_b_loocv.R` was created with Leave-One-Out Cross-Validation functions to replace the fragile train/val/test split:
+
+```r
+# Core functions:
+model_b_loocv()           # Run LOOCV on all 44 acts
+evaluate_model_b_loocv()  # Compute metrics with bootstrap CIs
+```
+
+New targets added to `_targets.R`:
+
+- `model_b_loocv_results` — LOOCV predictions for all 44 acts
+- `model_b_loocv_eval` — Evaluation metrics with 95% bootstrap confidence intervals
+
+**LOOCV Results (executed 2026-01-30):**
+
+| Metric | Value | 95% CI | Target | Status |
+|--------|-------|--------|--------|--------|
+| Overall Accuracy | 63.6% | [49.9%, 77.3%] | >75% | ❌ FAIL |
+| Macro F1 | 63.2% | [47.9%, 77.1%] | >70% | ❌ FAIL |
+| Exogenous Precision | 76.2% | — | >90% | ❌ FAIL |
+| Exogenous Accuracy | 72.7% | [61.3%, 86.4%] | >85% | ❌ FAIL |
+
+**Key finding:** 16 of 44 acts misclassified. Dominant error pattern is Long-run → Countercyclical (6 errors), indicating the model over-applies countercyclical classification to structural reforms with economic improvement language.
+
+**Actual cost:** ~$3 (44 acts × 5 self-consistency samples, ~29 minutes runtime)
+
+#### 3. Expert Review Protocol (docs/phase_1/expert_review_protocol.md)
+
+A comprehensive expert review protocol was created for Phase 1 Malaysia deployment, including:
+
+- **Flagging rules** (since self-consistency cannot flag errors):
+  - Mandatory review: Predicted exogenous + recession year (~10-15%)
+  - Secondary review: Countercyclical or Long-run predictions (~20-25%)
+  - Auto-accept: All other predictions (~60-65%)
+- **Validation form templates** for act identification and motivation classification
+- **Agreement metrics** (Cohen's kappa, accuracy by category)
+- **Error taxonomy** (5 types: language vs substance, missing context, institutional differences, extraction errors, ambiguous ground truth)
+- **Malaysia recession years** for flagging: 1985-86, 1997-98, 2001, 2008-09, 2020
+
+#### 4. Prompt Enhancement Assessment
+
+The current Model B system prompt (`prompts/model_b_system.txt`) already contains:
+
+- Critical warning for recession-era acts with efficiency language (lines 51-77)
+- EGTRRA 2001 example showing why it's Countercyclical despite "growth" language
+- TRA 1986 contrast showing genuine Long-run reform
+- Expert review flagging instructions (lines 129-132)
+
+**Conditional enhancement:** No additional prompt changes needed at this time. The economic context input pathway already exists in `R/model_b_classify_motivation.R` (lines 16-18) for Phase 1 deployment if LOOCV reveals systematic errors requiring it.
+
+### Pending Work
+
+1. ~~**Run LOOCV evaluation**~~ ✅ Complete — See LOOCV Evaluation Results section above
+
+2. ~~**Update this notebook**~~ ✅ Complete — LOOCV results section added with full metrics and error analysis
+
+3. **Assess prompt enhancement need** — LOOCV reveals systematic Long-run → Countercyclical errors (6 of 16 misclassifications). Options:
+   - **Option A (Minimal):** Add guidance sentence to system prompt about the pattern
+   - **Option B (Economic context):** Pass recession indicators to help distinguish categories
+   - **Option C (Accept):** Deploy with current performance + expert review protocol
+
+### Cost Summary
+
+| Component | Status | API Cost |
+|-----------|--------|----------|
+| Baseline verification | ✅ Done | $0 (cached) |
+| LOOCV execution | ✅ Done | ~$3 |
+| Expert review protocol | ✅ Done | $0 |
+| Prompt enhancement | ⏸️ Optional | ~$1 if implemented |
+| **Total** | | **~$3** |
