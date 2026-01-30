@@ -1,35 +1,5 @@
 [
   {
-    "input": "ACT: Economic Growth and Tax Relief Reconciliation Act of 2001\nYEAR: 2001\n\nPASSAGES FROM ORIGINAL SOURCES:\nthe surplus is the people’s money. And our people are overtaxed. … [W]ith about quarter of that surplus, we need [to] give the hard-working people of America their money back. Your money, not the government’s money. We’re going to get rid of the death tax and the marriage penalty. We’re reducing rates on everybody who pays taxes in America\n\nover the long run, wealth is created by hard-working, risk-taking individuals, not government programs. Countries with low taxes, limited regulation, and open trade grow faster, create more jobs, and enjoy higher standards of living than countries with bigger, more centralized governments and higher taxes\n\ntax cut will help prevent a prolonged economic downturn,\n\nPresident Bush believes that the best way to ensure that prosperity continues is to put more money in the hands of consumers and entrepreneurs. That is why he advocates cutting tax rates now. President Bush will work with the Congress to accelerate a portion of his tax plan to the beginning of 2001\n\nTax relief is right, and tax relief is urgent. The long economic expansion that began almost 10 years ago is faltering. … We must act quickly. … So I want to work with you to give our economy an important jump-start by making tax relief retroactive\n\nFor several months, economic indicators have pointed toward a slowdown …. It is only common sense to give our economy a boost in a slowdown. Yet tax 85 relief is more than common sense; it is a matter of principle. … I would be recommending these changes in any economic circumstance\n\nClassify this act's PRIMARY motivation.",
-    "output": {
-      "motivation": "Countercyclical",
-      "exogenous": false,
-      "confidence": 0.95,
-      "evidence": [
-        {
-          "passage_excerpt": "the surplus is the people’s money. And our people are overtaxed. … [W]ith about quarter of that surplus, we need [to] give the hard-working people of ",
-          "supports": "Countercyclical"
-        }
-      ],
-      "reasoning": "CRITICAL REASONING: Despite containing language about 'economic growth' and long-term tax reform, EGTRRA 2001 is classified as COUNTERCYCLICAL. Key evidence: (1) Enacted during the 2001 recession following the dot-com bust; (2) Congress explicitly designed the rebate checks to provide immediate stimulus; (3) The timing was accelerated specifically to address the economic downturn; (4) Contemporary documents describe it as a response to weakening economic conditions. The 'growth' framing was political; the economic substance was countercyclical stimulus."
-    }
-  },
-  {
-    "input": "ACT: Tax Reform Act of 1986\nYEAR: 1986\n\nPASSAGES FROM ORIGINAL SOURCES:\nI’m well aware that there are many other desirable and needed tax changes …. I pledge I will join with you in seeking these additional tax changes at the earliest date possible\n\nLet us go forward with an historic reform for fairness, simplicity, and incentives for growth. I am asking Secretary Don Regan for a plan of action to simplify the entire tax code, so all taxpayers, big and small, are treated more fairly\n\ntransform a system that’s become an endless source of confusion and resentment into one that is clear, simple, and fair for all—a tax code that … ensures your families and firms incentives and rewards for hard work and risk-taking in an American future of strong economic growth\n\nFair and simpler for most Americans, this is a tax code designed to take us into a future of technological invention and economic achievement, one that will keep America competitive and growing into the 21st century\n\nmay cause some short-run adjustment problems\n\nThe committee believes that the tax system is nearing a crisis point. … Unless decisive action is taken now, compliance with the tax system will further erode and the inefficiencies introduced by the tax system will restrict the potential growth of the economy\n\nreduce the interference of the tax system in the efficient allocation of resources in the economy\n\ncertain property will continue to be eligible for the investment credit for various periods through 1990\n\nClassify this act's PRIMARY motivation.",
-    "output": {
-      "motivation": "Long-run",
-      "exogenous": true,
-      "confidence": 0.95,
-      "evidence": [
-        {
-          "passage_excerpt": "I’m well aware that there are many other desirable and needed tax changes …. I pledge I will join with you in seeking these additional tax changes at ",
-          "supports": "Long-run"
-        }
-      ],
-      "reasoning": "CRITICAL REASONING: The Tax Reform Act of 1986 is classified as LONG-RUN despite being enacted during economic expansion. Key evidence: (1) The act was designed to be revenue-neutral, explicitly NOT intended to stimulate or contract the economy; (2) Its primary goal was structural reform - broadening the tax base while lowering rates; (3) The reform process began years earlier and was not triggered by current economic conditions; (4) Contemporary documents emphasize efficiency, fairness, and simplification - not cyclical management. Economic expansion is the NEUTRAL baseline; Long-run reforms happen when there is no cyclical pressure requiring immediate response."
-    }
-  },
-  {
     "input": "ACT: Revenue Act of 1951\nYEAR: 1951\n\nPASSAGES FROM ORIGINAL SOURCES:\nThese new taxes are required to finance the defense effort; and to help keep total spending within the capacity of current production, so that inflation does not reduce the purchasing power\n\nIf we do not tax ourselves enough to pay for defense expenditures, the Government will … add to total purchasing power and inflationary pressures\n\nPay as We Go\n\nThe military action in Korea, coupled with the general threat to world peace, has made it necessary to provide extraordinary increases in revenues to meet essential national defense expenditures\n\nThe 12½-percent flat across-the-board increase [in individual income tax rates] was selected as the form of increase, since it is not intended that this increase will be permanent, and therefore, it was desired to provide an increase which would not become an integral part of the rate structure\n\nthe post-Korea tax increases are not allowed to run off as provided by present law\n\nThe Secretary of the Treasury therefore announced in the plainest possible language that the Administration, besides relinquishing the excess-profits tax, would not seek to postpone the reduction of the personal income tax, averaging approximately 10 percent, scheduled for January 1, 1954\n\nBecause of billions of dollars of savings in Government spending made in this Administration’s first year, major tax cuts went into effect on January 1\n\nThese tax reductions are justified only because of the substantial reductions we already have made and are making in governmental expenditures\n\nBy late September [1953] it was clear that the existing danger of inflation had passed, and that the prospective reduction of Federal expenditure would justify some tax reduction,\n\nThis unequivocal promise of tax relief … bolstered confidence at a time when trade and employment were slipping slightly,\n\nwelltimed\n\n[m]ore than 5 billion dollars\n\nOn January 1st this year your taxes were cut by five billion dollars\n\nClassify this act's PRIMARY motivation.",
     "output": {
       "motivation": "Spending-driven",
@@ -165,18 +135,18 @@
     }
   },
   {
-    "input": "ACT: Social Security Amendments of 1983\nYEAR: 1983\n\nPASSAGES FROM ORIGINAL SOURCES:\npropose realistic, long-term reforms to put social security back on a sound financial footing\n\nIt is critically important at this time to make changes in social security programs that will protect their solvency and financial viability for the years to come\n\nClassify this act's PRIMARY motivation.",
+    "input": "ACT: Revenue Act of 1971\nYEAR: 1971\n\nPASSAGES FROM ORIGINAL SOURCES:\nNew Economic Policy\n\nAs the summer of 1971 progressed, these facts became increasingly clear: 1. The economy was rising, and a continued rise could be expected; but the rise was not as fast as was desirable, especially from the standpoint of reducing unemployment\n\nThe Challenge of Peace,\n\nthis broad upturn of the economy which has taken place in the first half of this year\n\nThe decision to embark on the New Economic Policy (NEP) came from an increasing awareness in the Administration that the ambitious goals it had set at the beginning of the year were not being met. … [T]he recovery was also progressing, but not fast enough to cut the rate of unemployment\n\nThe Administration’s goals went beyond this common appraisal of the year 1971. It believed that a more rapid expansion of the economy than was generally forecast was desirable and feasible. The desirable and feasible path was believed to be one that would bring the unemployment rate down to the zone of 4½ percent [from its current rate of about 6 percent] by the middle of 1972\n\nThe fiscal package … was primarily motivated by the desire to stimulate at once a more rapid expansion of the economy\n\na critical part of the program I announced then to create new jobs and build a new prosperity\n\nYour committee believes that this bill is necessary because the performance of the economy in recent months has been unsatisfactory. The growth in our gross national product has been small, unemployment has remained too high\n\n[i]n the first half of 1971 … the 56 economy grew at a real rate of only about 3 percent\n\nput our present lagging economy on the high growth path,\n\nthe unemployment rate has shown no inclination to return to the 4-percent level which represents the rate generally viewed as the full employment rate\n\nClassify this act's PRIMARY motivation.",
     "output": {
-      "motivation": "Deficit-driven",
+      "motivation": "Long-run",
       "exogenous": true,
       "confidence": 0.95,
       "evidence": [
         {
-          "passage_excerpt": "propose realistic, long-term reforms to put social security back on a sound financial footing\n\nIt is critically important at this time to make changes",
-          "supports": "Deficit-driven"
+          "passage_excerpt": "New Economic Policy\n\nAs the summer of 1971 progressed, these facts became increasingly clear: 1. The economy was rising, and a continued rise could be",
+          "supports": "Long-run"
         }
       ],
-      "reasoning": "This act is classified as Deficit-driven based on the legislative context and timing."
+      "reasoning": "This act is classified as Long-run based on the legislative context and timing."
     }
   },
   {
@@ -188,21 +158,6 @@
       "evidence": [
         {
           "passage_excerpt": "a deficit reduction program that will increase the savings available for the private sector to invest, will lower interest rates, will decrease the pe",
-          "supports": "Deficit-driven"
-        }
-      ],
-      "reasoning": "This act is classified as Deficit-driven based on the legislative context and timing."
-    }
-  },
-  {
-    "input": "ACT: Tax Equity and Fiscal Responsibility Act of 1982\nYEAR: 1982\n\nPASSAGES FROM ORIGINAL SOURCES:\nNot only must those deficits be reduced, they must show a decline over the next 3 years\n\nThe most essential thing is to send a message to the money market that we, Democrats and Republicans alike, can agree on reducing the deficit and continuing to hold down inflation\n\nFor many months now we’ve been working to get a compromise budget that would further reduce spending and thus reduce the deficits\n\nI support it [TEFRA] because it will, when combined with our cuts in government spending, reduce interest rates and put more Americans back to work again\n\nNow, there won’t be a sudden boom or upsurge. But slowly and surely, we’ll have a sound and lasting recovery based on solid values and increased 18 The 1983 Budget shows liabilities declining further in calendar 1985 and 1986. These declines were due to projected income growth and to further accelerations in the accelerated cost recovery system (ACRS) scheduled for 1985 and 1986. Because the accelerations in ACRS for 1985 and 1986 were repealed by the Tax Equity and Fiscal Responsibility Act of 1982, we do not include the projected tax cuts in 1985 and 1986 in our estimates of the effect of Economic Recovery Tax Act of 1981. 71 productivity and an end to deficit spending\n\nSome regulations have been regulated or interpreted in such a way as to provide tax advantages which were never intended\n\n[p]ossibly … the greatest tax reform in history\n\na matter of simple fairness\n\nSo, more than 80 percent of the tax bill is not new tax at all, but is better collecting and correcting of flaws in the system\n\nvery high interest rates\n\ncosts of servicing what would become a crushing burden of the national debt\n\nClassify this act's PRIMARY motivation.",
-    "output": {
-      "motivation": "Deficit-driven",
-      "exogenous": true,
-      "confidence": 0.95,
-      "evidence": [
-        {
-          "passage_excerpt": "Not only must those deficits be reduced, they must show a decline over the next 3 years\n\nThe most essential thing is to send a message to the money ma",
           "supports": "Deficit-driven"
         }
       ],
@@ -240,18 +195,33 @@
     }
   },
   {
-    "input": "ACT: Public Law 89-800 (Suspension of Investment Tax Credit)\nYEAR: 1966\n\nPASSAGES FROM ORIGINAL SOURCES:\nToday the strength of the American economy exceeds all records and all expectations\n\nCaution signs became visible early this year. Responsible fiscal policy required prudent action\n\nthe Congress promptly make inoperative, for a temporary period, those special incentives for plant and equipment investment and commercial construction that currently contribute to overheating the economy\n\na vital part of our effort to combat inflationary pressures and to preserve the strength of our dynamic economy\n\nAs private demand and Vietnam requirements exceeded forecasts, policy was adjusted to the new developments. … In September, the President proposed additional selective fiscal measures to alleviate excessive demands for funds and for capital goods\n\nA healthy advance of demand in pace with the growth of potential output would permit gradual restoration of price stability. … The fiscal program for 1967 is designed to meet these objectives\n\nOur machinery and equipment industries cannot digest the demands currently thrust upon them. … Our capital markets are clogged with excessive demands for funds to finance investment. These demands bid interest rates higher and higher, and draw too large a share of credit from other important uses\n\nThe investment boom put severe strain on the plant capacity\n\nadded mightily to the pressures on financial markets\n\nThe proposal [suspension of the ITC] is basically an anti-inflationary measure designed to relieve the pressures, clearly observable in the money markets and capital goods sector, which are producing unusual strains, the highest interest rates in 40 years and a perceptible trend toward a general condition of economic instability\n\nH.R. 17607 is designed to moderate the pace of the economy to a more sustainable level of economic growth. This bill is an integral part of a coordinated anti-inflationary program of the administration\n\nthe bill will affect those sectors of the economy where inflationary pressures are strongest\n\nThe application of fiscal restraints will help to keep the recent rate of increase in prices from accelerating and developing into a serious wage-price spiral\n\nClassify this act's PRIMARY motivation.",
+    "input": "ACT: Social Security Amendments of 1977\nYEAR: 1977\n\nPASSAGES FROM ORIGINAL SOURCES:\nrestore the financial integrity of the Social Security system\n\nthat the social security system will be financially sound well into the next century\n\nThe Social Security Amendments of 1977 were designed primarily to prevent the assets of the OASDI trust funds from being depleted in the next few years and to eliminate most of the long-range deficit. Since the Congress has always believed that the social security system should be fully financed by earmarked payroll taxes, substantial increases in OASDHI taxes were necessary\n\nIn order to eliminate the short-range deficit due to recent and current economic experience and to reduce the longer-range deficit due to demographic shifts and disability experience, the committee bill includes changes in social security tax rates for employees, employers, and the self-employed, and increases in the contribution and benefit base for employees, employers, and the self-employed\n\nClassify this act's PRIMARY motivation.",
     "output": {
-      "motivation": "Countercyclical",
-      "exogenous": false,
+      "motivation": "Deficit-driven",
+      "exogenous": true,
       "confidence": 0.95,
       "evidence": [
         {
-          "passage_excerpt": "Today the strength of the American economy exceeds all records and all expectations\n\nCaution signs became visible early this year. Responsible fiscal ",
-          "supports": "Countercyclical"
+          "passage_excerpt": "restore the financial integrity of the Social Security system\n\nthat the social security system will be financially sound well into the next century\n\nT",
+          "supports": "Deficit-driven"
         }
       ],
-      "reasoning": "This act is classified as Countercyclical based on the legislative context and timing."
+      "reasoning": "This act is classified as Deficit-driven based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Social Security Amendments of 1983\nYEAR: 1983\n\nPASSAGES FROM ORIGINAL SOURCES:\npropose realistic, long-term reforms to put social security back on a sound financial footing\n\nIt is critically important at this time to make changes in social security programs that will protect their solvency and financial viability for the years to come\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Deficit-driven",
+      "exogenous": true,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "propose realistic, long-term reforms to put social security back on a sound financial footing\n\nIt is critically important at this time to make changes",
+          "supports": "Deficit-driven"
+        }
+      ],
+      "reasoning": "This act is classified as Deficit-driven based on the legislative context and timing."
     }
   },
   {
@@ -263,6 +233,21 @@
       "evidence": [
         {
           "passage_excerpt": "As 1975 begins, … production and employment are declining sharply. … It is quite likely … that the contraction of business activity and rising unemplo",
+          "supports": "Countercyclical"
+        }
+      ],
+      "reasoning": "This act is classified as Countercyclical based on the legislative context and timing."
+    }
+  },
+  {
+    "input": "ACT: Revenue and Expenditure Control Act of 1968\nYEAR: 1968\n\nPASSAGES FROM ORIGINAL SOURCES:\nshift toward restraint in fiscal policy is appropriate at that time to assure that demand does not outrun capacity, that movement toward restoration of price stability is maintained\n\nthe fiscal program we are recommending is consistent with a sound and healthy economic advance during the year ahead\n\na return of strong inflationary pressures,\n\n[a]n excessive expansion of domestic markets,\n\n[s]piraling interest rates\n\nMost experienced observers agree that the pace [of economic growth] now is—and in the months ahead will be—too fast for safety\n\nrestraint is essential to our economic health\n\nThe problems of rising prices and interest rates, and a worsening balance of payments, arise from many causes. … But central to any attack upon them is a fiscal policy which … sharply reduces the inappropriate stimulus of a large Federal budget deficit in today’s vigorous economy\n\nThe Nation’s economy is moving too fast because of an unacceptable budgetary deficit. We must now apply the fiscal brakes\n\nIt represents the minimum action we should take at this time to preserve the security of our dollar and prevent runaway inflation\n\na threat to the dollar’s role as the keystone of international trade and finance in the world\n\nthe reason why we are acting … is that we feel the country and the world are in a very serious situation with respect to the inflationary surge in our country, with respect to the serious imbalance of international payments, and with respect to the very serious imbalance in our budget\n\nthis proposal will aggravate that increase in cost pressures against prices, because taxes are a cost\n\nThe tax surcharge alone is currently withdrawing about $10½ billion (annual rate) from the income stream\n\nfull year liability at 1968 income levels\n\nClassify this act's PRIMARY motivation.",
+    "output": {
+      "motivation": "Countercyclical",
+      "exogenous": false,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "passage_excerpt": "shift toward restraint in fiscal policy is appropriate at that time to assure that demand does not outrun capacity, that movement toward restoration o",
           "supports": "Countercyclical"
         }
       ],
@@ -285,14 +270,14 @@
     }
   },
   {
-    "input": "ACT: Revenue and Expenditure Control Act of 1968\nYEAR: 1968\n\nPASSAGES FROM ORIGINAL SOURCES:\nshift toward restraint in fiscal policy is appropriate at that time to assure that demand does not outrun capacity, that movement toward restoration of price stability is maintained\n\nthe fiscal program we are recommending is consistent with a sound and healthy economic advance during the year ahead\n\na return of strong inflationary pressures,\n\n[a]n excessive expansion of domestic markets,\n\n[s]piraling interest rates\n\nMost experienced observers agree that the pace [of economic growth] now is—and in the months ahead will be—too fast for safety\n\nrestraint is essential to our economic health\n\nThe problems of rising prices and interest rates, and a worsening balance of payments, arise from many causes. … But central to any attack upon them is a fiscal policy which … sharply reduces the inappropriate stimulus of a large Federal budget deficit in today’s vigorous economy\n\nThe Nation’s economy is moving too fast because of an unacceptable budgetary deficit. We must now apply the fiscal brakes\n\nIt represents the minimum action we should take at this time to preserve the security of our dollar and prevent runaway inflation\n\na threat to the dollar’s role as the keystone of international trade and finance in the world\n\nthe reason why we are acting … is that we feel the country and the world are in a very serious situation with respect to the inflationary surge in our country, with respect to the serious imbalance of international payments, and with respect to the very serious imbalance in our budget\n\nthis proposal will aggravate that increase in cost pressures against prices, because taxes are a cost\n\nThe tax surcharge alone is currently withdrawing about $10½ billion (annual rate) from the income stream\n\nfull year liability at 1968 income levels\n\nClassify this act's PRIMARY motivation.",
+    "input": "ACT: Public Law 89-800 (Suspension of Investment Tax Credit)\nYEAR: 1966\n\nPASSAGES FROM ORIGINAL SOURCES:\nToday the strength of the American economy exceeds all records and all expectations\n\nCaution signs became visible early this year. Responsible fiscal policy required prudent action\n\nthe Congress promptly make inoperative, for a temporary period, those special incentives for plant and equipment investment and commercial construction that currently contribute to overheating the economy\n\na vital part of our effort to combat inflationary pressures and to preserve the strength of our dynamic economy\n\nAs private demand and Vietnam requirements exceeded forecasts, policy was adjusted to the new developments. … In September, the President proposed additional selective fiscal measures to alleviate excessive demands for funds and for capital goods\n\nA healthy advance of demand in pace with the growth of potential output would permit gradual restoration of price stability. … The fiscal program for 1967 is designed to meet these objectives\n\nOur machinery and equipment industries cannot digest the demands currently thrust upon them. … Our capital markets are clogged with excessive demands for funds to finance investment. These demands bid interest rates higher and higher, and draw too large a share of credit from other important uses\n\nThe investment boom put severe strain on the plant capacity\n\nadded mightily to the pressures on financial markets\n\nThe proposal [suspension of the ITC] is basically an anti-inflationary measure designed to relieve the pressures, clearly observable in the money markets and capital goods sector, which are producing unusual strains, the highest interest rates in 40 years and a perceptible trend toward a general condition of economic instability\n\nH.R. 17607 is designed to moderate the pace of the economy to a more sustainable level of economic growth. This bill is an integral part of a coordinated anti-inflationary program of the administration\n\nthe bill will affect those sectors of the economy where inflationary pressures are strongest\n\nThe application of fiscal restraints will help to keep the recent rate of increase in prices from accelerating and developing into a serious wage-price spiral\n\nClassify this act's PRIMARY motivation.",
     "output": {
       "motivation": "Countercyclical",
       "exogenous": false,
       "confidence": 0.95,
       "evidence": [
         {
-          "passage_excerpt": "shift toward restraint in fiscal policy is appropriate at that time to assure that demand does not outrun capacity, that movement toward restoration o",
+          "passage_excerpt": "Today the strength of the American economy exceeds all records and all expectations\n\nCaution signs became visible early this year. Responsible fiscal ",
           "supports": "Countercyclical"
         }
       ],

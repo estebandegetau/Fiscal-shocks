@@ -462,10 +462,6 @@ list(
     generate_model_b_examples(
       training_data_b,
       n_per_class = 5,  # 5 examples per motivation category (20 total)
-      required_acts = c(
-        "Economic Growth and Tax Relief Reconciliation Act of 2001",
-        "Tax Reform Act of 1986"
-      ),
       seed = 20251206
     ),
     packages = c("tidyverse", "jsonlite", "glue")

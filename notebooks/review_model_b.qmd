@@ -42,14 +42,25 @@ This notebook evaluates **Model B (Motivation Classification)**, a multi-class c
 
 | Metric | Validation | Test | Target | Status |
 |--------|------------|------|--------|--------|
-| Overall Accuracy | 90.0% | 83.3% | >75% | ✅ Pass |
-| Macro F1 | 0.881 | 0.889 | >0.70 | ✅ Pass |
-| **Exogenous Precision** | 83.3% | **100%** | >90% | ✅ Test Pass / ⚠️ Val Concern |
-| Exogenous Accuracy | 90.0% | 83.3% | >85% | ⚠️ Near-miss |
+| Overall Accuracy | 90.0% | 33.3% | >75% | ⚠️ Val Pass / ❌ Test Fail |
+| Macro F1 | 0.90 | 0.50 | >0.70 | ⚠️ Val Pass / ❌ Test Fail |
+| **Exogenous Precision** | 83.3% | **33.3%** | >90% | ❌ Fail |
+| Exogenous Accuracy | 90.0% | 33.3% | >85% | ❌ Test Fail |
 
-**Key Finding:** Model B achieves **100% exogenous precision on the test set**—no false positives that would contaminate the shock series. The validation set has one false positive (EGTRRA 2001), suggesting caution with acts that combine recession stimulus and efficiency reforms.
+**Key Finding: Model B fails test set criteria.**
 
-**Self-Consistency Note:** Unlike Model A, self-consistency does NOT provide useful uncertainty signals for Model B. All 16 predictions (including 2 errors) show **100% agreement** across samples. The model is highly confident even when incorrect. For Phase 1, use **economic context flags** (exogenous prediction during recession year) instead of agreement rate to identify cases needing expert review.
+The model shows strong validation performance (90% accuracy) but poor test generalization (33.3% accuracy). This pattern persists regardless of few-shot example composition, suggesting:
+
+1. **Small test set sensitivity:** With only 6 test acts, systematic errors have outsized impact
+2. **Difficult test cases:** The test set contains acts that are inherently harder to classify (e.g., Social Security amendments, Revenue Act of 1978)
+3. **Validation/test distribution mismatch:** The validation set may not be representative of the harder cases in the test set
+
+**Error Patterns (Test Set):**
+
+- **Long-run → Countercyclical:** Public Law 90-26, Revenue Act of 1978
+- **Spending-driven → Deficit-driven:** Social Security Amendments of 1956, 1961
+
+**Self-Consistency Note:** All predictions show **100% agreement** across samples, even incorrect ones. Self-consistency cannot flag uncertain Model B predictions.
 
 ---
 
@@ -133,13 +144,15 @@ val_overall %>%
 
 **Validation Set Interpretation:**
 
-The validation set shows **strong performance** that **meets all Phase 0 success criteria**:
+The validation set shows **strong performance** that **meets Phase 0 success criteria**:
 
 - **Overall Accuracy: 90%** ✅ Exceeds the 75% target by +15 percentage points
-- **Macro F1: 0.881** ✅ Exceeds the 0.70 target, showing good balance across classes
+- **Macro F1: 0.90** ✅ Exceeds the 0.70 target, showing good balance across classes
 - **Exogenous Accuracy: 90%** ✅ Exceeds the 85% target by +5 percentage points
 
-The model correctly classified 9 out of 10 acts in the validation set. The single misclassification was the **Economic Growth and Tax Relief Reconciliation Act of 2001 (EGTRRA)**, a Countercyclical act predicted as Long-run. This indicates some difficulty distinguishing between cycle-motivated stimulus (responding to the 2001 recession) and efficiency-motivated reforms (long-run tax restructuring).
+The model correctly classified 9 out of 10 acts in the validation set. **Notably, EGTRRA 2001 is now correctly classified as Countercyclical** — this was the specific error targeted by adding contrasting examples to the few-shot prompt.
+
+The single misclassification is now the **Social Security Amendments of 1950**, a Spending-driven act predicted as Deficit-driven. This represents a different error pattern than before, where the model conflates spending-to-finance-programs with deficit concerns.
 
 ### Per-Class Performance (Validation)
 
@@ -176,18 +189,18 @@ model_b_eval_val$per_class_metrics %>%
 
 **Per-Class Interpretation:**
 
-Class-level performance on the validation set:
+Class-level performance on the validation set after few-shot enhancement:
 
-- **Spending-driven (n=3):** Perfect classification (F1=1.0, Precision=1.0, Recall=1.0) ✅
-- **Countercyclical (n=2):** F1=0.667 ⚠️ Slightly below 0.70 target
-  - Missed 1 out of 2 acts (50% recall)
-  - EGTRRA 2001 was classified as Long-run instead
-- **Deficit-driven (n=2):** Perfect classification (F1=1.0) ✅
-- **Long-run (n=3):** Strong performance (F1=0.857) ✅
-  - Precision=0.75 (1 false positive: EGTRRA 2001 misclassified as Long-run)
-  - Recall=1.0 (found all Long-run acts)
+- **Countercyclical (n=2):** Now perfect classification ✅
+  - EGTRRA 2001 is now correctly classified (was the target fix)
+- **Long-run (n=3):** Now perfect classification ✅
+  - No longer has the EGTRRA false positive
+- **Deficit-driven (n=2):** Now has a false positive
+  - Social Security Amendments of 1950 incorrectly classified here
+- **Spending-driven (n=3):** Recall dropped to 67%
+  - Lost Social Security Amendments of 1950 to Deficit-driven
 
-**Key Finding:** The Countercyclical ↔ Long-run boundary is the weak point. EGTRRA 2001 was enacted as recession stimulus but contained significant long-run tax restructuring elements, making it an edge case where the model's confusion is understandable.
+**Key Finding:** The few-shot enhancement successfully fixed the Countercyclical ↔ Long-run boundary (EGTRRA 2001 now correct). However, a new Spending-driven ↔ Deficit-driven confusion emerged. The validation results suggest the fix worked for its intended target but introduced a different error pattern.
 
 ### Confusion Matrix (Validation)
 
@@ -216,17 +229,16 @@ cm_val %>%
 
 **Common Misclassifications:**
 
-The validation set confusion matrix shows **1 misclassification pattern**:
+The validation set confusion matrix shows **1 misclassification pattern** (changed from previous run):
 
-- **Countercyclical → Long-run (1 instance):** EGTRRA 2001 was enacted as recession stimulus but classified as a long-run efficiency reform
+- **Spending-driven → Deficit-driven (1 instance):** Social Security Amendments of 1950 was classified as Deficit-driven instead of Spending-driven
 
-This error pattern suggests the model may struggle when:
+This is a different error from the previous run, where EGTRRA 2001 was the misclassification. The few-shot enhancement:
 
-- Acts have mixed motivations (EGTRRA combined recession response with long-run tax restructuring)
-- The contemporaneous language emphasizes efficiency gains over cycle stabilization
-- The distinction between "improving the economy now" vs. "improving long-run growth" is subtle
+- ✅ Fixed the Countercyclical ↔ Long-run boundary (EGTRRA 2001 now correct)
+- ⚠️ Introduced a new Spending-driven ↔ Deficit-driven confusion
 
-**Overall:** With only 1 error out of 10 predictions, the validation set demonstrates strong generalization. The error is arguably an edge case where the ground truth label itself is debatable.
+**Overall:** With only 1 error out of 10 predictions, validation performance remains strong at 90% accuracy.
 
 ---
 
@@ -275,17 +287,38 @@ test_overall %>%
 
 **Test Set Interpretation:**
 
-The test set shows **strong performance** that **meets most Phase 0 success criteria**:
+⚠️ **CRITICAL: Test set performance regressed significantly after few-shot enhancement.**
 
-- **Overall Accuracy: 83.3%** ✅ Exceeds the 75% target by +8.3 percentage points
-- **Macro F1: 0.889** ✅ Exceeds the 0.70 target (note: only 3 classes present in test set)
-- **Exogenous Accuracy: 83.3%** ⚠️ Just below the 85% target by -1.7 percentage points
+- **Overall Accuracy: 33.3%** ❌ Far below the 75% target (-41.7 percentage points)
+- **Macro F1: 0.50** ❌ Below the 0.70 target
+- **Exogenous Accuracy: 33.3%** ❌ Far below the 85% target
 
-**Single Misclassification:** The model correctly classified 5 out of 6 acts (83.3%). The **one error was the Revenue Act of 1978**, a Long-run act predicted as Countercyclical.
+**Four Misclassifications (4 of 6 acts wrong):**
 
-**Cascading Error Impact:** Because Long-run acts should be classified as exogenous (TRUE) but Countercyclical is endogenous (FALSE), this motivation error automatically creates an exogenous flag error, bringing exogenous accuracy to 83.3%.
+| Act | True | Predicted | Error Type |
+|-----|------|-----------|------------|
+| Public Law 90-26 (1967) | Long-run | Countercyclical | FN (exogenous→endogenous) |
+| Revenue Act of 1978 | Long-run | Countercyclical | FN (exogenous→endogenous) |
+| Social Security Amendments of 1956 | Spending-driven | Deficit-driven | FP (endogenous→exogenous) |
+| Social Security Amendments of 1961 | Spending-driven | Deficit-driven | FP (endogenous→exogenous) |
 
-**Important Context:** The test set contains only 6 acts with an imbalanced distribution (3 Spending-driven, 0 Countercyclical, 1 Deficit-driven, 2 Long-run). Small sample size means each error has outsized impact (1 error = 16.7% drop in accuracy). With just one more correct prediction, the model would achieve 100% on all metrics.
+**Error Pattern Analysis:**
+
+The few-shot enhancement appears to have caused systematic biases:
+
+1. **Long-run → Countercyclical:** The detailed reasoning about EGTRRA 2001 (explaining why it's Countercyclical despite "growth" language) may have made the model over-apply countercyclical classification to other acts with economic improvement language.
+
+2. **Spending-driven → Deficit-driven:** The model is now more likely to see budget/deficit concerns in spending-related acts.
+
+**Comparison with Previous Run:**
+
+| Metric | Before Enhancement | After Enhancement | Change |
+|--------|-------------------|-------------------|--------|
+| Test Accuracy | 83.3% | 33.3% | -50 pp |
+| Test Exo Precision | 100% | 33.3% | -66.7 pp |
+| Val EGTRRA 2001 | ❌ Wrong | ✅ Correct | Fixed |
+
+**Conclusion:** The enhancement fixed the specific validation error (EGTRRA 2001) but caused substantial overfitting — the model learned the specific reasoning too well and now over-applies it to the test set.
 
 ### Per-Class Performance (Test)
 
@@ -347,19 +380,26 @@ cm_test %>%
 
 **Common Misclassifications:**
 
-The test set confusion matrix reveals a **single misclassification**:
+The test set confusion matrix reveals **two systematic error patterns** (4 total errors):
 
-- **Long-run → Countercyclical (1 instance):** The Revenue Act of 1978 was incorrectly classified as Countercyclical
-  - Long-run recall: 50% (1/2 correct)
-  - The prediction had 100% confidence, suggesting the model is confident but wrong on this edge case
+**Pattern 1: Long-run → Countercyclical (2 instances)**
 
-**Root Cause Hypothesis:** The Revenue Act of 1978 was enacted during a period of economic uncertainty (stagflation), and its language may have emphasized economic improvement in ways that read as countercyclical stimulus rather than long-run restructuring.
+- Public Law 90-26 (1967): Restoration of Investment Tax Credit
+- Revenue Act of 1978: Capital gains reduction
 
-**Correct Classifications:**
+Both Long-run acts were misclassified as Countercyclical. The detailed reasoning in the EGTRRA example about "economic improvement language during uncertain times" appears to have biased the model toward Countercyclical classification.
 
-- Spending-driven: 3/3 perfect (100% precision and recall)
-- Deficit-driven: 1/1 perfect (100% precision and recall)
-- Long-run: 1/2 correct (Public Law 90-26 correctly classified)
+**Pattern 2: Spending-driven → Deficit-driven (2 instances)**
+
+- Social Security Amendments of 1956
+- Social Security Amendments of 1961
+
+Both Spending-driven acts were misclassified as Deficit-driven. The model appears to over-weight budget/fiscal responsibility framing.
+
+**Correct Classifications (only 2 of 6):**
+
+- Omnibus Budget Reconciliation Act of 1990: Deficit-driven ✅
+- Social Security Amendments of 1965: Spending-driven ✅
 
 ---
 
@@ -411,22 +451,33 @@ if (nrow(test_errors) > 0) {
 
 **Error Patterns:**
 
-Analyzing the single misclassified act:
+Analyzing the **four misclassified acts** (regression from previous single error):
 
-**Long-run → Countercyclical**
+**Pattern 1: Long-run → Countercyclical (2 acts)**
 
-1. **Revenue Act of 1978**
+1. **Public Law 90-26 (1967)** - Restoration of Investment Tax Credit
+   - True: Long-run (exogenous=TRUE) → Predicted: Countercyclical (exogenous=FALSE)
 
-   - True: Long-run (exogenous=TRUE)
-   - Predicted: Countercyclical (exogenous=FALSE)
-   - Confidence: 1.0
+2. **Revenue Act of 1978** - Capital gains reduction
+   - True: Long-run (exogenous=TRUE) → Predicted: Countercyclical (exogenous=FALSE)
 
-**Why This Error Occurred:**
+**Pattern 2: Spending-driven → Deficit-driven (2 acts)**
 
-- The Revenue Act of 1978 reduced capital gains taxes and introduced various investment incentives
-- It was enacted during the stagflation period (1973-1982) when economic conditions were uncertain
-- Language about "stimulating investment" and "improving economic conditions" may have been interpreted as countercyclical intent rather than long-run efficiency motivation
-- High confidence (1.0) indicates the model is certain but wrong—a calibration concern
+3. **Social Security Amendments of 1956**
+   - True: Spending-driven (exogenous=FALSE) → Predicted: Deficit-driven (exogenous=TRUE)
+
+4. **Social Security Amendments of 1961**
+   - True: Spending-driven (exogenous=FALSE) → Predicted: Deficit-driven (exogenous=TRUE)
+
+**Why These Errors Occurred (Post-Enhancement Analysis):**
+
+The detailed "CRITICAL REASONING" added to the EGTRRA 2001 and TRA 1986 examples appears to have introduced systematic biases:
+
+1. **Over-application of Countercyclical logic:** The EGTRRA reasoning emphasized that acts with "economic improvement" language during uncertain times should be Countercyclical. This caused Long-run acts (which also mention economic improvement) to be misclassified.
+
+2. **Over-application of Deficit logic:** The model became more sensitive to budget/fiscal framing, causing Spending-driven Social Security acts to be classified as Deficit-driven.
+
+**Key Lesson:** Highly detailed reasoning in few-shot examples can cause overfitting to the specific logic rather than improving generalization.
 
 ### Confidence Calibration
 
@@ -457,13 +508,13 @@ model_b_eval_test$calibration %>%
 
 Well-calibrated model: predictions with 90% confidence should be 90% accurate.
 
-The test set shows **reasonable but slightly overconfident calibration**:
+The test set shows **severe overconfidence** after the few-shot enhancement:
 
-- All 6 predictions at 90-100% confidence → 83.3% actual accuracy (should be ~95%)
+- All 6 predictions at 90-100% confidence → **33.3% actual accuracy** (should be ~95%)
 
-**Key Finding:** The model produces very high confidence scores (1.0 for all test predictions), slightly overestimating its accuracy. The single misclassification (Revenue Act of 1978) had 1.0 confidence despite being wrong, indicating the model doesn't recognize uncertainty at the Long-run/Countercyclical boundary.
+**Key Finding:** The model produces very high confidence scores (1.0 for all test predictions) despite being wrong on 4 of 6 acts. This is a severe calibration failure—the model is confidently wrong.
 
-**Implication:** Confidence scores cannot reliably identify questionable predictions since the model is always highly confident. However, with 83.3% accuracy at this confidence level, the calibration gap is modest.
+**Implication:** Confidence scores are completely uninformative for identifying errors. The few-shot enhancement appears to have made the model more confident in its (now often incorrect) reasoning.
 
 ---
 
@@ -1012,24 +1063,29 @@ if (nrow(exo_errors) > 0) {
 
 **Error Type Analysis:**
 
-The test set error is a **False Negative (acceptable):**
+After the few-shot enhancement, the test set now has **both False Positives and False Negatives**:
 
+**False Negatives (2 acts) — Lose valid shocks:**
+
+- **Public Law 90-26 (1967):** True exogenous (Long-run) → Predicted endogenous (Countercyclical)
 - **Revenue Act of 1978:** True exogenous (Long-run) → Predicted endogenous (Countercyclical)
-- **Impact:** This valid shock is excluded from the shock series
-- **Consequence:** Reduced statistical power, but no bias in fiscal multiplier estimates
 
-**Contrast with validation set error (FALSE POSITIVE - critical):**
+**False Positives (2 acts) — CRITICAL - Contaminate series:**
 
-- **EGTRRA 2001:** True endogenous (Countercyclical) → Predicted exogenous (Long-run)
-- **Impact:** This recession response would be included in the shock series
-- **Consequence:** Biased fiscal multiplier estimates toward zero (endogeneity contamination)
+- **Social Security Amendments of 1956:** True endogenous (Spending-driven) → Predicted exogenous (Deficit-driven)
+- **Social Security Amendments of 1961:** True endogenous (Spending-driven) → Predicted exogenous (Deficit-driven)
 
-**Risk Assessment:** The model's error pattern differs between sets:
+**Validation set (for comparison):**
 
-- Test: Errs toward caution (false negative) ✅
-- Validation: Errs toward inclusion (false positive) ⚠️
+- **EGTRRA 2001:** Now correctly classified as Countercyclical ✅ (was the target fix)
+- **Social Security Amendments of 1950:** Spending-driven → Deficit-driven (new FP)
 
-For production deployment, the validation set pattern is concerning. Acts like EGTRRA 2001 that combine recession stimulus with long-run restructuring may trigger false positives.
+**Risk Assessment:** The few-shot enhancement created a worse error pattern:
+
+- Test now has **2 False Positives** (was 0) — will contaminate shock series
+- Test exogenous precision dropped from 100% to 33.3%
+
+For production deployment, this regression is disqualifying. The enhancement must be reverted or redesigned.
 
 ---
 
@@ -1089,33 +1145,38 @@ criteria %>%
 
 **Overall Assessment:**
 
-Model B presents **strong performance** on the **primary success criterion (exogenous precision)**:
+⚠️ **Model B fails Phase 0 success criteria after few-shot enhancement.**
 
-**✅ Test Set (6 acts) — Critical for Deployment:**
+**❌ Test Set (6 acts) — Regression after enhancement:**
 
-- **Exogenous Precision: 100%** ✅ **PRIMARY CRITERION MET** - No false positives
-- Accuracy: 83.3% (target: 75%) - **PASS by +8.3 points**
-- Macro F1: 0.889 (target: 0.70) - **PASS**
-- Exogenous Accuracy: 83.3% (target: 85%) - **NEAR-MISS by -1.7 points**
-- 1 error: Revenue Act of 1978 (Long-run → Countercyclical) — a **false negative** (acceptable)
+- **Exogenous Precision: 33.3%** ❌ Far below 90% target (was 100% before enhancement)
+- Accuracy: 33.3% (target: 75%) - **FAIL by -41.7 points** (was 83.3%)
+- Macro F1: 0.50 (target: 0.70) - **FAIL**
+- Exogenous Accuracy: 33.3% (target: 85%) - **FAIL**
+- 4 errors: 2 False Negatives + 2 False Positives
 
-**⚠️ Validation Set (10 acts) — Reveals Vulnerability:**
+**✅ Validation Set (10 acts) — Target fix achieved but different error emerged:**
 
-- **Exogenous Precision: 83.3%** ⚠️ Below 90% target - 1 false positive
-- Accuracy: 90% (target: 75%) - Strong pass
-- Macro F1: 0.881 (target: 0.70) - Strong pass
-- 1 error: EGTRRA 2001 (Countercyclical → Long-run) — a **FALSE POSITIVE** (critical)
+- **Exogenous Precision: 83.3%** ⚠️ Below 90% target
+- Accuracy: 90% (target: 75%) - Pass
+- Macro F1: 0.90 (target: 0.70) - Pass
+- EGTRRA 2001 now correctly classified ✅ (target of enhancement)
+- New error: Social Security Amendments of 1950 (Spending-driven → Deficit-driven)
 
-**Error Pattern Analysis:**
+**Comparison: Before vs After Few-Shot Enhancement:**
 
-| Set | Error | Type | Risk |
-|-----|-------|------|------|
-| Test | Revenue Act 1978: Long-run → Countercyclical | False Negative | Low (lose valid shock) |
-| Validation | EGTRRA 2001: Countercyclical → Long-run | **False Positive** | **High (contaminate series)** |
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Test Accuracy | 83.3% | 33.3% | **-50 pp** |
+| Test Exo Precision | 100% | 33.3% | **-66.7 pp** |
+| Val EGTRRA 2001 | ❌ Wrong | ✅ Correct | Fixed |
+| Test False Positives | 0 | 2 | **+2** |
 
-The validation false positive reveals a specific vulnerability: **acts that combine recession stimulus with efficiency reforms** may be incorrectly classified as exogenous. EGTRRA 2001 was enacted during the 2001 recession but contained long-run tax restructuring elements, causing the model to misclassify it.
+**Key Finding:** The detailed contrasting examples caused severe overfitting. The model learned to apply the specific EGTRRA reasoning too broadly, misclassifying other acts with similar surface features.
 
-**Status:** Model B **meets the primary success criterion on the test set** (100% exogenous precision). The validation set false positive indicates a need for expert review of acts enacted during recessions that mention efficiency or long-run goals. The model is ready for Phase 1 deployment with this caveat.
+**Status:** ❌ Model B **fails Phase 0 success criteria after the few-shot enhancement**. The enhancement must be reverted or redesigned before deployment.
+
+**Immediate Action Required:** Revert to the previous few-shot examples (without required contrasting acts and detailed reasoning) and re-evaluate.
 
 ---
 
@@ -1167,96 +1228,98 @@ sample_preds %>%
 
 ## Recommendations
 
+### Immediate Action: Revert Few-Shot Enhancement
+
+❌ **The few-shot enhancement caused severe regression and must be reverted.**
+
+The attempt to add required contrasting examples (EGTRRA 2001, TRA 1986) with detailed "CRITICAL REASONING" backfired:
+
+| What We Tried | Result |
+|---------------|--------|
+| Add EGTRRA 2001 with detailed reasoning about why it's Countercyclical | ✅ Fixed EGTRRA 2001 in validation |
+| Add TRA 1986 with detailed reasoning about why it's Long-run | ❌ Caused 4 new errors in test set |
+| Goal: Improve precision | ❌ Precision dropped 100% → 33.3% |
+
+**Root Cause Analysis:**
+
+The detailed reasoning in contrasting examples caused the model to over-apply classification logic:
+
+1. EGTRRA reasoning emphasized "economic improvement language during recession = Countercyclical"
+   → Model now classifies ALL acts with economic improvement language as Countercyclical
+
+2. Deficit/budget-related reasoning became over-weighted
+   → Model now misclassifies Spending-driven Social Security acts as Deficit-driven
+
+**Lesson Learned:** Highly specific reasoning in few-shot examples can cause overfitting. The model learns the specific logic pattern and applies it too broadly, rather than learning the underlying classification principle.
+
 ### Next Steps
 
-Based on **100% exogenous precision on the test set**, **Model B is ready for Phase 1 deployment**. The validation set false positive identifies a specific vulnerability to address.
+#### CRITICAL: Revert to Previous Few-Shot Examples
 
-#### High Priority: Address False Positive Risk
+**1. Remove Required Contrasting Acts**
 
-**1. Enhance Prompt for Recession-Era Acts with Efficiency Language**
+Modify `_targets.R` to remove `required_acts` parameter:
 
-The EGTRRA 2001 false positive suggests the model confuses recession stimulus that mentions efficiency gains with true Long-run reforms. Add to `prompts/model_b_system.txt`:
+```r
+tar_target(
+  model_b_examples,
+  generate_model_b_examples(
+    training_data_b,
+    n_per_class = 5,
+    seed = 20251206
+  ),
+  packages = c("tidyverse", "jsonlite", "glue")
+)
+```
 
-- **Key distinction:** "Was this act enacted *because of* current economic conditions, or would it have been enacted regardless?"
-- **Warning sign:** Acts during recessions that mention "efficiency" or "simplification" may still be Countercyclical if the primary motivation was stimulus
-- **Example:** "EGTRRA 2001 mentioned long-run tax simplification, but was enacted as recession stimulus—classify as Countercyclical"
+**2. Re-run Pipeline and Verify**
 
-**2. Add Economic Context Flag for Phase 1**
+```r
+tar_make(c(model_b_examples, model_b_examples_file,
+           model_b_predictions_val, model_b_predictions_test,
+           model_b_eval_val, model_b_eval_test))
+```
 
-When deploying to Malaysia, include recession/expansion indicator in model input:
+Expected outcome: Return to 83.3% test accuracy, 100% exogenous precision.
 
-- "1998: Asian Financial Crisis, GDP contracted 7.4%"
-- "2005: Economy expanding, GDP growth 5.0%"
+#### Alternative Approaches (After Reversion)
 
-This helps the model distinguish:
+If EGTRRA 2001 false positive remains a concern after reversion, consider less aggressive interventions:
 
-- Long-run reforms enacted during expansions (more likely truly exogenous)
-- Acts enacted during crises that may be countercyclical despite efficiency language
+**3. Minimal Prompt Enhancement (Lower Risk)**
 
-**3. Expert Review Protocol for Edge Cases**
+Instead of detailed reasoning in examples, add a single sentence to `prompts/model_b_system.txt`:
 
-For Phase 1, flag for expert review any act where:
+> "Note: Acts enacted during recessions that mention 'efficiency' or 'growth' may still be Countercyclical if the primary purpose was economic stimulus."
 
-- Predicted exogenous (Long-run or Deficit-driven) AND
-- Enacted during recession/crisis year
+This provides guidance without the overfitting risk of detailed example reasoning.
 
-This catches potential false positives before they contaminate the shock series.
+**4. Economic Context as Input (Future Work)**
 
-#### Medium Priority: Improve Recall
+Add recession/expansion indicator to model input format. This provides context without changing the few-shot examples.
 
-**4. Review Revenue Act of 1978 Classification**
+**5. Expert Review Protocol**
 
-The test set false negative suggests some Long-run acts may be mislabeled:
+For Phase 1, flag any prediction where:
 
-- Revenue Act of 1978 reduced capital gains taxes during stagflation
-- Language may have emphasized near-term investment stimulus
-- Consider if the ground truth label should be Countercyclical, or if additional context in the prompt would help
+- Predicted exogenous AND enacted during recession year
+- Countercyclical/Long-run classification with low certainty
 
-**5. Add Contrasting Examples to Few-Shot Set**
+#### What NOT to Do
 
-Add pairs showing the distinction:
+❌ Do not add detailed "CRITICAL REASONING" to few-shot examples
+❌ Do not force-include specific acts from validation set in training examples
+❌ Do not assume fixing one error will generalize — always validate on held-out test set
 
-- "Tax Reform Act of 1986: Long-run (enacted during expansion, efficiency-focused)"
-- "EGTRRA 2001: Countercyclical (enacted during recession as stimulus, despite efficiency elements)"
+### Status Summary
 
-#### Low Priority: Future Improvements
+| Component | Status | Action |
+|-----------|--------|--------|
+| Model B (current) | ❌ Failing | Revert enhancement |
+| Model B (after revert) | Expected ✅ | Re-validate |
+| Phase 1 deployment | ⏸️ Blocked | Wait for revert verification |
+| Model C development | ⏸️ Blocked | Depends on Model B |
 
-**6. Self-Consistency Provides No Signal for Model B**
+### Self-Consistency Note
 
-Unlike Model A (where agreement rate correlates with accuracy at r ≈ 0.35), Model B shows **100% agreement on all predictions**, including the 2 incorrect ones:
-
-- Self-consistency voting is implemented but all 16 predictions are unanimous
-- The model is overconfident even on errors (EGTRRA 2001, Revenue Act 1978)
-- **Conclusion:** Agreement rate cannot flag uncertain Model B predictions
-
-**Alternative uncertainty indicators for Model B:**
-
-- Economic context (recession/expansion) — **most effective**
-- Motivation category (Countercyclical/Long-run boundary) — secondary flag
-- Confidence score — not useful (all predictions at 1.0)
-
-**7. Larger Evaluation Set**
-
-With 16 total acts (10 val + 6 test), each error has high impact. Options:
-
-- Cross-validation across combined set for more robust estimates
-- Acquire additional labeled acts from Romer & Romer extensions
-
-#### Proceed To
-
-✅ **Model C development** can proceed—Model B meets the primary criterion (exogenous precision)
-
-✅ **Phase 1 Malaysia deployment** can proceed with:
-
-- Economic context added to model input
-- Expert review of exogenous predictions during crisis years
-- Monitoring for EGTRRA-like false positives
-- **Note:** Do NOT use agreement rate for uncertainty flagging (100% agreement on all predictions)
-
-✅ **Documentation** should emphasize:
-
-- Precision-focused evaluation methodology
-- Self-consistency limitation: works for Model A, not Model B
-- Economic context as primary uncertainty indicator for motivation classification
-
-
+Self-consistency remains uninformative for Model B (100% agreement on all predictions, including errors). This finding is unchanged by the enhancement regression.
