@@ -1323,3 +1323,108 @@ For Phase 1, flag any prediction where:
 ### Self-Consistency Note
 
 Self-consistency remains uninformative for Model B (100% agreement on all predictions, including errors). This finding is unchanged by the enhancement regression.
+
+---
+
+## Root Cause Analysis: Val-Test Performance Gap
+
+This section documents a deep investigation into why Model B shows 90% validation accuracy but only 33.3% test accuracy.
+
+### 1. Data Split Distribution Mismatch
+
+The test set has a different category distribution than training and validation:
+
+| Category | Train (28) | Val (10) | Test (6) |
+|----------|-----------|---------|---------|
+| Spending-driven | 9 (32%) | 3 (30%) | 3 (50%) |
+| Long-run | 9 (32%) | 3 (30%) | 2 (33%) |
+| Deficit-driven | 6 (21%) | 2 (20%) | 1 (17%) |
+| **Countercyclical** | 4 (14%) | 2 (20%) | **0 (0%)** |
+
+**Critical issue:** The test set is missing the Countercyclical category entirely. With only 44 total acts and 4 categories, stratified sampling couldn't guarantee representation of all classes in the small test set. This means:
+
+- The model cannot be evaluated on Countercyclical recall in the test set
+- The test set over-represents Spending-driven acts (50% vs 32% in training)
+- Performance metrics are unstable due to small sample size (6 acts)
+
+### 2. Test Set Contains Systematically Hard Cases
+
+Analysis of the 4 misclassified test acts reveals they share confusing surface features:
+
+**Error Pattern 1: Long-run → Countercyclical (2 acts)**
+
+Both misclassified Long-run acts have "economic improvement" language that resembles countercyclical framing:
+
+- **Public Law 90-26 (1967):** Restoration of Investment Tax Credit after inflation moderated. The timing (following economic concerns) triggers countercyclical pattern matching, but the act's purpose was restoring a structural policy suspended earlier, not stimulus.
+
+- **Revenue Act of 1978:** Capital gains reduction during stagflation. The economic uncertainty of the late 1970s creates countercyclical-looking context, but the capital gains reform was a structural efficiency measure advocated for years.
+
+**Error Pattern 2: Spending-driven → Deficit-driven (2 acts)**
+
+Both misclassified Spending-driven acts use language about program solvency that overlaps with deficit concerns:
+
+- **Social Security Amendments of 1956:** Mentions "self-supporting" and "contribution adjustments" — language shared with Deficit-driven acts — but the primary purpose was funding disability insurance expansion.
+
+- **Social Security Amendments of 1961:** Similarly mentions contribution revision and trust fund solvency, but the act primarily enabled early retirement benefits (spending expansion).
+
+### 3. System Prompt Vulnerabilities
+
+Review of `prompts/model_b_system.txt` identified several weaknesses:
+
+1. **Line 119 bias:** The instruction "If both long-run and deficit concerns → Deficit-driven (more urgent)" privileges deficit classification when features overlap.
+
+2. **Abstract boundary test:** The counterfactual "Would this be enacted regardless of business cycle?" is not operationalized with concrete criteria, leaving the model to pattern-match on surface features.
+
+3. **Few-shot gaps:** The training examples do not include counter-examples showing:
+   - Spending-driven acts with solvency language (like Social Security amendments)
+   - Long-run acts enacted during economic uncertainty
+
+4. **Confidence miscalibration:** All predictions show 100% confidence, even incorrect ones. The prompt provides no guidance on expressing uncertainty.
+
+### 4. Root Cause: Surface Pattern Matching
+
+The fundamental issue is that the model learned linguistic shortcuts rather than economic logic:
+
+| Surface Pattern | Model Inference | Correct Logic |
+|-----------------|-----------------|---------------|
+| "Economic improvement" + recession context | → Countercyclical | May be Long-run if structural reform |
+| "Self-supporting" + "contribution revision" | → Deficit-driven | May be Spending-driven if funding expansion |
+
+The model lacks the economic reasoning to distinguish:
+
+- **Countercyclical:** Temporary response TO the business cycle (stimulus, stabilizers)
+- **Long-run:** Structural reform enacted regardless of cycle timing
+
+This distinction requires understanding legislative intent and counterfactual reasoning that surface features cannot capture.
+
+### 5. Implications
+
+**For Phase 0 evaluation:**
+
+- The 33.3% test accuracy should be interpreted with caution given small sample size (n=6) and missing Countercyclical representation
+- Consider Leave-One-Out Cross-Validation (LOOCV) for more robust performance estimates (~$3 API cost for 44 acts)
+
+**For Phase 1 deployment:**
+
+- Expect errors on acts with ambiguous surface features
+- Implement expert review protocol flagging:
+  - Exogenous predictions during recession years
+  - Spending legislation with solvency language
+  - Acts on the Countercyclical/Long-run boundary
+
+**For prompt improvement (future work):**
+
+- Add concrete decision criteria for boundary cases
+- Include counter-examples in few-shot set
+- Add economic context (recession indicator) as model input
+- Consider chain-of-thought prompting for explicit reasoning
+
+### 6. Recommendations for Future Evaluation
+
+1. **Use LOOCV instead of train/val/test split** — With only 44 labeled acts, fixed splits are too sensitive to which acts land in which set
+
+2. **Report confidence intervals** — Bootstrap the small test set to quantify uncertainty in accuracy estimates
+
+3. **Stratify by difficulty** — Identify hard cases a priori (acts with ambiguous features) and ensure balanced representation
+
+4. **Error analysis before prompt changes** — Document why each error occurred before attempting fixes to avoid overfitting to specific cases
