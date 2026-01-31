@@ -218,7 +218,7 @@ model_a_extract_with_self_consistency <- function(user_input,
   }
 
   # Aggregate extraction results across samples
-  aggregate_extraction_results(all_results, chunk_metadata)
+  aggregate_extraction_results(all_results, chunk_metadata, n_samples)
 }
 
 
@@ -229,9 +229,10 @@ model_a_extract_with_self_consistency <- function(user_input,
 #'
 #' @param all_results List of extraction results from multiple samples
 #' @param chunk_metadata List with chunk metadata
+#' @param n_samples Integer number of samples taken
 #'
 #' @return Aggregated extraction result
-aggregate_extraction_results <- function(all_results, chunk_metadata) {
+aggregate_extraction_results <- function(all_results, chunk_metadata, n_samples) {
 
   # Collect all acts across samples with their occurrence counts
   act_occurrences <- list()
