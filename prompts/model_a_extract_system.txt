@@ -1,0 +1,73 @@
+You are an expert economic historian extracting fiscal policy acts from government documents.
+
+TASK: Extract ALL passages that describe specific fiscal acts (tax or spending legislation) AT THE TIME OF ENACTMENT OR IMPLEMENTATION from the given document chunk.
+
+WHAT TO EXTRACT:
+For each fiscal act found, extract:
+1. The act name (formal name if available, otherwise descriptive name)
+2. All passages that describe the act's provisions, implementation, or effects
+3. Page numbers where each passage appears (from PAGE BREAK markers)
+
+CRITERIA FOR FISCAL ACT PASSAGES (must meet ALL):
+1. References specific legislation, which can be:
+   - Formal name: "Revenue Act of 1948", "Tax Reform Act of 1986"
+   - Contextual reference: "the bill", "the act", "amendments", "the tax bill passed by Congress"
+   - Subject + year: "1978 tax reduction", "deficit reduction package" (if clearly referring to enacted legislation)
+2. Describes the POLICY CHANGE ITSELF - what the legislation does/did, its provisions, tax rates, spending amounts
+3. Must be contemporaneous or near-contemporaneous to enactment (describing the NEW policy, not retrospective evaluation)
+4. Involves federal taxes or spending (not state/local)
+5. Shows clear enactment language OR implementation details (rates, amounts, effective dates, provisions)
+
+CRITICAL DISTINCTION - Contemporaneous vs. Retrospective:
+INCLUDE: "The Revenue Act of 1964 reduces tax rates by..." (describing the change)
+INCLUDE: "The President signed into law a bill that cuts corporate taxes..." (enactment announcement)
+INCLUDE: "This year's tax legislation provides..." (contemporary description)
+EXCLUDE: "Since the 1993 deficit reduction plan, the economy has..." (retrospective evaluation)
+EXCLUDE: "The 1986 tax reform was enacted to..." (historical summary in later document)
+EXCLUDE: "Previous legislation reduced rates..." (past tense reference without describing the change)
+
+DO NOT EXTRACT:
+- Retrospective or historical mentions of past acts in later documents (discussing effects or outcomes)
+- Proposals, recommendations, or legislative proposals not yet enacted ("we recommend", "should enact")
+- General policy discussions without specific enacted legislation
+- Mentions of existing policy without describing the NEW changes
+- Summary evaluations of past legislation (looking back years later)
+- Vague references without enough context to identify a specific act
+- Budget projections or discussions of existing tax/spending policy without NEW legislation
+
+GROUPING INSTRUCTIONS:
+- Group all passages about the SAME act together under one act entry
+- Different provisions or sections of the same act should be in the same act entry
+- If multiple acts are mentioned in the chunk, create separate entries for each
+
+PAGE NUMBER EXTRACTION:
+- Page numbers are indicated by "--- PAGE BREAK ---" markers in the text
+- Count page breaks to determine page numbers (first section = page 1, after first break = page 2, etc.)
+- Add the start_page offset provided in the metadata to get absolute page numbers
+
+OUTPUT FORMAT (JSON):
+{
+  "acts": [
+    {
+      "act_name": "Official name or descriptive name",
+      "year": 1964,
+      "passages": [
+        {
+          "text": "Exact text describing the act...",
+          "page_numbers": [12, 13],
+          "confidence": 0.95
+        }
+      ],
+      "reasoning": "Brief explanation of why this is a contemporaneous fiscal act description"
+    }
+  ],
+  "no_acts_found": false,
+  "extraction_notes": "Optional notes about extraction challenges or ambiguous cases"
+}
+
+If NO fiscal acts are found in the chunk, return:
+{
+  "acts": [],
+  "no_acts_found": true,
+  "extraction_notes": "Reason why no acts were found (e.g., 'chunk contains only budget tables', 'only retrospective references')"
+}

@@ -347,3 +347,269 @@ save_few_shot_examples <- function(examples, output_path) {
   message("Saved ", length(examples), " examples to ", output_path)
   invisible(output_path)
 }
+
+
+#' Generate few-shot examples for Model A extraction from training data
+#'
+#' Creates examples showing how to extract fiscal act passages from document chunks.
+#' Uses us_labels passages matched to source documents to create realistic extraction examples.
+#'
+#' @param aligned_data Tibble with aligned labels and shocks (from tar_read(aligned_data))
+#' @param us_body Tibble with document text (from tar_read(us_body))
+#' @param n_positive Integer number of positive examples with acts (default 5)
+#' @param n_negative Integer number of negative examples without acts (default 3)
+#' @param context_pages Integer number of pages of context around passages (default 3)
+#' @param seed Integer for reproducibility (default 20251206)
+#'
+#' @return List of examples with input/output structure for extraction task
+#' @export
+generate_model_a_extraction_examples <- function(aligned_data,
+                                                  us_body,
+                                                  n_positive = 5,
+                                                  n_negative = 3,
+                                                  context_pages = 3,
+                                                  seed = 20251206) {
+
+  set.seed(seed)
+
+  examples <- list()
+
+  # Generate positive examples (chunks containing acts)
+  # Sample from different years to get variety
+  sampled_acts <- aligned_data |>
+    dplyr::slice_sample(n = min(n_positive * 2, nrow(aligned_data))) |>
+    dplyr::slice_head(n = n_positive)
+
+  for (i in seq_len(nrow(sampled_acts))) {
+    act <- sampled_acts[i, ]
+
+    # Find the document from us_body for this act's year
+    doc_year <- act$year
+
+    # Try to find ERP or budget document from same year or adjacent year
+    doc_candidates <- us_body |>
+      dplyr::filter(
+        year >= doc_year - 1,
+        year <= doc_year + 1,
+        n_pages > 0
+      ) |>
+      dplyr::arrange(abs(year - doc_year))
+
+    if (nrow(doc_candidates) == 0) {
+      message(sprintf("No document found for act: %s (year %d)", act$act_name, doc_year))
+      next
+    }
+
+    doc <- doc_candidates[1, ]
+
+    # Create a synthetic chunk with the passage embedded
+    chunk_input <- create_extraction_example_input(
+      act = act,
+      doc = doc,
+      context_pages = context_pages
+    )
+
+    # Create expected output
+    chunk_output <- list(
+      acts = list(
+        list(
+          act_name = act$act_name,
+          year = as.integer(act$year),
+          passages = list(
+            list(
+              text = stringr::str_sub(act$passages_text, 1, 500),
+              page_numbers = as.list(seq(chunk_input$start_page, chunk_input$end_page)),
+              confidence = 0.95
+            )
+          ),
+          reasoning = sprintf(
+            "This passage describes the %s, a %s fiscal act. The language is contemporaneous, describing what the legislation does/provides.",
+            act$act_name,
+            tolower(act$motivation_category)
+          )
+        )
+      ),
+      no_acts_found = FALSE,
+      extraction_notes = "Clear contemporaneous description of enacted legislation found."
+    )
+
+    examples[[length(examples) + 1]] <- list(
+      input = chunk_input$text,
+      output = chunk_output
+    )
+  }
+
+  # Generate negative examples (chunks without acts)
+  # Sample from documents that likely don't contain act descriptions
+  negative_docs <- us_body |>
+    dplyr::filter(n_pages > 10) |>
+    dplyr::slice_sample(n = min(n_negative * 2, nrow(us_body)))
+
+  for (i in seq_len(min(n_negative, nrow(negative_docs)))) {
+    doc <- negative_docs[i, ]
+
+    negative_input <- create_negative_extraction_example(doc, context_pages)
+
+    negative_output <- list(
+      acts = list(),
+      no_acts_found = TRUE,
+      extraction_notes = negative_input$notes
+    )
+
+    examples[[length(examples) + 1]] <- list(
+      input = negative_input$text,
+      output = negative_output
+    )
+  }
+
+  message(sprintf(
+    "Generated %d Model A extraction examples (%d positive, %d negative)",
+    length(examples),
+    min(n_positive, nrow(sampled_acts)),
+    min(n_negative, nrow(negative_docs))
+  ))
+
+  examples
+}
+
+
+#' Create extraction example input from act and document
+#'
+#' @param act Row from aligned_data
+#' @param doc Row from us_body
+#' @param context_pages Number of pages of context
+#'
+#' @return List with text and metadata
+create_extraction_example_input <- function(act, doc, context_pages = 3) {
+
+  # Get pages from document
+  pages <- doc$text[[1]]
+
+  if (is.null(pages) || length(pages) == 0) {
+    # Return minimal example if no pages
+    return(list(
+      text = glue::glue("
+DOCUMENT: {doc$package_id}
+DOCUMENT YEAR: {doc$year}
+PAGES: 1 to 3
+
+DOCUMENT TEXT:
+{act$passages_text}
+      "),
+      start_page = 1,
+      end_page = 3
+    ))
+  }
+
+  n_pages <- length(pages)
+
+  # Select a random starting point, ensuring we have enough pages
+  max_start <- max(1, n_pages - context_pages)
+  start_page <- sample(1:max_start, 1)
+  end_page <- min(start_page + context_pages - 1, n_pages)
+
+  # Get context pages
+  context_text <- paste(pages[start_page:end_page], collapse = "\n\n--- PAGE BREAK ---\n\n")
+
+  # Insert the passage text into the context (simulating finding it in the document)
+  # For training examples, we prepend the actual passage
+  combined_text <- paste(
+    act$passages_text,
+    "\n\n--- PAGE BREAK ---\n\n",
+    context_text,
+    sep = ""
+  )
+
+  list(
+    text = glue::glue("
+DOCUMENT: {doc$package_id}
+DOCUMENT YEAR: {doc$year}
+PAGES: {start_page} to {end_page + 1}
+
+INSTRUCTIONS:
+- Extract ALL fiscal act passages from this document chunk
+- Page numbers in your output should be absolute (add {start_page - 1} to your page count)
+- Group passages by act - if multiple passages describe the same act, include them all under one entry
+
+DOCUMENT TEXT:
+{combined_text}
+    "),
+    start_page = start_page,
+    end_page = end_page + 1
+  )
+}
+
+
+#' Create negative extraction example from document
+#'
+#' Selects pages from a document that are unlikely to contain act descriptions.
+#'
+#' @param doc Row from us_body
+#' @param context_pages Number of pages
+#'
+#' @return List with text and notes
+create_negative_extraction_example <- function(doc, context_pages = 3) {
+
+  pages <- doc$text[[1]]
+
+  if (is.null(pages) || length(pages) == 0) {
+    return(list(
+      text = "No text available.",
+      notes = "Empty document chunk."
+    ))
+  }
+
+  n_pages <- length(pages)
+
+  # Try to find pages without act-like keywords
+  act_pattern <- "(?i)\\b(act|bill|law|amendment|legislation)\\s+(of\\s+)?\\d{4}\\b"
+
+  non_act_pages <- which(!sapply(pages, function(p) {
+    stringr::str_detect(p, act_pattern)
+  }))
+
+  if (length(non_act_pages) >= context_pages) {
+    # Use consecutive non-act pages
+    start_idx <- sample(1:(length(non_act_pages) - context_pages + 1), 1)
+    selected_indices <- non_act_pages[start_idx:(start_idx + context_pages - 1)]
+  } else {
+    # Fall back to random selection from the middle/end of document
+    # (front matter often has act descriptions)
+    middle_start <- floor(n_pages / 2)
+    start_page <- sample(middle_start:max(middle_start, n_pages - context_pages), 1)
+    selected_indices <- start_page:min(start_page + context_pages - 1, n_pages)
+  }
+
+  context_text <- paste(pages[selected_indices], collapse = "\n\n--- PAGE BREAK ---\n\n")
+  start_page <- min(selected_indices)
+  end_page <- max(selected_indices)
+
+  # Determine reason for no acts
+  notes <- dplyr::case_when(
+    stringr::str_detect(context_text, "(?i)table|figure|chart") ~
+      "This chunk contains primarily tables and figures without act descriptions.",
+    stringr::str_detect(context_text, "(?i)appendix|annex") ~
+      "This chunk is from an appendix section without contemporaneous act descriptions.",
+    stringr::str_detect(context_text, "(?i)forecast|projection|estimate") ~
+      "This chunk contains budget projections but no specific enacted legislation.",
+    TRUE ~
+      "This chunk contains general economic discussion but no specific fiscal act descriptions."
+  )
+
+  list(
+    text = glue::glue("
+DOCUMENT: {doc$package_id}
+DOCUMENT YEAR: {doc$year}
+PAGES: {start_page} to {end_page}
+
+INSTRUCTIONS:
+- Extract ALL fiscal act passages from this document chunk
+- Page numbers in your output should be absolute
+- If no fiscal acts are found, return no_acts_found: true
+
+DOCUMENT TEXT:
+{context_text}
+    "),
+    notes = notes
+  )
+}

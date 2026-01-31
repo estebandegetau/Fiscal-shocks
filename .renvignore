@@ -8,3 +8,9 @@ _freeze/
 _manuscript/
 _output/
 _quarto/
+logs/
+lit/
+*.md
+prompts/
+python/
+*/unused/*
