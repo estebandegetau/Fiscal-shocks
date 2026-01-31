@@ -620,7 +620,157 @@ list(
     model_c_eval_test,
     evaluate_model_c(model_c_predictions_test),
     packages = c("tidyverse", "lubridate")
+  ),
+
+  # =============================================================================
+  # Production Pipeline: Model A Extraction (Phase 1 - New Country Deployment)
+  # =============================================================================
+  # This pipeline is for deploying to new countries (e.g., Malaysia) where we
+
+  # don't have pre-segmented passages like us_labels.csv. It extracts passages
+  # directly from document chunks.
+
+  # Production chunks: smaller windows for better extraction precision
+  tar_target(
+    chunks_production,
+    make_chunks(
+      us_body,
+      window_size = 25,   # Smaller for extraction (vs 50 for context)
+      overlap = 5,        # 5-page overlap for boundary handling
+      max_tokens = 20000  # More conservative token limit
+    )
+  ),
+
+  # Generate few-shot examples for Model A extraction
+  # Note: This uses aligned_data and us_body to create synthetic extraction examples
+  tar_target(
+    model_a_extract_examples,
+    generate_model_a_extraction_examples(
+      aligned_data = aligned_data,
+      us_body = us_body,
+      n_positive = 5,
+      n_negative = 3,
+      context_pages = 3,
+      seed = 20251206
+    ),
+    packages = c("tidyverse", "glue")
+  ),
+  tar_target(
+    model_a_extract_examples_file,
+    {
+      save_few_shot_examples(
+        model_a_extract_examples,
+        here::here("prompts", "model_a_extract_examples.json")
+      )
+    },
+    format = "file",
+    packages = c("jsonlite", "here")
+  ),
+
+  # Extract passages from all chunks (expensive - runs LLM on each chunk)
+  tar_target(
+    extracted_passages,
+    {
+      # Force dependency on examples file
+      examples_file <- model_a_extract_examples_file
+
+      model_a_extract_passages_batch(
+        chunks = chunks_production,
+        model = "claude-sonnet-4-20250514",
+        show_progress = TRUE,
+        use_self_consistency = TRUE,
+        n_samples = 5,
+        temperature = 0.7
+      )
+    },
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
+    deployment = "main"  # Run sequentially to avoid parallel API rate limits
+  ),
+
+  # Group and deduplicate extracted passages
+  tar_target(
+    grouped_acts,
+    process_extracted_passages(
+      batch_results = extracted_passages,
+      match_threshold = 0.85
+    ),
+    packages = c("tidyverse", "stringdist")
+  ),
+
+  # Evaluate extraction against known US acts (validation)
+  tar_target(
+    extraction_eval,
+    {
+      flattened <- flatten_extracted_acts(extracted_passages)
+      evaluate_model_a_extraction(
+        extracted_acts = flattened,
+        known_acts = us_shocks |> distinct(act_name, .keep_all = TRUE) |>
+          mutate(year = lubridate::year(date_signed)),
+        match_threshold = 0.85
+      )
+    },
+    packages = c("tidyverse", "stringdist", "lubridate")
+  ),
+
+  # Run Model B on extracted passages (production pipeline)
+  tar_target(
+    model_b_predictions_production,
+    {
+      # Force dependency on examples file
+      examples_file <- model_b_examples_file
+
+      model_b_classify_motivation_batch(
+        act_names = grouped_acts$act_name,
+        passages_texts = grouped_acts$passages_text,
+        years = grouped_acts$year,
+        model = "claude-sonnet-4-20250514",
+        show_progress = TRUE,
+        use_self_consistency = TRUE,
+        n_samples = 5,
+        temperature = 0.7
+      ) |>
+        rename(
+          pred_motivation = motivation,
+          pred_exogenous = exogenous,
+          pred_confidence = confidence,
+          pred_agreement_rate = agreement_rate,
+          pred_reasoning = reasoning,
+          pred_evidence = evidence
+        ) |>
+        bind_cols(grouped_acts |> select(act_name, year, passages_text))
+    },
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
+    deployment = "main"
+  ),
+
+  # Track 2: Robustness evaluation on extracted passages
+  # Compares Model B performance on Model A extracted passages vs human-curated passages
+  tar_target(
+    model_b_robustness_eval,
+    evaluate_model_b_robustness(
+      grouped_acts = grouped_acts,
+      aligned_data = aligned_data,
+      model = "claude-sonnet-4-20250514",
+      match_threshold = 0.85,
+      use_self_consistency = TRUE,
+      n_samples = 5,
+      temperature = 0.7,
+      show_progress = TRUE
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue", "stringdist"),
+    deployment = "main"
+  ),
+
+  # Compare Track 1 (LOOCV on human passages) vs Track 2 (extracted passages)
+  tar_target(
+    model_b_robustness_comparison,
+    compare_evaluation_tracks(
+      track1_eval = model_b_loocv_eval,
+      track2_eval = model_b_robustness_eval
+    ),
+    packages = "tidyverse"
   )
+
   # Notebooks -------------------------
   # tar_quarto(
   #   test_text_extraction,
