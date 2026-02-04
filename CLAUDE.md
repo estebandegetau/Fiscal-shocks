@@ -165,13 +165,27 @@ Additional production pipeline targets will be added for codebook evaluation and
 
 ### Claude Code Agents
 
-The project includes 5 specialized agents in `.claude/agents/` for different tasks:
+The project includes 10 specialized agents in `.claude/agents/` organized by function:
 
+**Development:**
+- **codebook-developer**: Draft YAML codebooks (S0), interactive behavioral tests (S1)
+
+**Code Production & Review:**
+- **r-coder**: Write R functions following tidyverse idioms and targets integration
+- **code-reviewer**: Technical review (haiku) — R best practices, API safety, no side effects
+- **strategy-reviewer**: Strategic review — verify implementation matches `docs/strategy.md`, consults domain specialists
+
+**Domain Specialists:**
+- **fiscal-policy-specialist**: R&R methodology, motivation categories, exogeneity criteria
+- **llm-eval-specialist**: H&K framework, behavioral tests, LOOCV, error analysis
+
+**Infrastructure:**
+- **pipeline-manager**: Targets pipeline definitions, `tar_make()`, debugging
 - **document-extractor**: PDF extraction using Docling or pdftools
-- **doc-writer**: Quarto documentation and research notebooks
-- **pipeline-manager**: Targets pipeline management and debugging
-- **shock-classifier**: Fiscal shock classification using C1-C4 codebooks and H&K validation stages
-- **validation-analyst**: Agreement metrics, H&K behavioral tests, and error analysis
+
+**Documentation:**
+- **doc-writer**: Quarto notebooks and documentation
+- **notebook-reviewer**: Verify notebooks evaluate what we intend
 
 Use these agents via the Task tool for specialized work.
 

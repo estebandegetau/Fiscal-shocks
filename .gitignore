@@ -3,6 +3,7 @@
 **/*.quarto_ipynb
 _*/
 .*/
+!.claude/
 Lib/
 renv/
 *.pdf
