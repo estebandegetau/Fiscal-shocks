@@ -29,13 +29,13 @@ The rise of **Large Language Models (LLMs)** offers a practical pathway to exten
 
 This project proposes to:
 
-1. **Train and benchmark an LLM-assisted classifier on the US** using the Romer & Romer tax shock dataset and underlying narrative sources as labels and text.
-2. **Adapt and validate this trained system to Malaysia** as a pilot country.
+1. **Develop and validate a codebook-based LLM system on the US** using the Romer & Romer tax shock dataset and the Halterman & Keith (2025) validation framework.
+2. **Adapt and validate this system to Malaysia** as a pilot country.
 3. **Scale to Indonesia, Thailand, the Philippines, and Vietnam**, combining LLMs, multilingual translation, and human validation.
 
 The outputs will be:
 
-1. A **US-based benchmark module**: LLM classifiers and extraction routines that can reproduce US narrative tax shocks from raw documents.
+1. A **US-based benchmark module**: Four validated codebooks (C1-C4) that can reproduce US narrative tax shocks from raw documents.
 2. A **narrative episode dataset** for each SEA country based on executive, legislative, and press documents.
 3. A **shock-event dataset** representing actual changes in fiscal liabilities or expenditure paths, classified into the @romer2010 motivation categories. 
 4. A set of **macro and firm-level impulse responses** to fiscal shocks using local projections and modern difference-in-differences methods (LP-DiD). 
@@ -46,19 +46,19 @@ These will constitute the first systematic narrative fiscal shock series for Sou
 
 The project focuses on four core questions:
 
-1. **US Benchmarking / LLM Training:**
-   Can an LLM trained on the **US narrative corpus** and Romer & Romer’s tax-shock labels reliably:
+1. **US Benchmarking / Codebook Validation:**
+   Can LLM codebooks validated on the **US narrative corpus** and Romer & Romer's tax-shock labels reliably:
 
-   * detect fiscal acts,
+   * identify fiscal measures meeting the "significant mention" rule,
    * classify their motivations, and
    * recover the timing and size of tax shocks closely enough to reproduce known US fiscal multipliers?
 
 2. **Measurement in Emerging Markets:**
-   Conditional on a successful US benchmark, can we construct reliable narrative-based fiscal shock series for Southeast Asian economies using the same LLM architecture, multilingual translation, and human validation?
+   Conditional on a successful US benchmark, can we construct reliable narrative-based fiscal shock series for Southeast Asian economies using the same country-agnostic codebooks, multilingual translation, and human validation?
 
 3. **Validation and Transportability:**
 
-   * How closely do LLM-based classifications align with (i) expert assessments and (ii) contemporaneous news coverage in each country?
+   * How closely do codebook-based classifications align with (i) expert assessments and (ii) contemporaneous news coverage in each country?
    * Are the identified exogenous shocks orthogonal to short-run macro conditions?
    * How much degradation (if any) occurs when moving from US to Malaysia and from Malaysia to other SEA contexts?
 
@@ -72,9 +72,9 @@ The project focuses on four core questions:
 
 We structure the work in **three phases**, with a deliberate **Phase 0 on the US** to de-risk the entire pipeline.
 
-### Phase 0: US Training and Benchmarking (2025)
+### Phase 0: US Codebook Development and Benchmarking (January 2026)
 
-**Objective:** Use the US as a sandbox to train and stress-test the LLM pipeline before touching emerging market data.
+**Objective:** Use the US as a sandbox to develop and validate LLM codebooks using the Halterman & Keith (2025) framework before touching emerging market data.
 
 #### Data
 
@@ -94,47 +94,53 @@ We structure the work in **three phases**, with a deliberate **Phase 0 on the US
    * Reconstruct the narrative corpus used in @romer2010.
    * Align each tax act in the Romer & Romer dataset with the source passages used to classify its motivation and revenue effects.
 
-2. **LLM-based Act Detection (Model A)**
+2. **Codebook C1: Measure Identification**
 
-   * Train models to detect **candidate fiscal acts** and relevant passages in long documents (e.g., ERP chapters, budget speeches).
-   * Use Romer & Romer’s list of 50 significant postwar tax actions as positive labels and randomly sampled irrelevant passages as negatives.
+   * Develop a machine-readable codebook to identify **fiscal measures** meeting the R&R "significant mention" rule.
+   * Validate using H&K behavioral tests: legal outputs (100%), memorization (100%), order sensitivity (<5%).
+   * Target: Recall ≥90%, Precision ≥80% on 44 labeled US acts.
 
-3. **LLM-based Motivation Classification (Model B)**
+3. **Codebook C2: Motivation Classification**
 
-   Using **Romer & Romer’s four-way motivation**: spending-driven, countercyclical, deficit-driven, long-run/structural, 
+   Using **Romer & Romer's four-way motivation**: spending-driven, countercyclical, deficit-driven, long-run/structural,
 
-   * Fine-tune or instruction-tune a modest-size LLM (suitable for local hardware) on:
+   * Develop a codebook with explicit criteria and positive/negative examples following H&K format.
+   * Embed **best-practice rules for narrative work** (real-time sources, explicit criteria, documentation) from Romer & Romer's 2023 Presidential Address.
+   * Target: Weighted F1 ≥70%, Exogenous Precision ≥85%.
 
-     * input: narrative passage(s) around the tax change,
-     * output: motivation label + structured explanation.
-   * Embed **best-practice rules for narrative work** (real-time sources, explicit criteria, documentation) from Romer & Romer’s 2023 Presidential Address on the narrative approach. 
+4. **Codebooks C3 and C4: Timing and Magnitude Extraction**
 
-4. **Information Extraction for Timing and Magnitude (Model C)**
+   * **C3 (Timing)**: Extract implementation quarter(s) using R&R midpoint rule. Target: Exact quarter ≥85%, ±1 quarter ≥95%.
+   * **C4 (Magnitude)**: Extract fiscal impact in billions USD. Target: MAPE <30%, Sign accuracy ≥95%.
+   * Compare extracted values with Romer & Romer's act-quarter series.
 
-   * Train models (or rule-based + LLM hybrid) to extract:
+5. **H&K Validation Pipeline**
 
-     * quarter of change in liabilities,
-     * present-value quarter,
-     * revenue impact (baseline and present value).
-   * Compare extracted values with Romer & Romer’s act-quarter series.
+   Each codebook passes through the Halterman & Keith 5-stage framework:
 
-5. **US Back-Testing**
+   * **S0**: Codebook preparation (YAML definitions, examples)
+   * **S1**: Behavioral tests (sanity checks)
+   * **S2**: Zero-shot evaluation (LOOCV on 44 US acts)
+   * **S3**: Error analysis (failure mode identification)
+   * **S4**: Fine-tuning (last resort, avoided to preserve cross-country transferability)
 
-   * Re-estimate US tax multipliers using only **LLM-generated** episodes and shocks:
+6. **US Back-Testing**
 
-     * aggregate, exogenous tax changes à la @romer2010, 
+   * Re-estimate US tax multipliers using only **codebook-generated** episodes and shocks:
+
+     * aggregate, exogenous tax changes à la @romer2010,
      * dynamic effects via local projections.
    * Benchmark whether:
 
      * sign and timing match the original estimates,
      * magnitudes are within acceptable bands (e.g., ±20–30%).
-   * This gives a **quantitative yardstick** for “good enough” LLM performance.
+   * This gives a **quantitative yardstick** for "good enough" codebook performance.
 
-Deliverable of Phase 0: an **audited, documented LLM toolkit** that can (i) reconstruct the US series reasonably well and (ii) be ported to other countries with known limitations.
+Deliverable of Phase 0: **Four validated codebooks (C1-C4)** that can (i) reconstruct the US series reasonably well and (ii) be deployed to other countries without retraining.
 
-### Phase 1: Malaysia Pilot (2025)
+### Phase 1: Malaysia Pilot (February 2026)
 
-Malaysia is the optimal starting point due to extensive English-language archives and relatively stable political institutions.
+Malaysia is the optimal starting point due to extensive English-language archives and relatively stable political institutions (1980-2022, estimated 20-40 fiscal acts).
 
 #### Data Sources
 
@@ -157,12 +163,12 @@ The project distinguishes two levels of analysis:
    Subset of episodes that result in measurable changes to fiscal liabilities/expenditures (legislated or executive).
    Output: a shock-event dataset for econometric analysis (timing, size, tax base, motivation).
 
-### LLM Pipeline (Human-in-the-Loop)
+### Codebook Pipeline (Human-in-the-Loop)
 
-We reuse the **US-trained models** as the backbone and adapt them to Malaysia.
+We deploy the **US-validated codebooks** and adapt them to Malaysia as needed.
 
 **Step 1 — Ingestion & Parsing**
-Automatic collection and segmentation of documents into candidate narrative episodes, using the Act Detection model trained in Phase 0 and adjusted to Malaysian document formats.
+Automatic collection and segmentation of documents into candidate narrative episodes, using Codebook C1 (Measure Identification) adjusted to Malaysian document formats.
 
 **Step 2 — Translation**
 LLM-based translation for non-English texts into English, with:
@@ -170,71 +176,69 @@ LLM-based translation for non-English texts into English, with:
 * consistent terminology for fiscal concepts,
 * retention of uncertainty / qualifications in the original text.
 
-**Step 3 — Motivation Classification (US-initialized)**
+**Step 3 — Motivation Classification (Codebook C2)**
 
-Each episode is classified into Romer & Romer’s four motivation categories, using the US-trained classifier as a prior:
+Each identified measure is classified into Romer & Romer's four motivation categories using the US-validated C2 codebook:
 
 * Spending-driven
 * Countercyclical
 * Deficit-driven
-* Long-run/structural 
+* Long-run/structural
 
-The LLM produces:
+The codebook produces:
 
 * a proposed label,
-* a short justification using explicit criteria (e.g., “responding to current macro weakness” vs “paying for a new program”),
+* a short justification using explicit criteria (e.g., "responding to current macro weakness" vs "paying for a new program"),
 * a confidence score,
-* an “inconsistency flag” comparing **stated motives** (in-text) to **inferred motives** (based on macro context).
+* an "inconsistency flag" comparing **stated motives** (in-text) to **inferred motives** (based on macro context).
 
-**Step 4 — Domain Adaptation & Human Validation**
+**Step 4 — Expert Validation & Codebook Adaptation**
 
-* Draw stratified samples by:
+Following the H&K S3 error analysis methodology:
 
-  * label,
-  * model confidence,
-  * time period,
-  * type of document.
+* Draw stratified samples by label, confidence, time period, and document type.
 * Local experts review and re-label:
 
   * obvious misclassifications (e.g., misreading of local institutional language),
   * ambiguous cases (e.g., mixed motivations).
-* Use these corrections to:
+* Use corrections to:
 
-  * update prompts and decision rules,
-  * optionally fine-tune the model on Malaysia-specific examples (few-shot adaptation).
+  * update codebook definitions (S0 revision),
+  * add Malaysia-specific examples to clarifications.
 
-**Step 5 — Shock Identification**
+**Step 5 — Timing and Magnitude Extraction (Codebooks C3 & C4)**
 
-* Cross-walk narrative episodes with:
-
-  * actual legislation,
-  * implementation regulations,
-  * budget tables.
-* Code whether and when **tax/spending liabilities** actually change:
+* Apply C3 (Timing) and C4 (Magnitude) codebooks to extract:
 
   * change in liabilities (quarter, size, tax base),
   * present value of announced changes,
   * exogenous vs endogenous classification (based on motivation and timing, as in @romer2010). 
 
-### Phase 2: Extension to Indonesia, Thailand, the Philippines, Vietnam (2025–2026)
+### Phase 2: Extension to Indonesia, Thailand, the Philippines, Vietnam (June 2026)
 
-* Apply the same pipeline, with:
+* Apply the same codebook pipeline, with:
 
   * country-specific corpus discovery and scraping,
   * language adaptation (translation and terminology),
   * targeted human validation in each country.
-* Leverage **transfer learning**:
+* Leverage **country-agnostic codebook design**:
 
-  * US → Malaysia serves as the main calibration jump,
+  * US → Malaysia serves as the main validation of cross-country transfer,
   * Malaysia → other SEA countries leverages experience with mixed English/local language environments and similar fiscal institutions.
+  * Codebook definitions (S0) may be revised based on expert feedback, but core methodology remains unchanged.
 
 ## Validation
 
 The project embeds a rigorous, multi-method validation strategy, now explicitly in **two layers**: US and SEA.
 
-### 1. US Benchmark Validation
+### 1. US Benchmark Validation (H&K Framework)
 
-* Compare LLM-derived US shocks to Romer & Romer’s original series:
+* Apply Halterman & Keith 5-stage validation to each codebook:
+
+  * **S1**: Behavioral tests (legal outputs, memorization, order sensitivity)
+  * **S2**: Zero-shot evaluation via LOOCV on 44 US acts
+  * **S3**: Error analysis identifying systematic failure patterns
+* Compare codebook-derived US shocks to Romer & Romer's original series:
 
   * confusion matrix for motivation labels,
   * distribution of timing errors (quarter misalignment),
@@ -242,14 +246,15 @@ The project embeds a rigorous, multi-method validation strategy, now explicitly 
 * Re-run baseline US macro regressions using:
 
   * local projections for GDP, investment, and unemployment,
-  * exogenous tax changes only. 
-* Require that impulse response functions are **qualitatively identical** and **quantitatively close** to original published estimates before deploying the model to SEA.
+  * exogenous tax changes only.
+* Require that impulse response functions are **qualitatively identical** and **quantitatively close** to original published estimates before deploying codebooks to SEA.
 
-### 2. Expert Review in SEA
+### 2. Expert Review in SEA (H&K S3 Error Analysis)
 
 * Engage World Bank economists (including KL office) and local experts.
 * Evaluate a stratified sample of episodes and shocks in each country.
-* Document disagreements systematically to refine classification rules and prompts.
+* Document disagreements systematically using H&K error taxonomy to refine codebook definitions.
+* Target: Expert agreement ≥80% on measure identification, ≥70% on motivation classification.
 
 ### 3. News-Based Cross-Validation
 
@@ -265,7 +270,7 @@ The project embeds a rigorous, multi-method validation strategy, now explicitly 
 * Test correlation of “exogenous” shocks with real-time macro indicators (GDP, unemployment, inflation).
 * Exogenous shocks should show weak contemporaneous correlation with short-run macro conditions; if not, re-examine classification.
 
-This two-tier validation (US + SEA) turns the US into a **truth-benchmark** and SEA into the **test of portability**.
+This two-tier validation (US + SEA) turns the US into a **truth-benchmark** and SEA into the **test of codebook portability**.
 
 ## Empirical Analysis
 
@@ -302,43 +307,40 @@ This will generate the first micro-based fiscal multipliers for these countries.
 
 ## Outputs and Deliverables
 
-### By mid-2025 (US Benchmark)
+### By January 2026 (US Benchmark)
 
-* Reconstructed US narrative corpus aligned with Romer & Romer tax acts. 
-* Trained and documented LLM modules:
+* Reconstructed US narrative corpus aligned with Romer & Romer tax acts.
+* Four validated codebooks (C1-C4) with H&K documentation:
 
-  * act detection,
-  * motivation classification,
-  * timing and magnitude extraction.
-* Quantitative comparison of LLM-based vs original US tax multipliers.
+  * C1: Measure identification,
+  * C2: Motivation classification,
+  * C3: Timing extraction,
+  * C4: Magnitude extraction.
+* Quantitative comparison of codebook-based vs original US tax multipliers.
 
-### By December 2025 (Malaysia Pilot Completion)
+### By February 2026 (Malaysia Pilot Completion)
 
-* Fully operational R-based and LLM-assisted pipeline for Malaysia.
+* Fully operational R-based and codebook-assisted pipeline for Malaysia.
 * Narrative episode dataset (Malaysia).
 * First version of the shock-event dataset (Malaysia).
-
-### By early February 2026 (Pilot Validation)
-
-* Expert- and news-based validation for a subset of Malaysian episodes and shocks.
-* Technical documentation and reproducible code for the Malaysia pipeline.
+* Expert validation report with agreement metrics and error analysis.
 
 ### By June 2026 (Core Dataset Completion)
 
 * Narrative and shock-event datasets for: Malaysia, Indonesia, Thailand, the Philippines, Vietnam.
 * Harmonized multi-country episode and shock datasets.
-* Fully validated motivation classification framework and LLM toolkit.
+* Fully validated codebook framework (C1-C4) with country-specific adaptations documented.
 * Public dissemination-ready code and documentation (subject to licensing/permissions).
 
 ### Post-2026 (Analytical Outputs)
 
 * Macro-level impact study of tax and spending shocks in SEA.
-* Firm-level impact study using LP-DiD. 
-* Methodological paper on **LLM-assisted narrative identification**, emphasizing:
+* Firm-level impact study using LP-DiD.
+* Methodological paper on **codebook-assisted narrative identification**, emphasizing:
 
-  * US benchmark reproduction,
-  * cross-country transportability,
-  * human-in-the-loop design.
+  * H&K validation framework applied to economic history,
+  * cross-country transferability of country-agnostic codebooks,
+  * human-in-the-loop design with expert validation.
 * Data package for public release (subject to permissions).
 
 ## Risks and Mitigation
@@ -347,19 +349,19 @@ This will generate the first micro-based fiscal multipliers for these countries.
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Incomplete/uneven archives             | Combine multiple sources; transparently document coverage; adjust sample windows.                                       |
 | Translation inaccuracies               | Dedicated translation stage; manual checks; standardized prompts and glossaries.                                        |
-| LLM misclassification                  | US-based benchmarking; human-in-the-loop refinement; conservative thresholds for exogeneity.                            |
-| Domain shift US → SEA                  | Explicit diagnostics on model confidence, label drift, and validation error; country-specific fine-tuning where needed. |
+| Codebook misclassification             | H&K validation framework; human-in-the-loop refinement; conservative thresholds for exogeneity.                         |
+| Domain shift US → SEA                  | Country-agnostic codebook design; codebook definition revision (S0) based on expert feedback; avoid fine-tuning to preserve transferability. |
 | Political bias in narrative documents  | Cross-check with news; inconsistency flags; robust alternative classifications.                                         |
 | Weak identification for some countries | Use Malaysia as a strong pilot; downweight uncertain periods; exploit LP-DiD with clean controls.                       |
 
 ## Policy Relevance and Value Added to the World Bank
 
 * Fills critical data gaps for fiscal-policy modeling in major middle-income economies.
-* Provides **scalable infrastructure** for narrative shock identification, with a **US-validated LLM core** exportable to other regions (Latin America, South Asia, Africa).
-* Enhances understanding of **how fiscal policy affects private investment and firm behavior**, central to the Bank’s structural reform and growth agenda.
+* Provides **scalable infrastructure** for narrative shock identification, with **US-validated codebooks** exportable to other regions (Latin America, South Asia, Africa).
+* Enhances understanding of **how fiscal policy affects private investment and firm behavior**, central to the Bank's structural reform and growth agenda.
 * Supports better macroeconomic forecasting and policy advice in client countries by plugging a key missing input: credible exogenous fiscal shocks.
 
-The project also showcases responsible, auditable use of LLMs for applied economic research—grounded in best-practice narrative methods —rather than opaque black-box automation.
+The project also showcases responsible, auditable use of LLMs for applied economic research—grounded in best-practice narrative methods (R&R) and rigorous validation frameworks (H&K)—rather than opaque black-box automation.
 
 ## References {.unnumbered}
 

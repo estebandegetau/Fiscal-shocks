@@ -26,25 +26,25 @@ This project proposes to build a **validated, scalable LLM pipeline** for fiscal
 
 ## Novelty and Innovation
 
-### A. A US-Trained LLM Core
+### A. A US-Validated Codebook System
 
-The project begins by training few-shot models on 44 US fiscal acts with Romer & Romer's original labels. This ensures:
+The project develops 4 domain-specific codebooks (C1-C4) validated on 44 US fiscal acts with Romer & Romer's original labels using the Halterman & Keith (2025) validation framework. This ensures:
 
 -   we anchor the method in a gold-standard dataset,
--   we quantify model accuracy against known results,
--   we test transfer learning with realistic data constraints.
+-   we quantify codebook accuracy against known results via rigorous behavioral testing,
+-   we design country-agnostic definitions that transfer across countries.
 
-This step is essential for **credibility**: the model must demonstrate strong performance on US data before cross-country deployment.
+This step is essential for **credibility**: codebooks must demonstrate strong performance on US data before cross-country deployment.
 
 ### B. Transfer Learning with Expert Validation
 
-We deploy the US-trained model to Malaysia, where English-language archives are extensive. The pipeline:
+We deploy the US-validated codebooks to Malaysia, where English-language archives are extensive. The pipeline:
 
-1.  extracts narrative episodes where fiscal policy is discussed,
-2.  classifies motivations using Romer & Romer's categories,
-3.  identifies actual tax or spending changes, their timing, and magnitude,
-4.  flags potential political or cyclical influences, and
-5.  integrates systematic expert validation to assess cross-country transfer performance.
+1.  identifies fiscal measures meeting the "significant mention" rule (Codebook C1),
+2.  classifies motivations using Romer & Romer's categories (Codebook C2),
+3.  extracts implementation timing using the midpoint rule (Codebook C3),
+4.  extracts fiscal impact magnitude (Codebook C4), and
+5.  integrates systematic expert validation following Halterman & Keith error analysis methodology.
 
 Once methodology is validated on Malaysia (estimated 20-40 acts, 1980-2022), the pipeline extends to Indonesia, Thailand, the Philippines, and Vietnam, with built-in multilingual capability.
 
@@ -72,11 +72,11 @@ Once methodology is validated on Malaysia (estimated 20-40 acts, 1980-2022), the
 
 ### Phase 0 – US Benchmark (Jan 2026) {.unnumbered}
 
-Train few-shot LLM models on 44 US fiscal acts with Romer & Romer labels to identify acts, classify motivations, and extract timing/magnitude. Validate performance against ground truth.
+Develop and validate 4 codebooks (C1-C4) on 44 US fiscal acts using the Halterman & Keith framework: codebook preparation, behavioral testing, zero-shot evaluation, and error analysis. Validate performance against Romer & Romer ground truth.
 
 ### Phase 1 – Malaysia Pilot (Feb 2026) {.unnumbered}
 
-Deploy US-trained models to Malaysia documents (1980-2022), generating candidate fiscal shock dataset. Engage local expert to validate outputs and assess cross-country transfer performance. Refine prompts based on expert feedback.
+Deploy US-validated codebooks to Malaysia documents (1980-2022), generating candidate fiscal shock dataset. Engage local expert to validate outputs and assess cross-country transfer performance. Refine codebook definitions based on expert feedback.
 
 ### Phase 2 – Southeast Asia Scaling (June 2026) {.unnumbered}
 
@@ -103,7 +103,7 @@ Extend to Indonesia, Thailand, the Philippines, and Vietnam, incorporating exper
 
 ## Conclusion {.unnumbered}
 
-This project brings together frontier methodology, practical policy relevance, and realistic scalability. The US-benchmarked LLM pipeline demonstrates few-shot learning effectiveness; the Malaysia pilot tests cross-country transfer with expert validation; and the multi-country rollout provides methodology replicable beyond Southeast Asia. The contribution is methodological: showing LLMs can assist experts in fiscal shock identification, reducing effort from months to weeks, even with limited training data.
+This project brings together frontier methodology, practical policy relevance, and realistic scalability. The US-benchmarked codebook system (C1-C4) demonstrates the Halterman & Keith validation framework applied to economic history; the Malaysia pilot tests cross-country transfer with expert validation; and the multi-country rollout provides methodology replicable beyond Southeast Asia. The contribution is methodological: showing country-agnostic codebooks can assist experts in fiscal shock identification, reducing effort from months to weeks, even with limited training data.
 
 {{< pagebreak >}}
 

@@ -4,19 +4,31 @@ This file provides context for Claude Code when working on Phase 1 implementatio
 
 ## Phase 1 Overview
 
-**Goal**: Deploy US-trained LLM models to Malaysia government documents (1980-2022) with expert validation to test cross-country transfer learning.
+**Goal**: Deploy US-validated codebooks (C1-C4) to Malaysia government documents (1980-2022) with expert validation to test cross-country transfer learning.
 
 **Timeline**: 12 weeks (4 weeks deployment, 4 weeks validation, 2 weeks refinement, 2 weeks documentation)
 
-**Status**: PLANNING (Phase 0 must complete first)
+**Status**: PLANNING (Phase 0 codebook validation must complete first)
 
 **Expected Output**: 20-40 expert-validated Malaysia fiscal acts
 
+## Authoritative Methodology
+
+**Primary Reference**: `docs/strategy.md`
+
+This document contains the complete R&R + H&K framework specification. Phase 1 applies the validated codebooks to a new country context.
+
+**Key Sections**:
+
+- Cross-Country Transfer Strategy
+- Malaysia Adaptation Protocol
+- Verification Plan for Malaysia Pilot
+
 ## Key Documents
 
-- **[malaysia_strategy.md](malaysia_strategy.md)** - Full strategic plan with 4 options evaluated (READ THIS FIRST)
-- **[README.md](README.md)** - Quick reference guide to Phase 1
-- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - What was implemented in the strategic planning
+- **[malaysia_strategy.md](malaysia_strategy.md)** — Full strategic plan with 4 options evaluated (READ THIS FIRST)
+- **[README.md](README.md)** — Quick reference guide to Phase 1
+- **[expert_review_protocol.md](expert_review_protocol.md)** — Expert validation protocol aligned with H&K S3 error analysis
 
 ## Critical Context: Data Constraints
 
@@ -27,7 +39,7 @@ This file provides context for Claude Code when working on Phase 1 implementatio
 - **No ground truth labels** for Malaysia (expert validation required)
 - **Cannot expect**: 100+ acts per country
 
-### Strategic Pivot
+### Strategic Framing
 
 ❌ **NOT**: Fully automated pipeline generating large-scale datasets
 ✅ **YES**: LLM-assisted methodology with expert validation loop
@@ -40,37 +52,41 @@ This file provides context for Claude Code when working on Phase 1 implementatio
 
 See [malaysia_strategy.md](malaysia_strategy.md) for full details. Summary:
 
-1. Deploy US-trained Models A/B/C to Malaysia documents (no retraining)
+1. Deploy US-validated codebooks C1-C4 to Malaysia documents (no retraining)
 2. Expert reviews random sample of outputs (10-20 acts)
-3. Analyze error patterns, refine prompts
-4. Re-run on error cases, final expert sign-off
+3. Analyze error patterns using H&K S3 methodology
+4. Refine codebook definitions if needed, re-run on error cases
 5. Document methodology transfer lessons
 
-**Why this is strong**: Shows LLMs can work with limited training data across countries, reducing expert effort from months to weeks.
+**Why this is strong**: Shows codebooks can work with limited training data across countries, reducing expert effort from months to weeks.
 
 ## Four Strategic Options (Summary)
 
 See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 
 ### Option 1: Cross-Country Transfer Learning (RECOMMENDED)
+
 - Train US, deploy Malaysia, expert validates
 - **Pros**: Leverages existing data, tests core hypothesis
 - **Cons**: Different institutions/language may cause errors
 - **Resources**: 10-20 hours expert time, ~$1,520 total
 
 ### Option 2: Semi-Supervised Active Learning
+
 - LLM generates candidates, expert labels 20-30, retrain
 - **Pros**: Creates Malaysia training data
 - **Cons**: Requires 40-60 hours expert labeling upfront
 - **Resources**: Higher expert time, 2-3 weeks delay
 
 ### Option 3: Qualitative Validation (Low-Resource)
+
 - Deploy to 5-10 major known acts only, deep validation
 - **Pros**: Minimal expert time (5-10 hours)
 - **Cons**: Not a "scaled" dataset, limited contribution
 - **Resources**: Lowest cost, proof-of-concept only
 
 ### Option 4: Pivot to Different Country
+
 - Choose UK/Canada/Australia with better archives
 - **Pros**: May have more acts (50-80), English language
 - **Cons**: Delays timeline, loses Malaysia research focus
@@ -79,74 +95,85 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 ## Implementation Timeline (12 Weeks)
 
 ### Phase 1A: Deployment (Weeks 1-4)
-**Goal**: Extract Malaysia documents, run Models A/B/C, generate candidate dataset
+
+**Goal**: Extract Malaysia documents, run codebooks C1-C4, generate candidate dataset
 
 **Tasks**:
+
 1. Identify Malaysia document sources:
    - Parliamentary Hansard records (1980-2022)
    - Budget speeches and documents
    - Treasury/Finance Ministry annual reports
    - Economic reports
 2. Extract PDFs (use Docling or pdftools)
-3. Run Models A/B/C with US prompts (no modification initially)
+3. Run codebooks C1-C4 with US-validated definitions (no modification initially)
 4. Generate candidate fiscal shock dataset
 
 **Deliverables**:
+
 - Malaysia document corpus (estimated 200-300 PDFs)
 - Extracted text in targets pipeline
-- Candidate dataset: 20-40 fiscal acts identified by Model A
-- Motivation classifications from Model B
-- Timing/magnitude extractions from Model C (if applicable)
+- Candidate dataset: 20-40 fiscal acts identified by C1
+- Motivation classifications from C2
+- Timing/magnitude extractions from C3/C4 (if applicable)
 
 ### Phase 1B: Expert Validation (Weeks 5-8)
-**Goal**: Expert reviews LLM outputs, quantifies agreement, identifies errors
+
+**Goal**: Expert reviews codebook outputs, quantifies agreement, identifies errors
 
 **Tasks**:
+
 1. Engage Malaysia fiscal policy expert (World Bank economist or academic)
-2. Prepare validation protocol:
+2. Prepare validation protocol (see [expert_review_protocol.md](expert_review_protocol.md)):
    - Random sample of 50% of identified acts (~10-20)
    - Known major acts checklist (1997 Asian crisis measures, GST introduction, etc.)
    - Structured feedback form (agree/disagree + reasoning)
 3. Expert reviews:
-   - Act identification (Model A): Is this truly a fiscal act?
-   - Motivation classification (Model B): Correct category?
-   - Missed acts: What did LLM miss?
+   - Measure identification (C1): Is this truly a fiscal measure?
+   - Motivation classification (C2): Correct category?
+   - Missed acts: What did codebooks miss?
 4. Calculate agreement metrics:
-   - Act identification agreement rate (target ≥80%)
+   - Measure identification agreement rate (target ≥80%)
    - Motivation agreement rate (target ≥70%)
-   - False positive rate (target = 0%)
+   - False positive rate (target ≤10%)
 
 **Deliverables**:
+
 - Expert validation report
 - Agreement metrics
-- Error taxonomy (what types of errors occurred?)
+- Error taxonomy following H&K S3 methodology
 - List of missed major acts
 
 ### Phase 1C: Refinement (Weeks 9-10)
-**Goal**: Analyze errors, adjust prompts, re-run on error cases
+
+**Goal**: Analyze errors, adjust codebook definitions, re-run on error cases
 
 **Tasks**:
-1. Error analysis:
+
+1. Error analysis following H&K S3:
    - Do errors cluster by time period? (e.g., pre-1990 worse?)
    - Specific language issues? (Malaysian English vs US English?)
    - Institutional differences? (parliamentary system vs presidential)
-2. Prompt refinement:
-   - Add Malaysia-specific examples to few-shot prompts
+2. Codebook refinement (S0 revision):
+   - Add Malaysia-specific examples to codebook definitions
    - Clarify terminology (e.g., "Budget speech" vs "Economic Report")
    - Adjust motivation criteria for Malaysian political context
-3. Re-run models on error cases
+3. Re-run codebooks on error cases
 4. Final expert validation round (quick check on refinements)
 
 **Deliverables**:
+
 - Error analysis report
-- Updated prompts (Malaysia-adapted versions)
+- Updated codebook definitions (Malaysia-adapted versions)
 - Re-run results on error cases
 - Final expert agreement metrics
 
 ### Phase 1D: Documentation (Weeks 11-12)
+
 **Goal**: Update papers, report findings, prepare for Phase 2
 
 **Tasks**:
+
 1. Update `docs/two_pager.qmd` with Malaysia results
 2. Write Phase 1 report:
    - Expert agreement rates
@@ -160,6 +187,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 4. Prepare Phase 2 plan (other SEA countries)
 
 **Deliverables**:
+
 - Phase 1 report (`docs/phase_1/phase1_report.qmd`)
 - Updated two-pager with Malaysia validation results
 - Visualization of expert agreement
@@ -168,24 +196,29 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 ## Success Criteria
 
 ### Primary (Must Achieve)
-- ✅ Expert agreement ≥80% on act identification (Model A)
-- ✅ Expert agreement ≥70% on motivation classification (Model B)
+
+- ✅ Expert agreement ≥80% on measure identification (C1)
+- ✅ Expert agreement ≥70% on motivation classification (C2)
 - ✅ Correctly identified ≥3 known major acts (e.g., 1997 crisis measures, GST, major tax reforms)
 
 ### Secondary (Desirable)
-- ✅ Zero false positives on expert review (precision critical)
-- ✅ Timing/magnitude extraction within ±10% (Model C, if applicable)
+
+- ✅ False positive rate ≤10% on expert review (precision critical)
+- ✅ Timing/magnitude extraction within ±10% (C3/C4, if applicable)
 - ✅ Error analysis identifies clear patterns (not random noise)
 
 ### Research Contribution (Critical)
-- ✅ Demonstrated cross-country transfer without retraining
-- ✅ Quantified where LLM succeeds (act detection) and struggles (magnitude extraction)
+
+- ✅ Demonstrated cross-country transfer without retraining (codebooks are country-agnostic)
+- ✅ Quantified where codebooks succeed (measure identification) and struggle (magnitude extraction)
 - ✅ Methodology generalizes beyond US (replicable for other countries)
 
 ## Malaysia-Specific Context
 
 ### Political Stability Window
+
 **1980-2022 (42 years)** is the reliable window for Malaysia fiscal policy analysis:
+
 - Pre-1980: Independence transition, limited archives
 - 1980-1997: Development era, stable governance
 - 1997-1998: Asian Financial Crisis (MAJOR fiscal response expected)
@@ -193,7 +226,8 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 - 2018-2022: Political transitions, COVID-19 fiscal response
 
 ### Known Major Fiscal Acts (Validation Checkpoints)
-The LLM MUST identify these if it's working correctly:
+
+The codebooks MUST identify these if they're working correctly:
 
 1. **1997-1998 Asian Crisis Response**
    - National Economic Recovery Plan (1998)
@@ -212,9 +246,10 @@ The LLM MUST identify these if it's working correctly:
    - PRIHATIN economic stimulus (RM250 billion)
    - Multiple relief packages
 
-If Model A misses 2+ of these, **something is wrong** with the transfer.
+If C1 misses 2+ of these, **something is wrong** with the transfer.
 
 ### Document Sources (To Be Identified in Week 1)
+
 - **Parliamentary Hansard**: Budget debate transcripts (Bahasa Malaysia + English)
 - **Budget Speeches**: Annual, usually in English with Malay translation
 - **Economic Reports**: Ministry of Finance annual reports
@@ -238,21 +273,22 @@ tar_target(malaysia_documents, structure_documents(malaysia_text))
 tar_target(malaysia_paragraphs, extract_paragraphs(malaysia_documents))
 tar_target(malaysia_relevant, filter_relevant(malaysia_paragraphs))
 
-# Model deployment (using Phase 0 trained models)
+# Codebook deployment (using Phase 0 validated codebooks)
 tar_target(
-  malaysia_model_a,
-  run_model_a(malaysia_relevant),
-  # Uses same prompts/functions as Phase 0
+  malaysia_c1,
+  run_codebook(malaysia_relevant, "codebook_1_measure_id.yaml")
 )
 tar_target(
-  malaysia_model_b,
-  run_model_b(malaysia_model_a %>% filter(contains_act == TRUE)),
-  # Uses same prompts/functions as Phase 0
+  malaysia_c2,
+  run_codebook(malaysia_c1 %>% filter(is_measure == TRUE), "codebook_2_motivation.yaml")
 )
 tar_target(
-  malaysia_model_c,
-  run_model_c(malaysia_model_b),
-  # Uses same prompts/functions as Phase 0
+  malaysia_c3,
+  run_codebook(malaysia_c2, "codebook_3_timing.yaml")
+)
+tar_target(
+  malaysia_c4,
+  run_codebook(malaysia_c2, "codebook_4_magnitude.yaml")
 )
 
 # Expert validation (manual step, store results)
@@ -265,13 +301,13 @@ tar_target(
 # Evaluation
 tar_target(
   malaysia_agreement_metrics,
-  calculate_agreement(malaysia_model_a, malaysia_model_b, expert_validation)
+  calculate_agreement(malaysia_c1, malaysia_c2, expert_validation)
 )
 
 # Final dataset
 tar_target(
   malaysia_shocks,
-  finalize_malaysia_dataset(malaysia_model_b, malaysia_model_c, expert_validation)
+  finalize_malaysia_dataset(malaysia_c2, malaysia_c3, malaysia_c4, expert_validation)
 )
 ```
 
@@ -279,13 +315,13 @@ tar_target(
 
 ```r
 # Phase 1A: Deployment
-tar_make(malaysia_model_c)  # Runs all dependencies
+tar_make(malaysia_c4)  # Runs all dependencies
 
 # Phase 1B: After expert validation file created
 tar_make(malaysia_agreement_metrics)
 
-# Phase 1C: Re-run with updated prompts
-tar_invalidate(malaysia_model_a)  # Force re-run
+# Phase 1C: Re-run with updated codebooks
+tar_invalidate(malaysia_c1)  # Force re-run
 tar_make(malaysia_shocks)
 
 # View results
@@ -298,143 +334,54 @@ tar_read(malaysia_shocks)
 | Resource | Estimate | Notes |
 |----------|----------|-------|
 | Malaysia fiscal policy expert | 10-20 hours | Validation + refinement feedback |
-| API costs (LLM deployment) | $8-12 | 20-40 acts × 3 models |
+| API costs (LLM deployment) | $8-12 | 20-40 acts × 4 codebooks |
 | PDF extraction | $3-5 | 200-300 Malaysia PDFs |
 | Expert consultation (if external) | ~$1,500 | Assuming $100/hr × 15 hours |
 | **Total** | **~$1,520** | Dominated by expert time |
 
 **Budget Notes**:
+
 - If expert is internal (World Bank economist), cost drops to ~$20 (API + extraction only)
 - If expert unavailable, consider Option 4 (pivot to UK/Canada where internal expertise may exist)
-
-## Common Tasks
-
-### Download Malaysia Documents
-```r
-# 1. Create URL list (manual or scripted)
-malaysia_urls <- tibble(
-  url = c(
-    "https://www.parliament.gov.my/...",  # Hansard
-    "https://www.treasury.gov.my/...",    # Budget
-    # ...
-  ),
-  year = c(1980:2022),
-  source = "Parliamentary Hansard"
-)
-
-# 2. Add to targets
-tar_target(malaysia_urls, create_malaysia_urls())
-
-# 3. Download
-tar_make(malaysia_pdfs)
-```
-
-### Run Models on Malaysia Data
-```r
-# Use existing Phase 0 functions, just point at Malaysia data
-tar_make(malaysia_model_a)
-tar_make(malaysia_model_b)
-tar_make(malaysia_model_c)
-```
-
-### Expert Validation Workflow
-```r
-# 1. Export candidate acts for expert review
-malaysia_acts <- tar_read(malaysia_model_a) %>%
-  filter(contains_act == TRUE)
-
-write_csv(malaysia_acts, "for_expert_review.csv")
-
-# 2. Expert fills out validation form (manual)
-# 3. Import expert responses
-tar_make(expert_validation)
-
-# 4. Calculate agreement
-tar_make(malaysia_agreement_metrics)
-
-# 5. View results
-tar_read(malaysia_agreement_metrics)
-```
-
-### Refine Prompts After Expert Feedback
-```r
-# 1. Analyze errors
-errors <- tar_read(expert_validation) %>%
-  filter(expert_agree == FALSE)
-
-# 2. Update prompts/model_a_examples_malaysia.json
-# (Add Malaysia-specific examples)
-
-# 3. Modify model to use Malaysia prompts
-# In R/model_a_detect_acts.R:
-# - Add `country` parameter
-# - Load different examples based on country
-
-# 4. Re-run
-tar_invalidate(malaysia_model_a)
-tar_make(malaysia_model_a)
-```
-
-## Multilingual Considerations
-
-### Document Languages
-Malaysia documents may be in:
-- **English** (preferred for Phase 1): Budget speeches, economic reports, some Hansard
-- **Bahasa Malaysia** (Malay): Parliamentary debates, some official documents
-- **Bilingual**: Many documents have both versions
-
-### LLM Handling
-**Claude 3.5 Sonnet** has native Bahasa Malaysia support:
-- No translation step needed
-- Direct comprehension reduces error propagation
-- Add language context to prompts:
-
-```r
-model_a_detect_acts <- function(text, language = "en") {
-  lang_instruction <- switch(language,
-    "ms" = "The following passage is in Malay (Bahasa Malaysia).",
-    "en" = ""
-  )
-
-  # Prepend to user_input
-  # ...
-}
-```
-
-### Strategy
-1. **Phase 1A**: Use English documents only (lower risk)
-2. **Phase 1C**: If successful, add Bahasa Malaysia documents to test multilingual capability
 
 ## Troubleshooting
 
 ### Error: Malaysia Documents Not Found
+
 **Cause**: URLs changed, archives moved, paywalls
 **Fix**:
+
 - Check `malaysia_urls` target for broken links
 - Supplement with IMF Article IV reports (always available)
 - Contact Malaysia Treasury/Parliament directly for archives
 
 ### Error: Expert Disagrees on 50%+ of Acts
-**Cause**: Transfer learning failed, prompts too US-specific
+
+**Cause**: Transfer learning failed, codebooks too US-specific
 **Decision Point**: This is a **research finding**, not a failure!
+
 - Document what went wrong (institutional differences? language?)
-- Consider Option 2 (add Malaysia few-shot examples, retrain)
+- Consider Option 2 (add Malaysia examples to codebooks, re-run S2)
 - Publish findings: "When does cross-country transfer fail?"
 
-### Error: LLM Missed All Known Major Acts
-**Cause**: Document extraction failed OR prompts incompatible
+### Error: Codebooks Missed All Known Major Acts
+
+**Cause**: Document extraction failed OR codebook definitions incompatible
 **Fix**:
-1. Check `malaysia_text` - are documents extracted correctly?
-2. Manually verify: Do documents actually discuss fiscal acts?
+
+1. Check `malaysia_text` — are documents extracted correctly?
+2. Manually verify: Do documents actually discuss fiscal measures?
 3. Test on known act (e.g., 1997 crisis response) in isolation
 4. If still fails, revert to Option 3 (manual case studies)
 
 ### Error: API Costs Exceed Budget
+
 **Cause**: More acts than expected (good problem!)
 **Fix**:
+
 - Batch processing with rate limiting
 - Use smaller sample for initial validation
-- Switch to Haiku for Model A (cheaper, faster)
+- Switch to Haiku for C1 (cheaper, faster)
 
 ## Next Steps After Phase 1
 
@@ -444,12 +391,12 @@ model_a_detect_acts <- function(text, language = "en") {
 → Each country: 4-week deployment + 2-week expert validation
 
 **If partially successful** (60-79% agreement):
-→ **Option 2**: Add Malaysia few-shot examples, retrain
-→ **Hybrid approach**: LLM generates candidates, expert reviews all (not sample)
+→ **Option 2**: Add Malaysia examples to codebooks, re-run validation
+→ **Hybrid approach**: Codebooks generate candidates, expert reviews all (not sample)
 → Still valuable: Reduces expert workload from 100% manual to 40% review
 
 **If failed** (<60% agreement):
-→ **Research contribution**: Document failure modes
+→ **Research contribution**: Document failure modes using H&K S3 methodology
 → **Paper focus**: "When Cross-Country Transfer Fails: Institutional Barriers to LLM Fiscal Shock Identification"
 → **Alternative**: Option 4 (pivot to UK/Canada for Phase 2)
 
@@ -476,11 +423,9 @@ model_a_detect_acts <- function(text, language = "en") {
 
 ## References
 
-- **[malaysia_strategy.md](malaysia_strategy.md)** - Full strategic plan (READ THIS)
+- **[malaysia_strategy.md](malaysia_strategy.md)** — Full strategic plan (READ THIS)
+- **[expert_review_protocol.md](expert_review_protocol.md)** — Expert validation protocol
+- **docs/strategy.md** — Authoritative C1-C4 + H&K methodology
 - **Romer & Romer (2010)**: Original narrative approach methodology
-- **Phase 0 Models**: See `docs/phase_0/CLAUDE.md` for model details
+- **Halterman & Keith (2025)**: LLM content analysis validation framework
 - **Targets Guide**: https://books.ropensci.org/targets/
-
-## Contact
-
-For Phase 1 specific questions, see [malaysia_strategy.md](malaysia_strategy.md) or [README.md](README.md).

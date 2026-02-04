@@ -2,11 +2,15 @@
 
 ## Purpose
 
-This document establishes the expert validation protocol for LLM-assisted fiscal shock identification in Malaysia (1980-2022). Since self-consistency metrics cannot reliably flag errors (100% agreement even on incorrect predictions), we implement a rule-based flagging system combined with structured expert review.
+This document establishes the expert validation protocol for codebook-assisted fiscal shock identification in Malaysia (1980-2022). The protocol aligns with the Halterman & Keith (2025) S3 error analysis methodology.
+
+Since self-consistency metrics cannot reliably flag errors (100% agreement even on incorrect predictions), we implement a rule-based flagging system combined with structured expert review.
+
+**Authoritative Methodology**: See `docs/strategy.md` for the complete R&R + H&K framework.
 
 ## Review Categories
 
-The flagging rules prioritize expert attention on cases where the model is most likely to err, based on error analysis from US test data.
+The flagging rules prioritize expert attention on cases where the codebook is most likely to err, based on H&K S3 error analysis from US validation data.
 
 ### Category 1: Mandatory Review
 
@@ -82,30 +86,30 @@ flag_for_review <- function(prediction, year) {
 
 ## Expert Validation Form
 
-### Act Identification (Model A)
+### Measure Identification (C1)
 
-For each identified fiscal act:
+For each identified fiscal measure:
 
 | Field | Description |
 |-------|-------------|
-| Act Name | As identified by the model |
+| Measure Name | As identified by codebook C1 |
 | Year | Year of enactment |
-| Model Confidence | Model A probability score |
+| C1 Confidence | C1 probability score |
 | **Expert Assessment** | |
-| Is Fiscal Act? | Yes / No / Partially (components only) |
-| Correct Act Name? | Yes / No (provide correction if No) |
+| Is Fiscal Measure? | Yes / No / Partially (components only) |
+| Correct Measure Name? | Yes / No (provide correction if No) |
 | Missing Components? | Were significant provisions missed? |
 | Comments | Free-text explanation |
 
-### Motivation Classification (Model B)
+### Motivation Classification (C2)
 
-For acts flagged for review:
+For measures flagged for review:
 
 | Field | Description |
 |-------|-------------|
-| Act Name | As identified |
-| Model Prediction | Motivation category |
-| Model Exogenous | TRUE/FALSE |
+| Measure Name | As identified |
+| C2 Prediction | Motivation category |
+| C2 Exogenous | TRUE/FALSE |
 | Review Flag | Mandatory / Secondary |
 | **Expert Assessment** | |
 | Agree with Motivation? | Yes / No |
@@ -115,18 +119,18 @@ For acts flagged for review:
 | Error Type | If disagreement: (1) Language vs substance confusion (2) Missing economic context (3) Institutional difference (4) Other |
 | Comments | Free-text explanation |
 
-### Missed Acts Checklist
+### Missed Measures Checklist
 
-Known major Malaysia fiscal events the model MUST identify:
+Known major Malaysia fiscal events the codebooks MUST identify:
 
-| Event | Year | Found by Model? | Expert Notes |
-|-------|------|-----------------|--------------|
+| Event | Year | Found by C1? | Expert Notes |
+|-------|------|--------------|--------------|
 | Asian Crisis Response Package | 1997-1998 | | |
 | National Economic Recovery Plan | 1998 | | |
 | GST Introduction | 2015 | | |
 | GST Repeal (return to SST) | 2018 | | |
 | PRIHATIN COVID Stimulus | 2020 | | |
-| [Other major acts expert identifies] | | | |
+| [Other major measures expert identifies] | | | |
 
 ## Agreement Metrics
 
@@ -134,11 +138,11 @@ Known major Malaysia fiscal events the model MUST identify:
 
 | Metric | Formula | Target |
 |--------|---------|--------|
-| Act Identification Agreement | (Expert confirms) / (Model identified) | ≥80% |
-| Motivation Agreement | (Expert agrees) / (Reviewed acts) | ≥70% |
-| Exogenous Agreement | (Expert agrees on flag) / (Reviewed acts) | ≥75% |
-| False Positive Rate | (Incorrectly identified) / (Model identified) | ≤10% |
-| False Negative Rate | (Expert missed acts) / (All true acts) | Qualitative |
+| Measure Identification Agreement | (Expert confirms) / (C1 identified) | ≥80% |
+| Motivation Agreement | (Expert agrees) / (Reviewed measures) | ≥70% |
+| Exogenous Agreement | (Expert agrees on flag) / (Reviewed measures) | ≥75% |
+| False Positive Rate | (Incorrectly identified) / (C1 identified) | ≤10% |
+| False Negative Rate | (Expert missed measures) / (All true measures) | Qualitative |
 
 ### Cohen's Kappa
 
@@ -170,43 +174,45 @@ calculate_agreement <- function(expert_labels, model_labels) {
 }
 ```
 
-## Error Taxonomy
+## Error Taxonomy (H&K S3 Error Analysis)
+
+This taxonomy follows the Halterman & Keith (2025) S3 error analysis methodology for identifying systematic failure patterns.
 
 ### Type 1: Language vs Substance Confusion
 
-**Description**: Model classifies based on textual framing rather than economic substance.
+**Description**: Codebook classifies based on textual framing rather than economic substance.
 
 **Example**: EGTRRA 2001 called "growth" act but enacted for countercyclical stimulus.
 
-**Detection**: Expert identifies recession-era acts with "reform" language misclassified as Long-run.
+**Detection**: Expert identifies recession-era measures with "reform" language misclassified as Long-run.
 
-**Mitigation**: Add economic context to prompts; adjust few-shot examples.
+**Mitigation**: Revise codebook definitions (S0); add clarifying examples distinguishing framing from substance.
 
 ### Type 2: Missing Economic Context
 
-**Description**: Model lacks awareness of contemporaneous economic conditions.
+**Description**: Codebook lacks awareness of contemporaneous economic conditions.
 
-**Example**: Classifying 1997 Malaysia act as Long-run without knowing Asian Crisis context.
+**Example**: Classifying 1997 Malaysia measure as Long-run without knowing Asian Crisis context.
 
-**Detection**: Acts during recession years flagged as exogenous.
+**Detection**: Measures during recession years flagged as exogenous.
 
-**Mitigation**: Provide recession year data in prompt; train model on crisis-period acts.
+**Mitigation**: Provide recession year data in codebook examples; add crisis-period cases to S0 definitions.
 
 ### Type 3: Institutional Differences
 
-**Description**: US-trained model misunderstands Malaysia parliamentary/fiscal structure.
+**Description**: US-validated codebook misunderstands Malaysia parliamentary/fiscal structure.
 
 **Example**: Misinterpreting "Budget speech" as proposal vs enacted legislation.
 
 **Detection**: Expert notes systematic errors in Malaysia-specific terminology.
 
-**Mitigation**: Add Malaysia-specific examples; clarify terminology in system prompt.
+**Mitigation**: Add Malaysia-specific examples to codebook definitions; clarify terminology in S0.
 
 ### Type 4: Document Extraction Errors
 
-**Description**: PDF extraction missed or garbled text, model worked with incomplete information.
+**Description**: PDF extraction missed or garbled text, codebook worked with incomplete information.
 
-**Example**: Tables with fiscal figures not extracted, model couldn't assess magnitude.
+**Example**: Tables with fiscal figures not extracted, codebook couldn't assess magnitude.
 
 **Detection**: Expert notes missing information that was in source documents.
 
@@ -216,42 +222,42 @@ calculate_agreement <- function(expert_labels, model_labels) {
 
 **Description**: Even experts disagree on correct classification.
 
-**Example**: Act with both deficit reduction AND growth objectives.
+**Example**: Measure with both deficit reduction AND growth objectives.
 
 **Detection**: Multiple experts disagree; extended discussion needed.
 
-**Resolution**: Document as ambiguous case; not counted as model error.
+**Resolution**: Document as ambiguous case; not counted as codebook error.
 
 ## Review Workflow
 
 ### Phase 1B: Initial Validation (Weeks 5-8)
 
 1. **Week 5**: Prepare review materials
-   - Export all identified acts with model predictions
-   - Flag acts according to rules above
+   - Export all identified measures with codebook predictions
+   - Flag measures according to rules above
    - Create expert validation spreadsheet
 
-2. **Week 6**: Expert reviews mandatory + secondary flagged acts
-   - Expected: 30-40% of acts need review
+2. **Week 6**: Expert reviews mandatory + secondary flagged measures
+   - Expected: 30-40% of measures need review
    - Provide economic context documents for reference
 
-3. **Week 7**: Expert reviews random sample of auto-accept acts
+3. **Week 7**: Expert reviews random sample of auto-accept measures
    - Sample 10% for spot-check
-   - Identify missed major acts
+   - Identify missed major measures
 
 4. **Week 8**: Calculate agreement metrics
    - Run agreement calculation functions
-   - Identify systematic error patterns
+   - Identify systematic error patterns using H&K S3 methodology
    - Prepare refinement recommendations
 
 ### Phase 1C: Refinement (Weeks 9-10)
 
-1. **Week 9**: Analyze errors by type
+1. **Week 9**: Analyze errors by type (H&K S3)
    - Group errors using taxonomy above
-   - Prioritize high-impact fixes
+   - Prioritize high-impact codebook revisions
 
 2. **Week 10**: Re-run on error cases
-   - Update prompts/examples
+   - Update codebook definitions (S0 revision)
    - Validate fixes don't introduce regression
 
 ## Quality Control
@@ -281,10 +287,10 @@ data/processed/malaysia_review_log.md
 
 | Metric | Threshold | Action if Below |
 |--------|-----------|-----------------|
-| Act Identification Agreement | <80% | Document as transfer failure; consider Option 2 |
-| Motivation Agreement | <70% | Add Malaysia few-shot examples; re-run |
+| Measure Identification Agreement | <80% | Document as transfer failure; consider Option 2 |
+| Motivation Agreement | <70% | Add Malaysia examples to codebook definitions; re-run S2 |
 | Exogenous Precision | <90% | Flag ALL exogenous predictions for mandatory review |
-| False Positive Rate | >10% | Raise Model A confidence threshold |
+| False Positive Rate | >10% | Revise C1 codebook definitions; adjust confidence threshold |
 
 ## Integration with Phase 1 Documents
 
@@ -296,8 +302,8 @@ This protocol integrates with:
 ## Appendix: Sample Validation Spreadsheet
 
 ```csv
-act_id,act_name,year,pred_motivation,pred_exogenous,pred_confidence,review_flag,expert_is_fiscal_act,expert_motivation,expert_exogenous,expert_agrees_motivation,error_type,expert_comments
-1,1997 Economic Stimulus Act,1997,Long-run,TRUE,0.95,mandatory_review,Yes,Countercyclical,FALSE,No,language_vs_substance,"Act framed as 'structural reform' but clearly crisis response"
+measure_id,measure_name,year,c2_motivation,c2_exogenous,c1_confidence,review_flag,expert_is_fiscal_measure,expert_motivation,expert_exogenous,expert_agrees_motivation,error_type,expert_comments
+1,1997 Economic Stimulus Act,1997,Long-run,TRUE,0.95,mandatory_review,Yes,Countercyclical,FALSE,No,language_vs_substance,"Measure framed as 'structural reform' but clearly crisis response"
 2,2015 GST Implementation,2015,Deficit-driven,TRUE,0.92,auto_accept,Yes,Deficit-driven,TRUE,Yes,,"Correctly identified as deficit reduction measure"
 ...
 ```

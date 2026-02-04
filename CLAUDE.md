@@ -17,50 +17,62 @@ Replicating this approach manually is costly. For low- and middle-income countri
 
 ### Our Solution
 
-Recent advances in Large Language Models (LLMs) make this possible for the first time. This project builds a **validated, LLM-assisted pipeline** for fiscal shock identification:
+Recent advances in Large Language Models (LLMs) make this possible for the first time. This project builds a **validated, LLM-assisted pipeline** for fiscal shock identification using two rigorous frameworks:
 
-1. **Phase 0 (US Benchmark)**: Train few-shot LLM models on 44 US fiscal acts with Romer & Romer labels to identify acts, classify motivations, and extract timing/magnitude
-2. **Phase 1 (Malaysia Pilot)**: Deploy US-trained models to Malaysia documents (1980-2022), generating candidate dataset with expert validation to test cross-country transfer learning
+- **Romer & Romer (2010)**: 6-phase methodology for identifying exogenous fiscal shocks
+- **Halterman & Keith (2025)**: 5-stage framework for rigorous LLM content analysis
+
+The pipeline implements 4 domain-specific codebooks (C1-C4), each processed through the full H&K validation pipeline:
+
+1. **Phase 0 (US Benchmark)**: Develop and validate codebooks C1-C4 on 44 US fiscal acts with Romer & Romer labels using H&K stages S0-S3
+2. **Phase 1 (Malaysia Pilot)**: Deploy validated codebooks to Malaysia documents (1980-2022), generating candidate dataset with expert validation to test cross-country transfer learning
 3. **Phase 2 (SEA Scaling)**: Extend methodology to Indonesia, Thailand, Philippines, Vietnam
 
 ### Key Innovation
 
-**Transfer Learning with Limited Training Data**: We demonstrate that LLMs trained on limited US data (44 labeled acts) can assist experts in identifying fiscal shocks cross-country with ≥80% agreement, reducing manual effort from months to weeks.
+**Country-Agnostic Transfer Learning**: Codebooks are designed to transfer across countries without retraining. We demonstrate that LLMs with limited US training data (44 labeled acts) can assist experts in identifying fiscal shocks cross-country with ≥80% agreement, reducing manual effort from months to weeks.
 
 ### Research Contribution
 
 The contribution is **methodological**, not just dataset scale:
-- Shows LLMs can transfer across countries without retraining
-- Quantifies performance via expert agreement rates and error analysis
-- Identifies where models succeed (act detection, motivation classification) and struggle (magnitude extraction)
+- Novel synthesis: First application of H&K validation framework to economic history/fiscal policy domain
+- Shows LLMs can transfer across countries without retraining using country-agnostic codebooks
+- Quantifies performance via H&K behavioral tests, LOOCV evaluation, and expert agreement rates
+- Identifies where codebooks succeed (measure identification, motivation classification) and struggle (magnitude extraction)
 - Methodology replicable beyond Southeast Asia
 
 ### Current Status
 
-- **Phase 0**: IN PROGRESS
-  - **Model A**: Rework in progress — redesigned as passage extractor (raw documents → fiscal shock discussions). See `docs/phase_0/model_A_extractor_design.md`
-  - **Model B**: LOOCV evaluation complete on curated passages; robustness testing on extracted passages in progress
-  - **Model C**: Implemented; awaiting robustness testing on extracted passages
-- **Phase 1**: Strategic plan complete, ready for Malaysia deployment (see `docs/phase_1/malaysia_strategy.md` and `docs/phase_1/CLAUDE.md`)
+- **Phase 0**: IN PROGRESS — Transitioning to C1-C4 codebook framework
+  - **C1 (Measure ID)**: Not started — Will replace Model A act detection
+  - **C2 (Motivation)**: Not started — Will replace Model B motivation classification
+  - **C3 (Timing)**: Not started — Will replace Model C timing extraction
+  - **C4 (Magnitude)**: Not started — Will replace Model C magnitude extraction
+  - See `docs/strategy.md` for authoritative methodology
+- **Phase 1**: Strategic plan complete, ready for Malaysia deployment after codebook validation (see `docs/phase_1/malaysia_strategy.md` and `docs/phase_1/CLAUDE.md`)
 - **Phase 2**: Not yet started
 
 ### Success Criteria
 
-**Phase 0 uses two evaluation tracks:**
+**Phase 0 uses H&K 5-stage validation per codebook:**
 
-- **Track 1 (LOOCV)**: Leave-one-out cross-validation on human-curated passages — measures model quality in ideal conditions
-- **Track 2 (Robustness)**: Performance on Model A extracted passages — measures end-to-end pipeline quality
+- **S0 (Codebook Prep)**: Machine-readable definitions with domain expert approval
+- **S1 (Behavioral Tests)**: Legal outputs (100%), memorization (100%), order sensitivity (<5%)
+- **S2 (Zero-Shot Eval)**: LOOCV on 44 US acts with primary metrics per codebook
+- **S3 (Error Analysis)**: Documented failure patterns and ablation studies
+- **S4 (Fine-Tuning)**: Last resort if S3 shows unacceptable patterns AND codebook improvements exhausted
 
-**Target metrics:**
+**Target metrics per codebook:**
 
-- Model A: Recall ≥90% on known US acts
-- Model B: ≥80% accuracy (Track 1), ≥70% accuracy (Track 2)
-- Model C: Correct year extraction ≥85%
+- C1 (Measure ID): Recall ≥90%, Precision ≥80%
+- C2 (Motivation): Weighted F1 ≥70%, Exogenous Precision ≥85%
+- C3 (Timing): Exact Quarter ≥85%, ±1 Quarter ≥95%
+- C4 (Magnitude): MAPE <30%, Sign Accuracy ≥95%
 
 **Phase 1 (Malaysia Pilot):**
 
-- Expert agreement ≥80% on act identification
-- Expert agreement ≥70% on motivation classification
+- Expert agreement ≥80% on measure identification (C1)
+- Expert agreement ≥70% on motivation classification (C2)
 
 ### Data Constraints (IMPORTANT)
 
@@ -74,7 +86,7 @@ The contribution is **methodological**, not just dataset scale:
 ❌ **NOT**: "Fully automated pipeline generating 100+ acts per country"
 ✅ **YES**: "LLM-assisted methodology with expert validation, demonstrating cross-country transfer learning"
 
-See `docs/two_pager.qmd` for full project description and `docs/phase_1/malaysia_strategy.md` for Phase 1 strategic plan.
+See `docs/strategy.md` for authoritative methodology, `docs/two_pager.qmd` for project description, and `docs/phase_1/malaysia_strategy.md` for Phase 1 strategic plan.
 
 ## Development Commands
 
@@ -129,7 +141,7 @@ The project uses `{targets}` for reproducible data pipelines with `crew` for par
 
 Key targets: `erp_urls`, `budget_urls`, `annual_report_urls`, `us_text`, `documents`, `paragraphs`, `relevant_paragraphs`
 
-Additional production pipeline targets exist for Model A extraction and robustness evaluation. See `_targets.R` for the complete list.
+Additional production pipeline targets will be added for codebook evaluation and robustness testing. See `_targets.R` for the complete list.
 
 ### Multi-Language Integration
 - R calls Python scripts via `system2()` with JSON file interchange
@@ -138,14 +150,17 @@ Additional production pipeline targets exist for Model A extraction and robustne
 
 ### Key Directories
 
-- `R/` - Utility functions (PDF extraction, URL fetching, model implementations)
+- `R/` - Utility functions (PDF extraction, URL fetching, codebook implementations)
 - `python/` - Python utilities (Docling extraction, embeddings)
 - `notebooks/` - Quarto analysis notebooks (extract, clean, embed, identify)
 - `docs/` - Documentation and proposals
-- `docs/phase_0/` - Phase 0 design documents (Model A extractor design, etc.)
+- `docs/strategy.md` - Authoritative methodology document (C1-C4 + H&K framework)
+- `docs/methods/` - Reference methodology documents (R&R, H&K)
+- `docs/phase_0/` - Phase 0 implementation context
 - `docs/phase_1/` - Phase 1 strategy and expert review protocols
+- `docs/archive/` - Historical Model A/B/C documentation (superseded)
 - `data/raw/` - Reference data (`us_shocks.csv`, `us_labels.csv`)
-- `prompts/` - System prompts and few-shot examples for Models A, B, C
+- `prompts/` - YAML codebooks (C1-C4) and few-shot examples
 - `.claude/agents/` - Specialized Claude Code agent configurations
 
 ### Claude Code Agents
@@ -155,8 +170,8 @@ The project includes 5 specialized agents in `.claude/agents/` for different tas
 - **document-extractor**: PDF extraction using Docling or pdftools
 - **doc-writer**: Quarto documentation and research notebooks
 - **pipeline-manager**: Targets pipeline management and debugging
-- **shock-classifier**: Fiscal shock classification (Models A, B, C)
-- **validation-analyst**: Agreement metrics and error analysis
+- **shock-classifier**: Fiscal shock classification using C1-C4 codebooks and H&K validation stages
+- **validation-analyst**: Agreement metrics, H&K behavioral tests, and error analysis
 
 Use these agents via the Task tool for specialized work.
 
