@@ -38,7 +38,7 @@ The contribution is **methodological**, not just dataset scale:
 - Novel synthesis: First application of H&K validation framework to economic history/fiscal policy domain
 - Shows LLMs can transfer across countries without retraining using country-agnostic codebooks
 - Quantifies performance via H&K behavioral tests, LOOCV evaluation, and expert agreement rates
-- Identifies where codebooks succeed (measure identification, motivation classification) and struggle (magnitude extraction)
+- Identifies where codebooks succeed and struggle
 - Methodology replicable beyond Southeast Asia
 
 ### Current Status
