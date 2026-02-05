@@ -61,6 +61,7 @@ library(here)
 
 here::i_am("path/to/this-document.qmd")
 tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
 set_theme(theme_minimal())
 
 # Load data
@@ -71,7 +72,11 @@ Documents that don't use pipeline data (e.g., pure prose proposals) skip this en
 
 ## Tables
 
-**Always use `gt` for tables.** Never use `kableExtra` (incompatible with Typst).
+**Always use `gt` for tables.** Never use `kableExtra` (incompatible with Typst) or markdown tables.
+
+### Project theme
+
+All tables must end with `%>% gt_theme_report()` (defined in `R/gt_theme.R`, sourced in setup). This applies booktabs-style formatting: centered, no row lines, header separator and bottom rule only.
 
 Required pattern:
 
@@ -80,14 +85,18 @@ data %>%
   gt() %>%
   tab_header(title = "Table Title") %>%
   cols_label(col1 = "Readable Name") %>%
-  tab_options(table.width = pct(100))
+  gt_theme_report()
 ```
 
+### Rules
+
 - Always include `tab_header()` with at least a title
-- Always include `tab_options(table.width = pct(100))`
+- Always pipe `gt_theme_report()` as the **last** step in the gt chain
+- Let tables take their natural width; do not force `table.width = pct(100)`
 - Use `tab_footnote()` for methodological notes
 - Use `tab_style()` for conditional formatting when it aids interpretation
 - Use `fmt_percent()`, `fmt_number()`, etc. for consistent number formatting
+- Tables in Typst output will not break across pages (`reports/_metadata.yml` handles this)
 
 ## Plots
 

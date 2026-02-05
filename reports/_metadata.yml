@@ -2,5 +2,15 @@ format:
   html:
     toc: true
     toc-depth: 3
-    echo: false
     self-contained: true
+    title-block-banner: false
+
+  typst:
+    include-in-header:
+      - text: "#show figure: set block(breakable: false)"
+
+execute:
+  warning: false
+  message: false
+  echo: false
+

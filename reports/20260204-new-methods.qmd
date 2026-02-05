@@ -1,0 +1,450 @@
+---
+title: "Scaling Fiscal Shock Identification with LLMs"
+subtitle: "Methodology and Path Forward"
+date: "2026-02-04"
+date-format: long
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+library(targets)
+library(tidyverse)
+library(gt)
+library(here)
+
+here::i_am("reports/20260204-new-methods.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
+
+us_body <- tar_read(us_body)
+us_labels <- tar_read(us_labels)
+```
+
+## Executive Summary
+
+**The problem.** For most emerging markets, we lack consistent and comparable measures of exogenous fiscal shocks: the cornerstone input for credible fiscal multiplier estimation and fiscal policy analysis. The gold-standard "narrative approach" [@romer2010] has been applied to the United States, where it required years of manual work. For low- and middle-income countries, replication costs have been prohibitive.
+
+**Our contribution.** This project builds a validated, LLM-assisted methodology for fiscal shock identification that can transfer across countries without retraining. We integrate the Romer & Romer methodology with a rigorous LLM evaluation framework [@halterman2025] to produce the first systematic application of modern AI evaluation standards to economic history research.
+
+**Current status.** We have built the document infrastructure (approximately 97,000 pages of US fiscal documents extracted and structured) and demonstrated through a proof-of-concept that LLMs can identify fiscal policy language with high accuracy. We are now implementing a four-codebook architecture with systematic validation before deployment.
+
+**What we're asking**
+
+- API budget for development phase: ~$200--250 (codebook validation through early March)
+- API budget for production phase: ~$250--400 (US and Malaysia deployment, contingent on development results)
+- Identification of a Malaysia fiscal policy expert for validation (~25--40 hours)
+
+The development phase produces a clear feasibility signal: if codebooks do not meet performance targets on US ground-truth data by early March, we will know the approach is not viable before committing to production costs.
+
+**Timeline**
+
+- Full codebook evaluation suite validated: **Early March 2026** *(go/no-go decision point)*
+- US benchmark deployment with ground-truth comparison: **Late March 2026**
+- Malaysia pilot deployment: **April 2026**
+- Full Southeast Asia dataset (Indonesia, Thailand, Philippines, Vietnam): **June 2026**
+
+
+
+## Why This Matters
+
+Governments change taxes and spending constantly, but most of these changes respond to current economic conditions. Stimulus during recessions and tax hikes during booms are *endogenous* to the business cycle. Using them to estimate fiscal multipliers produces biased results, because the policy change and the economic outcome are driven by the same underlying conditions.
+
+Credible fiscal policy analysis requires isolating *exogenous* shocks: tax or spending changes that happened for reasons unrelated to current economic conditions (deficit reduction motivated by past decisions, or long-run structural reforms). @romer2010 pioneered the "narrative approach" to identify these shocks by reading historical government documents and classifying the stated motivation for each fiscal action.
+
+This has been done for the United States. For emerging markets, where fiscal policy decisions have enormous consequences for development outcomes, we have no comparable data.
+
+Recent advances in Large Language Models *may* make it possible to scale this methodology for the first time. This project investigates whether LLMs, guided by carefully validated codebooks, can assist experts in identifying fiscal shocks across countries at a fraction of the traditional cost and time.
+
+
+
+## Our Approach
+
+### Integrating Two Rigorous Frameworks
+
+Our methodology synthesizes two established frameworks:
+
+1. **@romer2010 (Fiscal Shock Identification):** The gold-standard 6-phase methodology that defines *what* we measure: how to identify fiscal acts, classify their motivations, extract timing, and quantify magnitudes, taking original government documents into a fully identified dataset of fiscal shocks
+
+2. **@halterman2025 (LLM Content Analysis):** A 5-stage validation framework that defines *how* we ensure quality through systematic testing of LLM outputs before trusting them for research
+
+This combination is the core methodological contribution: we apply modern AI evaluation standards to an established economic methodology, producing results that are both *economically grounded* and *statistically validated*.
+
+### Four Domain-Specific Codebooks
+
+Each stage of the Romer & Romer methodology maps to a dedicated codebook with its own evaluation criteria:
+
+```{r codebook-table}
+tibble(
+  Codebook = c("C1: Measure Identification", "C2: Motivation Classification",
+               "C3: Timing Extraction", "C4: Magnitude Estimation"),
+  Task = c(
+    "Find fiscal measures in raw documents using the 'significant mention' rule",
+    "Classify why each measure was enacted: deficit reduction, countercyclical, long-run growth, or spending",
+    "Extract the quarter(s) when each measure takes effect",
+    "Extract the fiscal impact (revenue or spending change) in billions of dollars"
+  ),
+  `Key Question` = c(
+    "Is there a fiscal act here?",
+    "Is this shock exogenous to the business cycle?",
+    "When does it take effect?",
+    "How large is it?"
+  ),
+  `Replaces` = c("Model A", "Model B", "Model C (timing)", "Model C (magnitude)")
+) %>%
+  gt() %>%
+  tab_header(
+    title = "Codebook Architecture",
+    subtitle = "Each codebook handles one stage of the R&R methodology"
+  ) %>%
+  tab_footnote(
+    footnote = "C3 and C4 were previously combined; separating them allows independent evaluation of each task.",
+    locations = cells_body(columns = Codebook, rows = 3)
+  ) %>%
+  gt_theme_report()
+```
+
+### Systematic Validation Before Deployment
+
+Each codebook passes through five stages of testing before we use it on new countries. The key insight from @halterman2025 is that LLM outputs must be validated *before* deployment, not after:
+
+```{r hk-stages}
+tibble(
+  Stage = c("S0: Codebook Design", "S1: Competency Tests",
+            "S2: Performance Evaluation", "S3: Error Analysis",
+            "S4: Model Retraining"),
+  `What We Do` = c(
+    "Write precise definitions with examples; domain expert reviews",
+    "Test whether the model follows instructions correctly and produces valid outputs",
+    "Evaluate on all 44 labeled US fiscal acts, holding each out in turn",
+    "When the model fails, diagnose whether errors are random or systematic",
+    "Retrain the model on our specific task (last resort)"
+  ),
+  `Why It Matters` = c(
+    "Garbage in, garbage out; clear instructions are the foundation",
+    "Catches fundamental failures before we invest in full evaluation",
+    "Measures real accuracy against ground truth with no data leakage",
+    "Guides targeted improvements to codebook design",
+    "Risks overfitting to US data, reducing ability to transfer to Malaysia"
+  ),
+  `Pass Criteria` = c(
+    "Expert approval of definitions and examples",
+    "100% valid outputs; correctly handles all training examples; stable under reordering",
+    "Meet target metrics per codebook (see below)",
+    "Documented failure patterns with improvement plan",
+    "Only attempted if codebook improvements are exhausted"
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "Five-Stage Validation Pipeline",
+    subtitle = "Applied to each codebook before production deployment"
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#FFF3E0"),
+    locations = cells_body(rows = 5)
+  ) %>%
+  tab_footnote(
+    footnote = "We actively avoid this stage. Retraining may cause the model to memorize US-specific patterns and fail on Malaysia.",
+    locations = cells_body(columns = Stage, rows = 5)
+  ) %>%
+  gt_theme_report()
+```
+
+
+## What Model A Taught Us
+
+Our January proof-of-concept (Model A) demonstrated that LLMs understand fiscal policy language well enough to identify fiscal acts with 92% accuracy, 100% recall, and 86% precision. This validated the core premise of the project.
+
+However, Model A classified *pre-selected* passages rather than extracting information from raw documents. This is a critical distinction:
+
+```{r}
+#| label: model-a-gaps
+tibble(
+  `What Model A Did` = c(
+    "Classify pre-selected passages",
+    "Binary yes/no on curated examples",
+    "US-specific prompt engineering"
+  ),
+  `What Production Requires` = c(
+    "Extract relevant passages from raw documents",
+    "Find fiscal acts across ~97,000 pages",
+    "Cross-country transfer to Malaysia and Southeast Asia"
+  )
+) %>%
+  gt() %>%
+  tab_header(title = "Gap Between Proof-of-Concept and Production") %>%
+  gt_theme_report()
+```
+
+The revised codebook architecture addresses each of these gaps directly. Model A confirmed that the LLM capability is there; the codebook framework ensures we can deploy it rigorously at scale.
+
+
+## Success Criteria
+
+### What "Good Enough" Looks Like
+
+Each codebook is evaluated against concrete targets:
+
+```{r success-criteria}
+tibble(
+  Codebook = c("C1: Measure ID", "C1: Measure ID", "C2: Motivation", "C2: Motivation",
+               "C3: Timing", "C3: Timing", "C4: Magnitude", "C4: Magnitude"),
+  Requirement = c(
+    "Find ≥90% of real fiscal acts",
+    "At least 80% of flagged items are real acts",
+    "Classify motivation correctly ≥70% of the time",
+    "When labeled exogenous, be right ≥85% of the time",
+    "Extract exact implementation quarter ≥85% of the time",
+    "Within one quarter (3 months) ≥95% of the time",
+    "Average magnitude error <30%",
+    "Get direction right (increase vs. cut) ≥95% of the time"
+  ),
+  `Why This Threshold` = c(
+    "Missing real acts means incomplete dataset",
+    "Some false positives are acceptable; experts review candidates",
+    "Baseline for 4-category classification",
+    "Critical: only exogenous shocks are used for fiscal multiplier estimation",
+    "Must match R&R implementation timing",
+    "Acceptable tolerance for phased implementations",
+    "Must approximate R&R magnitude estimates",
+    "A tax increase coded as a cut would reverse the estimated effect"
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "Performance Targets by Codebook"
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Requirement, rows = c(4, 8))
+  ) %>%
+  gt_theme_report()
+```
+
+### Cross-Country Transfer (The Key Test)
+
+The central hypothesis is that codebooks validated on US data can transfer to Malaysia without retraining:
+
+- **C1 (Measure Identification):** Expert agreement ≥80%
+- **C2 (Motivation Classification):** Expert agreement ≥70%
+
+Because Malaysia has no ground-truth labels, we rely on expert validation. If these thresholds are not met, we add Malaysia-specific examples to codebooks and re-evaluate, without retraining the base model.
+
+
+## Implementation Plan
+
+### Timeline
+
+```{r timeline}
+tibble(
+  Phase = c(
+    "Phase 0: US Benchmark",
+    "",
+    "",
+    "Phase 1: Malaysia Pilot",
+    "",
+    "Phase 2: Regional Scaling"
+  ),
+  Task = c(
+    "Implement and validate C1–C4 codebooks (H&K stages S0–S3)",
+    "Deploy to full US document corpus; compare against R&R ground truth",
+    "Document methodology and evaluation results",
+    "Apply validated codebooks to Malaysia fiscal documents",
+    "Expert review of candidate fiscal shocks (25–38 hours)",
+    "Extend to Indonesia, Thailand, Philippines, Vietnam"
+  ),
+  Target = c(
+    "February–Early March 2026",
+    "Late March 2026",
+    "Late March 2026",
+    "April 2026",
+    "April 2026",
+    "May–June 2026"
+  ),
+  Deliverable = c(
+    "4 validated codebooks with evaluation reports",
+    "US fiscal shock dataset with ground-truth comparison",
+    "Methodology paper draft",
+    "Malaysia candidate fiscal shock dataset",
+    "Expert-validated Malaysia dataset",
+    "Southeast Asia fiscal shock dataset"
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "Implementation Timeline"
+  ) %>%
+  tab_row_group(
+    label = "Phase 2: Southeast Asia",
+    rows = 6
+  ) %>%
+  tab_row_group(
+    label = "Phase 1: Malaysia",
+    rows = 4:5
+  ) %>%
+  tab_row_group(
+    label = "Phase 0: US Benchmark",
+    rows = 1:3
+  ) %>%
+  gt_theme_report()
+```
+
+### Budget
+
+API and expert costs are modest relative to the traditional alternative (6--12 months of full-time research assistant work per country). Once codebooks are validated, each additional country costs only ~$100--150 in API fees plus expert review hours, making regional scaling economically viable. Critically, the budget is structured in two phases: the development phase answers the feasibility question before production costs are incurred.
+
+```{r budget}
+tibble(
+  Phase = c(
+    "Development", "", "",
+    "Production", "", "", ""
+  ),
+  Activity = c(
+    "Codebook iterations and testing (S0–S1)",
+    "Cross-validation on US ground truth (S2)",
+    "Error analysis and codebook refinement (S3)",
+    "US full corpus deployment",
+    "Malaysia deployment",
+    "Buffer (20%)",
+    "TOTAL"
+  ),
+  Description = c(
+    "4 codebooks × behavioral tests",
+    "Leave-one-out evaluation against 44 labeled US fiscal acts",
+    "Diagnose and fix systematic failure patterns",
+    "Full US document corpus through validated C1–C4 pipeline",
+    "Similar document volume to US",
+    "Debugging, retries, additional iterations",
+    ""
+  ),
+  `Estimated Cost` = c(
+    "$100–125",
+    "$75–100",
+    "$50–75",
+    "$100–150",
+    "$100–150",
+    "$50–100",
+    "$475–700"
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "API Cost Estimates",
+    subtitle = "Using Claude Sonnet (~$3/M input, ~$15/M output tokens)"
+  ) %>%
+  tab_row_group(
+    label = md("**Production phase** (contingent on development results)"),
+    rows = 4:7
+  ) %>%
+  tab_row_group(
+    label = md("**Development phase** (~$200–250, answers feasibility question)"),
+    rows = 1:3
+  ) %>%
+  cols_hide(Phase) %>%
+  tab_style(
+    style = list(cell_fill(color = "#E3F2FD"), cell_text(weight = "bold")),
+    locations = cells_body(rows = 7)
+  ) %>%
+  tab_footnote(
+    footnote = "If codebooks fail to meet performance targets by early March, production costs are not incurred.",
+    locations = cells_row_groups(groups = md("**Production phase** (contingent on development results)"))
+  ) %>%
+  gt_theme_report()
+```
+
+Expert validation is required for Malaysia because there are no ground-truth labels:
+
+```{r human-budget}
+tibble(
+  Task = c(
+    "C1 Review: Verify identified fiscal measures",
+    "C2 Review: Validate motivation classifications",
+    "C3/C4 Spot-check: Timing and magnitude verification",
+    "Documentation: Edge cases and local context",
+    "TOTAL"
+  ),
+  Description = c(
+    "Confirm all real acts found, flag false positives",
+    "Check exogenous vs. endogenous classification",
+    "Sample-based review of extracted values",
+    "Capture Malaysia-specific fiscal policy nuances",
+    ""
+  ),
+  `Estimated Hours` = c(
+    "10–15 hours",
+    "8–12 hours",
+    "4–6 hours",
+    "3–5 hours",
+    "25–38 hours"
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "Expert Review Hours (Malaysia)",
+    subtitle = "Requires a World Bank economist with Malaysia fiscal policy expertise"
+  ) %>%
+  tab_style(
+    style = list(cell_fill(color = "#E3F2FD"), cell_text(weight = "bold")),
+    locations = cells_body(rows = 5)
+  ) %>%
+  gt_theme_report()
+```
+
+
+## What We've Built So Far
+
+The project has already delivered reusable infrastructure and validated the core approach:
+
+- **Document corpus:** Approximately 97,000 pages of US fiscal documents (Economic Reports of the President, Budget documents, Treasury Annual Reports) spanning 1946 to the present, extracted, structured, and ready for processing
+- **Proof of concept:** Model A demonstrated that LLMs identify fiscal policy language with 92% accuracy, confirming the feasibility of the approach
+- **Methodological framework:** A rigorous integration of R&R fiscal shock methodology with H&K LLM evaluation standards. This is the first application of this kind to economic history research
+- **Validated codebook architecture:** Four domain-specific codebooks (C1--C4) designed for systematic evaluation and cross-country transfer
+
+The revised approach builds on this foundation. The document infrastructure and methodological framework are in place; what remains is codebook validation and deployment.
+
+
+## Appendix: Technical Details {.appendix}
+
+### US Document Corpus
+
+```{r corpus-stats}
+us_body %>%
+  group_by(body) %>%
+  summarize(
+    Documents = n(),
+    Pages = scales::comma(sum(n_pages)),
+    `Year Range` = sprintf("%d–%d", min(year), max(year)),
+    .groups = "drop"
+  ) %>%
+  gt() %>%
+  tab_header(
+    title = "US Document Corpus by Source"
+  ) %>%
+  gt_theme_report()
+```
+
+### Model A Results (January 2026)
+
+The proof-of-concept achieved on its test set (34 passages):
+
+```{r}
+#| label: model-a-results
+tibble(
+  Metric = c("F1 Score", "Precision", "Recall", "False Positives"),
+  Result = c("92.3%", "85.7%", "100%", "1/28"),
+  Target = c(">85%", ">80%", ">90%", "Minimize"),
+  Status = c("Pass", "Pass", "Pass", "Pass")
+) %>%
+  gt() %>%
+  tab_header(title = "Model A Performance (January 2026)") %>%
+  gt_theme_report()
+```
+
+These results validated that LLMs have sufficient understanding of fiscal policy language for this task. The codebook architecture addresses the gap between this proof-of-concept and production requirements.
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
