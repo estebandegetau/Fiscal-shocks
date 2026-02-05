@@ -202,66 +202,14 @@ US Government Documents (1946-present):
 - **Python**: docling (PDF extraction), sentence-transformers (embeddings), torch
 - **Documentation**: Quarto with Typst and HTML output, Chicago Author-Date citations
 
-### Table Rendering
+### Quarto Style Guide
 
-**Use gt package for all tables in .qmd files:**
-- gt works with both HTML and Typst output formats
-- Basic pattern: `data %>% gt() %>% cols_label(...) %>% tab_options(table.width = pct(100))`
-- Do NOT use kableExtra (incompatible with Typst rendering)
+See `.claude/skills/quarto-style/SKILL.md` for complete Quarto conventions (tables, markdown formatting, plots, citations, writing style, setup chunks). Key rules:
 
-### Markdown Rendering in .qmd Files
-
-**CRITICAL: Bullet lists require blank lines before them**
-
-This applies to **both R code chunks AND markdown body text**.
-
-#### In R Code Chunks
-
-When using `cat()` with `results='asis'` in R code chunks to generate markdown, **you must include a blank line before bullet lists**:
-
-```r
-# ❌ WRONG - bullet list will not render correctly
-cat("Some text:\n")
-cat("- Bullet point 1\n")
-cat("- Bullet point 2\n")
-
-# ✅ CORRECT - note the \n\n (two newlines)
-cat("Some text:\n\n")
-cat("- Bullet point 1\n")
-cat("- Bullet point 2\n")
-```
-
-**Pattern to look for:** `cat("text:\n")` followed by `cat("- bullet")` → change to `cat("text:\n\n")`
-
-#### In Markdown Body
-
-When writing bullet lists directly in markdown (outside R code chunks), **you must include a blank line before the list**:
-
-```markdown
-# ❌ WRONG - bullet list will not render correctly
-**Some heading:**
-- Bullet point 1
-- Bullet point 2
-
-# ✅ CORRECT - blank line before list
-**Some heading:**
-
-- Bullet point 1
-- Bullet point 2
-```
-
-**Pattern to look for:** Text or heading followed immediately by `-` → add blank line between them
-
-#### Why This Matters
-
-**Why:** Markdown requires a blank line before block-level elements like bullet lists. Without it, the bullets render as running text.
-
-**When this applies:**
-- Before bullet lists (`- item`)
-- Before numbered lists (`1. item`)
-- Before block quotes (`> text`)
-- Before code blocks (` ``` `)
-- Both in R code chunks (`cat()`) and markdown body text
+- **gt for all tables** (never kableExtra)
+- **Blank line before bullet lists** in both markdown body and `cat()` output
+- **Never end a section with a `---` divider**
+- **Minimize em dashes**
 
 ## {targets} Pipeline Conventions
 
