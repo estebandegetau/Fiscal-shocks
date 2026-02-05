@@ -1,0 +1,389 @@
+---
+title: "Training Data Audit"
+subtitle: "Verifying us_shocks.csv and us_labels.csv for Codebook Development"
+date: today
+date-format: long
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+library(targets)
+library(tidyverse)
+library(gt)
+library(here)
+
+here::i_am("notebooks/review_data.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
+set_theme(theme_minimal())
+
+us_shocks <- tar_read(us_shocks)
+us_labels <- tar_read(us_labels)
+```
+
+## Overview
+
+This notebook audits the two ground-truth datasets before codebook development begins. R&R's companion paper documents **50 significant federal tax actions** in the postwar era (1945-2007). We need to understand what our data contains and how it maps to their work.
+
+## 1. Act Counts
+
+```{r}
+#| label: act-counts
+
+shocks_acts <- us_shocks |> distinct(act_name) |> nrow()
+labels_acts <- us_labels |> distinct(act_name) |> nrow()
+
+tibble(
+  Dataset = c("us_shocks", "us_labels"),
+  `Unique Acts` = c(shocks_acts, labels_acts),
+  `Total Rows` = c(nrow(us_shocks), nrow(us_labels))
+) |>
+  gt() |>
+  tab_header(title = "Dataset Dimensions") |>
+  gt_theme_report()
+```
+
+::: {.callout-note}
+R&R document **50** significant tax actions. Our `us_shocks.csv` covers a subset of these. The discrepancy arises because our data may exclude some acts (e.g., acts before a certain date, or acts not included in the 2010 paper's quarterly series). The companion paper includes additional acts beyond those in the main 2010 paper's time series.
+:::
+
+## 2. Acts in us_shocks
+
+```{r}
+#| label: shocks-act-list
+
+us_shocks |>
+  group_by(act_name, date_signed) |>
+  summarise(
+    n_quarters = n_distinct(change_in_liabilities_quarter),
+    categories = paste(unique(change_in_liabilities_category), collapse = ", "),
+    exogeneity = paste(unique(change_in_liabilities_exo), collapse = ", "),
+    .groups = "drop"
+  ) |>
+  arrange(date_signed) |>
+  gt() |>
+  tab_header(title = "All Acts in us_shocks.csv") |>
+  cols_label(
+    act_name = "Act Name",
+    date_signed = "Date Signed",
+    n_quarters = "Quarters",
+    categories = "Motivation(s)",
+    exogeneity = "Exogeneity"
+  ) |>
+  gt_theme_report()
+```
+
+## 3. Motivation Category Distribution
+
+```{r}
+#| label: motivation-distribution
+
+# At the act level (using the dominant motivation)
+act_motivations <- us_shocks |>
+  group_by(act_name) |>
+  summarise(
+    primary_category = names(which.max(table(change_in_liabilities_category))),
+    primary_exo = names(which.max(table(change_in_liabilities_exo))),
+    .groups = "drop"
+  )
+
+act_motivations |>
+  count(primary_category, primary_exo, name = "n_acts") |>
+  arrange(primary_exo, primary_category) |>
+  gt() |>
+  tab_header(title = "Motivation Distribution Across Acts") |>
+  cols_label(
+    primary_category = "Motivation",
+    primary_exo = "Exogeneity",
+    n_acts = "Number of Acts"
+  ) |>
+  gt_theme_report()
+```
+
+```{r}
+#| label: motivation-plot
+#| fig-width: 8
+#| fig-height: 5
+
+act_motivations |>
+  count(primary_category, primary_exo) |>
+  ggplot(aes(x = reorder(primary_category, n), y = n, fill = primary_exo)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Acts by Motivation Category",
+    x = "Motivation Category",
+    y = "Number of Acts",
+    fill = "Exogeneity"
+  ) +
+  scale_fill_manual(values = c("Endogenous" = "#E74C3C", "Exogenous" = "#2ECC71"))
+```
+
+## 4. Row-Level Motivation Breakdown
+
+Some acts have rows with different motivation categories (e.g., phased Social Security changes where early increases are spending-driven and later ones are deficit-driven).
+
+```{r}
+#| label: mixed-motivation-acts
+
+mixed_acts <- us_shocks |>
+  group_by(act_name) |>
+  summarise(
+    n_categories = n_distinct(change_in_liabilities_category),
+    categories = paste(unique(change_in_liabilities_category), collapse = " + "),
+    n_exo_types = n_distinct(change_in_liabilities_exo),
+    .groups = "drop"
+  ) |>
+  filter(n_categories > 1 | n_exo_types > 1)
+
+mixed_acts |>
+  gt() |>
+  tab_header(title = "Acts with Mixed Motivations") |>
+  cols_label(
+    act_name = "Act Name",
+    n_categories = "Distinct Categories",
+    categories = "Categories",
+    n_exo_types = "Distinct Exogeneity"
+  ) |>
+  gt_theme_report()
+```
+
+::: {.callout-note}
+Mixed-motivation acts are expected per R&R methodology. Some Social Security amendments have spending-driven components (within 1 year of benefit increases) and deficit-driven components (more than 1 year after). EGTRRA 2001 splits between countercyclical (rebate) and long-run (rate reductions).
+:::
+
+## 5. Temporal Coverage
+
+```{r}
+#| label: temporal-coverage
+#| fig-width: 10
+#| fig-height: 5
+
+us_shocks |>
+  distinct(act_name, date_signed) |>
+  mutate(year = year(date_signed)) |>
+  count(decade = floor(year / 10) * 10, name = "n_acts") |>
+  ggplot(aes(x = factor(decade), y = n_acts)) +
+  geom_col(fill = "#3498DB") +
+  labs(
+    title = "Acts by Decade",
+    x = "Decade",
+    y = "Number of Acts"
+  )
+```
+
+## 6. Labels-Shocks Cross-Reference
+
+```{r}
+#| label: cross-reference
+
+shocks_act_names <- us_shocks |> distinct(act_name) |> pull(act_name)
+labels_act_names <- us_labels |> distinct(act_name) |> pull(act_name)
+
+in_both <- intersect(shocks_act_names, labels_act_names)
+shocks_only <- setdiff(shocks_act_names, labels_act_names)
+labels_only <- setdiff(labels_act_names, shocks_act_names)
+
+tibble(
+  Category = c("In both datasets", "In us_shocks only", "In us_labels only"),
+  Count = c(length(in_both), length(shocks_only), length(labels_only))
+) |>
+  gt() |>
+  tab_header(title = "Act Coverage Across Datasets") |>
+  gt_theme_report()
+```
+
+```{r}
+#| label: shocks-only-detail
+
+if (length(shocks_only) > 0) {
+  cat("**Acts in us_shocks but NOT in us_labels:**\n\n")
+  cat(paste("-", shocks_only, collapse = "\n"))
+}
+```
+
+```{r}
+#| label: labels-only-detail
+
+if (length(labels_only) > 0) {
+  cat("**Acts in us_labels but NOT in us_shocks:**\n\n")
+  cat(paste("-", labels_only, collapse = "\n"))
+}
+```
+
+## 7. Label Consistency Check
+
+For acts present in both datasets, verify that the motivation category and exogeneity agree.
+
+```{r}
+#| label: consistency-check
+
+if (length(in_both) > 0) {
+  shocks_summary <- us_shocks |>
+    filter(act_name %in% in_both) |>
+    group_by(act_name) |>
+    summarise(
+      shocks_category = paste(unique(change_in_liabilities_category), collapse = ", "),
+      shocks_exo = paste(unique(change_in_liabilities_exo), collapse = ", "),
+      .groups = "drop"
+    )
+
+  labels_summary <- us_labels |>
+    filter(act_name %in% in_both) |>
+    group_by(act_name) |>
+    summarise(
+      labels_category = paste(unique(category), collapse = ", "),
+      labels_exo = paste(unique(exogeneity), collapse = ", "),
+      .groups = "drop"
+    )
+
+  consistency <- shocks_summary |>
+    inner_join(labels_summary, by = "act_name") |>
+    mutate(
+      category_match = shocks_category == tolower(labels_category) |
+        str_detect(tolower(labels_category), tolower(shocks_category)),
+      exo_match = str_to_lower(shocks_exo) == str_to_lower(labels_exo) |
+        str_detect(str_to_lower(labels_exo), str_to_lower(shocks_exo))
+    )
+
+  mismatches <- consistency |>
+    filter(!category_match | !exo_match)
+
+  if (nrow(mismatches) > 0) {
+    mismatches |>
+      gt() |>
+      tab_header(title = "Motivation/Exogeneity Mismatches Between Datasets") |>
+      gt_theme_report()
+  } else {
+    cat("All acts in both datasets have consistent motivation and exogeneity classifications.\n")
+  }
+}
+```
+
+## 8. Labels Evidence Summary
+
+How many evidence passages does each act have in us_labels?
+
+```{r}
+#| label: labels-evidence-count
+
+us_labels |>
+  count(act_name, name = "n_passages") |>
+  arrange(desc(n_passages)) |>
+  gt() |>
+  tab_header(title = "Evidence Passages per Act (us_labels)") |>
+  cols_label(
+    act_name = "Act Name",
+    n_passages = "Passages"
+  ) |>
+  gt_theme_report()
+```
+
+```{r}
+#| label: labels-evidence-stats
+
+evidence_stats <- us_labels |>
+  count(act_name, name = "n_passages") |>
+  summarise(
+    min = min(n_passages),
+    median = median(n_passages),
+    mean = round(mean(n_passages), 1),
+    max = max(n_passages),
+    total = sum(n_passages)
+  )
+
+evidence_stats |>
+  gt() |>
+  tab_header(title = "Evidence Passage Statistics") |>
+  cols_label(
+    min = "Min",
+    median = "Median",
+    mean = "Mean",
+    max = "Max",
+    total = "Total"
+  ) |>
+  gt_theme_report()
+```
+
+## 9. Data Quality Flags
+
+```{r}
+#| label: quality-flags
+#| results: asis
+
+issues <- list()
+
+# Check for missing dates in shocks
+missing_dates_shocks <- us_shocks |> filter(is.na(date_signed)) |> nrow()
+if (missing_dates_shocks > 0) {
+  issues <- c(issues, sprintf("- %d rows in us_shocks have missing date_signed", missing_dates_shocks))
+}
+
+# Check for missing quarters
+missing_quarters <- us_shocks |> filter(is.na(change_in_liabilities_quarter)) |> nrow()
+if (missing_quarters > 0) {
+  issues <- c(issues, sprintf("- %d rows in us_shocks have missing change_in_liabilities_quarter", missing_quarters))
+}
+
+# Check for missing categories
+missing_cats <- us_shocks |> filter(is.na(change_in_liabilities_category) | change_in_liabilities_category == "") |> nrow()
+if (missing_cats > 0) {
+  issues <- c(issues, sprintf("- %d rows in us_shocks have missing motivation category", missing_cats))
+}
+
+# Check for duplicate rows
+dup_rows <- us_shocks |>
+  group_by(act_name, change_in_liabilities_quarter, change_in_liabilities_billion) |>
+  filter(n() > 1) |>
+  nrow()
+if (dup_rows > 0) {
+  issues <- c(issues, sprintf("- %d rows in us_shocks appear to be duplicates (same act, quarter, and amount)", dup_rows))
+}
+
+# Check for missing present value data
+missing_pv <- us_shocks |> filter(is.na(present_value_quarter) | is.na(present_value_billion)) |> nrow()
+if (missing_pv > 0) {
+  issues <- c(issues, sprintf("- %d rows in us_shocks have missing present value data", missing_pv))
+}
+
+if (length(issues) > 0) {
+  cat("**Data quality issues found:**\n\n")
+  cat(paste(issues, collapse = "\n"))
+} else {
+  cat("**No data quality issues found.** All fields are populated and consistent.\n")
+}
+```
+
+## Summary
+
+```{r}
+#| label: summary-table
+
+tibble(
+  Metric = c(
+    "Unique acts in us_shocks",
+    "Unique acts in us_labels",
+    "Acts in both datasets",
+    "R&R documented acts",
+    "Coverage vs R&R",
+    "Exogenous acts",
+    "Endogenous acts",
+    "Total evidence passages"
+  ),
+  Value = c(
+    as.character(shocks_acts),
+    as.character(labels_acts),
+    as.character(length(in_both)),
+    "50",
+    sprintf("%.0f%%", shocks_acts / 50 * 100),
+    as.character(sum(act_motivations$primary_exo == "Exogenous")),
+    as.character(sum(act_motivations$primary_exo == "Endogenous")),
+    as.character(nrow(us_labels))
+  )
+) |>
+  gt() |>
+  tab_header(title = "Training Data Audit Summary") |>
+  gt_theme_report()
+```
