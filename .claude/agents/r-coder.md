@@ -147,7 +147,7 @@ safe_api_call <- function(prompt) {
 #' @return Tibble with test results: legal_output, memorization, order_sensitivity
 #'
 #' @examples
-#' run_behavioral_tests("prompts/codebook_1_measure_id.yaml", test_cases)
+#' run_behavioral_tests("prompts/c1_measure_id.yml", test_cases)
 run_behavioral_tests <- function(codebook_path, test_cases, model = "claude-sonnet-4-20250514") {
   # Implementation
 }
@@ -158,4 +158,6 @@ run_behavioral_tests <- function(codebook_path, test_cases, model = "claude-sonn
 - All functions integrate with `_targets.R` pipeline
 - Use packages from `tar_option_set()`: tidyverse, httr2, jsonlite, etc.
 - Reference `CLAUDE.md` for full conventions
-- Reference `docs/strategy.md` for methodology requirements
+- Reference `docs/strategy.md` for methodology requirements (C1-C4 blueprints, targets pipeline plan)
+- Reference `.claude/skills/codebook-yaml/SKILL.md` for YAML codebook structure when implementing `codebook_stage_0.R` (parsing/validation)
+- Note: `R/functions_llm.R` currently uses `call_claude_api()` — update model version parameter to match current Anthropic model IDs when implementing new functions

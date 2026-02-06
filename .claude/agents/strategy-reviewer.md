@@ -28,7 +28,7 @@ This document specifies:
 Map the code to a specific component:
 - Which codebook? (C1, C2, C3, C4)
 - Which H&K stage? (S0, S1, S2, S3)
-- Which R&R phase? (1-6)
+- Which R&R step? (RR1-RR6)
 
 ### Step 2: Check Against Strategy
 
@@ -45,10 +45,10 @@ For each component, verify:
 - [ ] Examples illustrate patterns, not memorization targets
 
 **H&K Stage Implementation:**
-- [ ] S0: Codebook has all required YAML fields
-- [ ] S1: All three behavioral tests implemented (legal output, memorization, order sensitivity)
+- [ ] S0: Codebook has all required YAML fields (validate against `.claude/skills/codebook-yaml/SKILL.md`)
+- [ ] S1: All 7 behavioral tests implemented (Tests I-IV during S1; Tests V-VII during S3)
 - [ ] S2: LOOCV on 44 US acts with correct metrics
-- [ ] S3: Error taxonomy matches H&K categories
+- [ ] S3: Error taxonomy matches H&K 6-category taxonomy (A-F)
 
 ### Step 3: Consult Domain Specialists
 
@@ -87,10 +87,10 @@ For each component, verify:
 - [ ] MAPE target <30%, Sign accuracy target ≥95%
 
 ### H&K Stages
-- [ ] S0: YAML codebook complete with all fields
-- [ ] S1: Three behavioral tests with pass thresholds
+- [ ] S0: YAML codebook complete with all fields (per `.claude/skills/codebook-yaml/SKILL.md`)
+- [ ] S1: 4 behavioral tests with pass thresholds (Tests I-IV)
 - [ ] S2: LOOCV evaluation with bootstrap CIs
-- [ ] S3: Error taxonomy documented
+- [ ] S3: Error taxonomy documented using H&K 6-category taxonomy (A-F) + Tests V-VII
 
 ## Output Format
 

@@ -15,11 +15,11 @@ Verify that notebooks evaluate what they're supposed to evaluate, matching the s
 
 | Notebook | Purpose | Key Checks |
 |----------|---------|------------|
-| `codebook_1_measure_id.qmd` | C1 S0-S3 documentation | Measure ID evaluation |
-| `codebook_2_motivation.qmd` | C2 S0-S3 documentation | Motivation classification |
-| `codebook_3_timing.qmd` | C3 S0-S3 documentation | Timing extraction |
-| `codebook_4_magnitude.qmd` | C4 S0-S3 documentation | Magnitude extraction |
-| `phase_6_aggregation.qmd` | GDP normalization, aggregation | Final series validation |
+| `c1_measure_id.qmd` | C1 S0-S3 documentation | Measure ID evaluation |
+| `c2_motivation.qmd` | C2 S0-S3 documentation | Motivation classification |
+| `c3_timing.qmd` | C3 S0-S3 documentation | Timing extraction |
+| `c4_magnitude.qmd` | C4 S0-S3 documentation | Magnitude extraction |
+| `rr6_aggregation.qmd` | GDP normalization, aggregation | Final series validation |
 | `pipeline_integration.qmd` | End-to-end testing | Full pipeline verification |
 
 ## Review Checklist

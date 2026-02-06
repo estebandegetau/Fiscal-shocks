@@ -22,7 +22,7 @@ Replicating this approach manually is costly. For low- and middle-income countri
 
 **Recent advances in Large Language Models (LLMs)** make this possible for the first time. These models can read long historical documents, interpret motivations, and extract structured information at scale—opening the door to producing robust fiscal shock series for developing countries.
 
-This project proposes to build a **validated, scalable LLM pipeline** for fiscal shock identification, starting with Malaysia and extending across Southeast Asia.
+This project proposes to build a **validated LLM-assisted methodology** for fiscal shock identification, starting with Malaysia and extending across Southeast Asia.
 
 ## Novelty and Innovation
 
@@ -65,20 +65,24 @@ Once methodology is validated on Malaysia (estimated 20-40 acts, 1980-2022), the
 ### C. Tooling and Capacity
 
 -   A fully documented, open-source pipeline (R-based).
--   Country-specific LLM prompts, rules, and evaluation protocols.
+-   Country-agnostic LLM codebooks, rules, and evaluation protocols.
 -   A tested architecture that can be extended to Africa, South Asia, and Latin America.
 
 ## Implementation Plan
 
-### Phase 0 – US Benchmark (Jan 2026) {.unnumbered}
+### Phase 0 – Codebook Development (Jan 2026) {.unnumbered}
 
 Develop and validate 4 codebooks (C1-C4) on 44 US fiscal acts using the Halterman & Keith framework: codebook preparation, behavioral testing, zero-shot evaluation, and error analysis. Validate performance against Romer & Romer ground truth.
 
-### Phase 1 – Malaysia Pilot (Feb 2026) {.unnumbered}
+### Phase 1 – US Full Production (Jan-Feb 2026) {.unnumbered}
+
+Run validated codebooks on the full US document corpus. Compare end-to-end results against Romer & Romer's published shock series to confirm production readiness.
+
+### Phase 2 – Malaysia Pilot (Feb-Mar 2026) {.unnumbered}
 
 Deploy US-validated codebooks to Malaysia documents (1980-2022), generating candidate fiscal shock dataset. Engage local expert to validate outputs and assess cross-country transfer performance. Refine codebook definitions based on expert feedback.
 
-### Phase 2 – Southeast Asia Scaling (June 2026) {.unnumbered}
+### Phase 3 – Southeast Asia Scaling (June 2026) {.unnumbered}
 
 Extend to Indonesia, Thailand, the Philippines, and Vietnam, incorporating expert review and news-based cross-checks.
 

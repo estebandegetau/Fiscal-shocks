@@ -1,14 +1,14 @@
-# Phase 1: Malaysia Deployment — CLAUDE.md
+# Phase 2: Malaysia Pilot — CLAUDE.md
 
-This file provides context for Claude Code when working on Phase 1 implementation.
+This file provides context for Claude Code when working on Phase 2 (Malaysia Pilot) implementation. (This file lives in `docs/phase_1/` for historical reasons; "Phase 1" in directory name is a legacy artifact.)
 
-## Phase 1 Overview
+## Phase 2 Overview
 
 **Goal**: Deploy US-validated codebooks (C1-C4) to Malaysia government documents (1980-2022) with expert validation to test cross-country transfer learning.
 
 **Timeline**: 12 weeks (4 weeks deployment, 4 weeks validation, 2 weeks refinement, 2 weeks documentation)
 
-**Status**: PLANNING (Phase 0 codebook validation must complete first)
+**Status**: PLANNING (Phase 0 codebook development and Phase 1 US full production must complete first)
 
 **Expected Output**: 20-40 expert-validated Malaysia fiscal acts
 
@@ -16,7 +16,7 @@ This file provides context for Claude Code when working on Phase 1 implementatio
 
 **Primary Reference**: `docs/strategy.md`
 
-This document contains the complete R&R + H&K framework specification. Phase 1 applies the validated codebooks to a new country context.
+This document contains the complete R&R + H&K framework specification. Phase 2 applies the validated codebooks to a new country context.
 
 **Key Sections**:
 
@@ -27,7 +27,7 @@ This document contains the complete R&R + H&K framework specification. Phase 1 a
 ## Key Documents
 
 - **[malaysia_strategy.md](malaysia_strategy.md)** — Full strategic plan with 4 options evaluated (READ THIS FIRST)
-- **[README.md](README.md)** — Quick reference guide to Phase 1
+- **[README.md](README.md)** — Quick reference guide to Phase 2
 - **[expert_review_protocol.md](expert_review_protocol.md)** — Expert validation protocol aligned with H&K S3 error analysis
 
 ## Critical Context: Data Constraints
@@ -94,7 +94,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 
 ## Implementation Timeline (12 Weeks)
 
-### Phase 1A: Deployment (Weeks 1-4)
+### Phase 2A: Deployment (Weeks 1-4)
 
 **Goal**: Extract Malaysia documents, run codebooks C1-C4, generate candidate dataset
 
@@ -117,7 +117,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 - Motivation classifications from C2
 - Timing/magnitude extractions from C3/C4 (if applicable)
 
-### Phase 1B: Expert Validation (Weeks 5-8)
+### Phase 2B: Expert Validation (Weeks 5-8)
 
 **Goal**: Expert reviews codebook outputs, quantifies agreement, identifies errors
 
@@ -144,7 +144,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 - Error taxonomy following H&K S3 methodology
 - List of missed major acts
 
-### Phase 1C: Refinement (Weeks 9-10)
+### Phase 2C: Refinement (Weeks 9-10)
 
 **Goal**: Analyze errors, adjust codebook definitions, re-run on error cases
 
@@ -168,14 +168,14 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 - Re-run results on error cases
 - Final expert agreement metrics
 
-### Phase 1D: Documentation (Weeks 11-12)
+### Phase 2D: Documentation (Weeks 11-12)
 
 **Goal**: Update papers, report findings, prepare for Phase 2
 
 **Tasks**:
 
 1. Update `docs/two_pager.qmd` with Malaysia results
-2. Write Phase 1 report:
+2. Write Phase 2 report:
    - Expert agreement rates
    - Error analysis findings
    - Methodology lessons learned
@@ -188,7 +188,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 
 **Deliverables**:
 
-- Phase 1 report (`docs/phase_1/phase1_report.qmd`)
+- Phase 2 report (`docs/phase_1/phase2_report.qmd`)
 - Updated two-pager with Malaysia validation results
 - Visualization of expert agreement
 - Phase 2 implementation plan
@@ -260,7 +260,7 @@ If C1 misses 2+ of these, **something is wrong** with the transfer.
 
 ## Targets Pipeline Integration
 
-### New Targets for Phase 1
+### New Targets for Phase 2
 
 ```r
 # Malaysia document acquisition
@@ -276,19 +276,19 @@ tar_target(malaysia_relevant, filter_relevant(malaysia_paragraphs))
 # Codebook deployment (using Phase 0 validated codebooks)
 tar_target(
   malaysia_c1,
-  run_codebook(malaysia_relevant, "codebook_1_measure_id.yaml")
+  run_codebook(malaysia_relevant, "c1_measure_id.yml")
 )
 tar_target(
   malaysia_c2,
-  run_codebook(malaysia_c1 %>% filter(is_measure == TRUE), "codebook_2_motivation.yaml")
+  run_codebook(malaysia_c1 %>% filter(is_measure == TRUE), "c2_motivation.yml")
 )
 tar_target(
   malaysia_c3,
-  run_codebook(malaysia_c2, "codebook_3_timing.yaml")
+  run_codebook(malaysia_c2, "c3_timing.yml")
 )
 tar_target(
   malaysia_c4,
-  run_codebook(malaysia_c2, "codebook_4_magnitude.yaml")
+  run_codebook(malaysia_c2, "c4_magnitude.yml")
 )
 
 # Expert validation (manual step, store results)
@@ -311,16 +311,16 @@ tar_target(
 )
 ```
 
-### Running Phase 1 Pipeline
+### Running Phase 2 Pipeline
 
 ```r
-# Phase 1A: Deployment
+# Phase 2A: Deployment
 tar_make(malaysia_c4)  # Runs all dependencies
 
-# Phase 1B: After expert validation file created
+# Phase 2B: After expert validation file created
 tar_make(malaysia_agreement_metrics)
 
-# Phase 1C: Re-run with updated codebooks
+# Phase 2C: Re-run with updated codebooks
 tar_invalidate(malaysia_c1)  # Force re-run
 tar_make(malaysia_shocks)
 
@@ -383,10 +383,10 @@ tar_read(malaysia_shocks)
 - Use smaller sample for initial validation
 - Switch to Haiku for C1 (cheaper, faster)
 
-## Next Steps After Phase 1
+## Next Steps After Phase 2
 
 **If successful** (expert agreement ≥80%):
-→ **Phase 2 (SEA Scaling)**: Indonesia, Thailand, Philippines, Vietnam
+→ **Phase 3 (Regional Scaling)**: Indonesia, Thailand, Philippines, Vietnam
 → Methodology proven, replicate across region
 → Each country: 4-week deployment + 2-week expert validation
 
@@ -398,7 +398,7 @@ tar_read(malaysia_shocks)
 **If failed** (<60% agreement):
 → **Research contribution**: Document failure modes using H&K S3 methodology
 → **Paper focus**: "When Cross-Country Transfer Fails: Institutional Barriers to LLM Fiscal Shock Identification"
-→ **Alternative**: Option 4 (pivot to UK/Canada for Phase 2)
+→ **Alternative**: Option 4 (pivot to UK/Canada for Phase 3)
 
 ## Open Questions (To Be Resolved in Week 1)
 

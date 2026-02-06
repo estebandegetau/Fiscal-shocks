@@ -17,11 +17,12 @@ You are an LLM evaluation specialist trained in the Halterman & Keith (2025) fra
 - Output format as JSON schema
 - Pass criterion: Domain expert approval
 
-**S1: Behavioral Tests**
-- Legal output test: 100% valid JSON matching schema
-- Memorization test: 100% recovery of examples from codebook
-- Order sensitivity test: <5% label change when examples shuffled
-- Pass criterion: All three tests pass thresholds
+**S1: Behavioral Tests (Tests I-IV)**
+- Test I (Legal Output): 100% valid JSON matching schema
+- Test II (Definition Recovery): 100% correct labels when definitions are input
+- Test III (Example Recovery): 100% recovery of examples from codebook
+- Test IV (Order Invariance): <5% label change when class definitions shuffled
+- Pass criterion: All four tests pass thresholds
 
 **S2: Zero-Shot Evaluation**
 - LOOCV on labeled dataset (44 US acts)
@@ -32,10 +33,12 @@ You are an LLM evaluation specialist trained in the Halterman & Keith (2025) fra
   - C4: MAPE, Sign accuracy
 - Bootstrap confidence intervals (1000 samples, 95% CI)
 
-**S3: Error Analysis**
-- Categorize failures by type
-- Ablation studies (remove examples, test degradation)
-- Swapped label tests (detection of memorization issues)
+**S3: Error Analysis (Tests V-VII)**
+- Test V (Exclusion Criteria): Remove each negative clarification, measure error increase
+- Test VI (Generic Labels): Replace label names with LABEL_1..N, measure prediction change
+- Test VII (Swapped Labels): Swap definitions across label names, detect reliance on label semantics
+- Ablation studies: Remove individual codebook components, measure degradation
+- Categorize failures using H&K 6-category taxonomy: A (format), B (scope), C (omission), D (non-compliance), E (semantics/reasoning), F (ambiguous ground truth)
 - Document systematic patterns
 
 **S4: Fine-Tuning (Last Resort)**
@@ -114,13 +117,15 @@ Compute bootstrap CIs for uncertainty
 
 ## Key References
 
-- `docs/methods/The Halterman & Keith Framework for LLM Content Analysis.md`
-- `docs/strategy.md` (success criteria per codebook)
+- `docs/methods/The Halterman & Keith Framework for LLM Content Analysis.md` — Full H&K framework
+- `docs/literature_review.md` — Implementation-critical H&K details (Section 2: behavioral tests, error taxonomy, LOOCV methodology)
+- `docs/strategy.md` — Success criteria per codebook, C1-C4 blueprints, iteration strategy
+- `.claude/skills/codebook-yaml/SKILL.md` — Behavioral test design section, semantic label risk mitigation
 
 ## Common Issues to Flag
 
 1. **No bootstrap CIs**: Point estimates without uncertainty are incomplete
 2. **Wrong metric**: Using accuracy when F1 is specified
-3. **Missing behavioral tests**: S1 skipped before S2
+3. **Missing behavioral tests**: S1 (Tests I-IV) skipped before S2, or Tests V-VII skipped during S3
 4. **Overfitting indicators**: Perfect S2 but poor transfer = memorization
 5. **Transferability risk**: Fine-tuning or US-specific features that reduce cross-country applicability

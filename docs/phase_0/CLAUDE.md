@@ -1,10 +1,10 @@
-# Phase 0: US Benchmark Training — CLAUDE.md
+# Phase 0: Codebook Development — CLAUDE.md
 
 This file provides context for Claude Code when working on Phase 0 implementation.
 
 ## Phase 0 Overview
 
-**Goal**: Develop and validate 4 domain-specific codebooks (C1-C4) on 44 US fiscal acts using the Halterman & Keith (2025) 5-stage framework.
+**Goal**: Develop and validate 4 domain-specific codebooks (C1-C4) on a cost-efficient subset of `us_body` chunks using the Halterman & Keith (2025) 5-stage framework, evaluated against 44 labeled US fiscal acts.
 
 **Approach**: Country-agnostic codebook design with few-shot learning using Claude 3.5 Sonnet API
 
@@ -16,7 +16,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 This document contains the complete R&R + H&K framework specification including:
 
-- The 4 codebook definitions (C1-C4) mapping to R&R phases 2-5
+- The 4 codebook definitions (C1-C4) mapping to R&R steps RR2-RR5
 - H&K 5-stage validation pipeline (S0-S3 + S4 if needed)
 - Success criteria per codebook and per stage
 - Implementation sequencing strategy
@@ -28,14 +28,14 @@ This document contains the complete R&R + H&K framework specification including:
 
 ## The Four Codebooks
 
-| Codebook | R&R Phase | Task | Output Type |
-|----------|-----------|------|-------------|
-| **C1: Measure ID** | Phase 2 | Does passage describe a fiscal measure meeting "significant mention" rule? | Binary + extraction |
-| **C2: Motivation** | Phase 5 | Classify motivation: Spending-driven, Countercyclical, Deficit-driven, Long-run | 4-class + exogenous flag |
-| **C3: Timing** | Phase 4 | Extract implementation quarter(s) using midpoint rule | List of quarters |
-| **C4: Magnitude** | Phase 3 | Extract fiscal impact in billions USD | Magnitude per quarter |
+| Codebook | R&R Step | Task | Output Type |
+|----------|----------|------|-------------|
+| **C1: Measure ID** | RR2 | Does passage describe a fiscal measure meeting "significant mention" rule? | Binary + extraction |
+| **C2: Motivation** | RR5 | Classify motivation: Spending-driven, Countercyclical, Deficit-driven, Long-run | 4-class + exogenous flag |
+| **C3: Timing** | RR4 | Extract implementation quarter(s) using midpoint rule | List of quarters |
+| **C4: Magnitude** | RR3 | Extract fiscal impact in billions USD | Magnitude per quarter |
 
-**Sequencing**: C1 → C2 → C3 → C4 (following R&R phase order, allowing upstream outputs to feed downstream)
+**Sequencing**: C1 → C2 → C3 → C4 (following R&R step order, allowing upstream outputs to feed downstream)
 
 ## H&K Stages (Applied to Each Codebook)
 
@@ -93,10 +93,10 @@ This document contains the complete R&R + H&K framework specification including:
 
 ### Codebooks (`/prompts/`)
 
-- `codebook_1_measure_id.yaml`
-- `codebook_2_motivation.yaml`
-- `codebook_3_timing.yaml`
-- `codebook_4_magnitude.yaml`
+- `c1_measure_id.yml`
+- `c2_motivation.yml`
+- `c3_timing.yml`
+- `c4_magnitude.yml`
 
 ### H&K Stage Functions (`/R/`)
 
@@ -108,11 +108,11 @@ This document contains the complete R&R + H&K framework specification including:
 
 ### Notebooks (`/notebooks/`)
 
-- `codebook_1_measure_id.qmd`
-- `codebook_2_motivation.qmd`
-- `codebook_3_timing.qmd`
-- `codebook_4_magnitude.qmd`
-- `phase_6_aggregation.qmd`
+- `c1_measure_id.qmd`
+- `c2_motivation.qmd`
+- `c3_timing.qmd`
+- `c4_magnitude.qmd`
+- `rr6_aggregation.qmd`
 - `pipeline_integration.qmd`
 
 ## Targets Pipeline Integration
@@ -123,20 +123,20 @@ This document contains the complete R&R + H&K framework specification including:
 # Training data preparation
 tar_target(aligned_data, align_labels_shocks(us_labels, us_shocks))
 
-# Codebook 1: Measure ID
-tar_target(c1_s1_results, run_behavioral_tests("codebook_1_measure_id.yaml"))
-tar_target(c1_s2_results, run_loocv_evaluation(aligned_data, "C1"))
-tar_target(c1_s3_analysis, run_error_analysis(c1_s2_results))
+# Codebook loading and validation
+tar_target(c1_codebook, load_validate_codebook("prompts/c1_measure_id.yml"))
+tar_target(c2_codebook, load_validate_codebook("prompts/c2_motivation.yml"))
+tar_target(c3_codebook, load_validate_codebook("prompts/c3_timing.yml"))
+tar_target(c4_codebook, load_validate_codebook("prompts/c4_magnitude.yml"))
 
-# Codebook 2: Motivation
-tar_target(c2_s1_results, run_behavioral_tests("codebook_2_motivation.yaml"))
-tar_target(c2_s2_results, run_loocv_evaluation(aligned_data, "C2"))
-tar_target(c2_s3_analysis, run_error_analysis(c2_s2_results))
-
-# Similar pattern for C3, C4...
+# Per-codebook S1-S3 pipeline (C1 shown; repeat for C2, C3, C4)
+tar_target(c1_s1_results, run_behavioral_tests_s1(c1_codebook, aligned_data))
+tar_target(c1_s2_results, run_loocv(c1_codebook, aligned_data, type = "C1"))
+tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s2_results, aligned_data))
 
 # Final LLM-generated shock dataset
-tar_target(shocks_llm, aggregate_codebook_outputs(c1_s2_results, c2_s2_results, c3_s2_results, c4_s2_results))
+tar_target(shocks_llm, aggregate_outputs(c1_s2_results, c2_s2_results,
+                                          c3_s2_results, c4_s2_results))
 ```
 
 ### Running Phase 0 Pipeline
@@ -217,8 +217,8 @@ For each codebook (C1-C4):
 ## Next Steps After Phase 0
 
 **If all codebooks meet success criteria**:
-→ Proceed to **Phase 1 (Malaysia Deployment)**
-→ See `docs/phase_1/malaysia_strategy.md` for strategic plan
+→ Proceed to **Phase 1 (US Full Production)**: run on full `us_body`, compare against `us_shocks.csv`
+→ Then **Phase 2 (Malaysia Pilot)**: see `docs/phase_1/malaysia_strategy.md` for strategic plan
 → Key constraint: Transfer learning with limited training data (44 acts)
 
 **If codebooks underperform**:

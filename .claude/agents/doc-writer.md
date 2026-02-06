@@ -36,11 +36,11 @@ Create these notebooks documenting H&K stages:
 
 | Notebook | Content |
 |----------|---------|
-| `codebook_1_measure_id.qmd` | C1 S0-S3 results |
-| `codebook_2_motivation.qmd` | C2 S0-S3 results |
-| `codebook_3_timing.qmd` | C3 S0-S3 results |
-| `codebook_4_magnitude.qmd` | C4 S0-S3 results |
-| `phase_6_aggregation.qmd` | GDP normalization, final series |
+| `c1_measure_id.qmd` | C1 S0-S3 results |
+| `c2_motivation.qmd` | C2 S0-S3 results |
+| `c3_timing.qmd` | C3 S0-S3 results |
+| `c4_magnitude.qmd` | C4 S0-S3 results |
+| `rr6_aggregation.qmd` | GDP normalization, final series |
 | `pipeline_integration.qmd` | End-to-end validation |
 
 ### Notebook Structure Template

@@ -157,6 +157,129 @@ output_instructions: >
   Reasoning: [Brief explanation citing specific evidence from the passage]
 ```
 
+## S0-S3 Workflow
+
+Codebook development follows a sequential stage-gate process. Each stage must pass before proceeding to the next.
+
+1. **S0 (Codebook Preparation)**: Draft the YAML codebook following the structure in this SKILL. All required fields must be present. Submit for domain expert approval before proceeding.
+2. **S1 (Behavioral Tests)**: Run Tests I-IV (see below) to verify the codebook produces sane model behavior. All tests must pass thresholds before proceeding to evaluation.
+3. **S2 (Zero-Shot Evaluation)**: Run LOOCV on 44 US acts using `R/codebook_stage_2.R`. Compare results to success criteria in `docs/strategy.md`. If targets are not met, return to S0 for codebook revision.
+4. **S3 (Error Analysis)**: Run Tests V-VII plus ablation studies. Categorize errors using H&K taxonomy (A-F). Use findings to inform S0 revisions or, as a last resort, trigger S4.
+
+The stage-gate rule: **do not proceed to S(N+1) until S(N) passes.** Iteration loops back to S0 (codebook revision), not forward to the next stage.
+
+## Behavioral Test Design (S1)
+
+H&K define 7 behavioral tests (their Table 3). Tests I-IV run during S1; Tests V-VII run during S3.
+
+### S1 Tests (Run Before Evaluation)
+
+| Test | Name | What It Checks | Codebook Fields Used |
+|------|------|---------------|---------------------|
+| **I** | Legal Output | Does the model always return valid output matching the schema? | `output_instructions` |
+| **II** | Definition Recovery | Given the label definition as input text, does the model return the correct label? | `label`, `label_definition` |
+| **III** | Example Recovery | Given positive/negative examples, does the model return the correct labels? | `positive_examples`, `negative_examples` |
+| **IV** | Order Invariance | Does shuffling the order of class definitions change predictions? | `classes` (ordering) |
+
+**Pass criteria for all codebooks**: Test I: 100% valid outputs. Test II: 100% correct labels. Test III: 100% correct labels. Test IV: <5% label change rate across orderings.
+
+### S3 Tests (Run During Error Analysis)
+
+| Test | Name | What It Checks | Codebook Fields Used |
+|------|------|---------------|---------------------|
+| **V** | Exclusion Criteria | Does removing a negative clarification increase errors for that confusion case? | `negative_clarification` (individual items) |
+| **VI** | Generic Labels | Does replacing label names with LABEL_1..N change predictions? | `label` (names vs. definitions) |
+| **VII** | Swapped Labels | Does swapping definitions across label names change predictions? | `label`, `label_definition` (cross-assignment) |
+
+Tests VI and VII detect whether the model relies on the semantic content of label names rather than the definitions. This is especially critical for C2 (motivation), where class names like `DEFICIT_DRIVEN` carry strong semantic priors.
+
+## Semantic Label Risk (Tests VI/VII)
+
+H&K find that LLMs can rely on the semantic meaning of label names rather than reading the actual definitions. This is a major risk for this project because C2's labels (`SPENDING_DRIVEN`, `COUNTERCYCLICAL`, `DEFICIT_DRIVEN`, `LONG_RUN`) are highly semantically loaded.
+
+**Mitigation guidance for codebook authors:**
+
+- Write definitions that add information beyond what the label name implies
+- Include negative clarifications that explicitly contradict the "obvious" reading of the label name (e.g., "An act is NOT `DEFICIT_DRIVEN` merely because the word 'deficit' appears in the passage")
+- Ensure the distinction between classes cannot be resolved by label name alone
+- For C2 specifically: the countercyclical/long-run boundary requires the "return to normal" test, which is NOT implied by either label name
+
+**When to worry:** If Test VI (generic labels) produces significantly different results than the original labels, the model is relying on label semantics. If Test VII (swapped labels) produces results that follow the swapped names rather than the swapped definitions, the model is ignoring definitions entirely.
+
+## Output Instruction Templates
+
+### C1: Measure Identification
+
+```yaml
+output_instructions: >
+  Classify the passage using exactly one of: FISCAL_MEASURE, NOT_FISCAL_MEASURE.
+
+  Return your answer as JSON:
+  {
+    "label": "FISCAL_MEASURE" or "NOT_FISCAL_MEASURE",
+    "measure_name": "Name of the act if FISCAL_MEASURE, null otherwise",
+    "reasoning": "Brief explanation citing specific evidence from the passage"
+  }
+```
+
+### C2: Motivation Classification
+
+```yaml
+output_instructions: >
+  Classify the motivation using exactly one of: SPENDING_DRIVEN,
+  COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN.
+
+  Then determine exogeneity: EXOGENOUS if the motivation is DEFICIT_DRIVEN
+  or LONG_RUN; ENDOGENOUS if SPENDING_DRIVEN or COUNTERCYCLICAL.
+
+  Return your answer as JSON:
+  {
+    "label": "MOTIVATION_LABEL",
+    "exogenous": true or false,
+    "reasoning": "Brief explanation citing specific evidence from the passage"
+  }
+```
+
+### C3: Timing Extraction
+
+```yaml
+output_instructions: >
+  Extract the implementation timing for the fiscal measure.
+
+  Return your answer as JSON:
+  {
+    "timing": [
+      {"quarter": "YYYY-QN", "amount_at_annual_rate": number_or_null}
+    ],
+    "retroactive": true or false,
+    "reasoning": "Brief explanation of how timing was determined"
+  }
+
+  Use the midpoint rule for phased changes. Record each phase as a
+  separate entry. Use null for amount if not extractable from this passage.
+```
+
+### C4: Magnitude Extraction
+
+```yaml
+output_instructions: >
+  Extract the fiscal impact magnitude of the measure.
+
+  Return your answer as JSON:
+  {
+    "magnitude_billions": number,
+    "currency": "USD",
+    "annual_rate": true or false,
+    "source_tier": 1-4,
+    "sign_convention": "positive = tax increase / revenue gain",
+    "reasoning": "Brief explanation citing the source of the estimate"
+  }
+
+  Source tier: 1 = ERP/official economic assessment, 2 = calendar year estimate,
+  3 = fiscal year estimate, 4 = conference report / legislative estimate.
+  Prefer the highest-tier (lowest number) source available.
+```
+
 ## Codebook-Specific Notes
 
 ### C1: Measure Identification

@@ -81,10 +81,11 @@ A fiscal measure meets the rule if:
 
 ## Key References
 
-- `docs/methods/Methodology for Quantifying Exogenous Fiscal Shocks.md`
-- `docs/strategy.md` (codebook specifications)
-- `data/raw/us_shocks.csv` (ground truth examples)
-- `data/raw/us_labels.csv` (passage examples)
+- `docs/literature_review.md` — Implementation-critical R&R details: Section 1.2 (significant mention rule operationalization), Section 1.3 (motivation categories and boundary cases), Section 1.4 (magnitude fallback hierarchy), Section 1.5 (timing midpoint rule)
+- `docs/methods/Methodology for Quantifying Exogenous Fiscal Shocks.md` — Full R&R methodology
+- `docs/strategy.md` — Codebook specifications and C1-C4 blueprints
+- `data/raw/us_shocks.csv` — Ground truth examples
+- `data/raw/us_labels.csv` — Passage examples
 
 ## Common Errors to Flag
 

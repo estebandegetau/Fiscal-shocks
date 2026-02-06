@@ -399,14 +399,14 @@ H&K used open-weight 7-12B parameter models (Mistral-7B, Llama-8B). Our project 
 
 ## Section 3: Cross-Paper Synthesis — Codebook Design Decisions
 
-### 3.1 Mapping R&R Phases to Codebooks
+### 3.1 Mapping R&R Steps to Codebooks
 
-| Codebook | R&R Phase | Input | Output | Key R&R Concepts to Operationalize |
-|----------|-----------|-------|--------|-----------------------------------|
-| **C1: Measure ID** | Phase 2 (Identifying measures) | Document passage | Binary (fiscal measure or not) + extracted text | "Significant mention" rule; actual liability change requirement; exclusion of extensions, withholding-only changes, automatic renewals |
-| **C2: Motivation** | Phase 5 (Motivation classification) | Identified measure passage | 4-class motivation + exogenous flag | All 4 categories with boundary rules; spending-driven vs. deficit-driven temporal boundary; countercyclical vs. long-run "return to normal" test; mixed motivation apportionment; source agreement weighting |
-| **C3: Timing** | Phase 4 (Timing assignment) | Identified measure passage | List of (quarter, amount) tuples | Midpoint rule; phased changes as separate entries; retroactive handling (standard vs. adjusted); implementation date vs. passage date |
-| **C4: Magnitude** | Phase 3 (Revenue estimation) | Identified measure passage | Revenue effect in domestic currency, billions | Fallback hierarchy (ERP > calendar year > fiscal year > Conference report); annual rate convention; exclude growth-driven revenue increases; present-value alternative |
+| Codebook | R&R Step | Input | Output | Key R&R Concepts to Operationalize |
+|----------|----------|-------|--------|-----------------------------------|
+| **C1: Measure ID** | RR2 (Identifying measures) | Document passage | Binary (fiscal measure or not) + extracted text | "Significant mention" rule; actual liability change requirement; exclusion of extensions, withholding-only changes, automatic renewals |
+| **C2: Motivation** | RR5 (Motivation classification) | Identified measure passage | 4-class motivation + exogenous flag | All 4 categories with boundary rules; spending-driven vs. deficit-driven temporal boundary; countercyclical vs. long-run "return to normal" test; mixed motivation apportionment; source agreement weighting |
+| **C3: Timing** | RR4 (Timing assignment) | Identified measure passage | List of (quarter, amount) tuples | Midpoint rule; phased changes as separate entries; retroactive handling (standard vs. adjusted); implementation date vs. passage date |
+| **C4: Magnitude** | RR3 (Revenue estimation) | Identified measure passage | Revenue effect in domestic currency, billions | Fallback hierarchy (ERP > calendar year > fiscal year > Conference report); annual rate convention; exclude growth-driven revenue increases; present-value alternative |
 
 ### 3.2 Country-Agnostic Language Mapping
 

@@ -32,21 +32,29 @@ You are a {targets} pipeline specialist for this R project on fiscal shock ident
 ## Targets for Codebook Evaluation (from strategy.md)
 
 ```r
-# Codebook 1: Measure ID
-tar_target(c1_s1_results, run_behavioral_tests("codebook_1_measure_id.yaml")),
-tar_target(c1_s2_results, run_loocv_evaluation(aligned_data, "C1")),
-tar_target(c1_s3_analysis, run_error_analysis(c1_s2_results)),
+# Codebook loading and validation
+tar_target(c1_codebook, load_validate_codebook("prompts/c1_measure_id.yml"))
+tar_target(c2_codebook, load_validate_codebook("prompts/c2_motivation.yml"))
+tar_target(c3_codebook, load_validate_codebook("prompts/c3_timing.yml"))
+tar_target(c4_codebook, load_validate_codebook("prompts/c4_magnitude.yml"))
 
-# Codebook 2: Motivation
-tar_target(c2_s1_results, run_behavioral_tests("codebook_2_motivation.yaml")),
-tar_target(c2_s2_results, run_loocv_evaluation(aligned_data, "C2")),
-tar_target(c2_s3_analysis, run_error_analysis(c2_s2_results)),
-
-# Similar pattern for C3, C4...
+# Per-codebook S1-S3 pipeline (C1 shown; repeat for C2, C3, C4)
+tar_target(c1_s1_results, run_behavioral_tests_s1(c1_codebook, aligned_data))
+tar_target(c1_s2_results, run_loocv(c1_codebook, aligned_data, type = "C1"))
+tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s2_results, aligned_data))
 
 # Final aggregation
-tar_target(shocks_llm, aggregate_codebook_outputs(c1_s2_results, c2_s2_results, c3_s2_results, c4_s2_results))
+tar_target(shocks_llm, aggregate_outputs(c1_s2_results, c2_s2_results,
+                                          c3_s2_results, c4_s2_results))
 ```
+
+**R function files** (from `docs/strategy.md`):
+
+- `codebook_stage_0.R` — `load_validate_codebook()`: Load YAML, validate required fields, construct LLM prompt
+- `codebook_stage_1.R` — `run_behavioral_tests_s1()`: Tests I-IV
+- `codebook_stage_2.R` — `run_loocv()`: Generalized LOOCV for any codebook type
+- `codebook_stage_3.R` — `run_error_analysis()`: Tests V-VII, ablation, H&K error taxonomy
+- `behavioral_tests.R` — Shared test functions (Tests I-VII)
 
 ## Cost Optimization Targets
 

@@ -19,14 +19,15 @@ Replicating this approach manually is costly. For low- and middle-income countri
 
 Recent advances in Large Language Models (LLMs) make this possible for the first time. This project builds a **validated, LLM-assisted pipeline** for fiscal shock identification using two rigorous frameworks:
 
-- **Romer & Romer (2010)**: 6-phase methodology for identifying exogenous fiscal shocks
+- **Romer & Romer (2010)**: 6-step methodology for identifying exogenous fiscal shocks (RR1-RR6)
 - **Halterman & Keith (2025)**: 5-stage framework for rigorous LLM content analysis
 
 The pipeline implements 4 domain-specific codebooks (C1-C4), each processed through the full H&K validation pipeline:
 
-1. **Phase 0 (US Benchmark)**: Develop and validate codebooks C1-C4 on 44 US fiscal acts with Romer & Romer labels using H&K stages S0-S3
-2. **Phase 1 (Malaysia Pilot)**: Deploy validated codebooks to Malaysia documents (1980-2022), generating candidate dataset with expert validation to test cross-country transfer learning
-3. **Phase 2 (SEA Scaling)**: Extend methodology to Indonesia, Thailand, Philippines, Vietnam
+1. **Phase 0 (Codebook Development)**: Develop and validate codebooks C1-C4 on a subset of US chunks using H&K stages S0-S3 against 44 labeled acts
+2. **Phase 1 (US Full Production)**: Run validated codebooks on the full `us_body` corpus; compare end-to-end results against `us_shocks.csv`
+3. **Phase 2 (Malaysia Pilot)**: Deploy codebooks to Malaysia documents (1980-2022) with expert validation to test cross-country transfer learning
+4. **Phase 3 (Regional Scaling)**: Extend methodology to Indonesia, Thailand, Philippines, Vietnam
 
 ### Key Innovation
 
@@ -43,14 +44,15 @@ The contribution is **methodological**, not just dataset scale:
 
 ### Current Status
 
-- **Phase 0**: IN PROGRESS — Transitioning to C1-C4 codebook framework
-  - **C1 (Measure ID)**: Not started — Will replace Model A act detection
-  - **C2 (Motivation)**: Not started — Will replace Model B motivation classification
-  - **C3 (Timing)**: Not started — Will replace Model C timing extraction
-  - **C4 (Magnitude)**: Not started — Will replace Model C magnitude extraction
+- **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
+  - **C1 (Measure ID)**: Not started
+  - **C2 (Motivation)**: Not started
+  - **C3 (Timing)**: Not started
+  - **C4 (Magnitude)**: Not started
   - See `docs/strategy.md` for authoritative methodology
-- **Phase 1**: Strategic plan complete, ready for Malaysia deployment after codebook validation (see `docs/phase_1/malaysia_strategy.md` and `docs/phase_1/CLAUDE.md`)
-- **Phase 2**: Not yet started
+- **Phase 1**: Not yet started (depends on Phase 0 codebook validation)
+- **Phase 2**: Strategic plan complete, ready for Malaysia deployment after Phase 1 (see `docs/phase_1/malaysia_strategy.md` and `docs/phase_1/CLAUDE.md`)
+- **Phase 3**: Not yet started
 
 ### Success Criteria
 
@@ -69,7 +71,7 @@ The contribution is **methodological**, not just dataset scale:
 - C3 (Timing): Exact Quarter ≥85%, ±1 Quarter ≥95%
 - C4 (Magnitude): MAPE <30%, Sign Accuracy ≥95%
 
-**Phase 1 (Malaysia Pilot):**
+**Phase 2 (Malaysia Pilot):**
 
 - Expert agreement ≥80% on measure identification (C1)
 - Expert agreement ≥70% on motivation classification (C2)
@@ -86,7 +88,7 @@ The contribution is **methodological**, not just dataset scale:
 ❌ **NOT**: "Fully automated pipeline generating 100+ acts per country"
 ✅ **YES**: "LLM-assisted methodology with expert validation, demonstrating cross-country transfer learning"
 
-See `docs/strategy.md` for authoritative methodology, `docs/two_pager.qmd` for project description, and `docs/phase_1/malaysia_strategy.md` for Phase 1 strategic plan.
+See `docs/strategy.md` for authoritative methodology, `docs/two_pager.qmd` for project description, and `docs/phase_1/malaysia_strategy.md` for Phase 2 (Malaysia) strategic plan.
 
 ## Development Commands
 
@@ -156,8 +158,8 @@ Additional production pipeline targets will be added for codebook evaluation and
 - `docs/` - Documentation and proposals
 - `docs/strategy.md` - Authoritative methodology document (C1-C4 + H&K framework)
 - `docs/methods/` - Reference methodology documents (R&R, H&K)
-- `docs/phase_0/` - Phase 0 implementation context
-- `docs/phase_1/` - Phase 1 strategy and expert review protocols
+- `docs/phase_0/` - Phase 0 (Codebook Development) implementation context
+- `docs/phase_1/` - Phase 2 (Malaysia Pilot) strategy and expert review protocols
 - `docs/archive/` - Historical Model A/B/C documentation (superseded)
 - `data/raw/` - Reference data (`us_shocks.csv`, `us_labels.csv`)
 - `prompts/` - YAML codebooks (C1-C4) and few-shot examples
