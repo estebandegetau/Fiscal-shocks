@@ -18,7 +18,7 @@ params:
     - "expenditure"
     - "appropriation"
 execute:
-  cache: true
+  cache: false
   warning: false
   message: false
 ---
@@ -30,16 +30,21 @@ library(tidyverse)
 library(targets)
 library(here)
 library(quanteda)
-library(kableExtra)
+library(gt)
 library(digest)
 pacman::p_load(quarto)
 
 here::i_am("notebooks/verify_body.qmd")
 tar_config_set(store = here("_targets"))
 
+# Load gt theme
+source(here("R/gt_theme.R"))
+
+# Set global ggplot theme
+theme_set(theme_minimal())
 
 # Load data - tar_read_raw accepts character strings
-body_data <- tar_read_raw(params$body_target)
+body_data <- tar_read(us_body)
 
 # Load labels if available
 has_labels <- FALSE
@@ -80,8 +85,9 @@ overview_stats %>%
   mutate(across(everything(), as.character)) %>%
   pivot_longer(everything(), names_to = "Metric", values_to = "Value") %>%
   mutate(Metric = str_replace_all(Metric, "_", " ") %>% str_to_title()) %>%
-  kable(caption = "Extraction Overview") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  gt() %>%
+  tab_header(title = "Extraction Overview") %>%
+  gt_theme_report()
 ```
 
 ### Page Distribution by Source and Body
@@ -99,7 +105,6 @@ body_data %>%
     y = "Number of Pages",
     fill = "Document Type"
   ) +
-  theme_minimal() +
   theme(legend.position = "bottom")
 
 # Page count distribution
@@ -113,9 +118,93 @@ body_data %>%
     x = "Number of Pages",
     y = "Count"
   ) +
-  theme_minimal() +
   theme(legend.position = "none")
 ```
+
+## RR1 Source Coverage
+
+This section documents our implementation of RR1 (Identify and Collect Sources) from the Romer & Romer (2010) methodology. R&R used 9 distinct source types; we assess availability for our LLM-assisted approach.
+
+```{r rr1-sources}
+# Define RR1 source requirements
+rr_sources <- tribble(
+  ~source_name, ~rr_purpose, ~status, ~notes,
+  "Economic Report of the President", "Executive fiscal narrative", "Available", "1946-2022, ERP URLs",
+  "Treasury Annual Reports", "Revenue estimates, implementation details", "Available", "1946-1980, 2011-2022",
+  "Budget of the United States", "Budget proposals, revenue projections", "Available", "1946-2022",
+  "CBO Budget and Economic Outlook", "Non-partisan revenue estimates (post-1974)", "Deferred", "CAPTCHA-protected; revisit in Phase 1",
+  "Social Security Bulletin", "Payroll tax changes", "Deferred", "CAPTCHA-protected; revisit in Phase 1",
+  "House Ways & Means Committee Reports", "Legislative intent, bill details", "Deferred", "Per-bill source; requires Congress.gov API",
+  "Senate Finance Committee Reports", "Legislative intent, bill details", "Deferred", "Per-bill source; requires Congress.gov API",
+  "Conference Reports", "Final bill versions", "Deferred", "Per-bill source; requires Congress.gov API",
+  "Congressional Record", "Floor debates, stated motivations", "Deferred", "Per-bill source; requires Congress.gov API"
+)
+
+# Render source table with status coloring
+rr_sources %>%
+  gt() %>%
+  tab_header(
+    title = "RR1 Source Coverage Assessment",
+    subtitle = "Phase 0: Codebook development sources"
+  ) %>%
+  cols_label(
+    source_name = "Source",
+    rr_purpose = "R&R Purpose",
+    status = "Status",
+    notes = "Coverage Notes"
+  ) %>%
+  tab_style(
+    style = cell_text(color = "#2E7D32", weight = "bold"),
+    locations = cells_body(columns = status, rows = status == "Available")
+  ) %>%
+  tab_style(
+    style = cell_text(color = "#F57C00", weight = "bold"),
+    locations = cells_body(columns = status, rows = status == "Deferred")
+  ) %>%
+  gt_theme_report()
+```
+
+### Actual Coverage by Document Type
+
+```{r rr1-coverage}
+# Cross-reference against actual body_data
+actual_doc_types <- body_data %>%
+  filter(n_pages > 0) %>%
+  group_by(body) %>%
+  summarize(
+    year_min = min(year),
+    year_max = max(year),
+    n_documents = n(),
+    total_pages = sum(n_pages),
+    .groups = "drop"
+  ) %>%
+  mutate(coverage = sprintf("%d-%d", year_min, year_max))
+
+actual_doc_types %>%
+  select(body, coverage, n_documents, total_pages) %>%
+  gt() %>%
+  tab_header(title = "Extracted Document Coverage") %>%
+  cols_label(
+    body = "Document Type",
+    coverage = "Years",
+    n_documents = "Documents",
+    total_pages = "Total Pages"
+  ) %>%
+  fmt_number(columns = c(n_documents, total_pages), decimals = 0) %>%
+  gt_theme_report()
+```
+
+::: {.callout-note}
+## Source Strategy
+
+**Phase 0 (Current):** 3 of 9 R&R sources available (ERP, Treasury, Budget). These aggregate sources cover executive and legislative fiscal narratives suitable for codebook development (C1-C4).
+
+**CAPTCHA-Protected Sources:** CBO (cbo.gov) and SSB (ssa.gov) require human verification, blocking automated download. URL functions exist in `R/pull_us.R` and can be re-enabled if access is resolved. Revisit in Phase 1.
+
+**Deferred Sources:** Per-bill congressional documents (4 sources) require Congress.gov API integration. These provide fine-grained legislative detail but are not essential for initial codebook validation using the 44 labeled US acts.
+
+**Implication:** Our Phase 0 codebooks will be validated using executive-level narratives (ERP, Treasury, Budget). Supplementary sources (CBO, SSB) and per-bill sources can be integrated in Phase 1 if codebook evaluation reveals systematic errors requiring additional coverage.
+:::
 
 ## Test (i): PDF URL Resolution & Page Count Validation
 
@@ -162,20 +251,29 @@ test_results$test_i <- list(
 **Overall Success Rate:** `r sprintf("%.1f%%", overall_success_rate * 100)` **Status:** `r test_i_status`
 
 ```{r test-i-display}
+#| results: asis
 if (nrow(failed_extractions) > 0) {
   cat("\n### Failed Extractions\n\n")
   failed_extractions %>%
-    kable(caption = sprintf("Failed PDF extractions (%d documents)", nrow(failed_extractions))) %>%
-    kable_styling(bootstrap_options = c("striped", "hover"))
+    gt() %>%
+    tab_header(title = sprintf("Failed PDF extractions (%d documents)", nrow(failed_extractions))) %>%
+    gt_theme_report()
 } else {
   cat("\n✅ All PDFs successfully extracted!\n\n")
 }
+```
 
+```{r test-i-summary}
 # Success rate by source/body
 url_resolution_summary %>%
-  mutate(success_rate = sprintf("%.1f%%", success_rate * 100)) %>%
-  kable(caption = "Success Rate by Source and Body") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  mutate(
+    success_rate = success_rate * 100,
+    ocr_rate = ocr_rate * 100
+  ) %>%
+  gt() %>%
+  tab_header(title = "Success Rate by Source and Body") %>%
+  fmt_number(columns = c(success_rate, ocr_rate), decimals = 1) %>%
+  gt_theme_report()
 
 # OCR usage visualization
 body_data %>%
@@ -189,7 +287,6 @@ body_data %>%
     y = "Number of Documents",
     fill = "OCR Used"
   ) +
-  theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -261,13 +358,15 @@ test_results$test_ii <- list(
 boundary_docs %>%
   select(body, source, year, boundary_type, n_pages, ocr_used) %>%
   arrange(body, source, boundary_type) %>%
-  kable(caption = "Boundary Documents") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  gt() %>%
+  tab_header(title = "Boundary Documents") %>%
+  gt_theme_report()
 ```
 
 ### Sample Pages from Boundary Documents
 
 ```{r test-ii-samples}
+#| results: asis
 # Display sample text from first few boundary documents
 display_sample_text <- function(text, label, max_chars = 1000) {
   if (is.na(text) || is.null(text) || nchar(text) == 0) {
@@ -302,7 +401,7 @@ for (i in seq_len(min(3, nrow(boundary_docs)))) {
 ::: {.callout-note}
 ## Important Finding: Year Lag in Economic Reports
 
-The Economic Report of the President (ERP) discusses legislation **retrospectively** - acts passed in year N are typically discussed in the year N+1 or N+2 ERP. For example:
+The Economic Report of the President (ERP) discusses legislation retrospectively. Acts passed in year N are typically discussed in the year N+1 or N+2 ERP. For example:
 
 - **Economic Recovery Tax Act of 1981** → Found in 1982-1990 ERPs (not 1981)
 - **Omnibus Budget Reconciliation Act of 1990** → Found in 1991-1994 ERPs (not 1990)
@@ -407,20 +506,44 @@ if (has_labels) {
 ### Results
 
 ```{r test-iii-display}
+#| results: asis
 if (has_labels) {
   cat("\n### Recall Comparison\n\n")
-  cat("| Matching Method | Acts Found | Recall | Notes |\n")
-  cat("|-----------------|------------|--------|-------|\n")
-  cat(sprintf("| Exact year only | %d/%d | %.1f%% | Too strict - misses retrospective mentions |\n",
-              sum(act_validation_strict$found_in_any),
-              nrow(act_validation_strict),
-              strict_recall * 100))
-  cat(sprintf("| **Year to Year+2** | **%d/%d** | **%.1f%%** | **Primary metric** - accounts for ERP lag |\n\n",
-              sum(act_validation_expanded$found_in_any),
-              nrow(act_validation_expanded),
-              expanded_recall * 100))
 
-  cat(sprintf("**Status:** %s (target: >=85%%)\n\n", test_iii_status))
+  # Create recall comparison table
+  recall_comparison <- tribble(
+    ~matching_method, ~acts_found, ~total_acts, ~recall, ~notes,
+    "Exact year only",
+    sum(act_validation_strict$found_in_any),
+    nrow(act_validation_strict),
+    strict_recall * 100,
+    "Too strict - misses retrospective mentions",
+    "Year to Year+2",
+    sum(act_validation_expanded$found_in_any),
+    nrow(act_validation_expanded),
+    expanded_recall * 100,
+    "Primary metric - accounts for ERP lag"
+  )
+
+  recall_comparison %>%
+    mutate(acts_found = sprintf("%d/%d", acts_found, total_acts)) %>%
+    select(-total_acts) %>%
+    gt() %>%
+    tab_header(title = "Act Detection Recall Comparison") %>%
+    cols_label(
+      matching_method = "Matching Method",
+      acts_found = "Acts Found",
+      recall = "Recall (%)",
+      notes = "Notes"
+    ) %>%
+    fmt_number(columns = recall, decimals = 1) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_body(rows = matching_method == "Year to Year+2")
+    ) %>%
+    gt_theme_report()
+
+  cat(sprintf("\n**Status:** %s (target: >=85%%)\n\n", test_iii_status))
 
   # Show acts NOT found (for investigation)
   missing_acts <- act_name_validation %>%
@@ -432,8 +555,9 @@ if (has_labels) {
     missing_acts %>%
       select(act_name, expected_year, years_checked, n_docs) %>%
       arrange(expected_year) %>%
-      kable(caption = sprintf("Missing acts (%d total)", nrow(missing_acts))) %>%
-      kable_styling(bootstrap_options = c("striped", "hover"))
+      gt() %>%
+      tab_header(title = sprintf("Missing acts (%d total)", nrow(missing_acts))) %>%
+      gt_theme_report()
 
     cat("\n**Possible reasons:**\n\n")
     cat("- Non-standard act names (e.g., 'Public Law 89-800' vs formal name)\n")
@@ -450,8 +574,9 @@ if (has_labels) {
     arrange(expected_year) %>%
     head(20) %>%
     select(act_name, expected_year, years_checked, Status) %>%
-    kable(caption = "Successfully validated acts (first 20)") %>%
-    kable_styling(bootstrap_options = c("striped", "hover"))
+    gt() %>%
+    tab_header(title = "Successfully validated acts (first 20)") %>%
+    gt_theme_report()
 
   # Show detection rate by decade
   cat("\n### Detection Rate by Decade\n\n")
@@ -461,18 +586,22 @@ if (has_labels) {
     summarize(
       total_acts = n(),
       acts_found = sum(found_in_any),
-      recall_rate = mean(found_in_any),
+      recall_rate = mean(found_in_any) * 100,
       .groups = "drop"
     ) %>%
     filter(!is.na(decade)) %>%
-    mutate(
-      decade_label = sprintf("%ds", decade),
-      recall_rate = sprintf("%.0f%%", recall_rate * 100)
-    ) %>%
+    mutate(decade_label = sprintf("%ds", decade)) %>%
     select(decade_label, total_acts, acts_found, recall_rate) %>%
-    kable(caption = "Act Detection Rate by Decade",
-          col.names = c("Decade", "Total Acts", "Found", "Recall")) %>%
-    kable_styling(bootstrap_options = c("striped", "hover"))
+    gt() %>%
+    tab_header(title = "Act Detection Rate by Decade") %>%
+    cols_label(
+      decade_label = "Decade",
+      total_acts = "Total Acts",
+      acts_found = "Found",
+      recall_rate = "Recall (%)"
+    ) %>%
+    fmt_number(columns = recall_rate, decimals = 0) %>%
+    gt_theme_report()
 } else {
   cat("\n⚠️ Skipping: No ground truth labels available for this country\n\n")
 }
@@ -541,6 +670,7 @@ test_results$test_iv <- list(
 **Coverage Rate:** `r sprintf("%.1f%%", coverage_rate * 100)` (`r total_present` of `r total_expected` expected documents) **Status:** `r test_iv_status`
 
 ```{r test-iv-display}
+#| results: asis
 # Coverage heatmap
 coverage_analysis %>%
   filter(year >= max(params$min_year, 1946)) %>%
@@ -565,7 +695,6 @@ coverage_analysis %>%
     x = "Year",
     y = "Document Type"
   ) +
-  theme_minimal() +
   theme(
     axis.text.y = element_text(size = 8),
     axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
@@ -577,8 +706,9 @@ if (nrow(coverage_gaps) > 0) {
   coverage_gaps %>%
     select(year, body) %>%
     arrange(body, year) %>%
-    kable(caption = sprintf("Missing expected documents (%d gaps)", nrow(coverage_gaps))) %>%
-    kable_styling(bootstrap_options = c("striped", "hover"))
+    gt() %>%
+    tab_header(title = sprintf("Missing expected documents (%d gaps)", nrow(coverage_gaps))) %>%
+    gt_theme_report()
 } else {
   cat("\n✅ No coverage gaps! All expected documents are present.\n\n")
 }
@@ -679,6 +809,7 @@ test_results$test_v_fiscal <- list(
 **Suspicious Pages:** `r sprintf("%.1f%%", pct_suspicious * 100)` **Fiscal Term Coverage:** `r sprintf("%.1f%%", pct_fiscal * 100)` **Status:** `r test_v_status`
 
 ```{r test-v-display}
+#| results: asis
 # Token distribution
 quality_metrics %>%
   ggplot(aes(x = n_tokens)) +
@@ -687,8 +818,7 @@ quality_metrics %>%
     title = "Distribution of Tokens per Page",
     x = "Tokens per Page",
     y = "Count"
-  ) +
-  theme_minimal()
+  )
 
 # Special character rates by source
 quality_metrics %>%
@@ -699,7 +829,6 @@ quality_metrics %>%
     x = "Source",
     y = "Special Character Rate"
   ) +
-  theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # Show low quality documents
@@ -713,12 +842,14 @@ if (nrow(low_quality_docs) > 0) {
     select(year, body, total_pages, avg_tokens_per_page, pct_fiscal_pages, quality_score) %>%
     mutate(
       avg_tokens_per_page = round(avg_tokens_per_page, 0),
-      pct_fiscal_pages = sprintf("%.1f%%", pct_fiscal_pages * 100),
+      pct_fiscal_pages = pct_fiscal_pages * 100,
       quality_score = round(quality_score, 2)
     ) %>%
     head(10) %>%
-    kable(caption = "Documents with quality_score < 0.5 (top 10)") %>%
-    kable_styling(bootstrap_options = c("striped", "hover"))
+    gt() %>%
+    tab_header(title = "Documents with quality_score < 0.5 (top 10)") %>%
+    fmt_number(columns = pct_fiscal_pages, decimals = 1) %>%
+    gt_theme_report()
 } else {
   cat("\n✅ No low-quality documents found!\n\n")
 }
@@ -801,6 +932,7 @@ test_results$test_vi <- list(
 **Status:** INFO (anomalies flagged for manual review)
 
 ```{r test-vi-display}
+#| results: asis
 # Anomaly summary
 anomaly_summary <- tribble(
   ~Anomaly, ~Count,
@@ -812,8 +944,9 @@ anomaly_summary <- tribble(
 )
 
 anomaly_summary %>%
-  kable(caption = "Anomaly Summary") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  gt() %>%
+  tab_header(title = "Anomaly Summary") %>%
+  gt_theme_report()
 
 # Show anomalous documents
 if (n_too_short > 0 || n_too_long > 0 || n_no_title > 0) {
@@ -823,18 +956,22 @@ if (n_too_short > 0 || n_too_long > 0 || n_no_title > 0) {
     select(year, body, package_id, n_pages, too_short, too_long, has_title_indicators) %>%
     arrange(desc(too_short), desc(too_long)) %>%
     head(10) %>%
-    kable(caption = "Documents with anomalies (top 10)") %>%
-    kable_styling(bootstrap_options = c("striped", "hover"))
+    gt() %>%
+    tab_header(title = "Documents with anomalies (top 10)") %>%
+    gt_theme_report()
 }
 
 # Show duplicates
 if (n_duplicates > 0) {
   cat("\n### Duplicate Documents\n\n")
   duplicate_check %>%
-    kable(caption = sprintf("Potential duplicates (%d documents)", n_duplicates)) %>%
-    kable_styling(bootstrap_options = c("striped", "hover"))
+    gt() %>%
+    tab_header(title = sprintf("Potential duplicates (%d documents)", n_duplicates)) %>%
+    gt_theme_report()
 }
+```
 
+```{r test-vi-trends}
 # Year trends
 year_trends %>%
   ggplot(aes(x = year, y = total_pages, color = body)) +
@@ -848,7 +985,6 @@ year_trends %>%
     y = "Total Pages",
     color = "Document Type"
   ) +
-  theme_minimal() +
   theme(legend.position = "bottom")
 ```
 
@@ -882,35 +1018,49 @@ if (length(overall_status) == 0) overall_status <- "PASS"
 ### Overall Status: **`r overall_status`**
 
 ```{r summary-display}
-# Display results table
+# Display results table with colored status
 test_summary %>%
-  mutate(
-    Status = cell_spec(
-      status,
-      color = case_when(
-        status == "PASS" ~ "green",
-        status == "WARN" ~ "orange",
-        status == "FAIL" ~ "red",
-        status == "INFO" ~ "blue",
-        status == "SKIP" ~ "grey",
-        TRUE ~ "black"
-      ),
-      bold = TRUE
-    )
+  gt() %>%
+  tab_header(title = "Verification Test Results") %>%
+  cols_label(
+    test = "Test",
+    metric = "Metric",
+    value = "Value",
+    target = "Target",
+    status = "Status"
   ) %>%
-  select(-status) %>%
-  kable(escape = FALSE, caption = "Verification Test Results") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+  tab_style(
+    style = cell_text(color = "#2E7D32", weight = "bold"),
+    locations = cells_body(columns = status, rows = status == "PASS")
+  ) %>%
+  tab_style(
+    style = cell_text(color = "#F57C00", weight = "bold"),
+    locations = cells_body(columns = status, rows = status == "WARN")
+  ) %>%
+  tab_style(
+    style = cell_text(color = "#C62828", weight = "bold"),
+    locations = cells_body(columns = status, rows = status == "FAIL")
+  ) %>%
+  tab_style(
+    style = cell_text(color = "#1565C0", weight = "bold"),
+    locations = cells_body(columns = status, rows = status == "INFO")
+  ) %>%
+  tab_style(
+    style = cell_text(color = "#757575", weight = "bold"),
+    locations = cells_body(columns = status, rows = status == "SKIP")
+  ) %>%
+  gt_theme_report()
 ```
 
 ### Recommendations
 
 ```{r recommendations}
+#| results: asis
 if (overall_status == "PASS") {
   cat("\n✅ **READY FOR LLM PROCESSING**\n\n")
   cat("All verification tests passed. Proceed with:\n\n")
   cat("- `tar_make(chunks)` to create LLM-ready chunks\n")
-  cat("- Days 2-3: Training data preparation\n")
+  cat("- Phase 0: Codebook development (C1-C4)\n")
   cat("- LLM-based fiscal shock identification\n\n")
 } else if (overall_status == "WARN") {
   cat("\n⚠️ **PROCEED WITH CAUTION**\n\n")
@@ -940,6 +1090,7 @@ if (overall_status == "PASS") {
 ### Next Steps
 
 ```{r next-steps}
+#| results: asis
 cat("\n**Based on this verification:**\n\n")
 cat(sprintf("- Total documents verified: %d\n", nrow(body_data)))
 cat(sprintf("- Successful extractions: %d (%.1f%%)\n",
@@ -952,9 +1103,9 @@ cat(sprintf("- Overall status: **%s**\n\n", overall_status))
 
 cat("**Recommended actions:**\n\n")
 if (overall_status == "PASS") {
-  cat("1. Proceed to Days 2-3 implementation (training data preparation)\n")
+  cat("1. Proceed to Phase 0 implementation (codebook development C1-C4)\n")
   cat("2. Run `tar_make(chunks)` to create document chunks\n")
-  cat("3. Begin Model A development (act detection)\n")
+  cat("3. Begin C1 development (measure identification)\n")
 } else {
   cat("1. Review failed/warned tests above\n")
   cat("2. Address extraction issues for flagged documents\n")

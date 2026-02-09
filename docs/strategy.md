@@ -62,9 +62,9 @@ The Romer & Romer methodology consists of 6 steps (RR1-RR6). Steps RR2-RR5 are i
 | House Ways & Means Committee Reports | Legislative intent, bill details | ❌ Not yet collected |
 | Senate Finance Committee Reports | Legislative intent, bill details | ❌ Not yet collected |
 | Congressional Record | Floor debates, stated motivations | ❌ Not yet collected |
-| CBO Reports (post-1974) | Non-partisan revenue estimates | ❌ Not yet collected |
+| CBO Reports (post-1974) | Non-partisan revenue estimates | ⏸️ Deferred (CAPTCHA-protected) |
 | Conference Reports | Final bill versions | ❌ Not yet collected |
-| Social Security Bulletin | Payroll tax changes | ❌ Not yet collected |
+| Social Security Bulletin | Payroll tax changes | ⏸️ Deferred (CAPTCHA-protected) |
 
 ### Existing Pipeline Resources
 
@@ -86,7 +86,8 @@ The current `_targets.R` pipeline already handles:
 
 - Align terminology with new codebook naming (C1-C4)
 - Add source coverage table showing R&R required sources vs. available
-- Document missing sources (Congressional committee reports, CBO, etc.)
+- Document missing sources (Congressional committee reports, etc.)
+- CBO and SSB deferred: both domains require CAPTCHA; revisit in Phase 1
 - Remove references to legacy Models A/B/C
 
 

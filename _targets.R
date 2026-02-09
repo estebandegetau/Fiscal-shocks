@@ -132,146 +132,15 @@ list(
     read_csv(us_labels_file) |>
       clean_us_labels(us_shocks)
   ),
+
+  # RR1: Source Compilation — all US document URLs consolidated in get_us_urls()
+  # Includes ERP, Treasury, Budget. CBO and SSB deferred (CAPTCHA-protected).
   tar_target(
-    erp_urls,
-    get_erp_pdf_urls(
-      start_year = 1996,
-      end_year   = max_year
-    ),
+    us_urls,
+    get_us_urls(min_year = min_year, max_year = max_year),
     iteration = "vector"
   ),
-  tar_target(
-    earliest_erp_urls,
-    get_erp_earliest_pdf_urls(
-      start_year = min_year,
-      end_year   = 1952
-    ),
-    iteration = "vector"
-  ),
-  tar_target(
-    early_erp_urls,
-    get_erp_early_pdf_urls(
-      start_year = 1953,
-      end_year   = 1986  # Exclude 1987-1988 (handled by additional_erp_urls with correct filenames)
-    ),
-    iteration = "vector"
-  ),
-  tar_target(
-    additional_erp_urls,
-    tribble(
-      ~year, ~pdf_url,
-      1987, "https://fraser.stlouisfed.org/files/docs/publications/ERP/1987/ER_1987.pdf",
-      1988, "https://fraser.stlouisfed.org/files/docs/publications/ERP/1988/ER_1988.pdf"
-    ) |>
-      mutate(
-        package_id = paste0("ERP-", year),
-        country = "US",
-        source = "fraser.stlouisfed.org",
-        body = "Economic Report of the President"
-      ),
-    iteration = "vector"
-  ),
-  tar_target(
-    annual_report_early_urls,
-    get_annual_report_early_pdf_urls(
-      start_year = min_year,
-      end_year   = 1980
-    ),
-    iteration = "vector"
-  ),
-  tar_target(
-    annual_report_late_urls,
-    get_annual_report_late_pdf_urls(
-      start_year = 2018,
-      end_year   = max_year
-    ),
-    iteration = "vector"
-  ),
-  tar_target(
-    annual_report_2010s_urls,
-    tribble(
-      ~year, ~pdf_url,
-      2011, "https://home.treasury.gov/system/files/261/FSOCAR2011.pdf",
-      2012, "https://home.treasury.gov/system/files/261/2012-Annual-Report.pdf",
-      2013, "https://home.treasury.gov/system/files/261/FSOC-2013-Annual-Report.pdf",
-      2014, "https://home.treasury.gov/system/files/261/FSOC-2014-Annual-Report.pdf",
-      2015, "https://home.treasury.gov/system/files/261/2015-FSOC-Annual-Report.pdf",
-      2016, "https://home.treasury.gov/system/files/261/2015-FSOC-Annual-Report.pdf",
-      2017, "https://home.treasury.gov/system/files/261/FSOC_2017_Annual_Report.pdf"
-    ) |>
-      mutate(
-        package_id = paste0("AR_TREASURY-", year),
-        country = "US",
-        source = "home.treasury.gov",
-        body = "Annual Report of the Treasury"
-      ),
-    iteration = "vector"
-  ),
-  tar_target(
-    budget_urls,
-    get_budget_pdf_urls(
-      start_year = 1996,
-      end_year   = max_year
-    ),
-    iteration = "vector"
-  ),
-  tar_target(
-    budget_2000s_urls,
-    get_budget_2000s_pdf_urls(
-      start_year = 2006,
-      end_year   = 2009
-    ),
-    iteration = "vector"
-  ),
-  tar_target(
-    budget_early_pdf_urls,
-    get_budget_early_pdf_urls(
-      start_year = min_year,
-      end_year   = 1995
-    ),
-    iteration = "vector"
-  ),
-  tar_target(
-    additional_budget_urls,
-    tribble(
-      ~year, ~pdf_url,
-      2005, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/2005/BUDGET-2005-BUD.pdf",
-      1997, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/BUDGET-1997-BUDSUPP.pdf",
-      1994, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1994_sec1.pdf",
-      1993, "https://fraser.stlouisfed.org/files/docs/publications/bus_supp_1993/bus_supp_1993.pdf",
-      1992, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1992_sec2.pdf",
-      1992, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1992_sec3.pdf",
-      1992, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1992_sec4.pdf",
-      1992, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1992_sec5.pdf",
-      1992, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1992_sec6.pdf",
-      1991, "https://fraser.stlouisfed.org/files/docs/publications/usbudget/bus_1991_sec1.pdf"
-    ) |>
-      mutate(
-        package_id = paste0("BUDGET-", year),
-        country = "US",
-        source = "fraser.stlouisfed.org",
-        body = "Budget of the United States Government"
-      ),
-    iteration = "vector"
-  ),
-  tar_target(
-    name = us_urls,
-    command = dplyr::bind_rows(
-      erp_urls,
-      early_erp_urls,
-      earliest_erp_urls,
-      additional_erp_urls,
-      annual_report_early_urls,
-      annual_report_late_urls,
-      annual_report_2010s_urls,
-      budget_urls,
-      budget_2000s_urls,
-      budget_early_pdf_urls,
-      additional_budget_urls
-    ) |>
-      arrange(body, year),
-    iteration = "vector"
-  ),
+  
   tar_target(
     us_urls_vector,
     command = {
@@ -304,6 +173,10 @@ list(
     us_body,
     us_urls |>
       bind_cols(us_text)
+  ),
+    tar_quarto(
+    verify_us_body,
+    "notebooks/verify_body.qmd"
   ),
   # tar_target(
   #   pages,
