@@ -1,0 +1,67 @@
+---
+title: "Scaling Fiscal Shock Identification for Emerging Markets"
+subtitle: "Esteban Degetau and Agustín Samano"
+date: "2026-02-09"
+format: 
+    pptx:
+        smaller: true
+bibliography: ../references.bib
+---
+
+## The Problem
+
+- Credible fiscal policy analysis requires **exogenous fiscal shocks**: tax or spending changes unrelated to current economic conditions
+
+- @romer2010 built the gold standard for the US using a "narrative approach" that classifies the motivation behind every fiscal action from historical documents
+
+- **This has never been done for emerging markets**, where fiscal policy decisions have enormous consequences for development
+
+- Manual replication is prohibitively expensive: the US effort took years of full-time research
+
+## Our Approach
+
+- Use Large Language Models to **assist experts** in identifying fiscal shocks from government documents, guided by validated codebooks
+
+- The methodology combines @romer2010 fiscal shock identification with @halterman2025 LLM evaluation standards
+
+- Codebooks are designed to **transfer across countries** without retraining: validate once on US ground-truth data, then deploy to new countries with expert review
+
+- This is not full automation. LLMs screen and classify documents; domain experts validate results
+
+## Scope and Deliverables
+
+- **Phase 0 (Feb--Mar 2026):** Develop and validate codebooks against 44 labeled US fiscal acts
+
+- **Phase 1 (Mar 2026):** Deploy to the full US document corpus (~97,000 pages); compare against known results as a benchmark
+
+- **Phase 2 (Apr 2026):** Malaysia pilot with expert validation to demonstrate cross-country transfer
+
+- **Phase 3 (May--Jun 2026):** Extend to Indonesia, Thailand, Philippines, and Vietnam
+
+- **End product:** A comparable, cross-country dataset of exogenous fiscal shocks for Southeast Asian EMDEs
+
+## Resources
+
+- **API costs (development):** ~$200--250 to validate codebooks on US data. This phase answers the feasibility question before further investment.
+
+- **API costs (production):** ~$250--400 for US benchmark and Malaysia deployment. Each additional country adds ~$100--150.
+
+- **Expert review (Malaysia):** 25--40 hours from a fiscal policy specialist to validate LLM-identified shocks, since no ground-truth labels exist.
+
+- **Total estimated cost:** $475--700 in API fees, plus expert time. This compares to 6--12 months of RA work per country under the traditional approach.
+
+## Questions This Data Can Answer
+
+- What are the **fiscal multipliers** in Southeast Asian EMDEs, and how do they compare to advanced economies?
+
+- Are **tax-based** or **spending-based** consolidations less harmful to growth in emerging markets?
+
+- How do exogenous fiscal shocks **transmit to inflation, employment, and the exchange rate** in commodity-dependent economies?
+
+- Do fiscal shocks have **asymmetric effects** depending on the business cycle phase?
+
+- What is the **optimal fiscal response** to external shocks (commodity price swings, trade disruptions, global financial tightening)?
+
+- How do fiscal policy shocks affect **poverty and inequality** in developing countries?
+
+## References
