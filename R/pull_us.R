@@ -463,15 +463,18 @@ get_us_urls <- function(min_year = 1946, max_year = 2022) {
       body = "Budget of the United States Government"
     )
 
-  # --- CBO and SSB deferred: both domains require CAPTCHA verification ---
-  # cbo <- get_cbo_outlook_urls(min_year = 1976, max_year = max_year)
+  # --- CBO: PDFs manually downloaded (CAPTCHA-protected domain) ---
+  cbo <- get_cbo_outlook_urls(min_year = 1976, max_year = max_year)
+
+  # --- SSB deferred: ssa.gov requires CAPTCHA verification ---
   # ssb <- get_ssb_urls(min_year = min_year, max_year = max_year)
 
   # --- Consolidate all sources ---
   bind_rows(
     erp_govinfo, erp_earliest, erp_early, erp_additional,
     treasury_early, treasury_late, treasury_2010s,
-    budget_main, budget_2000s, budget_early, budget_additional
+    budget_main, budget_2000s, budget_early, budget_additional,
+    cbo
   ) |>
     filter(year >= min_year, year <= max_year) |>
     arrange(body, year)

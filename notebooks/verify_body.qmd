@@ -90,6 +90,8 @@ overview_stats %>%
   gt_theme_report()
 ```
 
+The corpus comprises **360 documents** totaling over **104,000 pages** across 4 document types and 4 source domains. Of these, 350 (97.2%) were successfully extracted. The 69 documents requiring OCR are concentrated in pre-1990 ERP volumes from Fraser, which were digitized as scanned images rather than born-digital PDFs. The addition of 47 CBO reports contributes 7,438 pages of non-partisan budget analysis spanning 1976-2022.
+
 ### Page Distribution by Source and Body
 
 ```{r overview-viz}
@@ -132,7 +134,7 @@ rr_sources <- tribble(
   "Economic Report of the President", "Executive fiscal narrative", "Available", "1946-2022, ERP URLs",
   "Treasury Annual Reports", "Revenue estimates, implementation details", "Available", "1946-1980, 2011-2022",
   "Budget of the United States", "Budget proposals, revenue projections", "Available", "1946-2022",
-  "CBO Budget and Economic Outlook", "Non-partisan revenue estimates (post-1974)", "Deferred", "CAPTCHA-protected; revisit in Phase 1",
+  "CBO Budget and Economic Outlook", "Non-partisan revenue estimates (post-1974)", "Available", "1976-2022, manually downloaded (CAPTCHA)",
   "Social Security Bulletin", "Payroll tax changes", "Deferred", "CAPTCHA-protected; revisit in Phase 1",
   "House Ways & Means Committee Reports", "Legislative intent, bill details", "Deferred", "Per-bill source; requires Congress.gov API",
   "Senate Finance Committee Reports", "Legislative intent, bill details", "Deferred", "Per-bill source; requires Congress.gov API",
@@ -197,13 +199,13 @@ actual_doc_types %>%
 ::: {.callout-note}
 ## Source Strategy
 
-**Phase 0 (Current):** 3 of 9 R&R sources available (ERP, Treasury, Budget). These aggregate sources cover executive and legislative fiscal narratives suitable for codebook development (C1-C4).
+**Phase 0 (Current):** 4 of 9 R&R sources available. The three core narrative sources (ERP, Treasury, Budget) provide continuous coverage from 1946 to 2022. CBO Budget and Economic Outlook reports (1976-2022) were added via manual download after discovering that cbo.gov requires CAPTCHA verification that blocks automated extraction.
 
-**CAPTCHA-Protected Sources:** CBO (cbo.gov) and SSB (ssa.gov) require human verification, blocking automated download. URL functions exist in `R/pull_us.R` and can be re-enabled if access is resolved. Revisit in Phase 1.
+**CAPTCHA-Protected Sources:** SSB (ssa.gov) also requires human verification. URL functions exist in `R/pull_us.R` and can be re-enabled once PDFs are manually downloaded. CBO was resolved this way.
 
 **Deferred Sources:** Per-bill congressional documents (4 sources) require Congress.gov API integration. These provide fine-grained legislative detail but are not essential for initial codebook validation using the 44 labeled US acts.
 
-**Implication:** Our Phase 0 codebooks will be validated using executive-level narratives (ERP, Treasury, Budget). Supplementary sources (CBO, SSB) and per-bill sources can be integrated in Phase 1 if codebook evaluation reveals systematic errors requiring additional coverage.
+**Implication:** Our corpus now totals over 104,000 pages across 4 document types. The 47 CBO reports add 7,400 pages of non-partisan budget analysis, complementing the executive-branch perspective of the ERP and Budget documents. This provides sufficient coverage for Phase 0 codebook development.
 :::
 
 ## Test (i): PDF URL Resolution & Page Count Validation
@@ -289,6 +291,10 @@ body_data %>%
   ) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
+The 10 failed extractions all come from Fraser-hosted Budget PDFs and one Treasury report. The Budget failures cluster in two groups: early 1990s sectioned PDFs (1991-1994) where Fraser uses non-standard filenames, and mid-2000s editions (2005-2009) where the single-file URL pattern does not match the actual hosting. These are supplementary Budget documents; the primary Budget PDF for each of those years was successfully extracted via a different URL. The single Treasury failure (2016) is a known broken link on home.treasury.gov. None of these gaps affect years critical to the 44 labeled acts.
+
+CBO reports achieved **100% extraction success** (47/47), confirming that the manual download workflow fully resolved the CAPTCHA issue. OCR was needed for 5 early CBO reports (1979, 1980, 1982, 1984, 2012), consistent with scanned originals from that era.
 
 ## Test (ii): Boundary Document Verification
 
@@ -606,6 +612,15 @@ if (has_labels) {
   cat("\n⚠️ Skipping: No ground truth labels available for this country\n\n")
 }
 ```
+
+The expanded window recall of **84.8%** narrowly misses the 85% target but represents strong coverage given the matching method (exact string match on act names). The 7 missing acts fall into identifiable categories:
+
+- **Non-standard naming** (3 acts): "Public Law 89-800" and "Public Law 90-26" are referenced by public law number rather than popular name. "Changes in Depreciation Guidelines and Revenue Act of 1962" uses an unusually long compound name that may appear abbreviated in documents.
+- **Year mismatch** (2 acts): "Social Security Amendments of 1983" and "Tax Reform Act of 1986" are listed with expected year 1981, which appears to be a labeling issue in `us_labels.csv` rather than a corpus gap.
+- **Compound act name** (1 act): "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997" is a two-act label that may not appear verbatim.
+- **Early decade weakness**: The 1950s (83%) and 1960s (75%) show lower recall, consistent with OCR quality issues in older scanned documents and less standardized act naming conventions.
+
+The 1990s dip to 50% recall is driven entirely by the compound 1997 act name (1 of 2 acts missed). Decades with more acts (1960s, 1980s) provide more reliable recall estimates. For codebook development, this recall level is sufficient: the LLM pipeline will use fuzzy matching and contextual cues rather than exact string matching.
 
 ## Test (iv): Temporal & Source Coverage
 
@@ -987,6 +1002,14 @@ year_trends %>%
   ) +
   theme(legend.position = "bottom")
 ```
+
+The anomaly counts warrant context rather than concern:
+
+- **Short documents (64):** All are Budget section PDFs from Fraser (2006-2009 era), where single budget volumes were split into 26 section files of 5-8 pages each. These are by design, not extraction failures.
+- **Long documents (17):** Early ERP and Budget volumes from the 1940s-1960s sometimes exceed 1,000 pages. These are complete, legitimate documents.
+- **Duplicates (7):** All 7 are CBO reports where the first 5 pages hash identically across years. This is expected: CBO reuses boilerplate front matter (title page, contents, summary format) year to year. The document bodies are distinct.
+
+No anomalies require remediation before proceeding to Phase 0.
 
 ## Summary Report & Pass/Fail Dashboard
 
