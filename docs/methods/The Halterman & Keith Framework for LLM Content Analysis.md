@@ -1,14 +1,14 @@
-The Halterman & Keith (2025) five-stage framework is designed to move beyond simple zero-shot prompting by ensuring Large Language Models (LLMs) follow precise **codebook operationalizations** used by human coders 1, 2, 3\. The framework transforms broad background concepts into **systematized constructs** through five iterative stages 4, 5\.
+The Halterman & Keith (2025) five-stage framework is designed to move beyond simple zero-shot prompting by ensuring Large Language Models (LLMs) follow precise **codebook operationalizations** used by human coders. The framework transforms broad background concepts into **systematized constructs** through five iterative stages.
 
 ### Stage 0: Codebook Preparation
 
-The first stage involves preparing a codebook that is readable by both humans and machines 5, 6\. Researchers must restructure traditional codebooks into a **machine-readable semi-structured format** 7, 3\. This format includes standardized components:
+The first stage involves preparing a codebook that is readable by both humans and machines. Researchers must restructure traditional codebooks into a **machine-readable semi-structured format**. This format includes standardized components:
 
-* **Label:** The exact string the model should return 8\.
-* **Label Definition:** A succinct, typically single-sentence description of the class 8\.
-* **Clarification & Negative Clarification:** Detailed inclusion criteria and explicit **exclusion rules** (e.g., "This category excludes education") 9, 10\.
-* **Positive & Negative Examples:** Examples of documents that do and do not fit the category to provide **in-context learning** 9\.
-* **Output Instructions:** Overall task descriptions and an "Output reminder" to ensure the model adheres to valid labels 11\.
+* **Label:** The exact string the model should return.
+* **Label Definition:** A succinct, typically single-sentence description of the class.
+* **Clarification & Negative Clarification:** Detailed inclusion criteria and explicit **exclusion rules** (e.g., "This category excludes education").
+* **Positive & Negative Examples:** Examples of documents that do and do not fit the category to provide **in-context learning**.
+* **Output Instructions:** Overall task descriptions and an "Output reminder" to ensure the model adheres to valid labels.
 
 **Key finding:** The semi-structured format outperforms original codebook format (Table 3: +0.02 to +0.13 weighted F1) because explicit component separation helps the LLM attend to each part independently.
 
@@ -20,7 +20,7 @@ The first stage involves preparing a codebook that is readable by both humans an
 
 ### Stage 1: Label-Free Behavioral Testing
 
-Before committing to manual labeling, researchers conduct **label-free behavioral tests** to assess the model's "off-the-shelf" capabilities 5, 12\.
+Before committing to manual labeling, researchers conduct **label-free behavioral tests** to assess the model's "off-the-shelf" capabilities.
 
 **Test specifications (Table 2):**
 
@@ -46,7 +46,7 @@ Before committing to manual labeling, researchers conduct **label-free behaviora
 
 ### Stage 2: Zero-Shot Evaluation with Labels
 
-Once promising models are identified, researchers must hand-label a **small evaluation set** to quantitatively assess accuracy 16, 17\. Performance is typically measured using **weighted F1 scores** to account for class imbalances 18, 19\.
+Once promising models are identified, researchers must hand-label a **small evaluation set** to quantitatively assess accuracy. Performance is typically measured using **weighted F1 scores** to account for class imbalances.
 
 **Evaluation metrics:**
 
@@ -124,11 +124,11 @@ Six error categories for classifying model outputs:
 
 ### Stage 4: Supervised Fine-Tuning
 
-If zero-shot performance is inadequate, the final stage involves **instruction-tuning** the model directly on human-coded examples 26, 27\. Because updating all weights is costly, researchers should use **parameter-efficient techniques**:
+If zero-shot performance is inadequate, the final stage involves **instruction-tuning** the model directly on human-coded examples. Because updating all weights is costly, researchers should use **parameter-efficient techniques**:
 
-* **Quantization (Q):** Reducing the numerical precision of weights to save memory (4-bit) 28, 29\.
-* **Low-Rank Adaptation (LoRA):** Updating only a small fraction of weights (rank 16 ≈ 0.5% of parameters) 28, 29\.
-* **Data Structure:** Training on tuples of (Instruction + Codebook, Document, correct Natural-Language Label) 30\.
+* **Quantization (Q):** Reducing the numerical precision of weights to save memory (4-bit).
+* **Low-Rank Adaptation (LoRA):** Updating only a small fraction of weights (rank 16 ≈ 0.5% of parameters).
+* **Data Structure:** Training on tuples of (Instruction + Codebook, Document, correct Natural-Language Label).
 * **Loss masking:** Compute loss only on the output tokens, not on the prompt (codebook + document).
 
 **Results (Table 6):**
