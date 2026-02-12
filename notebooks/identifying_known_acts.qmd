@@ -1,0 +1,476 @@
+---
+title: "Identifying Known Acts in Document Chunks"
+subtitle: "Exploring matching strategies for C1 positive chunk identification"
+date: today
+date-format: long
+execute:
+  cache: true
+  warning: false
+  message: false
+---
+
+## Motivation
+
+The C1 codebook classifies whether a document chunk contains a substantive description of a fiscal measure. To evaluate C1 via LOOCV, we need to know which chunks are **positive** (contain a known fiscal act from `aligned_data`) and which are **negative** (contain no fiscal policy discussion).
+
+Our current tier system identifies positives at two levels:
+
+- **Tier 1:** Chunk contains verbatim passage text from @romer2010 labels
+- **Tier 2:** Chunk contains exact act name match with fiscal keyword co-occurrence
+
+The question is whether these criteria are too strict, causing false negatives (chunks that genuinely discuss a known act but are missed by our matching). This notebook investigates the problem and explores solutions.
+
+```{r setup}
+#| label: setup
+#| cache: false
+
+library(targets)
+library(tidyverse)
+library(gt)
+library(here)
+
+here::i_am("notebooks/identifying_known_acts.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
+set_theme(theme_minimal())
+
+# Load data
+aligned_data <- tar_read(aligned_data)
+chunks <- tar_read(chunks)
+c1_chunk_data <- tar_read(c1_chunk_data)
+```
+
+
+## Current State: Tier Distribution
+
+```{r current-tiers}
+c1_chunk_data$summary %>%
+  gt() %>%
+  tab_header(
+    title = "Current Chunk Tier Distribution",
+    subtitle = "Most chunks fall in the excluded gray zone"
+  ) %>%
+  cols_label(category = "Tier", n_chunks = "Chunks", pct = "Percent") %>%
+  fmt_number(columns = pct, decimals = 1, pattern = "{x}%") %>%
+  gt_theme_report()
+```
+
+**The problem:** 80% of chunks are excluded (gray zone) because they match `relevance_keys` but don't match any act name. Only 35 chunks qualify as clean negatives (1.2%). This means precision is essentially untestable, and many chunks that discuss known acts may be missed.
+
+
+## Why Passages Don't Help with Alias Discovery
+
+The @romer2010 passages are presidential speeches and committee testimony selected to illustrate each act's **motivation**. They rarely name the act itself.
+
+```{r passage-name-check}
+passage_analysis <- aligned_data %>%
+  mutate(
+    text_lower = tolower(passages_text),
+    name_lower = tolower(act_name),
+    has_exact_name = str_detect(text_lower, fixed(name_lower)),
+    name_no_year = str_remove(act_name, "\\s+of\\s+\\d{4}$"),
+    has_short_name = str_detect(text_lower, fixed(tolower(name_no_year)))
+  )
+
+tibble(
+  Metric = c(
+    "Acts where passages contain exact full name",
+    "Acts where passages contain short name (no year)",
+    "Acts where passages contain neither"
+  ),
+  Value = c(
+    sprintf("%d / %d", sum(passage_analysis$has_exact_name), nrow(aligned_data)),
+    sprintf("%d / %d", sum(passage_analysis$has_short_name), nrow(aligned_data)),
+    sprintf("%d / %d",
+            sum(!passage_analysis$has_exact_name & !passage_analysis$has_short_name),
+            nrow(aligned_data))
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "Do R&R Passages Name the Act?",
+    subtitle = "Passages describe motivation, not the legislation itself"
+  ) %>%
+  cols_label(Metric = "Check", Value = "Result") %>%
+  gt_theme_report()
+```
+
+The passages use generic fiscal vocabulary ("tax cut", "tax relief", "deficit reduction"), not legislative names. This rules out extracting aliases from passage text.
+
+
+## OCR Line Breaks: The Primary Matching Problem
+
+Government PDFs from the 1940s-1990s introduce line breaks within act names during OCR extraction. For example, "Revenue Act of 1962" may appear as:
+
+> Revenue Act of\n1962
+
+> Revenue Act\nof 1962
+
+> Revenue\nAct of 1962
+
+Current Tier 2 uses `str_detect(text, fixed(act_name))` which requires the name to appear as a contiguous string. This fails on OCR-broken names.
+
+### Test: Does whitespace normalization help?
+
+We compare current Tier 2 matching (exact `fixed()` on raw text) against matching after `str_squish()` collapses all whitespace.
+
+```{r squish-test}
+# Pre-compute squished text once
+chunks_squished <- str_squish(tolower(chunks$text))
+chunks_lower <- tolower(chunks$text)
+
+squish_results <- aligned_data %>%
+  rowwise() %>%
+  mutate(
+    name_lower = tolower(act_name),
+    name_squished = str_squish(name_lower),
+    t2_current = sum(str_detect(chunks_lower, fixed(name_lower))),
+    t2_squished = sum(str_detect(chunks_squished, fixed(name_squished))),
+    gained = t2_squished - t2_current
+  ) %>%
+  ungroup()
+```
+
+```{r squish-summary}
+tibble(
+  Metric = c(
+    "Total Tier 2 matches (current)",
+    "Total Tier 2 matches (squished)",
+    "Additional matches recovered",
+    "Acts with 0 matches (current)",
+    "Acts with 0 matches (squished)"
+  ),
+  Value = c(
+    scales::comma(sum(squish_results$t2_current)),
+    scales::comma(sum(squish_results$t2_squished)),
+    sprintf("+%s (%.0f%% increase)",
+            scales::comma(sum(squish_results$gained)),
+            100 * sum(squish_results$gained) / sum(squish_results$t2_current)),
+    as.character(sum(squish_results$t2_current == 0)),
+    as.character(sum(squish_results$t2_squished == 0))
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "Impact of Whitespace Normalization on Tier 2 Matching",
+    subtitle = "str_squish() recovers OCR line-break matches"
+  ) %>%
+  cols_label(Metric = "Metric", Value = "Value") %>%
+  gt_theme_report()
+```
+
+```{r squish-detail}
+squish_results %>%
+  select(act_name, year, t2_current, t2_squished, gained) %>%
+  arrange(desc(gained)) %>%
+  gt() %>%
+  tab_header(
+    title = "Per-Act Impact of Whitespace Normalization",
+    subtitle = "Sorted by number of additional matches recovered"
+  ) %>%
+  cols_label(
+    act_name = "Act",
+    year = "Year",
+    t2_current = "Current",
+    t2_squished = "Squished",
+    gained = "Gained"
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#e8f5e9"),
+    locations = cells_body(rows = gained > 0)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#ffebee"),
+    locations = cells_body(rows = t2_squished == 0)
+  ) %>%
+  gt_theme_report()
+```
+
+**Finding:** `str_squish()` recovers substantial matches for many acts (some double their count), but does not rescue the 5 acts with zero matches. The zero-match acts have structural naming problems beyond whitespace.
+
+
+## The Five Unmatched Acts
+
+```{r unmatched-acts}
+unmatched <- squish_results %>%
+  filter(t2_squished == 0) %>%
+  select(act_name, year)
+
+unmatched %>%
+  gt() %>%
+  tab_header(
+    title = "Acts with Zero Tier 2 Matches Even After Whitespace Fix",
+    subtitle = "These require structural matching improvements"
+  ) %>%
+  cols_label(act_name = "Act Name", year = "Year") %>%
+  gt_theme_report()
+```
+
+Each has a distinct problem:
+
+1. **Changes in Depreciation Guidelines and Revenue Act of 1962**: Compound name. Documents likely reference "Revenue Act of 1962" separately from "depreciation guidelines."
+2. **Expiration of Excess Profits Tax and of Temporary Income Tax Increases**: Descriptive name, not a formal legislative title. Documents likely describe the event rather than using this label.
+3. **Public Law 89-800 / 90-26**: Numbered public laws. Documents reference these by their common names ("suspension/restoration of the investment tax credit").
+4. **Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997**: Compound name joining two separate acts.
+
+### Can we match subcomponents of compound names?
+
+```{r compound-name-test}
+# Try matching subcomponents of the 5 unmatched acts
+compound_tests <- tribble(
+  ~act_name, ~subcomponent, ~year,
+  "Changes in Depreciation Guidelines and Revenue Act of 1962",
+    "Revenue Act of 1962", 1962,
+  "Changes in Depreciation Guidelines and Revenue Act of 1962",
+    "depreciation guidelines", 1962,
+  "Expiration of Excess Profits Tax and of Temporary Income Tax Increases",
+    "excess profits tax", 1954,
+  "Public Law 89-800 (Suspension of Investment Tax Credit)",
+    "investment tax credit", 1966,
+  "Public Law 89-800 (Suspension of Investment Tax Credit)",
+    "suspension of the investment tax credit", 1966,
+  "Public Law 90-26 (Restoration of the Investment Tax Credit)",
+    "investment tax credit", 1967,
+  "Public Law 90-26 (Restoration of the Investment Tax Credit)",
+    "restoration of the investment tax credit", 1967,
+  "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997",
+    "Taxpayer Relief Act of 1997", 1997,
+  "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997",
+    "Balanced Budget Act of 1997", 1997
+)
+
+compound_results <- compound_tests %>%
+  rowwise() %>%
+  mutate(
+    sub_lower = tolower(subcomponent),
+    sub_squished = str_squish(sub_lower),
+    n_matches = sum(str_detect(chunks_squished, fixed(sub_squished)))
+  ) %>%
+  ungroup()
+
+compound_results %>%
+  select(act_name, subcomponent, n_matches) %>%
+  gt() %>%
+  tab_header(
+    title = "Subcomponent Matching for Unmatched Acts",
+    subtitle = "Breaking compound names into searchable parts"
+  ) %>%
+  cols_label(
+    act_name = "Full Act Name",
+    subcomponent = "Subcomponent Searched",
+    n_matches = "Chunk Matches"
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#e8f5e9"),
+    locations = cells_body(rows = n_matches > 0)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#ffebee"),
+    locations = cells_body(rows = n_matches == 0)
+  ) %>%
+  gt_theme_report()
+```
+
+
+## Proposed Matching Improvements
+
+Based on these findings, we can improve positive identification with two changes that stay at chunk level throughout:
+
+### 1. Whitespace normalization before matching
+
+Apply `str_squish()` to both act names and chunk text before `str_detect()`. This collapses OCR line breaks without changing the matching logic. No new dependencies, no mixed granularities.
+
+**Expected impact:** Recovers additional matches for 35 of 40 acts, with some acts doubling their match count.
+
+### 2. Subcomponent matching for compound act names
+
+For act names containing "and" or parenthetical descriptions, split into subcomponents and match each separately. This handles:
+
+- "Taxpayer Relief Act of 1997 **and** Balanced Budget Act of 1997" → search for each half
+- "Public Law 89-800 **(Suspension of Investment Tax Credit)**" → search for the parenthetical description
+- "Changes in Depreciation Guidelines **and** Revenue Act of 1962" → search for each component
+
+```{r proposed-impact}
+#| cache: false
+
+# Estimate total positive chunks under proposed system
+# Current T2: exact match on raw text
+# Proposed: squished + subcomponent matching
+
+# For compound names, generate subcomponents
+generate_subcomponents <- function(act_name) {
+  subs <- character()
+
+  # Split on " and " (but not "and of")
+  if (str_detect(act_name, " and (?!of )")) {
+    parts <- str_split(act_name, " and (?!of )")[[1]]
+    subs <- c(subs, str_trim(parts))
+  }
+
+  # Extract parenthetical content
+  if (str_detect(act_name, "\\(")) {
+    paren <- str_extract(act_name, "\\(([^)]+)\\)")
+    if (!is.na(paren)) {
+      subs <- c(subs, str_remove_all(paren, "[()]"))
+    }
+  }
+
+  # Always include the full name
+  subs <- c(act_name, subs)
+  unique(str_trim(subs))
+}
+
+# Count matches for each act under proposed system
+proposed_results <- aligned_data %>%
+  rowwise() %>%
+  mutate(
+    subcomponents = list(generate_subcomponents(act_name)),
+    n_subs = length(subcomponents),
+    matches_proposed = {
+      subs_squished <- str_squish(tolower(subcomponents))
+      matched_chunks <- logical(length(chunks_squished))
+      for (s in subs_squished) {
+        matched_chunks <- matched_chunks | str_detect(chunks_squished, fixed(s))
+      }
+      sum(matched_chunks)
+    }
+  ) %>%
+  ungroup()
+
+# Compare to current
+comparison <- proposed_results %>%
+  left_join(
+    squish_results %>% select(act_name, t2_current, t2_squished),
+    by = "act_name"
+  ) %>%
+  select(act_name, year, t2_current, t2_squished, matches_proposed) %>%
+  mutate(
+    gained_squish = t2_squished - t2_current,
+    gained_subcomp = matches_proposed - t2_squished
+  )
+
+tibble(
+  Strategy = c(
+    "Current (exact match)",
+    "+ Whitespace normalization",
+    "+ Subcomponent matching"
+  ),
+  `Total Chunk Matches` = c(
+    scales::comma(sum(comparison$t2_current)),
+    scales::comma(sum(comparison$t2_squished)),
+    scales::comma(sum(comparison$matches_proposed))
+  ),
+  `Acts with 0 Matches` = c(
+    sum(comparison$t2_current == 0),
+    sum(comparison$t2_squished == 0),
+    sum(comparison$matches_proposed == 0)
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "Cumulative Impact of Proposed Matching Improvements",
+    subtitle = "Each strategy builds on the previous"
+  ) %>%
+  cols_label(
+    Strategy = "Strategy",
+    `Total Chunk Matches` = "Total Matches",
+    `Acts with 0 Matches` = "Unmatched Acts"
+  ) %>%
+  gt_theme_report()
+```
+
+```{r per-act-comparison}
+comparison %>%
+  arrange(desc(matches_proposed - t2_current)) %>%
+  gt() %>%
+  tab_header(
+    title = "Per-Act Comparison Across Strategies",
+    subtitle = "Sorted by total improvement over current matching"
+  ) %>%
+  cols_label(
+    act_name = "Act",
+    year = "Year",
+    t2_current = "Current",
+    t2_squished = "Squished",
+    matches_proposed = "Proposed",
+    gained_squish = "+Squish",
+    gained_subcomp = "+Subcomp"
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#e8f5e9"),
+    locations = cells_body(
+      columns = matches_proposed,
+      rows = matches_proposed > t2_current
+    )
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#ffebee"),
+    locations = cells_body(
+      columns = matches_proposed,
+      rows = matches_proposed == 0
+    )
+  ) %>%
+  gt_theme_report()
+```
+
+
+## Rethinking Negatives
+
+With improved positive matching, we can also relax the negative criterion. The current system excludes all chunks matching `relevance_keys` from the negative pool, leaving only 35 clean negatives (1.2% of all chunks). This makes precision untestable.
+
+**Proposed:** Include gray-zone chunks (have relevance keys but no positive tier match) as **hard negatives**. Tag them so we can analyze performance separately.
+
+```{r negative-proposal}
+n_total <- nrow(chunks)
+n_tier1 <- nrow(c1_chunk_data$tier1)
+n_clean_neg <- nrow(c1_chunk_data$negatives)
+
+# Estimate hard negatives (current gray zone minus any new positives from proposed matching)
+n_current_positives <- n_distinct(
+  bind_rows(
+    c1_chunk_data$tier1 %>% select(doc_id, chunk_id),
+    c1_chunk_data$tier2 %>% select(doc_id, chunk_id)
+  )
+)
+n_gray_zone <- n_total - n_current_positives - n_clean_neg
+
+tibble(
+  Category = c(
+    "Tier 1 (verbatim passage)",
+    "Tier 2 (act name match) — current",
+    "Easy negatives (no relevance keys)",
+    "Hard negatives (relevance keys, no act match)",
+    "Total"
+  ),
+  Chunks = c(n_tier1, n_current_positives - n_tier1, n_clean_neg, n_gray_zone, n_total),
+  Role = c(
+    "Gold standard positive",
+    "Inferred positive",
+    "Precision test (easy)",
+    "Precision test (challenging)",
+    ""
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "Proposed Tier System with Hard Negatives",
+    subtitle = "Gray-zone chunks become hard negatives instead of being excluded"
+  ) %>%
+  cols_label(Category = "Category", Chunks = "N", Role = "Evaluation Role") %>%
+  gt_theme_report()
+```
+
+
+## Next Steps
+
+1. **Implement whitespace normalization** in `identify_tier2_chunks()`: apply `str_squish()` to both act names and chunk text before matching
+2. **Implement subcomponent matching** for compound act names: split on " and ", extract parenthetical descriptions
+3. **Relax negative criterion**: remove `relevance_keys` exclusion, tag chunks with a `difficulty` flag (easy/hard) instead
+4. **Investigate remaining unmatched acts**: if any acts still have zero matches after improvements, consider OCR-tolerant fuzzy matching as a targeted fix
+5. **Update `prepare_c1_chunk_data()`** to return the revised tier assignments and hard/easy negative distinction
+
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
