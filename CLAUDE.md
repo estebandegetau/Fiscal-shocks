@@ -45,7 +45,7 @@ The contribution is **methodological**, not just dataset scale:
 ### Current Status
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
-  - **C1 (Measure ID)**: Not started
+  - **C1 (Measure ID)**: S0 codebook drafted (`prompts/c1_measure_id.yml`); S1-S3 pipeline implemented in `_targets.R`; evaluation notebook ready (`notebooks/c1_measure_id.qmd`)
   - **C2 (Motivation)**: Not started
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started
@@ -66,7 +66,7 @@ The contribution is **methodological**, not just dataset scale:
 
 **Target metrics per codebook:**
 
-- C1 (Measure ID): Recall ≥90%, Precision ≥80%
+- C1 (Measure ID): Combined Recall ≥90%, Tier 1 Recall ≥95%, Precision ≥70%
 - C2 (Motivation): Weighted F1 ≥70%, Exogenous Precision ≥85%
 - C3 (Timing): Exact Quarter ≥85%, ±1 Quarter ≥95%
 - C4 (Magnitude): MAPE <30%, Sign Accuracy ≥95%

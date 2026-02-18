@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using Claude 3.5 Sonnet API
 
-**Status**: IN PROGRESS — Transitioning from legacy Model A/B/C approach to C1-C4 codebook framework
+**Status**: IN PROGRESS — C1 pipeline fully implemented (S0 codebook drafted, S1-S3 targets defined); C2-C4 not yet started
 
 ## Authoritative Methodology
 
@@ -93,22 +93,23 @@ This document contains the complete R&R + H&K framework specification including:
 
 ### Codebooks (`/prompts/`)
 
-- `c1_measure_id.yml`
+- ✅ `c1_measure_id.yml` — Created
 - `c2_motivation.yml`
 - `c3_timing.yml`
 - `c4_magnitude.yml`
 
 ### H&K Stage Functions (`/R/`)
 
-- `codebook_stage_0.R` — Codebook loading/validation
-- `codebook_stage_1.R` — Behavioral tests
-- `codebook_stage_2.R` — Zero-shot evaluation
-- `codebook_stage_3.R` — Error analysis
-- `behavioral_tests.R` — H&K test suite implementation
+- ✅ `codebook_stage_0.R` — Created (codebook loading/validation)
+- ✅ `codebook_stage_1.R` — Created (behavioral tests runner)
+- ✅ `codebook_stage_2.R` — Created (zero-shot LOOCV evaluation)
+- ✅ `codebook_stage_3.R` — Created (error analysis)
+- ✅ `behavioral_tests.R` — Created (H&K test suite implementation)
+- ✅ `generate_c1_examples.R` — Created (C1 few-shot example generation)
 
 ### Notebooks (`/notebooks/`)
 
-- `c1_measure_id.qmd`
+- ✅ `c1_measure_id.qmd` — Created (C1 evaluation notebook, S0-S3)
 - `c2_motivation.qmd`
 - `c3_timing.qmd`
 - `c4_magnitude.qmd`
