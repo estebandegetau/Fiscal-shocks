@@ -226,10 +226,11 @@ identify_tier1_chunks <- function(aligned_data, chunks) {
 
 #' Identify Tier 2 chunks (mention act names, not already Tier 1)
 #'
-#' Searches remaining chunks for act name mentions using three strategies:
+#' Searches all non-Tier-1 chunks for act name mentions using three strategies:
 #' (1) whitespace-normalized substring matching, (2) subcomponent decomposition
 #' for compound names, and (3) co-occurrence matching for event-type names.
-#' Requires at least 2 fiscal keyword co-occurrences to filter incidental matches.
+#' No year window or keyword filters are applied; C1 maximizes recall and
+#' downstream codebooks (C2-C4) handle precision filtering.
 #'
 #' @param aligned_data Tibble from align_labels_shocks()
 #' @param chunks Tibble from make_chunks()
@@ -238,16 +239,6 @@ identify_tier1_chunks <- function(aligned_data, chunks) {
 #' @export
 identify_tier2_chunks <- function(aligned_data, chunks, tier1_chunks) {
   act_names <- unique(aligned_data$act_name)
-
-  # Fiscal keywords for co-occurrence filter
-  fiscal_keywords <- c(
-    "tax", "revenue", "fiscal", "spending", "appropriation",
-    "deficit", "excise", "tariff", "deduction", "credit",
-    "enacted", "legislation", "provision", "billion", "percent"
-  )
-  fiscal_pattern <- paste0(
-    "\\b(", paste(fiscal_keywords, collapse = "|"), ")\\b"
-  )
 
   # Pre-compute whitespace-normalized text once (handles OCR line breaks)
   chunks_squished <- stringr::str_squish(tolower(chunks$text))
@@ -260,17 +251,6 @@ identify_tier2_chunks <- function(aligned_data, chunks, tier1_chunks) {
   results <- list()
 
   for (k in seq_along(act_names)) {
-    act_year <- aligned_data$year[
-      aligned_data$act_name == act_names[k]
-    ][1]
-
-    # Year window mask (±5 years)
-    year_mask <- is.na(chunks$year) |
-      (chunks$year >= act_year - 5 & chunks$year <= act_year + 5)
-
-    # Combined candidate mask: not Tier 1, within year window
-    candidate_mask <- !tier1_mask & year_mask
-
     if (act_names[k] %in% names(COOCCURRENCE_RULES)) {
       # Co-occurrence path: match chunks containing ALL terms in any rule pair
       matched <- rep(FALSE, nrow(chunks))
@@ -280,7 +260,6 @@ identify_tier2_chunks <- function(aligned_data, chunks, tier1_chunks) {
         }))
         matched <- matched | co_match
       }
-      matched <- matched & candidate_mask
     } else {
       # Subcomponent path: match chunks containing ANY subcomponent term
       subs <- generate_subcomponents(act_names[k])
@@ -290,27 +269,20 @@ identify_tier2_chunks <- function(aligned_data, chunks, tier1_chunks) {
         matched <- matched |
           stringr::str_detect(chunks_squished, stringr::fixed(s))
       }
-      matched <- matched & candidate_mask
     }
 
-    if (any(matched)) {
-      # Apply fiscal keyword co-occurrence filter (>=2 keywords)
-      fiscal_counts <- stringr::str_count(
-        chunks_squished[matched],
-        stringr::regex(fiscal_pattern)
-      )
-      fiscal_pass <- fiscal_counts >= 2
-      match_idx <- which(matched)[fiscal_pass]
+    # Exclude Tier 1 chunks only (no year or keyword filters)
+    matched <- matched & !tier1_mask
 
-      if (length(match_idx) > 0) {
-        results[[length(results) + 1]] <- tibble::tibble(
-          chunk_id = chunks$chunk_id[match_idx],
-          doc_id = chunks$doc_id[match_idx],
-          year = chunks$year[match_idx],
-          act_name = act_names[k],
-          tier = 2L
-        )
-      }
+    if (any(matched)) {
+      match_idx <- which(matched)
+      results[[length(results) + 1]] <- tibble::tibble(
+        chunk_id = chunks$chunk_id[match_idx],
+        doc_id = chunks$doc_id[match_idx],
+        year = chunks$year[match_idx],
+        act_name = act_names[k],
+        tier = 2L
+      )
     }
   }
 
