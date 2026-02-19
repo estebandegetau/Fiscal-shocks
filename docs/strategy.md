@@ -163,8 +163,9 @@ C2 (Motivation)
 
 | Codebook | Primary Metric | Target | Critical |
 |----------|---------------|--------|----------|
-| C1: Measure ID | Recall | ≥90% | Don't miss real acts |
-| C1: Measure ID | Precision | ≥80% | Acceptable FP rate |
+| C1: Measure ID | Combined Recall (Tier 1+2) | ≥90% | Don't miss real acts |
+| C1: Measure ID | Tier 1 Recall | ≥95% | Gold standard passages |
+| C1: Measure ID | Precision | ≥70% | FPs filtered by C2-C4 |
 | C2: Motivation | Weighted F1 | ≥70% | LOOCV baseline |
 | C2: Motivation | Exogenous Precision | ≥85% | Critical for shock series |
 | C3: Timing | Exact Quarter | ≥85% | R&R accuracy |
@@ -261,17 +262,31 @@ Each R&R step is implemented and validated independently before proceeding to th
 
 ### C1: Measure Identification Blueprint
 
-**S0 Codebook Design.** Operationalize the "significant mention" rule from `docs/literature_review.md` Section 1.2. Two classes: `FISCAL_MEASURE`, `NOT_FISCAL_MEASURE`. Inclusion criteria: legislated liability changes, executive depreciation orders, any action receiving more than incidental reference in primary sources. Exclusion criteria: extensions of existing provisions without rate changes, withholding-only adjustments, automatic renewals, proposals that did not become law.
+**Design Rationale.** C1 is the top of the C1-C4 pipeline funnel. It must maximize recall so downstream codebooks (C2-C4) have access to timing, magnitude, and motivation details. False positives at C1 are filtered by C2-C4; false negatives are permanently lost. Evaluation uses full document chunks (~40K tokens) matching production conditions, not isolated passages.
 
-**S1 Behavioral Tests.** Test I: valid JSON structure with required fields (label, reasoning). Test II: feed codebook definitions back as input, verify correct label recovery. Test III: feed positive/negative examples, verify correct label. Test IV: reverse class order (only 2 classes, so reverse `FISCAL_MEASURE` / `NOT_FISCAL_MEASURE`). Pass criteria: 100% legal outputs, 100% memorization, <5% order sensitivity.
+**Chunk Tier System.** Evaluation uses three tiers of ground truth:
 
-**S2 LOOCV Plan.** Ground truth: `aligned_data` (44 acts from `us_labels.csv` + `us_shocks.csv`). For each act, hold out its passages, generate few-shot examples from remaining 43, classify held-out passages. Primary metrics: Recall ≥90%, Precision ≥80%. Bootstrap 1000 resamples for 95% CIs.
+| Tier | Definition | Ground Truth | Role |
+|------|-----------|-------------|------|
+| 1 | Chunk contains verbatim `us_labels` passage text | FISCAL_MEASURE (high confidence) | Primary positive |
+| 2 | Chunk mentions known act name (not Tier 1) | FISCAL_MEASURE (pipeline rationale) | Secondary positive |
+| Negative | No Tier 1/2 match, no relevance key match | NOT_FISCAL_MEASURE | Clean negative |
 
-**S3 Error Analysis Plan.** Primary risk: false positives from passages discussing policy context without a specific legislative act. Test V: systematically remove each negative clarification, measure FP increase. Ablation on negative clarifications for "policy discussion without act" cases. Error categories following H&K taxonomy (A: format, B: scope, C: omission, D: non-compliance, E: semantics/reasoning, F: ambiguous ground truth).
+Chunks with relevance keys but no Tier 1/2 match are excluded from evaluation (ambiguous gray zone).
 
-**Migration from Legacy Code.** Reuse `R/functions_llm.R` (`call_claude_api()`), `R/functions_self_consistency.R` (self-consistency sampling), `R/prepare_training_data.R` (`align_labels_shocks()`). Adapt domain logic from `R/model_a_detect_acts.R`.
+**Corpus scope.** The evaluation corpus is restricted to documents published through **2007** (`max_doc_year = 2007`). R&R's last identified act was signed in 2003, and documents through approximately 2007 represent the universe they had access to when writing their 2010 paper. Post-2007 documents only contribute retrospective mentions that would inflate Tier 2 recall beyond what the actual identification task requires. The full 1946-2022 corpus can be restored (`max_doc_year = NULL`) for sensitivity analysis.
 
-**Iteration Strategy.** If recall <90%: examine FN passages for oblique act references not covered by clarifications; add inclusion criteria. If precision <80%: strengthen negative clarifications for policy-discussion-without-act passages; add near-miss negative examples.
+**S0 Codebook Design.** Operationalize the "significant mention" rule from `docs/literature_review.md` Section 1.2. Two classes: `FISCAL_MEASURE`, `NOT_FISCAL_MEASURE`. Inclusion criteria: legislated liability changes, executive depreciation orders, any action receiving more than incidental reference in primary sources, retrospective references with substantive detail about provisions. Exclusion criteria: extensions of existing provisions without rate changes, withholding-only adjustments, automatic renewals, proposals that did not become law. Note: retrospective exclusion is handled by C2 (motivation classification), not C1.
+
+**S1 Behavioral Tests.** Test I: valid JSON on chunk-length inputs (~20 chunks: 10 Tier 1+2, 10 negative). Test II: feed codebook definitions back as input, verify correct label recovery. Test III: feed positive/negative examples, verify correct label. Test IV: reverse class order on chunk-length inputs. Pass criteria: 100% legal outputs, 100% memorization, <5% order sensitivity.
+
+**S2 LOOCV Plan.** Ground truth: `aligned_data` (44 acts) with chunk-level evaluation via `c1_chunk_data`. For each act, hold out its Tier 1+2 chunks, generate passage-level few-shot examples from remaining 43, classify held-out chunks. Primary metrics: Combined Recall (Tier 1+2) ≥90%, Tier 1 Recall ≥95%, Precision ≥70%. Bootstrap 1000 resamples for 95% CIs. Per-act recall reported for error analysis.
+
+**S3 Error Analysis Plan.** Primary risk: context dilution (measure buried in 40K tokens of surrounding text) and false positive inflation (chunks with fiscal vocabulary but no specific act). Test V: systematically remove each negative clarification, measure FP increase on chunk-level texts. Ablation on all codebook components. Error categories following H&K taxonomy (A-F).
+
+**Migration from Legacy Code.** Reuse `R/functions_llm.R` (`call_claude_api()`), `R/functions_self_consistency.R` (self-consistency sampling), `R/prepare_training_data.R` (`align_labels_shocks()`), `R/make_chunks.R` (`make_chunks()`). New: `R/identify_chunk_tiers.R` for tier identification.
+
+**Iteration Strategy.** If combined recall <90%: examine FN chunks for context dilution patterns; consider shorter chunk windows or multi-pass detection. If Tier 1 recall <95%: check substring matching in tier identification. If precision <70%: strengthen negative clarifications for fiscal-vocabulary-without-act patterns; add chunk-level negative examples to few-shot.
 
 ### C2: Motivation Classification Blueprint
 

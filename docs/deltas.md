@@ -9,6 +9,10 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## ~~2026-02-19: C1 evaluation corpus filtered to max_doc_year = 2007~~ RESOLVED
+
+**Resolved:** Added "Corpus scope" paragraph to `docs/strategy.md` > C1 Blueprint, after the Chunk Tier System table.
+
 ## 2026-02-18: C1 pipeline code and targets fully implemented
 
 **Type:** status-change

@@ -2,7 +2,7 @@
 title: "Chunk Tier Verification"
 subtitle: "Evaluating positive identification and negative pool quality"
 execute:
-  cache: true
+  cache: false
 ---
 
 ## Overview
@@ -15,34 +15,30 @@ This notebook verifies the known act identification system that supports C1 (Mea
 
 We evaluate coverage, matching mechanisms, temporal consistency, and negative pool quality to ensure the tier system provides a robust foundation for LOOCV evaluation in Stage 2.
 
-The identification of *known* acts is only implemented in the US, as it is the only country for which we know the acts from @romer2011.
+The identification of *known* acts is only implemented in the US, as it is the only country for which we know the acts from @romer2010.
+
+### Corpus year filter
+
+The evaluation corpus is filtered to documents published through **2007** (`max_doc_year = 2007`). @romer2010 was published in 2010, with the last identified act signed in 2003 (Jobs and Growth Tax Relief Reconciliation Act). Documents through approximately 2007 represent the universe R&R had access to when conducting their analysis. Post-2007 documents can only contribute retrospective mentions of these acts, which would inflate Tier 2 recall beyond what the actual identification task requires. Setting `max_doc_year = NULL` restores the full 1946-2022 corpus for sensitivity analysis.
 
 ```{r}
 #| label: setup
 #| cache: false
 
-library(targets)
-library(tidyverse)
-library(gt)
-library(here)
+pacman::p_load(targets, tidyverse, gt, patchwork, here)
 
 here::i_am("notebooks/verify_chunk_tiers.qmd")
 tar_config_set(store = here("_targets"))
 source(here("R/gt_theme.R"))
-source(here("R/identify_chunk_tiers.R"))
 set_theme(theme_minimal())
 ```
 
 ```{r}
 #| label: load-data
-#| cache: false
 
 aligned_data <- tar_read(aligned_data)
-chunks <- tar_read(chunks)
 c1_chunk_data <- tar_read(c1_chunk_data)
-
-# Pre-compute normalized text for matching verification
-chunks_squished <- str_squish(tolower(chunks$text))
+diagnostics <- tar_read(c1_tier_diagnostics)
 ```
 
 ## Tier Distribution
@@ -152,47 +148,46 @@ per_act %>%
 
 Acts with zero matches indicate either: (1) no relevant passages in `aligned_data`, or (2) matching logic failures. High Tier 2 counts relative to Tier 1 suggest extensive discussion beyond labeled passages, which is expected for major legislation.
 
+```{r}
+#| label: fig-corpus-vs-matches
+#| fig-cap: "Corpus chunk density (bars, left axis) and total chunk matches per act (points, right axis) by year"
+#| fig-width: 10
+#| fig-height: 5
+
+per_act_year <- per_act %>%
+  left_join(aligned_data %>% select(act_name, year), by = "act_name")
+
+corpus_counts <- diagnostics$corpus_year_counts
+scale_factor <- max(corpus_counts$n) / max(per_act_year$total)
+
+ggplot() +
+  geom_col(data = corpus_counts, aes(x = year, y = n),
+           fill = "steelblue", alpha = 0.35) +
+  geom_point(data = per_act_year,
+             aes(x = year, y = total * scale_factor, color = tier1_n > 0),
+             size = 2.5,
+             position = position_jitter(width = 0.3, seed = 42)) +
+  scale_y_continuous(
+    name = "Chunks in Corpus",
+    sec.axis = sec_axis(~ . / scale_factor, name = "Chunk Matches per Act")
+  ) +
+  scale_color_manual(
+    values = c("TRUE" = "#4CAF50", "FALSE" = "#FF9800"),
+    labels = c("TRUE" = "Has Tier 1", "FALSE" = "Tier 2 only"),
+    name = NULL
+  ) +
+  labs(x = "Year") +
+  theme(legend.position = "bottom")
+```
+
+The bars show corpus density over time (filtered to documents through 2007); the points overlay each act at its signed year with match count on the right axis. Green points have at least one verbatim Tier 1 match; orange points rely entirely on Tier 2 name matching. Acts in sparse corpus years tend to have fewer matches.
+
 ## Matching Mechanism Breakdown
 
 ```{r}
 #| label: mechanism-analysis
-#| cache: true
 
-mechanism_rows <- list()
-
-for (i in seq_len(nrow(aligned_data))) {
-  act <- aligned_data$act_name[i]
-  yr <- aligned_data$year[i]
-
-  if (act %in% names(COOCCURRENCE_RULES)) {
-    # Co-occurrence acts
-    for (rule in COOCCURRENCE_RULES[[act]]) {
-      co_match <- Reduce(`&`, lapply(rule, function(term) {
-        str_detect(chunks_squished, fixed(term))
-      }))
-      mechanism_rows[[length(mechanism_rows) + 1]] <- tibble(
-        act_name = act, year = yr,
-        mechanism = "Co-occurrence",
-        search_term = paste(rule, collapse = " + "),
-        n_matches = sum(co_match)
-      )
-    }
-  } else {
-    subs <- generate_subcomponents(act)
-    for (j in seq_len(nrow(subs))) {
-      sub_sq <- str_squish(tolower(subs$term[j]))
-      n <- sum(str_detect(chunks_squished, fixed(sub_sq)))
-      mechanism_rows[[length(mechanism_rows) + 1]] <- tibble(
-        act_name = act, year = yr,
-        mechanism = subs$mechanism[j],
-        search_term = subs$term[j],
-        n_matches = n
-      )
-    }
-  }
-}
-
-mechanism_tbl <- bind_rows(mechanism_rows)
+mechanism_tbl <- diagnostics$mechanism_tbl
 ```
 
 ```{r}
@@ -264,75 +259,30 @@ Subcomponent decomposition provides redundancy across multiple mechanisms (full 
 
 ```{r}
 #| label: timing-analysis
-#| cache: true
 
-timing_data <- list()
-
-for (i in seq_len(nrow(aligned_data))) {
-  act <- aligned_data$act_name[i]
-
-  if (act %in% names(COOCCURRENCE_RULES)) {
-    matched <- logical(length(chunks_squished))
-    for (rule in COOCCURRENCE_RULES[[act]]) {
-      co_match <- Reduce(`&`, lapply(rule, function(term) {
-        str_detect(chunks_squished, fixed(term))
-      }))
-      matched <- matched | co_match
-    }
-  } else {
-    subs <- generate_subcomponents(act)
-    subs_squished <- str_squish(tolower(subs$term))
-    matched <- logical(length(chunks_squished))
-    for (s in subs_squished) {
-      matched <- matched | str_detect(chunks_squished, fixed(s))
-    }
-  }
-
-  if (any(matched)) {
-    timing_data[[length(timing_data) + 1]] <- tibble(
-      act_name = act,
-      chunk_year = chunks$year[matched]
-    )
-  }
-}
-
-timing_df <- bind_rows(timing_data) %>%
-  left_join(
-    aligned_data %>% select(act_name, signed_year = year),
-    by = "act_name"
-  ) %>%
-  mutate(
-    act_name_year = as.integer(str_extract(act_name, "\\d{4}")),
-    has_name_year = !is.na(act_name_year),
-    year_diff = chunk_year - act_name_year,
-    label = if_else(
-      nchar(act_name) > 40,
-      paste0(str_trunc(act_name, 37), " (", signed_year, ")"),
-      paste0(act_name, " (", signed_year, ")")
-    )
-  )
+timing_df <- diagnostics$timing_df
 ```
 
 ```{r}
 #| label: fig-temporal-all
 #| fig-cap: "Document year distribution of Tier 2 matches per act (red line = signed year)"
-#| fig-height: 20
-#| fig-width: 20
+#| fig-height: 14
+#| fig-width: 12
 #| column: page
 
 ggplot(timing_df, aes(x = chunk_year)) +
   geom_histogram(binwidth = 1, fill = "steelblue", alpha = 0.7) +
   geom_vline(aes(xintercept = signed_year), color = "red", linetype = "dashed", linewidth = 0.5) +
-  facet_wrap(~label, ncol = 6, scales = "free_y") +
+  facet_wrap(~label, ncol = 4, scales = "free_y") +
   labs(
     x = "Document Year",
     y = "Chunks"
-  ) +
-  theme(
-    strip.text = element_text(size = 7),
-    axis.text.x = element_text(size = 6, angle = 45, hjust = 1),
-    axis.text.y = element_text(size = 6)
-  )
+  ) 
+  # theme(
+  #   strip.text = element_text(size = 7),
+  #   axis.text.x = element_text(size = 6, angle = 45, hjust = 1),
+  #   axis.text.y = element_text(size = 6)
+  # )
 ```
 
 The red dashed line marks the act's signed year. Acts should show peak discussion around signing, with trailing references in subsequent years. Off-peak distributions suggest either: (1) anticipatory discussion (budget proposals), (2) retrospective analysis (ERPs), or (3) false positives from name collisions.
@@ -340,8 +290,9 @@ The red dashed line marks the act's signed year. Acts should show peak discussio
 ```{r}
 #| label: fig-temporal-diff
 #| fig-cap: "Year difference distribution for acts with embedded year (blue line = zero difference)"
-#| fig-height: 24
-#| fig-width: 10
+#| fig-height: 14
+#| fig-width: 12
+#| column: page
 
 timing_df %>%
   filter(has_name_year) %>%
@@ -352,12 +303,12 @@ timing_df %>%
   labs(
     x = "Years from Act Name Year",
     y = "Chunks"
-  ) +
-  theme(
-    strip.text = element_text(size = 7),
-    axis.text.x = element_text(size = 6),
-    axis.text.y = element_text(size = 6)
-  )
+  ) 
+  # theme(
+  #   strip.text = element_text(size = 7),
+  #   axis.text.x = element_text(size = 6),
+  #   axis.text.y = element_text(size = 6)
+  # )
 ```
 
 ```{r}
@@ -502,33 +453,18 @@ The negative pool exhibits continuous `key_density` variation, enabling stratifi
 ```{r}
 #| label: negative-contamination-check
 
-# Build regex pattern from all act names (escaped for regex safety)
-act_names_pattern <- paste0(
-  "(",
-  paste(str_replace_all(tolower(aligned_data$act_name), "([.()\\[\\]])", "\\\\\\1"),
-        collapse = "|"),
-  ")"
-)
-
-neg_check <- c1_chunk_data$negatives %>%
-  mutate(has_act_name = str_detect(tolower(text), act_names_pattern))
-
-contamination_rate <- mean(neg_check$has_act_name)
-n_contaminated <- sum(neg_check$has_act_name)
+contamination_rate <- diagnostics$contamination_rate
+n_contaminated <- diagnostics$n_contaminated
 ```
 
-**Contamination Rate**: `r scales::percent(contamination_rate, accuracy = 0.01)` (`r scales::comma(n_contaminated)` / `r scales::comma(nrow(neg_check))` chunks)
+**Contamination Rate**: `r scales::percent(contamination_rate, accuracy = 0.01)` (`r scales::comma(n_contaminated)` / `r scales::comma(diagnostics$n_negatives)` chunks)
 
 ```{r}
 #| label: tbl-contamination-examples
 #| tbl-cap: "Example contaminated negative chunks"
 
 if (n_contaminated > 0) {
-  contaminated <- neg_check %>% filter(has_act_name)
-  contaminated %>%
-    slice_sample(n = min(5, nrow(contaminated))) %>%
-    mutate(text_excerpt = str_trunc(text, 150)) %>%
-    select(chunk_id, doc_id, year, text_excerpt) %>%
+  diagnostics$contamination_examples %>%
     gt() %>%
     cols_label(
       chunk_id = "Chunk",

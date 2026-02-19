@@ -97,6 +97,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 
 **Key tests and decisions:**
 
+- **Corpus year filter:** Evaluation corpus filtered to `max_doc_year = 2007` (documents R&R had access to). Post-2007 documents excluded to avoid inflating Tier 2 recall via retrospective mentions.
 - **Tier distribution:** Three-tier breakdown (Tier 1 verbatim, Tier 2 name match, Negative with key_density). No gray zone.
 - **Coverage check:** PASS/FAIL for all 44 acts having at least one tier match. Flags uncovered acts.
 - **Per-act chunk matches:** Tier 1/2/total counts per act, sorted by total descending.
