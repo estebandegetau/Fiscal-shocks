@@ -49,7 +49,7 @@ tar_option_set(
   # to do and exits if 60 seconds pass with no tasks to run.
   #
   #   controller = crew::crew_controller_local(workers = 2, seconds_idle = 60)
-  controller = crew_controller_local(workers = 2),
+  garbage_collection = T,
   error = "abridge"
   #
   # Alternatively, if you want workers to run on a high-performance computing
@@ -140,7 +140,6 @@ list(
     get_us_urls(min_year = min_year, max_year = max_year),
     iteration = "vector"
   ),
-  
   tar_target(
     us_urls_vector,
     command = {
@@ -174,496 +173,170 @@ list(
     us_urls |>
       bind_cols(us_text)
   ),
-    tar_quarto(
+  tar_quarto(
     verify_us_body,
     "notebooks/verify_body.qmd"
   ),
-  # tar_target(
-  #   pages,
-  #   make_pages(us_body, relevance_keys)
-  # ),
-  # tar_target(
-  #   documents,
-  #   make_documents(pages)
-  # ),
-  # tar_target(
-  #   paragraphs,
-  #   make_paragraphs(documents, relevance_keys)
-  # ),
-  # tar_target(
-  #   relevant_paragraphs,
-  #   make_relevant_paragraphs(paragraphs)
-  # ),
-  tar_target(
-    # Sliding window chunks for LLM context fitting
-    # 50 pages per chunk with 10-page overlap
-    # Target ~40K tokens per chunk (Claude context = 200K)
-    chunks,
-    make_chunks(
-      us_body,
-      window_size = 50,   # pages per chunk
-      overlap = 10,       # overlapping pages
-      max_tokens = 40000  # ~40K tokens per chunk
-    )
-  ),
-  tar_target(
-    chunks_summary,
-    summarize_chunks(chunks)
-  ),
 
-  # Phase 0 Training Data Preparation (Days 2-3)
+  # Phase 0 Training Data Preparation
   tar_target(
     aligned_data,
     align_labels_shocks(us_labels, us_shocks, threshold = 0.85),
     packages = c("tidyverse", "stringdist")
   ),
+  tar_quarto(
+    testing_data_overview,
+    "notebooks/data_overview.qmd"
+  ),
+
+  # =============================================================================
+  # Chunks: Sliding window chunking for LLM context windows
+  # =============================================================================
+
   tar_target(
-    aligned_data_split,
-    create_train_val_test_splits(
+    chunks,
+    make_chunks(us_body, window_size = 50, overlap = 10, max_tokens = 160000),
+    packages = c("tidyverse", "purrr")
+  ),
+
+  # =============================================================================
+  # C1 Codebook Pipeline: Measure Identification (H&K S0-S3)
+  # =============================================================================
+
+  # C1 chunk tier identification (Tier 1/2/Negative)
+  tar_target(
+    c1_chunk_data,
+    prepare_c1_chunk_data(aligned_data, chunks, relevance_keys,
+                          max_doc_year = 2007L),
+    packages = c("tidyverse", "stringr")
+  ),
+
+  # Pre-computed diagnostics for verify_chunk_tiers notebook (avoids OOM)
+  tar_target(
+    c1_tier_diagnostics,
+    prepare_chunk_tier_diagnostics(aligned_data, chunks, c1_chunk_data,
+                                   max_doc_year = 2007L),
+    packages = c("tidyverse", "stringr")
+  ),
+
+  # Review C1 identification of known fiscal shocks
+  tar_quarto(
+    verify_chunk_tiers,
+    "notebooks/verify_chunk_tiers.qmd",
+    garbage_collection = TRUE,
+    deployment = "main"
+  ),
+
+  # S0: Load and validate codebook
+  tar_target(
+    c1_codebook,
+    load_validate_codebook(here::here("prompts", "c1_measure_id.yml")),
+    packages = c("yaml", "here")
+  ),
+
+  # S1: Behavioral tests (Tests I-IV) on chunk-length inputs
+  tar_target(
+    c1_s1_results,
+    run_behavioral_tests_s1(
+      c1_codebook,
       aligned_data,
-      ratios = c(0.6, 0.2, 0.2),
-      seed = 20251206,
-      stratify_by = "motivation_category"
+      c1_chunk_data,
+      model = "claude-haiku-3-5"
     ),
-    packages = "tidyverse"
-  ),
-  tar_target(
-    negative_examples,
-    generate_negative_examples(us_body, n = 200, seed = 20251206),
-    packages = "tidyverse"
-  ),
-  tar_target(
-    training_data_a,
-    prepare_model_a_data(aligned_data_split, negative_examples),
-    packages = "tidyverse"
-  ),
-  tar_target(
-    training_data_b,
-    prepare_model_b_data(aligned_data_split),
-    packages = "tidyverse"
-  ),
-  tar_target(
-    training_data_c,
-    prepare_model_c_data(aligned_data_split),
-    packages = "tidyverse"
-  ),
-
-  # Phase 0 Model A: Act Detection (Days 3-4)
-  tar_target(
-    model_a_examples,
-    generate_model_a_examples(
-      training_data_a,
-      n_positive = 10,
-      n_negative = 15,  # Increased from 10 to improve precision
-      seed = 20251206
-    ),
-    packages = c("tidyverse", "jsonlite")
-  ),
-  tar_target(
-    model_a_examples_file,
-    {
-      save_few_shot_examples(
-        model_a_examples,
-        here::here("prompts", "model_a_examples.json")
-      )
-    },
-    format = "file",
-    packages = c("jsonlite", "here")
-  ),
-  tar_target(
-    model_a_predictions_val,
-    {
-      # Force dependency on examples file
-      examples_file <- model_a_examples_file
-
-      val_data <- training_data_a |> filter(split == "val")
-      predictions <- model_a_detect_acts_batch(
-        texts = val_data$text,
-        model = "claude-sonnet-4-20250514",
-        show_progress = TRUE,
-        use_self_consistency = TRUE,
-        n_samples = 5,
-        temperature = 0.7
-      )
-      val_data |> bind_cols(predictions)
-    },
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here"),
-    deployment = "main"  # Run sequentially to avoid parallel API rate limits
-  ),
-  tar_target(
-    model_a_eval_val,
-    evaluate_model_a(
-      predictions = model_a_predictions_val,
-      true_labels = model_a_predictions_val$is_fiscal_act,
-      threshold = 0.5
-    ),
-    packages = "tidyverse"
-  ),
-  tar_target(
-    model_a_predictions_test,
-    {
-      # Force dependency on examples file
-      examples_file <- model_a_examples_file
-
-      test_data <- training_data_a |> filter(split == "test")
-      predictions <- model_a_detect_acts_batch(
-        texts = test_data$text,
-        model = "claude-sonnet-4-20250514",
-        show_progress = TRUE,
-        use_self_consistency = TRUE,
-        n_samples = 5,
-        temperature = 0.7
-      )
-      test_data |> bind_cols(predictions)
-    },
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here"),
-    deployment = "main"  # Run sequentially to avoid parallel API rate limits
-  ),
-  tar_target(
-    model_a_eval_test,
-    evaluate_model_a(
-      predictions = model_a_predictions_test,
-      true_labels = model_a_predictions_test$is_fiscal_act,
-      threshold = 0.5
-    ),
-    packages = "tidyverse"
-  ),
-
-  # Phase 0 Model B: Motivation Classification (Days 4-6)
-  tar_target(
-    model_b_examples,
-    generate_model_b_examples(
-      training_data_b,
-      n_per_class = 5,  # 5 examples per motivation category (20 total)
-      seed = 20251206
-    ),
-    packages = c("tidyverse", "jsonlite", "glue")
-  ),
-  tar_target(
-    model_b_examples_file,
-    {
-      save_few_shot_examples(
-        model_b_examples,
-        here::here("prompts", "model_b_examples.json")
-      )
-    },
-    format = "file",
-    packages = c("jsonlite", "here")
-  ),
-  tar_target(
-    model_b_predictions_val,
-    {
-      # Force dependency on examples file
-      examples_file <- model_b_examples_file
-
-      val_data <- training_data_b |> filter(split == "val")
-      predictions <- model_b_classify_motivation_batch(
-        act_names = val_data$act_name,
-        passages_texts = val_data$passages_text,
-        years = val_data$year,
-        model = "claude-sonnet-4-20250514",
-        show_progress = TRUE,
-        use_self_consistency = TRUE,
-        n_samples = 5,
-        temperature = 0.7
-      ) |>
-        rename(
-          pred_motivation = motivation,
-          pred_exogenous = exogenous,
-          pred_confidence = confidence,
-          pred_agreement_rate = agreement_rate,
-          pred_reasoning = reasoning,
-          pred_evidence = evidence
-        )
-      val_data |> bind_cols(predictions)
-    },
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
-    deployment = "main"  # Run sequentially to avoid parallel API rate limits
-  ),
-  tar_target(
-    model_b_eval_val,
-    evaluate_model_b(
-      predictions = model_b_predictions_val,
-      true_motivation = model_b_predictions_val$motivation,
-      true_exogenous = model_b_predictions_val$exogenous
-    ),
-    packages = "tidyverse"
-  ),
-  tar_target(
-    model_b_predictions_test,
-    {
-      # Force dependency on examples file
-      examples_file <- model_b_examples_file
-
-      test_data <- training_data_b |> filter(split == "test")
-      predictions <- model_b_classify_motivation_batch(
-        act_names = test_data$act_name,
-        passages_texts = test_data$passages_text,
-        years = test_data$year,
-        model = "claude-sonnet-4-20250514",
-        show_progress = TRUE,
-        use_self_consistency = TRUE,
-        n_samples = 5,
-        temperature = 0.7
-      ) |>
-        rename(
-          pred_motivation = motivation,
-          pred_exogenous = exogenous,
-          pred_confidence = confidence,
-          pred_agreement_rate = agreement_rate,
-          pred_reasoning = reasoning,
-          pred_evidence = evidence
-        )
-      test_data |> bind_cols(predictions)
-    },
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
-    deployment = "main"  # Run sequentially to avoid parallel API rate limits
-  ),
-  tar_target(
-    model_b_eval_test,
-    evaluate_model_b(
-      predictions = model_b_predictions_test,
-      true_motivation = model_b_predictions_test$motivation,
-      true_exogenous = model_b_predictions_test$exogenous
-    ),
-    packages = "tidyverse"
-  ),
-
-  # Model B LOOCV: Robust evaluation with Leave-One-Out Cross-Validation
-  # Replaces fragile train/val/test split - all 44 acts serve as test points
-  # Uses training_data_b (which has correct column names: motivation, exogenous)
-  tar_target(
-    model_b_loocv_results,
-    model_b_loocv(
-      aligned_data = training_data_b |> select(-split),  # Remove split column, use all 44 acts
-      model = "claude-sonnet-4-20250514",
-      n_per_class = 5,
-      seed = 20251206,
-      use_self_consistency = TRUE,
-      n_samples = 5,
-      temperature = 0.7,
-      show_progress = TRUE
-    ),
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
-    deployment = "main"  # Run sequentially to avoid parallel API rate limits
-  ),
-  tar_target(
-    model_b_loocv_eval,
-    evaluate_model_b_loocv(
-      loocv_results = model_b_loocv_results,
-      n_bootstrap = 1000,
-      ci_level = 0.95
-    ),
-    packages = "tidyverse"
-  ),
-
-  # Phase 0 Model C: Multi-Quarter Information Extraction (Days 6-7)
-  tar_target(
-    model_c_predictions_val,
-    model_c_extract_batch(
-      training_data_c |> filter(split == "val"),
-      model = "claude-sonnet-4-20250514",
-      show_progress = TRUE,
-      use_self_consistency = TRUE,
-      n_samples = 5,
-      temperature = 0.7
-    ),
-    packages = c("tidyverse", "httr2", "jsonlite", "here", "glue", "lubridate", "progress"),
-    deployment = "main"  # Run sequentially to avoid parallel API rate limits
-  ),
-  tar_target(
-    model_c_eval_val,
-    evaluate_model_c(model_c_predictions_val),
-    packages = c("tidyverse", "lubridate")
-  ),
-  tar_target(
-    model_c_predictions_test,
-    model_c_extract_batch(
-      training_data_c |> filter(split == "test"),
-      model = "claude-sonnet-4-20250514",
-      show_progress = TRUE,
-      use_self_consistency = TRUE,
-      n_samples = 5,
-      temperature = 0.7
-    ),
-    packages = c("tidyverse", "httr2", "jsonlite", "here", "glue", "lubridate", "progress"),
-    deployment = "main"  # Run sequentially to avoid parallel API rate limits
-  ),
-  tar_target(
-    model_c_eval_test,
-    evaluate_model_c(model_c_predictions_test),
-    packages = c("tidyverse", "lubridate")
-  ),
-
-  # =============================================================================
-  # Production Pipeline: Model A Extraction (Phase 1 - New Country Deployment)
-  # =============================================================================
-  # This pipeline is for deploying to new countries (e.g., Malaysia) where we
-
-  # don't have pre-segmented passages like us_labels.csv. It extracts passages
-  # directly from document chunks.
-
-  # Production chunks: smaller windows for better extraction precision
-  tar_target(
-    chunks_production,
-    make_chunks(
-      us_body,
-      window_size = 25,   # Smaller for extraction (vs 50 for context)
-      overlap = 5,        # 5-page overlap for boundary handling
-      max_tokens = 20000  # More conservative token limit
-    )
-  ),
-
-  # Generate few-shot examples for Model A extraction
-  # Note: This uses aligned_data and us_body to create synthetic extraction examples
-  tar_target(
-    model_a_extract_examples,
-    generate_model_a_extraction_examples(
-      aligned_data = aligned_data,
-      us_body = us_body,
-      n_positive = 5,
-      n_negative = 3,
-      context_pages = 3,
-      seed = 20251206
-    ),
-    packages = c("tidyverse", "glue")
-  ),
-  tar_target(
-    model_a_extract_examples_file,
-    {
-      save_few_shot_examples(
-        model_a_extract_examples,
-        here::here("prompts", "model_a_extract_examples.json")
-      )
-    },
-    format = "file",
-    packages = c("jsonlite", "here")
-  ),
-
-  # Extract passages from all chunks (expensive - runs LLM on each chunk)
-  tar_target(
-    extracted_passages,
-    {
-      # Force dependency on examples file
-      examples_file <- model_a_extract_examples_file
-
-      model_a_extract_passages_batch(
-        chunks = chunks_production,
-        model = "claude-sonnet-4-20250514",
-        show_progress = TRUE,
-        use_self_consistency = TRUE,
-        n_samples = 5,
-        temperature = 0.7
-      )
-    },
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
-    deployment = "main"  # Run sequentially to avoid parallel API rate limits
-  ),
-
-  # Group and deduplicate extracted passages
-  tar_target(
-    grouped_acts,
-    process_extracted_passages(
-      batch_results = extracted_passages,
-      match_threshold = 0.85
-    ),
-    packages = c("tidyverse", "stringdist")
-  ),
-
-  # Evaluate extraction against known US acts (validation)
-  tar_target(
-    extraction_eval,
-    {
-      flattened <- flatten_extracted_acts(extracted_passages)
-      evaluate_model_a_extraction(
-        extracted_acts = flattened,
-        known_acts = us_shocks |> distinct(act_name, .keep_all = TRUE) |>
-          mutate(year = lubridate::year(date_signed)),
-        match_threshold = 0.85
-      )
-    },
-    packages = c("tidyverse", "stringdist", "lubridate")
-  ),
-
-  # Run Model B on extracted passages (production pipeline)
-  tar_target(
-    model_b_predictions_production,
-    {
-      # Force dependency on examples file
-      examples_file <- model_b_examples_file
-
-      model_b_classify_motivation_batch(
-        act_names = grouped_acts$act_name,
-        passages_texts = grouped_acts$passages_text,
-        years = grouped_acts$year,
-        model = "claude-sonnet-4-20250514",
-        show_progress = TRUE,
-        use_self_consistency = TRUE,
-        n_samples = 5,
-        temperature = 0.7
-      ) |>
-        rename(
-          pred_motivation = motivation,
-          pred_exogenous = exogenous,
-          pred_confidence = confidence,
-          pred_agreement_rate = agreement_rate,
-          pred_reasoning = reasoning,
-          pred_evidence = evidence
-        ) |>
-        bind_cols(grouped_acts |> select(act_name, year, passages_text))
-    },
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue"),
+    packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
   ),
 
-  # Track 2: Robustness evaluation on extracted passages
-  # Compares Model B performance on Model A extracted passages vs human-curated passages
+  # S2: LOOCV evaluation on chunks with tier-stratified metrics
   tar_target(
-    model_b_robustness_eval,
-    evaluate_model_b_robustness(
-      grouped_acts = grouped_acts,
-      aligned_data = aligned_data,
-      model = "claude-sonnet-4-20250514",
-      match_threshold = 0.85,
-      use_self_consistency = TRUE,
-      n_samples = 5,
-      temperature = 0.7,
-      show_progress = TRUE
+    c1_s2_results,
+    run_loocv(
+      c1_codebook,
+      aligned_data,
+      c1_chunk_data,
+      codebook_type = "C1",
+      model = "claude-haiku-3-5",
+      n_few_shot = 5,
+      seed = 20251206
     ),
-    packages = c("tidyverse", "httr2", "jsonlite", "progress", "here", "glue", "stringdist"),
+    packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
   ),
-
-  # Compare Track 1 (LOOCV on human passages) vs Track 2 (extracted passages)
   tar_target(
-    model_b_robustness_comparison,
-    compare_evaluation_tracks(
-      track1_eval = model_b_loocv_eval,
-      track2_eval = model_b_robustness_eval
-    ),
+    c1_s2_eval,
+    evaluate_loocv(c1_s2_results, codebook_type = "C1", n_bootstrap = 1000),
     packages = "tidyverse"
+  ),
+
+  # S3: Error analysis (Tests V-VII + ablation)
+  tar_target(
+    c1_s3_results,
+    run_error_analysis(
+      c1_codebook,
+      c1_s2_results,
+      aligned_data,
+      c1_chunk_data,
+      model = "claude-haiku-3-5"
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite", "progress"),
+    deployment = "main"
+  ),
+  tar_quarto(
+    verify_c1,
+    "notebooks/c1_measure_id.qmd"
   )
 
-  # Notebooks -------------------------
-  # tar_quarto(
-  #   test_text_extraction,
-  #   path = here("notebooks/test_text_extraction.qmd"),
-  #   cache = F
+  # =============================================================================
+  # LEGACY: Superseded by C1-C4 codebook pipeline
+  # Commented out for reference — do not re-enable without updating to new framework
+  # =============================================================================
+  #
+  # # Chunks (Phase 1 only — not needed for Phase 0 LOOCV)
+  # tar_target(
+  #   chunks,
+  #   make_chunks(us_body, window_size = 50, overlap = 10, max_tokens = 160000)
   # ),
-  # tar_quarto(
-  #   verify_us_body,
-  #   path = here("notebooks/verify_body.qmd"),
-  #   cache = F
-  # ),
-  # tar_quarto(
-  #   review_training_data,
-  #   path = here("notebooks/review_training_data.qmd"),
-  #   cache = FALSE
-  # ),
-  # tar_quarto(
-  #   review_model_a,
-  #   path = here("notebooks/review_model_a.qmd"),
-  #   cache = FALSE
-  # ),
-  # tar_quarto(manuscript)
+  # tar_target(chunks_summary, summarize_chunks(chunks)),
+  #
+  # # Training data splits (replaced by LOOCV)
+  # tar_target(aligned_data_split, create_train_val_test_splits(aligned_data, ...)),
+  # tar_target(negative_examples, generate_negative_examples(us_body, n = 200, ...)),
+  # tar_target(training_data_a, prepare_model_a_data(aligned_data_split, negative_examples)),
+  # tar_target(training_data_b, prepare_model_b_data(aligned_data_split)),
+  # tar_target(training_data_c, prepare_model_c_data(aligned_data_split)),
+  #
+  # # Model A (replaced by C1)
+  # tar_target(model_a_examples, ...),
+  # tar_target(model_a_examples_file, ...),
+  # tar_target(model_a_predictions_val, ..., deployment = "main"),
+  # tar_target(model_a_eval_val, ...),
+  # tar_target(model_a_predictions_test, ..., deployment = "main"),
+  # tar_target(model_a_eval_test, ...),
+  #
+  # # Model B (replaced by C2)
+  # tar_target(model_b_examples, ...),
+  # tar_target(model_b_examples_file, ...),
+  # tar_target(model_b_predictions_val, ..., deployment = "main"),
+  # tar_target(model_b_eval_val, ...),
+  # tar_target(model_b_predictions_test, ..., deployment = "main"),
+  # tar_target(model_b_eval_test, ...),
+  # tar_target(model_b_loocv_results, ..., deployment = "main"),
+  # tar_target(model_b_loocv_eval, ...),
+  #
+  # # Model C (replaced by C3/C4)
+  # tar_target(model_c_predictions_val, ..., deployment = "main"),
+  # tar_target(model_c_eval_val, ...),
+  # tar_target(model_c_predictions_test, ..., deployment = "main"),
+  # tar_target(model_c_eval_test, ...),
+  #
+  # # Production Pipeline (Phase 1 only)
+  # tar_target(chunks_production, ...),
+  # tar_target(model_a_extract_examples, ...),
+  # tar_target(model_a_extract_examples_file, ...),
+  # tar_target(extracted_passages, ..., deployment = "main"),
+  # tar_target(grouped_acts, ...),
+  # tar_target(extraction_eval, ...),
+  # tar_target(model_b_predictions_production, ..., deployment = "main"),
+  # tar_target(model_b_robustness_eval, ..., deployment = "main"),
+  # tar_target(model_b_robustness_comparison, ...)
 )

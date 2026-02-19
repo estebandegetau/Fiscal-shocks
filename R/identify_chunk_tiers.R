@@ -391,8 +391,22 @@ identify_negative_chunks <- function(chunks, tier1_chunks, tier2_chunks,
 #' @return List with tier1, tier2, negatives, summary, and
 #'   negative_density_summary components
 #' @export
-prepare_c1_chunk_data <- function(aligned_data, chunks, relevance_keys) {
+prepare_c1_chunk_data <- function(aligned_data, chunks, relevance_keys,
+                                  max_doc_year = 2007L) {
   message("=== Preparing C1 chunk-based evaluation data ===")
+
+  # Filter corpus to documents R&R had access to (published 2010,
+  # last act 2003, documents through ~2007). Post-2007 docs only
+  # add retrospective mentions that inflate recall beyond what the
+  # actual R&R task requires.
+  if (!is.null(max_doc_year)) {
+    n_before <- nrow(chunks)
+    chunks <- chunks |> dplyr::filter(is.na(year) | year <= max_doc_year)
+    message(sprintf(
+      "  Filtered chunks to doc_year <= %d: %d -> %d chunks",
+      max_doc_year, n_before, nrow(chunks)
+    ))
+  }
 
   # Step 1: Tier 1 — verbatim passage matches
   tier1 <- identify_tier1_chunks(aligned_data, chunks)
@@ -471,5 +485,205 @@ prepare_c1_chunk_data <- function(aligned_data, chunks, relevance_keys) {
     negatives = negatives,
     summary = summary_tbl,
     negative_density_summary = negative_density_summary
+  )
+}
+
+
+#' Pre-compute diagnostics for verify_chunk_tiers.qmd
+#'
+#' Runs the heavy string-matching loops (mechanism analysis, timing analysis,
+#' contamination check) inside the pipeline so the notebook only loads
+#' lightweight, pre-aggregated tibbles. This avoids loading the full `chunks`
+#' object (~400-650 MB RAM) during notebook rendering.
+#'
+#' @param aligned_data Tibble from align_labels_shocks()
+#' @param chunks Tibble from make_chunks() with doc_id, year, text
+#' @return List with mechanism_tbl, timing_df, corpus_year_counts,
+#'   contamination_rate, contamination_examples
+#' @export
+prepare_chunk_tier_diagnostics <- function(aligned_data, chunks,
+                                           c1_chunk_data,
+                                           max_doc_year = 2007L) {
+  message("=== Pre-computing chunk tier diagnostics ===")
+
+  # Apply same year filter as prepare_c1_chunk_data
+  if (!is.null(max_doc_year)) {
+    chunks <- chunks |>
+      dplyr::filter(is.na(year) | year <= max_doc_year)
+    message(sprintf("  Filtered to doc_year <= %d: %d chunks",
+                    max_doc_year, nrow(chunks)))
+  }
+
+  # Extract lightweight vectors from chunks, then free the heavy tibble.
+  # This avoids holding chunks (~400-650 MB) AND chunks_squished (~400-650 MB)
+  # simultaneously, which OOMs in the 8 GB container.
+  chunk_years <- chunks$year
+  chunk_doc_ids <- chunks$doc_id
+  chunk_chunk_ids <- chunks$chunk_id
+  corpus_year_counts <- dplyr::count(chunks, year)
+  chunks_squished <- stringr::str_squish(tolower(chunks$text))
+  rm(chunks)
+  gc()
+  message("  Freed chunks tibble, retained squished text + metadata vectors")
+
+  # --- 1. Mechanism analysis (per-act, per-search-term match counts) ---
+  mechanism_rows <- list()
+
+  for (i in seq_len(nrow(aligned_data))) {
+    act <- aligned_data$act_name[i]
+    yr <- aligned_data$year[i]
+
+    if (act %in% names(COOCCURRENCE_RULES)) {
+      for (rule in COOCCURRENCE_RULES[[act]]) {
+        co_match <- Reduce(`&`, lapply(rule, function(term) {
+          stringr::str_detect(chunks_squished, stringr::fixed(term))
+        }))
+        mechanism_rows[[length(mechanism_rows) + 1]] <- tibble::tibble(
+          act_name = act, year = yr,
+          mechanism = "Co-occurrence",
+          search_term = paste(rule, collapse = " + "),
+          n_matches = sum(co_match)
+        )
+      }
+    } else {
+      subs <- generate_subcomponents(act)
+      for (j in seq_len(nrow(subs))) {
+        sub_sq <- stringr::str_squish(tolower(subs$term[j]))
+        n <- sum(stringr::str_detect(chunks_squished, stringr::fixed(sub_sq)))
+        mechanism_rows[[length(mechanism_rows) + 1]] <- tibble::tibble(
+          act_name = act, year = yr,
+          mechanism = subs$mechanism[j],
+          search_term = subs$term[j],
+          n_matches = n
+        )
+      }
+    }
+  }
+
+  mechanism_tbl <- dplyr::bind_rows(mechanism_rows)
+  message(sprintf("  Mechanism analysis: %d rows for %d acts",
+                  nrow(mechanism_tbl), dplyr::n_distinct(mechanism_tbl$act_name)))
+
+  # --- 2. Timing analysis (per-act chunk-year distributions) ---
+  timing_data <- list()
+
+  for (i in seq_len(nrow(aligned_data))) {
+    act <- aligned_data$act_name[i]
+
+    if (act %in% names(COOCCURRENCE_RULES)) {
+      matched <- logical(length(chunks_squished))
+      for (rule in COOCCURRENCE_RULES[[act]]) {
+        co_match <- Reduce(`&`, lapply(rule, function(term) {
+          stringr::str_detect(chunks_squished, stringr::fixed(term))
+        }))
+        matched <- matched | co_match
+      }
+    } else {
+      subs <- generate_subcomponents(act)
+      subs_squished <- stringr::str_squish(tolower(subs$term))
+      matched <- logical(length(chunks_squished))
+      for (s in subs_squished) {
+        matched <- matched |
+          stringr::str_detect(chunks_squished, stringr::fixed(s))
+      }
+    }
+
+    if (any(matched)) {
+      timing_data[[length(timing_data) + 1]] <- tibble::tibble(
+        act_name = act,
+        chunk_year = chunk_years[matched]
+      )
+    }
+  }
+
+  timing_df <- dplyr::bind_rows(timing_data) |>
+    dplyr::left_join(
+      aligned_data |> dplyr::select(act_name, signed_year = year),
+      by = "act_name"
+    ) |>
+    dplyr::mutate(
+      act_name_year = as.integer(stringr::str_extract(act_name, "\\d{4}")),
+      has_name_year = !is.na(act_name_year),
+      year_diff = chunk_year - act_name_year,
+      label = dplyr::if_else(
+        nchar(act_name) > 40,
+        paste0(stringr::str_trunc(act_name, 37), " (", signed_year, ")"),
+        paste0(act_name, " (", signed_year, ")")
+      ),
+      label = forcats::fct_reorder(label, signed_year)
+    )
+  message(sprintf("  Timing analysis: %d rows", nrow(timing_df)))
+  message(sprintf("  Corpus year counts: %d years", nrow(corpus_year_counts)))
+
+  # --- 3. Contamination check (act names in negative pool) ---
+  # Use chunks_squished (already lowercased) for detection
+  act_names_pattern <- paste0(
+    "(",
+    paste(
+      stringr::str_replace_all(
+        tolower(aligned_data$act_name),
+        "([.()\\[\\]])", "\\\\\\1"
+      ),
+      collapse = "|"
+    ),
+    ")"
+  )
+
+  has_act_name <- stringr::str_detect(
+    chunks_squished,
+    stringr::regex(act_names_pattern)
+  )
+
+  # Derive negative mask from c1_chunk_data (avoids re-running tier ID)
+  all_positive_ids <- paste(
+    c(c1_chunk_data$tier1$doc_id, c1_chunk_data$tier2$doc_id),
+    c(c1_chunk_data$tier1$chunk_id, c1_chunk_data$tier2$chunk_id),
+    sep = "||"
+  )
+  chunk_ids <- paste(chunk_doc_ids, chunk_chunk_ids, sep = "||")
+  is_negative <- !chunk_ids %in% all_positive_ids
+
+  neg_has_act_name <- has_act_name & is_negative
+  n_negative <- sum(is_negative)
+  n_contaminated <- sum(neg_has_act_name)
+  contamination_rate <- if (n_negative > 0) n_contaminated / n_negative else 0
+
+  # Sample contamination examples (up to 5, reproducible)
+  contaminated_idx <- which(neg_has_act_name)
+  sample_idx <- if (length(contaminated_idx) > 5) {
+    set.seed(42)
+    sample(contaminated_idx, 5)
+  } else {
+    contaminated_idx
+  }
+  contamination_examples <- if (length(sample_idx) > 0) {
+    tibble::tibble(
+      chunk_id = chunk_chunk_ids[sample_idx],
+      doc_id = chunk_doc_ids[sample_idx],
+      year = chunk_years[sample_idx],
+      text_excerpt = stringr::str_trunc(chunks_squished[sample_idx], 150)
+    )
+  } else {
+    tibble::tibble(
+      chunk_id = integer(), doc_id = character(),
+      year = integer(), text_excerpt = character()
+    )
+  }
+
+  message(sprintf("  Contamination: %d / %d negatives (%.2f%%)",
+                  n_contaminated, n_negative, contamination_rate * 100))
+
+  rm(chunks_squished, has_act_name, chunk_ids, chunk_doc_ids,
+     chunk_chunk_ids, chunk_years)
+  gc()
+
+  list(
+    mechanism_tbl = mechanism_tbl,
+    timing_df = timing_df,
+    corpus_year_counts = corpus_year_counts,
+    contamination_rate = contamination_rate,
+    n_contaminated = n_contaminated,
+    n_negatives = n_negative,
+    contamination_examples = contamination_examples
   )
 }
