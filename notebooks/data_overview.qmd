@@ -1,27 +1,22 @@
 ---
 title: "Training Data Overview"
-subtitle: "Data Composition and Transformation Pipeline for Phase 0"
+subtitle: "Data Composition and Transformation Pipeline for Phase 0 (C1-C4 Framework)"
 date: today
+date-format: long
 execute:
-  cache: true
+  cache: false
   warning: false
   message: false
-format:
-  html:
-    toc: true
-    toc-depth: 3
-    code-fold: true
-    df-print: paged
 ---
 
 ## Overview
 
-This document provides a comprehensive overview of the training data pipeline for Phase 0, documenting how raw source data (`us_labels`, `us_shocks`, `us_body`) is transformed into model-ready training datasets for Models A, B, and C.
+This document provides a comprehensive overview of the training data pipeline for Phase 0, documenting how raw source data (`us_labels`, `us_shocks`, `us_body`) is transformed into evaluation-ready datasets for the C1-C4 codebook framework.
 
 **Purpose:**
 
 - Transparently describe all data transformations
-- Document observation-level changes (passage → act, quarter → act, etc.)
+- Document observation-level changes (passage to act, document to chunk, etc.)
 - Explain key assumptions and design decisions
 - Visualize data flow and composition at each stage
 
@@ -30,6 +25,9 @@ This document provides a comprehensive overview of the training data pipeline fo
 The most significant transformation is from **passage-level** (us_labels with 340 passages describing 44 unique acts) to **act-level** (aligned_data with 44 rows, one per act). Multiple passages describing the same act are grouped and concatenated into a single observation.
 
 ```{r setup}
+#| label: setup
+#| cache: false
+
 library(targets)
 library(tidyverse)
 library(gt)
@@ -37,47 +35,52 @@ library(here)
 
 here::i_am("notebooks/data_overview.qmd")
 tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
+set_theme(theme_minimal())
 
-# Load all data
+# Source data
 us_labels <- tar_read(us_labels)
 us_shocks <- tar_read(us_shocks)
 us_body <- tar_read(us_body)
+
+# Derived data
 aligned_data <- tar_read(aligned_data)
-aligned_data_split <- tar_read(aligned_data_split)
-negative_examples <- tar_read(negative_examples)
-training_data_a <- tar_read(training_data_a)
-training_data_b <- tar_read(training_data_b)
-training_data_c <- tar_read(training_data_c)
+
+# C1 pipeline
 chunks <- tar_read(chunks)
+c1_chunk_data <- tar_read(c1_chunk_data)
 ```
 
----
 
 ## Data Composition and Transformation Pipeline
 
-This section documents how the raw source data (`us_labels`, `us_shocks`, `us_body`) is transformed into model-ready training datasets. We describe the transformation logic, observation-level changes, key assumptions, and provide visual summaries at each stage.
+This section documents how the raw source data (`us_labels`, `us_shocks`, `us_body`) is transformed into evaluation-ready datasets. We describe the transformation logic, observation-level changes, key assumptions, and provide visual summaries at each stage.
 
 ### Data Flow Overview
 
 The data flows through multiple transformation stages, changing observation levels and structure:
 
-```{r sankey-prep, echo=FALSE}
-# Summary table
+```{r flow-summary}
+#| echo: false
+
 flow_summary <- tibble(
   `Data Component` = c(
     "us_labels", "us_shocks", "us_body",
-    "aligned_data", "negative_examples",
-    "training_data_a", "training_data_b", "training_data_c", "chunks"
+    "aligned_data",
+    "chunks",
+    "c1_chunk_data"
   ),
   `Observation Level` = c(
     "Passage (multiple per act)", "Quarter (multiple per act)", "Document (one per year-body)",
-    "Act (one row per act)", "Paragraph (sampled)",
-    "Mixed (acts + paragraphs)", "Act", "Act", "Chunk (50-page windows)"
+    "Act (one row per act)",
+    "Chunk (sliding window over pages)",
+    "Tiered chunks (list: tier1, tier2, negatives)"
   ),
   `N Observations` = c(
     nrow(us_labels), nrow(us_shocks), nrow(us_body),
-    nrow(aligned_data), nrow(negative_examples),
-    nrow(training_data_a), nrow(training_data_b), nrow(training_data_c), nrow(chunks)
+    nrow(aligned_data),
+    nrow(chunks),
+    sum(nrow(c1_chunk_data$tier1), nrow(c1_chunk_data$tier2), nrow(c1_chunk_data$negatives))
   ),
   `N Unique Acts` = c(
     n_distinct(us_labels$act_name),
@@ -85,28 +88,22 @@ flow_summary <- tibble(
     NA_integer_,
     nrow(aligned_data),
     NA_integer_,
-    sum(training_data_a$is_fiscal_act == 1),
-    nrow(training_data_b),
-    nrow(training_data_c),
-    NA_integer_
+    n_distinct(c(c1_chunk_data$tier1$act_name, c1_chunk_data$tier2$act_name))
   ),
   Purpose = c(
     "Human-labeled passages describing acts",
     "Romer & Romer shock magnitudes/timing",
     "Extracted text from government PDFs",
     "Joined labels + shocks at act level",
-    "Non-act paragraphs for negative class",
-    "Binary classification (act vs non-act)",
-    "4-way motivation classification",
-    "Information extraction (magnitude/timing)",
-    "Production inference on new documents"
+    "Sliding-window document chunks for LLM input",
+    "Tier-assigned chunks for C1 LOOCV evaluation"
   )
 )
 
 flow_summary %>%
   mutate(
     `N Observations` = scales::comma(`N Observations`),
-    `N Unique Acts` = ifelse(is.na(`N Unique Acts`), "—", as.character(`N Unique Acts`))
+    `N Unique Acts` = ifelse(is.na(`N Unique Acts`), "\u2014", as.character(`N Unique Acts`))
   ) %>%
   gt() %>%
   tab_header(
@@ -126,24 +123,19 @@ flow_summary %>%
   ) %>%
   tab_style(
     style = cell_fill(color = "#e8f5e9"),
-    locations = cells_body(rows = `Data Component` %in% c("aligned_data", "negative_examples"))
+    locations = cells_body(rows = `Data Component` == "aligned_data")
   ) %>%
   tab_style(
     style = cell_fill(color = "#e3f2fd"),
-    locations = cells_body(rows = `Data Component` %in% c("training_data_a", "training_data_b", "training_data_c"))
+    locations = cells_body(rows = `Data Component` %in% c("chunks", "c1_chunk_data"))
   ) %>%
-  tab_style(
-    style = cell_fill(color = "#fff3e0"),
-    locations = cells_body(rows = `Data Component` == "chunks")
-  ) %>%
-  tab_options(table.width = pct(100))
+  gt_theme_report()
 ```
 
 **Key Transformation:**
 
 The most significant transformation is from **passage-level** (us_labels) to **act-level** (aligned_data). Multiple passages describing the same act are grouped and concatenated into a single observation.
 
----
 
 ### Component 1: Source Data (us_labels)
 
@@ -186,7 +178,7 @@ tibble(
   gt() %>%
   tab_header(title = "us_labels: Passage-Level Structure") %>%
   cols_label(Metric = "Metric", Value = "Value") %>%
-  tab_options(table.width = pct(70))
+  gt_theme_report()
 
 # Distribution of passages per act
 us_labels %>%
@@ -197,8 +189,7 @@ us_labels %>%
     title = "Distribution of Passages per Act (us_labels)",
     x = "Number of Passages",
     y = "Number of Acts"
-  ) +
-  theme_minimal()
+  )
 
 # Category distribution
 us_labels %>%
@@ -208,12 +199,14 @@ us_labels %>%
   tab_header(title = "Passage Distribution by Category (us_labels)") %>%
   cols_label(category = "Motivation Category", n = "Passages", pct = "Percent") %>%
   fmt_number(columns = pct, decimals = 1, pattern = "{x}%") %>%
-  tab_options(table.width = pct(70))
+  gt_theme_report()
 ```
 
 **Example Passages (Act with Multiple Passages):**
 
-```{r us-labels-example, results='asis'}
+```{r us-labels-example}
+#| results: asis
+
 # Show example act with multiple passages
 example_act <- us_labels %>%
   group_by(act_name) %>%
@@ -239,7 +232,6 @@ for (i in 1:min(3, nrow(example_act))) {
 - `date`: Date of the act
 - `source`: Source document for the passage
 
----
 
 ### Component 2: Source Data (us_shocks)
 
@@ -278,7 +270,7 @@ tibble(
   gt() %>%
   tab_header(title = "us_shocks: Quarter-Level Structure") %>%
   cols_label(Metric = "Metric", Value = "Value") %>%
-  tab_options(table.width = pct(70))
+  gt_theme_report()
 
 # Distribution of quarters per act
 us_shocks %>%
@@ -290,8 +282,7 @@ us_shocks %>%
     subtitle = "Most acts have fiscal impacts in multiple quarters",
     x = "Number of Quarters",
     y = "Number of Acts"
-  ) +
-  theme_minimal()
+  )
 ```
 
 **Example: Act with Multiple Quarters**
@@ -327,7 +318,7 @@ example_shock_act %>%
     change_in_liabilities_billion = "Magnitude",
     change_in_liabilities_category = "Category"
   ) %>%
-  tab_options(table.width = pct(100))
+  gt_theme_report()
 ```
 
 **Key Variables:**
@@ -340,18 +331,18 @@ example_shock_act %>%
 - `change_in_liabilities_category`: Motivation category
 - `change_in_liabilities_exo`: Exogenous flag
 
----
 
 ### Component 3: Source Data (us_body)
 
-**Observation Level:** Document (one row per year-body combination)
+**Observation Level:** PDF volume (one row per extracted PDF file)
 
-**Structure:** Extracted text from US government PDF documents (Economic Reports, Budget documents, Treasury Reports).
+**Structure:** Extracted text from US government PDF documents (Economic Reports, Budget documents, Treasury Reports). Each row is one PDF file. Most documents correspond to a single PDF, but multi-volume Budget documents (2006-2009) produce multiple rows sharing the same `package_id`. The `package_id` is the unique document identifier carried forward into the chunking pipeline.
 
 ```{r us-body-structure}
 us_body_structure <- us_body %>%
   summarize(
-    n_documents = n(),
+    n_rows = n(),
+    n_packages = n_distinct(package_id),
     n_with_text = sum(n_pages > 0),
     pct_extracted = mean(n_pages > 0) * 100,
     year_range = paste(min(year), "to", max(year)),
@@ -360,14 +351,16 @@ us_body_structure <- us_body %>%
 
 tibble(
   Metric = c(
-    "Total documents",
-    "Documents with text",
+    "Rows (PDF volumes)",
+    "Unique documents (package_id)",
+    "Rows with extracted text (n_pages > 0)",
     "Extraction success rate",
     "Year range",
     "Document bodies"
   ),
   Value = c(
-    scales::comma(us_body_structure$n_documents),
+    scales::comma(us_body_structure$n_rows),
+    scales::comma(us_body_structure$n_packages),
     sprintf("%s (%.1f%%)",
             scales::comma(us_body_structure$n_with_text),
             us_body_structure$pct_extracted),
@@ -377,9 +370,9 @@ tibble(
   )
 ) %>%
   gt() %>%
-  tab_header(title = "us_body: Document-Level Structure") %>%
+  tab_header(title = "us_body: PDF Volume Structure") %>%
   cols_label(Metric = "Metric", Value = "Value") %>%
-  tab_options(table.width = pct(70))
+  gt_theme_report()
 
 # Document distribution by body and year
 us_body %>%
@@ -393,7 +386,6 @@ us_body %>%
     y = "Number of Documents",
     fill = "Document Body"
   ) +
-  theme_minimal() +
   theme(legend.position = "bottom")
 
 # Pages per document distribution
@@ -406,21 +398,19 @@ us_body %>%
     subtitle = "Only documents with successful extraction",
     x = "Number of Pages",
     y = "Number of Documents"
-  ) +
-  theme_minimal()
+  )
 ```
 
-**Purpose:** Source for negative examples (non-act paragraphs) and future production inference via chunks.
+**Purpose:** Source corpus for chunking. Chunks serve as LLM inputs for C1 evaluation and production inference.
 
----
 
-### Component 4: aligned_data (Labels ⊗ Shocks)
+### Component 4: aligned_data (Labels + Shocks)
 
-**Transformation:** Passage-level → Act-level
+**Transformation:** Passage-level to Act-level
 
 **Process:** Join `us_labels` with `us_shocks` to combine human motivations with shock magnitudes/timing.
 
-**Key Transformation Logic** (from `align_labels_shocks()` in `R/prepare_training_data.R:24-159`):
+**Key Transformation Logic** (from `align_labels_shocks()` in `R/prepare_training_data.R`):
 
 1. **Act name cleaning:** Normalize whitespace in both datasets
 2. **Exact matching:** Join on cleaned act names
@@ -430,9 +420,9 @@ us_body %>%
 
 **Assumptions:**
 
-- **One representative quarter:** When acts have multiple quarters of impact (us_shocks), we use the first quarter's magnitude and timing as the "primary" shock. This is an acceptable simplification because Model C only predicts a single magnitude/timing pair, not a time series.
+- **One representative quarter:** When acts have multiple quarters of impact (us_shocks), we use the first quarter's magnitude and timing as the "primary" shock. This is an acceptable simplification because the LOOCV evaluation tests measure identification, not multi-quarter extraction.
 - **Passage concatenation:** All passages describing the same act are concatenated into a single text field. This preserves all human-labeled context while creating a single observation per act.
-- **Fuzzy matching threshold (0.85):** Acts with name similarity ≥0.85 are considered matches. This accommodates minor spelling variations (e.g., "Revenue Act of 1964" vs "Revenue Act, 1964").
+- **Fuzzy matching threshold (0.85):** Acts with name similarity of at least 0.85 are considered matches. This accommodates minor spelling variations (e.g., "Revenue Act of 1964" vs "Revenue Act, 1964").
 
 ```{r aligned-data-structure}
 # Show transformation statistics
@@ -451,7 +441,7 @@ aligned_stats %>%
   mutate(`Row Count` = scales::comma(`Row Count`)) %>%
   gt() %>%
   tab_header(
-    title = "Transformation: Passage/Quarter → Act Level",
+    title = "Transformation: Passage/Quarter to Act Level",
     subtitle = "Observation level change in aligned_data"
   ) %>%
   cols_label(
@@ -460,7 +450,7 @@ aligned_stats %>%
     `Row Count` = "Rows",
     `Unique Acts` = "Acts"
   ) %>%
-  tab_options(table.width = pct(90))
+  gt_theme_report()
 
 # Show passage concatenation statistics
 aligned_data %>%
@@ -482,7 +472,7 @@ aligned_data %>%
     text_chars = "Chars",
     text_preview = "Text Preview"
   ) %>%
-  tab_options(table.width = pct(100))
+  gt_theme_report()
 
 # Distribution of passages per act
 aligned_data %>%
@@ -493,13 +483,14 @@ aligned_data %>%
     subtitle = "Distribution shows how many passages were concatenated",
     x = "Number of Passages Concatenated",
     y = "Number of Acts"
-  ) +
-  theme_minimal()
+  )
 ```
 
 **Example: Before and After Alignment**
 
-```{r aligned-example, results='asis'}
+```{r aligned-example}
+#| results: asis
+
 # Pick an act with multiple passages
 example_act_name <- aligned_data %>%
   filter(n_passages >= 3) %>%
@@ -511,7 +502,7 @@ original_passages <- us_labels %>%
   filter(act_name == example_act_name) %>%
   select(act_name, motivation, category)
 
-cat(sprintf("### Before Alignment: %s\n\n", example_act_name))
+cat(sprintf("#### Before Alignment: %s\n\n", example_act_name))
 cat(sprintf("**Source:** us_labels (passage-level, %d rows)\n\n", nrow(original_passages)))
 
 for (i in 1:nrow(original_passages)) {
@@ -523,13 +514,14 @@ for (i in 1:nrow(original_passages)) {
 aligned_example <- aligned_data %>%
   filter(act_name == example_act_name)
 
-cat("### After Alignment:\n\n")
+cat("#### After Alignment\n\n")
 cat(sprintf("**Source:** aligned_data (act-level, 1 row)\n\n"))
-cat(sprintf("- **Passages concatenated:** %d\n", aligned_example$n_passages))
-cat(sprintf("- **Total characters:** %s\n", scales::comma(nchar(aligned_example$passages_text))))
-cat(sprintf("- **Motivation category:** %s\n", aligned_example$motivation_category))
-cat(sprintf("- **Magnitude:** $%.2fB\n", aligned_example$magnitude_billions))
-cat(sprintf("- **Exogenous:** %s\n\n", aligned_example$exogenous))
+
+cat("- **Passages concatenated:** ", aligned_example$n_passages, "\n")
+cat("- **Total characters:** ", scales::comma(nchar(aligned_example$passages_text)), "\n")
+cat("- **Motivation category:** ", aligned_example$motivation_category, "\n")
+cat("- **Magnitude:** ", sprintf("$%.2fB", aligned_example$magnitude_billions), "\n")
+cat("- **Exogenous:** ", aligned_example$exogenous, "\n\n")
 
 cat("**Concatenated text (first 500 chars):**\n\n")
 cat(sprintf("> %s...\n\n", str_trunc(aligned_example$passages_text, 500)))
@@ -556,646 +548,352 @@ tibble(
   gt() %>%
   tab_header(title = "Alignment Statistics") %>%
   cols_label(Metric = "Metric", Value = "Value") %>%
-  tab_options(table.width = pct(70))
+  gt_theme_report()
 ```
 
----
 
-### Component 5: aligned_data_split (Train/Val/Test Splits)
+### Component 5: chunks (Sliding Window Document Chunks)
 
-**Transformation:** Act-level → Act-level with split assignments
+**Transformation:** Document-level to Chunk-level (sliding window)
 
-**Process:** Stratified random split by `motivation_category`.
+**Process:** Split each document in `us_body` into overlapping chunks that fit within the LLM context window, using `make_chunks()` in `R/make_chunks.R`.
 
-**Stratification Logic** (from `create_train_val_test_splits()` in `R/prepare_training_data.R:168-220`):
+**Key Logic:**
 
-1. **Group by motivation category:** Ensure each category is represented in all splits
-2. **Proportional allocation:** Within each category, assign acts to train/val/test according to target ratios (60/20/20)
-3. **Rounding:** Use ceiling for train and val, remainder for test to handle integer constraints
-4. **Random seed:** 20251206 for reproducibility
+1. **Sliding window:** 50-page window with 10-page overlap between consecutive chunks
+2. **Token limit:** 160,000 tokens (advisory; warns but does not split)
+3. **Page separators:** Pages joined with `--- PAGE BREAK ---` markers for page number tracking
+4. **Token estimation:** Characters / 4 as approximate token count
 
-**Assumption:**
+**Design Rationale:**
 
-- **Stratification priority:** Maintaining representation of all motivation categories in each split is prioritized over achieving exact 60/20/20 ratios. With only 44 acts total and 4 categories (some with as few as 6 acts), perfect stratification AND exact ratios are mathematically impossible. We accept deviation from target ratios to ensure no category is absent from any split.
+Chunks are the unit of input for C1 evaluation and production. Chunk-based evaluation tests the model under production conditions: long documents containing fiscal measures amid economic commentary, forecasts, and administrative content. This matches the H&K "eval-must-match-production" principle.
 
-```{r split-structure}
-# Show split distribution
-split_summary <- aligned_data_split %>%
-  count(split, motivation_category) %>%
-  pivot_wider(names_from = split, values_from = n, values_fill = 0) %>%
-  mutate(Total = train + val + test)
+**Context window budget:**
 
-split_summary %>%
-  gt() %>%
-  tab_header(
-    title = "Stratified Split Distribution",
-    subtitle = "Counts by motivation category and split"
-  ) %>%
-  cols_label(
-    motivation_category = "Motivation Category",
-    train = "Train",
-    val = "Val",
-    test = "Test",
-    Total = "Total"
-  ) %>%
-  tab_style(
-    style = cell_fill(color = "#f5f5f5"),
-    locations = cells_body(columns = Total)
-  ) %>%
-  tab_options(table.width = pct(90))
+The largest chunks approach 155K tokens. With prompt overhead (~9K tokens for codebook, few-shot examples, and system instructions) and a 2K output buffer, all chunks fit within the 200K context window used by both Haiku 3.5 (S1/S2/S3 evaluation) and Sonnet/Opus (production).
 
-# Overall split ratios
-overall_split <- aligned_data_split %>%
-  count(split) %>%
-  mutate(
-    pct = n / sum(n) * 100,
-    target = c(60, 20, 20)[match(split, c("train", "val", "test"))],
-    diff = pct - target
-  )
+| Component | Approx. tokens |
+|:----------|---------------:|
+| Codebook (YAML) | 4,100 |
+| Few-shot examples (~5) | 3,100 |
+| System prompt | 125 |
+| Output buffer | 2,000 |
+| **Overhead total** | **9,300** |
+| **Available for chunk** | **190,700** |
+| **Largest chunk in corpus** | **155,277** |
 
-overall_split %>%
-  mutate(
-    pct = sprintf("%.1f%%", pct),
-    target = sprintf("%.0f%%", target),
-    diff = sprintf("%+.1f%%", diff)
-  ) %>%
-  gt() %>%
-  tab_header(title = "Overall Split Ratios") %>%
-  cols_label(
-    split = "Split",
-    n = "Count",
-    pct = "Actual %",
-    target = "Target %",
-    diff = "Deviation"
-  ) %>%
-  tab_options(table.width = pct(70))
-```
-
----
-
-### Component 6: negative_examples (Non-Act Paragraphs)
-
-**Transformation:** Document-level → Paragraph-level (sampled)
-
-**Process:** Extract paragraphs from `us_body` that do NOT mention fiscal acts.
-
-**Negative Example Logic** (from `generate_negative_examples()` in `R/prepare_training_data.R:228-312`):
-
-1. **Sample documents:** Randomly select 100 documents with successful text extraction
-2. **Extract paragraphs:** Split document text on double newlines (`\n\n+`)
-3. **Size filter:** Keep paragraphs with 50-500 words and ≥200 characters
-4. **Act pattern filter:** Remove paragraphs matching: `\b(act|bill|law|amendment|legislation|public law)\s+(of\s+)?\d{4}\b` (case-insensitive)
-5. **Keyword filter:** Remove paragraphs containing: "tax reform", "revenue act", "appropriation"
-6. **Random sample:** Select 200 paragraphs from remaining candidates
-
-**Assumptions:**
-
-- **Regex-based filtering is sufficient:** The regex pattern `act|bill|law|amendment... + year` captures the vast majority of act mentions. While not perfect, the risk of false negatives (missing an act mention) is low given the specificity of "act name + year" patterns in government documents.
-- **Keyword exclusion:** Common fiscal act phrases ("tax reform", "revenue act", "appropriation") are excluded even without explicit year mentions to reduce contamination risk.
-- **Document sampling:** Sampling from 100 documents (out of ~199 with text) provides sufficient diversity while being computationally efficient.
-
-```{r negative-structure}
-# Show negative example statistics
-negative_stats <- tibble(
+```{r chunks-structure}
+chunk_stats <- tibble(
   Metric = c(
-    "Total negative paragraphs",
-    "Source documents sampled",
-    "Word count range",
-    "Character count range"
+    "Total chunks",
+    "Source PDF volumes (rows in us_body)",
+    "Unique documents (package_id)",
+    "Chunks per document (min/median/max)",
+    "Token count (min/median/max)",
+    "Pages per chunk (min/median/max)"
   ),
   Value = c(
-    as.character(nrow(negative_examples)),
-    sprintf("~100 documents (from %d available)", sum(us_body$n_pages > 0)),
-    sprintf("%d - %d words",
-            min(negative_examples$n_words),
-            max(negative_examples$n_words)),
-    sprintf("%s - %s chars",
-            scales::comma(min(nchar(negative_examples$text))),
-            scales::comma(max(nchar(negative_examples$text))))
+    scales::comma(nrow(chunks)),
+    sprintf("%s (\u2192 all %s chunked)",
+            scales::comma(nrow(us_body)),
+            scales::comma(nrow(us_body))),
+    sprintf("%s (matches us_body above)",
+            scales::comma(n_distinct(chunks$doc_id))),
+    sprintf("%d / %.0f / %d",
+            min(table(chunks$doc_id)),
+            median(table(chunks$doc_id)),
+            max(table(chunks$doc_id))),
+    sprintf("%s / %s / %s",
+            scales::comma(min(chunks$approx_tokens)),
+            scales::comma(median(chunks$approx_tokens)),
+            scales::comma(max(chunks$approx_tokens))),
+    sprintf("%d / %.0f / %d",
+            min(chunks$n_pages),
+            median(chunks$n_pages),
+            max(chunks$n_pages))
   )
 )
 
-negative_stats %>%
+chunk_stats %>%
   gt() %>%
-  tab_header(title = "negative_examples: Paragraph-Level Structure") %>%
+  tab_header(title = "chunks: Sliding Window Structure") %>%
   cols_label(Metric = "Metric", Value = "Value") %>%
-  tab_options(table.width = pct(80))
-
-# Distribution of word counts
-negative_examples %>%
-  ggplot(aes(x = n_words)) +
-  geom_histogram(bins = 30, fill = "orange", alpha = 0.7) +
-  labs(
-    title = "Word Count Distribution (negative_examples)",
-    x = "Number of Words",
-    y = "Count"
-  ) +
-  theme_minimal()
-
-# Source distribution
-negative_examples %>%
-  count(body, sort = TRUE) %>%
-  gt() %>%
-  tab_header(title = "Negative Examples by Document Body") %>%
-  cols_label(body = "Source", n = "Count") %>%
-  tab_options(table.width = pct(70))
+  gt_theme_report()
 ```
 
-**Verification: Are Negatives Actually Negative?**
+```{r chunks-token-dist}
+chunks %>%
+  ggplot(aes(x = approx_tokens)) +
+  geom_histogram(bins = 40, fill = "steelblue", alpha = 0.7) +
+  geom_vline(xintercept = 190700, linetype = "dashed", color = "red") +
+  annotate("text", x = 190700, y = Inf, label = "Available after overhead",
+           hjust = 1.1, vjust = 1.5, color = "red", size = 3) +
+  labs(
+    title = "Token Count Distribution Across Chunks",
+    x = "Approximate Tokens",
+    y = "Number of Chunks"
+  )
+```
 
-```{r negative-verification}
-# Pattern matching verification
-act_pattern <- regex(
-  "\\b(act|bill|law|amendment|legislation|public law)\\s+(of\\s+)?\\d{4}\\b",
-  ignore_case = TRUE
+```{r chunks-by-year}
+chunks %>%
+  count(year) %>%
+  ggplot(aes(x = year, y = n)) +
+  geom_col(fill = "darkgreen", alpha = 0.7) +
+  labs(
+    title = "Chunks by Year",
+    subtitle = "Coverage across the document corpus",
+    x = "Year",
+    y = "Number of Chunks"
+  )
+```
+
+
+### Component 6: c1_chunk_data (Positive and Negative Chunks for C1 Evaluation)
+
+**Transformation:** Identify which chunks are positive (contain a known fiscal measure) and which are negative (contain no fiscal policy discussion), for use in C1 LOOCV evaluation.
+
+**Process:** `prepare_c1_chunk_data()` in `R/identify_chunk_tiers.R` classifies each chunk based on its relationship to the 44 labeled acts in `aligned_data`.
+
+**Positive identification (two tiers):**
+
+We identify positive chunks at two levels of stringency:
+
+1. **Tier 1 (verbatim passage):** Search for the first 100 characters of each labeled passage (from `aligned_data$passages_text`) as a substring within year-adjacent chunks. Fallback to 60 characters if no match. These are gold-standard positives: we know the exact @romer2010 passage text appears in the chunk.
+2. **Tier 2 (act name mention):** Search remaining chunks for act name matches using three strategies: whitespace-normalized substring matching (handles OCR line breaks), subcomponent decomposition for compound act names (split on "and", parenthetical extraction, embedded formal names, Public Law numbers), and co-occurrence matching for event-type names (e.g., "expiration" AND "excess profits"). All strategies require at least 2 fiscal keyword co-occurrences to filter incidental mentions.
+
+Tier 2 adopts a deliberately lax inclusion criterion. Relying on Tier 1 alone would limit positive chunks to those containing verbatim passages from @romer2010, which are short excerpts that the original authors selected to illustrate each act's motivation. Many chunks that substantively discuss an act's magnitude, timing, or implementation would be missed. By including Tier 2, we ensure the model sees the full range of fiscal discussion surrounding each act, which is essential for downstream codebooks (C2 motivation, C3 timing, C4 magnitude) that require richer context than the labeled passages alone provide.
+
+**Negative identification:**
+
+3. **Negative:** All chunks not assigned to Tier 1 or Tier 2. Each negative is tagged with a continuous `key_density` score (fiscal keyword count / total words) measuring fiscal vocabulary concentration. This replaces the previous binary relevance-key exclusion with a gradient suitable for stratified error analysis in S3.
+
+**Evaluation targets:**
+
+- **Tier 1 Recall** (target: 95%) measures whether the model can find known fiscal measures embedded in long documents. Failures here indicate a fundamental problem.
+- **Tier 2 Recall** measures generalization beyond verbatim labeled text. Lower recall is expected and informative.
+- **Combined Recall** (target: 90%) is the primary gating metric for the C1 funnel.
+- **Negative chunks** test precision: can the model correctly reject chunks that do not describe a specific fiscal measure? Negatives span a gradient from clean (zero fiscal vocabulary) to fiscally rich (high key density), and `key_density` enables stratified precision analysis in S3 to identify the threshold where the model's discrimination breaks down.
+
+```{r c1-tier-summary}
+c1_chunk_data$summary %>%
+  gt() %>%
+  tab_header(
+    title = "C1 Chunk Tier Distribution",
+    subtitle = "How chunks are assigned to evaluation tiers"
+  ) %>%
+  cols_label(
+    category = "Tier",
+    n_chunks = "Chunks",
+    pct = "Percent"
+  ) %>%
+  fmt_number(columns = pct, decimals = 1, pattern = "{x}%") %>%
+  gt_theme_report()
+```
+
+```{r c1-tier1-detail}
+tier1_stats <- c1_chunk_data$tier1 %>%
+  group_by(act_name) %>%
+  summarize(
+    n_chunks = n(),
+    n_passages = max(passage_idx),
+    avg_tokens = mean(approx_tokens),
+    .groups = "drop"
+  )
+
+tibble(
+  Metric = c(
+    "Tier 1 chunks (total)",
+    "Acts with Tier 1 matches",
+    "Acts without Tier 1 matches",
+    "Chunks per act (min/median/max)",
+    "Avg tokens per Tier 1 chunk"
+  ),
+  Value = c(
+    as.character(nrow(c1_chunk_data$tier1)),
+    as.character(nrow(tier1_stats)),
+    as.character(nrow(aligned_data) - nrow(tier1_stats)),
+    sprintf("%d / %.0f / %d",
+            min(tier1_stats$n_chunks),
+            median(tier1_stats$n_chunks),
+            max(tier1_stats$n_chunks)),
+    scales::comma(mean(c1_chunk_data$tier1$approx_tokens))
+  )
+) %>%
+  gt() %>%
+  tab_header(title = "Tier 1: Verbatim Passage Matches") %>%
+  cols_label(Metric = "Metric", Value = "Value") %>%
+  gt_theme_report()
+```
+
+```{r c1-tier2-detail}
+tier2_stats <- c1_chunk_data$tier2 %>%
+  group_by(act_name) %>%
+  summarize(
+    n_chunks = n(),
+    avg_tokens = mean(approx_tokens),
+    .groups = "drop"
+  )
+
+tibble(
+  Metric = c(
+    "Tier 2 chunks (total)",
+    "Acts with Tier 2 matches",
+    "Chunks per act (min/median/max)",
+    "Avg tokens per Tier 2 chunk"
+  ),
+  Value = c(
+    as.character(nrow(c1_chunk_data$tier2)),
+    as.character(nrow(tier2_stats)),
+    if (nrow(tier2_stats) > 0)
+      sprintf("%d / %.0f / %d",
+              min(tier2_stats$n_chunks),
+              median(tier2_stats$n_chunks),
+              max(tier2_stats$n_chunks))
+    else "N/A",
+    if (nrow(c1_chunk_data$tier2) > 0)
+      scales::comma(mean(c1_chunk_data$tier2$approx_tokens))
+    else "N/A"
+  )
+) %>%
+  gt() %>%
+  tab_header(title = "Tier 2: Act Name Mention Matches") %>%
+  cols_label(Metric = "Metric", Value = "Value") %>%
+  gt_theme_report()
+```
+
+```{r c1-negative-detail}
+neg_by_source <- c1_chunk_data$negatives %>%
+  count(source_type, sort = TRUE) %>%
+  mutate(pct = n / sum(n) * 100)
+
+neg_by_source %>%
+  gt() %>%
+  tab_header(
+    title = "Negative Chunks by Source Type",
+    subtitle = "Stratified by document body"
+  ) %>%
+  cols_label(
+    source_type = "Source",
+    n = "Chunks",
+    pct = "Percent"
+  ) %>%
+  fmt_number(columns = pct, decimals = 1, pattern = "{x}%") %>%
+  gt_theme_report()
+```
+
+```{r}
+#| label: tbl-negative-density
+#| tbl-cap: "Negative Chunk Key Density Distribution"
+
+c1_chunk_data$negative_density_summary %>%
+  gt() %>%
+  cols_label(
+    density_bin = "Key Density Bin",
+    n = "Chunks",
+    pct = "Percent"
+  ) %>%
+  fmt_number(columns = pct, decimals = 1, pattern = "{x}%") %>%
+  gt_theme_report()
+```
+
+**Verification: Are Negatives Correctly Excluded from Positives?**
+
+Negatives now intentionally include chunks with fiscal vocabulary (measured by `key_density`). The verification question is not "are negatives clean?" but "are negatives correctly excluded from positives?" We check whether any negative chunks contain a known act name that should have been caught by Tier 2. A small number is acceptable: act names appearing outside the ±5 year window or without 2+ fiscal keywords are correctly excluded from Tier 2.
+
+```{r c1-neg-verification}
+# Check a sample of negative chunks for act name contamination
+act_names_pattern <- paste0(
+  "(",
+  paste(tolower(aligned_data$act_name), collapse = "|"),
+  ")"
 )
 
-contamination_check <- negative_examples %>%
+neg_sample <- c1_chunk_data$negatives %>%
+  slice_sample(n = min(100, nrow(c1_chunk_data$negatives)))
+
+neg_contamination <- neg_sample %>%
   mutate(
-    has_act_pattern = str_detect(text, act_pattern),
-    has_tax_reform = str_detect(text, regex("tax reform", ignore_case = TRUE)),
-    has_revenue_act = str_detect(text, regex("revenue act", ignore_case = TRUE)),
-    has_appropriation = str_detect(text, regex("appropriation", ignore_case = TRUE))
+    has_act_name = str_detect(tolower(text), act_names_pattern),
+    has_enacted = str_detect(text, regex("\\b(enacted|signed\\s+into\\s+law)\\b",
+                                          ignore_case = TRUE))
   ) %>%
   summarize(
-    n_total = n(),
-    n_with_act_pattern = sum(has_act_pattern),
-    n_with_tax_reform = sum(has_tax_reform),
-    n_with_revenue_act = sum(has_revenue_act),
-    n_with_appropriation = sum(has_appropriation),
-    contamination_rate = mean(has_act_pattern | has_tax_reform | has_revenue_act)
+    n_checked = n(),
+    n_with_act_name = sum(has_act_name),
+    n_with_enacted = sum(has_enacted)
   )
 
 tibble(
   Check = c(
-    "Total negative examples",
-    "Contains 'act/bill/law + year' pattern",
-    "Contains 'tax reform'",
-    "Contains 'revenue act'",
-    "Contains 'appropriation'",
-    "Overall contamination rate"
+    "Negative chunks sampled",
+    "Contains known act name",
+    "Contains 'enacted/signed into law'"
   ),
   Result = c(
-    as.character(contamination_check$n_total),
-    sprintf("%d (%.1f%%)", contamination_check$n_with_act_pattern,
-            100 * contamination_check$n_with_act_pattern / contamination_check$n_total),
-    sprintf("%d (%.1f%%)", contamination_check$n_with_tax_reform,
-            100 * contamination_check$n_with_tax_reform / contamination_check$n_total),
-    sprintf("%d (%.1f%%)", contamination_check$n_with_revenue_act,
-            100 * contamination_check$n_with_revenue_act / contamination_check$n_total),
-    sprintf("%d (%.1f%%)", contamination_check$n_with_appropriation,
-            100 * contamination_check$n_with_appropriation / contamination_check$n_total),
-    sprintf("%.1f%%", 100 * contamination_check$contamination_rate)
+    as.character(neg_contamination$n_checked),
+    sprintf("%d (%.1f%%)", neg_contamination$n_with_act_name,
+            100 * neg_contamination$n_with_act_name / neg_contamination$n_checked),
+    sprintf("%d (%.1f%%)", neg_contamination$n_with_enacted,
+            100 * neg_contamination$n_with_enacted / neg_contamination$n_checked)
   ),
   Status = c(
-    "—",
-    ifelse(contamination_check$n_with_act_pattern == 0, "✓ Pass", "✗ Fail"),
-    ifelse(contamination_check$n_with_tax_reform == 0, "✓ Pass", "✗ Fail"),
-    ifelse(contamination_check$n_with_revenue_act == 0, "✓ Pass", "✗ Fail"),
-    "—",
-    ifelse(contamination_check$contamination_rate < 0.05, "✓ Pass", "✗ Fail")
+    "\u2014",
+    ifelse(neg_contamination$n_with_act_name == 0, "Pass", "Review"),
+    ifelse(neg_contamination$n_with_enacted == 0, "Pass", "Review")
   )
 ) %>%
   gt() %>%
   tab_header(
-    title = "Negative Example Contamination Check",
-    subtitle = "Verify that negative examples do not contain act mentions"
+    title = "Negative Chunk Contamination Check",
+    subtitle = "Verify no act names were missed by Tier 2 matching"
   ) %>%
   cols_label(Check = "Check", Result = "Result", Status = "Status") %>%
-  tab_options(table.width = pct(100))
+  gt_theme_report()
 ```
 
-**Example Negative Paragraphs:**
+::: {.callout-note}
+Negatives are all chunks not assigned to Tier 1 or Tier 2. Each negative is tagged with `key_density` (fiscal keyword concentration) for downstream stratification. Some negatives contain fiscal vocabulary by design; the key question is whether any contain a known act name that Tier 2 should have caught. Act name mentions in negatives are expected when they fall outside the ±5 year window or lack the required 2+ fiscal keyword co-occurrences.
+:::
 
-```{r negative-examples, results='asis'}
-# Show 3 example negative paragraphs
-cat("**Sample Negative Examples:**\n\n")
-
-negative_samples <- negative_examples %>%
-  slice_sample(n = 3)
-
-for (i in 1:3) {
-  cat(sprintf("**Example %d** (Year: %d, Source: %s, Words: %d)\n\n",
-              i,
-              negative_samples$year[i],
-              negative_samples$body[i],
-              negative_samples$n_words[i]))
-  cat(sprintf("> %s\n\n", str_trunc(negative_samples$text[i], 400)))
-}
-```
-
----
-
-### Component 7: training_data_a (Model A: Binary Detection)
-
-**Transformation:** Act-level + Paragraph-level → Mixed (positive acts + negative paragraphs)
-
-**Process:** Combine positive examples (from `aligned_data_split`) with negative examples.
-
-**Key Logic** (from `prepare_model_a_data()` in `R/prepare_training_data.R:319-362`):
-
-1. **Positive examples:** Use concatenated `passages_text` from aligned_data as positive examples (is_fiscal_act = 1)
-2. **Negative examples:** Use sampled paragraphs as negative examples (is_fiscal_act = 0)
-3. **Split assignment for negatives:** Assign negative examples to splits proportionally to positive split distribution (e.g., if 64% of positive examples are in train, assign ~64% of negatives to train)
-
-**Assumption:**
-
-- **Text length mismatch acceptable:** Positive examples (concatenated passages) are typically longer than negative examples (single paragraphs). This reflects the real-world use case: acts are often described across multiple paragraphs, while non-acts are shorter snippets. The LLM should learn to identify act mentions regardless of text length.
-
-```{r training-a-structure}
-# Show class distribution
-class_dist <- training_data_a %>%
-  count(is_fiscal_act) %>%
-  mutate(
-    class = ifelse(is_fiscal_act == 1, "Positive (Acts)", "Negative (Non-acts)"),
-    pct = n / sum(n) * 100
-  )
-
-class_dist %>%
-  select(class, n, pct) %>%
-  mutate(pct = sprintf("%.1f%%", pct)) %>%
-  gt() %>%
-  tab_header(title = "training_data_a: Class Distribution") %>%
-  cols_label(class = "Class", n = "Count", pct = "Percent") %>%
-  tab_options(table.width = pct(70))
-
-# Split distribution by class
-training_data_a %>%
-  count(split, is_fiscal_act) %>%
-  mutate(class = ifelse(is_fiscal_act == 1, "Positive", "Negative")) %>%
-  pivot_wider(names_from = class, values_from = n, values_fill = 0) %>%
-  mutate(
-    Total = Positive + Negative,
-    `Positive %` = sprintf("%.1f%%", 100 * Positive / Total)
-  ) %>%
-  gt() %>%
-  tab_header(title = "Class Balance by Split (training_data_a)") %>%
-  cols_label(
-    split = "Split",
-    Positive = "Positive",
-    Negative = "Negative",
-    Total = "Total",
-    `Positive %` = "Pos %"
-  ) %>%
-  tab_options(table.width = pct(80))
-
-# Text length distribution by class
-training_data_a %>%
-  mutate(
-    n_chars = nchar(text),
-    class = ifelse(is_fiscal_act == 1, "Positive (Acts)", "Negative (Non-acts)")
-  ) %>%
-  ggplot(aes(x = n_chars, fill = class)) +
-  geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
-  scale_x_log10(labels = scales::comma) +
-  scale_fill_manual(values = c("Positive (Acts)" = "steelblue", "Negative (Non-acts)" = "coral")) +
-  labs(
-    title = "Text Length Distribution by Class (training_data_a)",
-    subtitle = "Log scale - positive examples (acts) are typically longer",
-    x = "Characters (log scale)",
-    y = "Count",
-    fill = "Class"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "bottom")
-```
-
-**Example Positive vs Negative:**
-
-```{r training-a-examples, results='asis'}
-cat("### Example Positive (Fiscal Act):\n\n")
-pos_example <- training_data_a %>%
-  filter(is_fiscal_act == 1) %>%
-  slice_sample(n = 1)
-
-cat(sprintf("**Act:** %s\n\n", pos_example$act_name))
-cat(sprintf("**Year:** %d | **Category:** %s\n\n", pos_example$year, pos_example$motivation_category))
-cat(sprintf("> %s\n\n", str_trunc(pos_example$text, 500)))
-
-cat("---\n\n")
-cat("### Example Negative (Non-act):\n\n")
-neg_example <- training_data_a %>%
-  filter(is_fiscal_act == 0) %>%
-  slice_sample(n = 1)
-
-cat(sprintf("**Year:** %d | **Source:** %s\n\n", neg_example$year, neg_example$source))
-cat(sprintf("> %s\n\n", str_trunc(neg_example$text, 500)))
-```
-
----
-
-### Component 8: training_data_b (Model B: Motivation Classification)
-
-**Transformation:** Act-level → Act-level (subset with split info)
-
-**Process:** Direct subset of `aligned_data_split` with relevant fields for motivation classification.
-
-**Key Logic** (from `prepare_model_b_data()` in `R/prepare_training_data.R:368-387`):
-
-1. **No observation-level change:** Remains at act level
-2. **Field selection:** Keep `act_name`, `passages_text`, `year`, `motivation`, `exogenous`, `split`
-3. **All 44 acts included:** No filtering (unlike Model C which requires complete timing/magnitude data)
-
-```{r training-b-structure}
-# Class distribution
-training_data_b %>%
-  count(motivation, sort = TRUE) %>%
-  mutate(pct = n / sum(n) * 100) %>%
-  mutate(pct = sprintf("%.1f%%", pct)) %>%
-  gt() %>%
-  tab_header(title = "training_data_b: Motivation Category Distribution") %>%
-  cols_label(motivation = "Motivation", n = "Count", pct = "Percent") %>%
-  tab_options(table.width = pct(70))
-
-# Distribution by split
-training_data_b %>%
-  count(motivation, split) %>%
-  pivot_wider(names_from = split, values_from = n, values_fill = 0) %>%
-  mutate(Total = train + val + test) %>%
-  gt() %>%
-  tab_header(title = "Motivation Distribution by Split (training_data_b)") %>%
-  cols_label(
-    motivation = "Motivation",
-    train = "Train",
-    val = "Val",
-    test = "Test",
-    Total = "Total"
-  ) %>%
-  tab_options(table.width = pct(90))
-
-# Exogenous flag distribution
-training_data_b %>%
-  count(motivation, exogenous) %>%
-  pivot_wider(names_from = exogenous, values_from = n, values_fill = 0) %>%
-  gt() %>%
-  tab_header(title = "Exogenous Flag by Motivation (training_data_b)") %>%
-  cols_label(
-    motivation = "Motivation",
-    `FALSE` = "Endogenous",
-    `TRUE` = "Exogenous"
-  ) %>%
-  tab_options(table.width = pct(70))
-```
-
----
-
-### Component 9: training_data_c (Model C: Information Extraction)
-
-**Transformation:** Act-level → Act-level (filtered subset)
-
-**Process:** Subset of `aligned_data_split` containing only acts with complete timing and magnitude data.
-
-**Key Logic** (from `prepare_model_c_data()` in `R/prepare_training_data.R:393-419`):
-
-1. **Filter for completeness:** Remove acts with NA in `change_quarter`, `magnitude_billions`, `present_value_quarter`, or `present_value_billions`
-2. **Result:** 41 of 44 acts have complete data (3 acts excluded)
-
-**Assumption:**
-
-- **Complete data requirement:** Model C requires ground truth for timing and magnitude to train. Acts without this data in us_shocks cannot be used for supervised learning of information extraction.
-
-```{r training-c-structure}
-# Show filtering impact
-tibble(
-  Stage = c("aligned_data_split", "training_data_c (filtered)"),
-  `N Acts` = c(nrow(aligned_data_split), nrow(training_data_c)),
-  `Complete Data` = c(
-    sprintf("%d (%.1f%%)",
-            sum(!is.na(aligned_data_split$change_quarter) &
-                  !is.na(aligned_data_split$magnitude_billions)),
-            100 * mean(!is.na(aligned_data_split$change_quarter) &
-                         !is.na(aligned_data_split$magnitude_billions))),
-    "41 (100%)"
-  )
-) %>%
-  gt() %>%
-  tab_header(title = "training_data_c: Completeness Filter") %>%
-  cols_label(Stage = "Dataset", `N Acts` = "Acts", `Complete Data` = "With Complete Data") %>%
-  tab_options(table.width = pct(80))
-
-# Magnitude distribution
-training_data_c %>%
-  mutate(
-    sign = case_when(
-      magnitude_billions < 0 ~ "Tax Cut",
-      magnitude_billions > 0 ~ "Tax Increase",
-      TRUE ~ "Zero"
-    )
-  ) %>%
-  ggplot(aes(x = abs(magnitude_billions), fill = sign)) +
-  geom_histogram(bins = 20, alpha = 0.7) +
-  scale_x_log10(labels = scales::dollar_format(suffix = "B")) +
-  scale_fill_manual(values = c("Tax Cut" = "#4575b4", "Tax Increase" = "#d73027", "Zero" = "gray")) +
-  labs(
-    title = "Magnitude Distribution (training_data_c)",
-    subtitle = "Absolute value on log scale",
-    x = "Absolute Magnitude (Billions USD, log scale)",
-    y = "Count",
-    fill = "Type"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "bottom")
-
-# Temporal distribution
-training_data_c %>%
-  mutate(year = lubridate::year(date_signed)) %>%
-  ggplot(aes(x = year)) +
-  geom_histogram(binwidth = 5, fill = "darkblue", alpha = 0.7) +
-  labs(
-    title = "Temporal Distribution of Acts (training_data_c)",
-    x = "Year",
-    y = "Number of Acts"
-  ) +
-  theme_minimal()
-```
-
----
-
-### Component 10: chunks (Production Inference)
-
-**Transformation:** Document-level → Chunk-level (sliding windows)
-
-**Process:** Split documents into overlapping chunks that fit within LLM context windows.
-
-**Key Logic** (from `make_chunks()` in `R/make_chunks.R:28-126`):
-
-1. **Window size:** 50 pages per chunk
-2. **Overlap:** 10 pages between consecutive chunks
-3. **Step size:** 40 pages (window - overlap)
-4. **Token estimation:** Characters ÷ 4 (approximate tokens)
-5. **Separator:** Pages joined with `\n\n--- PAGE BREAK ---\n\n`
-
-**Assumptions:**
-
-- **Fixed window size:** 50-page windows work for most government documents. Some documents may have variable text density, resulting in variable token counts.
-- **4 chars/token:** Standard approximation for English text. Actual token counts may vary ±20%.
-- **Overlap ensures continuity:** 10-page overlap prevents acts split across chunk boundaries from being missed.
-
-**Not Used in Training:** Chunks are created for **future production inference** on new, unlabeled documents (e.g., Malaysia, Indonesia). Training uses pre-labeled passages from `us_labels`.
-
-```{r chunks-structure}
-# Show chunk statistics
-chunk_stats <- chunks %>%
-  summarize(
-    n_chunks = n(),
-    n_docs = n_distinct(doc_id),
-    chunks_per_doc = n_chunks / n_docs,
-    median_tokens = median(approx_tokens),
-    min_tokens = min(approx_tokens),
-    max_tokens = max(approx_tokens),
-    n_over_40k = sum(approx_tokens > 40000),
-    pct_over_40k = mean(approx_tokens > 40000) * 100
-  )
-
-tibble(
-  Metric = c(
-    "Total chunks",
-    "Documents chunked",
-    "Chunks per document (avg)",
-    "Token count (median)",
-    "Token count (min/max)",
-    "Chunks > 40K tokens",
-    "Percent > 40K target"
-  ),
-  Value = c(
-    scales::comma(chunk_stats$n_chunks),
-    as.character(chunk_stats$n_docs),
-    sprintf("%.1f", chunk_stats$chunks_per_doc),
-    scales::comma(chunk_stats$median_tokens),
-    sprintf("%s / %s",
-            scales::comma(chunk_stats$min_tokens),
-            scales::comma(chunk_stats$max_tokens)),
-    sprintf("%d", chunk_stats$n_over_40k),
-    sprintf("%.1f%%", chunk_stats$pct_over_40k)
-  )
-) %>%
-  gt() %>%
-  tab_header(title = "chunks: Production Inference Structure") %>%
-  cols_label(Metric = "Metric", Value = "Value") %>%
-  tab_options(table.width = pct(80))
-
-# Token distribution
-chunks %>%
-  ggplot(aes(x = approx_tokens)) +
-  geom_histogram(bins = 30, fill = "darkgreen", alpha = 0.7) +
-  geom_vline(xintercept = 40000, linetype = "dashed", color = "red", linewidth = 1) +
-  geom_vline(xintercept = 200000, linetype = "dashed", color = "darkred", linewidth = 1) +
-  annotate("text", x = 40000, y = Inf, label = "Target: 40K", vjust = 2, hjust = 1.1, color = "red") +
-  annotate("text", x = 200000, y = Inf, label = "Limit: 200K", vjust = 2, hjust = 1.1, color = "darkred") +
-  labs(
-    title = "Token Distribution (chunks)",
-    subtitle = "Target 40K tokens, max 200K (Claude context limit)",
-    x = "Approximate Tokens",
-    y = "Count"
-  ) +
-  theme_minimal()
-
-# Chunks per document
-chunks %>%
-  count(doc_id) %>%
-  ggplot(aes(x = n)) +
-  geom_histogram(binwidth = 1, fill = "#008080", alpha = 0.7) +
-  labs(
-    title = "Chunks per Document Distribution",
-    x = "Number of Chunks",
-    y = "Number of Documents"
-  ) +
-  theme_minimal()
-```
-
-**Overlap Verification:**
-
-```{r chunks-overlap}
-# Check overlap between consecutive chunks
-overlap_check <- chunks %>%
-  arrange(doc_id, chunk_id) %>%
-  group_by(doc_id) %>%
-  mutate(
-    next_start = lead(start_page),
-    overlap_pages = end_page - next_start + 1
-  ) %>%
-  filter(!is.na(overlap_pages)) %>%
-  ungroup()
-
-if (nrow(overlap_check) > 0) {
-  overlap_stats <- overlap_check %>%
-    summarize(
-      median_overlap = median(overlap_pages),
-      min_overlap = min(overlap_pages),
-      max_overlap = max(overlap_pages)
-    )
-
-  tibble(
-    Metric = c("Median overlap", "Min overlap", "Max overlap", "Target overlap"),
-    Pages = c(
-      as.character(overlap_stats$median_overlap),
-      as.character(overlap_stats$min_overlap),
-      as.character(overlap_stats$max_overlap),
-      "10"
-    )
-  ) %>%
-    gt() %>%
-    tab_header(title = "Chunk Overlap Statistics") %>%
-    cols_label(Metric = "Metric", Pages = "Pages") %>%
-    tab_options(table.width = pct(60))
-}
-```
-
----
 
 ## Summary: Key Transformations
 
 ```{r transformation-summary}
 tibble(
   Transformation = c(
-    "us_labels → aligned_data",
-    "us_shocks → aligned_data",
-    "us_body → negative_examples",
-    "us_body → chunks",
-    "aligned_data → aligned_data_split",
-    "aligned_data_split → training_data_a",
-    "aligned_data_split → training_data_b",
-    "aligned_data_split → training_data_c"
+    "us_labels \u2192 aligned_data",
+    "us_shocks \u2192 aligned_data",
+    "us_body \u2192 chunks",
+    "chunks \u2192 c1_chunk_data"
   ),
   `Observation Change` = c(
-    "Passage-level → Act-level",
-    "Quarter-level → Act-level",
-    "Document-level → Paragraph-level",
-    "Document-level → Chunk-level",
-    "Act-level → Act-level (no change)",
-    "Act-level → Mixed (acts + paragraphs)",
-    "Act-level → Act-level (no change)",
-    "Act-level → Act-level (filtered)"
+    "Passage-level \u2192 Act-level",
+    "Quarter-level \u2192 Act-level",
+    "Document-level \u2192 Chunk-level",
+    "Chunk-level \u2192 Tiered evaluation sets"
   ),
   `Key Operation` = c(
     "Group passages by act, concatenate",
     "Use first quarter as representative",
-    "Extract & filter paragraphs",
-    "Sliding window (50 pages, 10 overlap)",
-    "Stratified random split",
-    "Combine positive acts + negative paragraphs",
-    "Select fields for classification",
-    "Filter for complete timing/magnitude"
+    "Sliding window (50 pages, 10 overlap, 40K token limit)",
+    "Verbatim match (T1), name/subcomponent/co-occurrence match (T2), all remaining (Neg)"
   ),
   `Rows In` = c(
     as.character(nrow(us_labels)),
     as.character(nrow(us_shocks)),
-    sprintf("%d docs", sum(us_body$n_pages > 0)),
-    sprintf("%d docs", sum(us_body$n_pages > 0)),
-    as.character(nrow(aligned_data)),
-    sprintf("44 acts + %d paras", nrow(negative_examples)),
-    as.character(nrow(aligned_data_split)),
-    as.character(nrow(aligned_data_split))
+    sprintf("%d docs", nrow(us_body)),
+    scales::comma(nrow(chunks))
   ),
   `Rows Out` = c(
     as.character(nrow(aligned_data)),
     as.character(nrow(aligned_data)),
-    as.character(nrow(negative_examples)),
-    as.character(nrow(chunks)),
-    as.character(nrow(aligned_data_split)),
-    as.character(nrow(training_data_a)),
-    as.character(nrow(training_data_b)),
-    as.character(nrow(training_data_c))
+    scales::comma(nrow(chunks)),
+    sprintf("T1: %d, T2: %d, Neg: %d",
+            nrow(c1_chunk_data$tier1),
+            nrow(c1_chunk_data$tier2),
+            nrow(c1_chunk_data$negatives))
   )
 ) %>%
   gt() %>%
@@ -1210,295 +908,94 @@ tibble(
     `Rows In` = "Input Rows",
     `Rows Out` = "Output Rows"
   ) %>%
-  tab_options(table.width = pct(100))
+  gt_theme_report()
 ```
 
----
 
-## Critical Findings: Implications for Phase 0 Models
+## Critical Findings
 
-### Finding 1: Dataset Size vs Phase 0 Plan Expectations 🔴 **HIGH IMPACT**
+### Finding 1: Dataset Size {.unnumbered}
 
-**Plan Assumption** (from `docs/phase_0/plan_phase0.md`):
+**44 labeled acts** are available in `us_labels`, not 126 from the full `us_shocks` dataset. This is the number of acts with human-labeled motivation passages, which is the ground truth for all codebook evaluation.
 
-> "Class Distribution (from us_shocks.csv): Spending-driven: 41 acts, Countercyclical: 29 acts, Deficit-driven: 28 acts, Long-run: 28 acts" (Lines 382-386)
+**Impact on C1-C4:**
 
-**Reality:**
+- **C1 (Measure ID):** LOOCV on 44 acts with chunk-based inputs. Targets: Combined Recall at least 90%, Tier 1 Recall at least 95%, Precision at least 70%.
+- **C2 (Motivation):** With only 6 Countercyclical acts, this category will have limited evaluation power. LOOCV helps by using all 44 acts.
+- **C3/C4 (Timing/Magnitude):** 41 of 44 acts have complete timing and magnitude data.
+- **Few-shot budget:** Each LOOCV fold uses 43 acts for training. With 5 examples per class, this consumes only ~12% of available acts.
 
-- **Only 44 acts total** with labeled passages in `us_labels.csv` (not 126 from full `us_shocks.csv`)
-- **Countercyclical: 6 acts** (not 29) — 21% of expected
-- **Deficit-driven: 9 acts** (not 28) — 32% of expected
+### Finding 2: Passage Concatenation Creates Richer Context {.unnumbered}
 
-**Impact on Models:**
+- **Median 8 passages per act** (range 1-25), yielding roughly 5K tokens per act
+- More context improves motivation classification (C2) and information extraction (C3/C4)
+- Claude's 200K context window easily handles the longest acts
+- Higher API costs per call, but LOOCV keeps total calls manageable (44 folds)
 
-1. **Model B (Motivation Classification):**
-   - Plan suggested **5 examples per class = 20 total few-shot examples** (Days 4-6, line 322)
-   - With only 44 acts, this would consume **45% of the dataset**!
-   - **Recommendation:** Use **2-3 per class = 8-12 examples** (27% of data)
-   - **Adjusted target:** Lower accuracy from 0.75 to **0.70** (realistic for 44 training examples)
+### Finding 3: Multi-Quarter Acts {.unnumbered}
 
-2. **Countercyclical Under-Representation:**
-   - **0 acts in test set** → Cannot evaluate Countercyclical performance
-   - **Must use validation set** (2 acts) for this category
-   - **Document limitation** in Phase 0 report
+- us_shocks shows **median 7 quarters per act**, max 32 quarters
+- aligned_data uses only the **first quarter** as representative
+- C3 (Timing) and C4 (Magnitude) will need to handle multi-quarter extraction in their codebook design
+- This is a known simplification; the C3/C4 output schemas should support multiple implementation phases
 
-**Action Required:**
+### Finding 4: Chunk Tier Coverage {.unnumbered}
 
-- Reduce few-shot examples across all models
-- Use validation set heavily for prompt tuning
-- Consider 5-fold cross-validation for Model B
-- **Malaysia Phase 1:** Focus on transfer learning methodology with expert validation (expect 20-40 acts, not 100+)
+```{r finding-tier-coverage}
+# Acts with and without Tier 1 coverage
+tier1_acts <- n_distinct(c1_chunk_data$tier1$act_name)
+tier2_acts <- n_distinct(c1_chunk_data$tier2$act_name)
+total_acts <- nrow(aligned_data)
 
----
-
-### Finding 2: Passage Concatenation Creates Longer Contexts ✅ **BENEFIT**
-
-**Plan Assumption:**
-
-> "Median ~3 passages/act" (line 107)
-
-**Reality:**
-
-- **Median 8 passages per act** (range 1-25)
-- **Richer context** for Model B classification
-- **Longer texts** (~5K tokens avg vs 3K expected)
-
-**Impact:**
-
-- ✅ **Benefit:** More context improves Model B motivation classification
-- ⚠️ **Cost:** Higher API costs (~$7 vs $4.54 estimated for Model B)
-- ✅ **No risk:** Claude's 200K context window easily handles longest acts
-
----
-
-### Finding 3: Multi-Quarter Acts Simplified ⚠️ **DATA LOSS**
-
-**Reality:**
-
-- **us_shocks** shows median **7 quarters per act**, max **32 quarters**
-- **aligned_data** uses only **first quarter** as representative
-- **Model C** cannot learn phased implementations
-
-**Plan Recognition:**
-
-The plan acknowledges this (Days 6-7, line 480):
-
-> "Multiple quarters: Some acts phase in over years (e.g., ERTA 1981: 1981Q3, 1982Q1, 1983Q1, 1984Q1)"
-
-And Model C output schema supports it (line 519-529):
-
-```json
-{
-  "changes": [
-    {"timing_quarter": "1964-02", "magnitude_billions": -8.4, ...}
-  ]
-}
-```
-
-**Recommendation:**
-
-- ✅ **Plan already supports this** — Model C schema allows multiple changes
-- Ensure **prompts explicitly request all implementation phases**
-- Evaluate against **all quarters** in ground truth (not just first)
-
----
-
-### Finding 4: Negative Examples Are Clean ✅ **VALIDATED**
-
-**Reality:**
-
-- **0% contamination** — no act patterns detected in negative examples
-- **Regex filtering effective:** `\b(act|bill|law|amendment)\s+(of\s+)?\d{4}\b`
-
-**Impact:**
-
-- ✅ **Validates Plan assumption** (Days 2-3, lines 133-136)
-- ✅ **Supports Model A precision target** (>0.80)
-- ✅ **1:4.5 class balance** is ideal (plan target: 1:5 to 1:10)
-
----
-
-### Finding 5: Split Ratios Deviate from Target ⚠️ **ACCEPTABLE**
-
-**Plan Assumption:**
-
-> "Model A: 76 train / 25 val / 25 test acts" (line 124)
-
-**Reality:**
-
-- **64%/23%/14% split** (28/10/6 acts)
-- **Stratification prioritized** over exact 60/20/20 ratios
-- **Test set smaller** than ideal (6 acts vs 9 expected)
-
-**Impact:**
-
-- ✅ **Justification valid:** With only 44 acts and 4 categories, perfect stratification AND exact ratios are impossible
-- ⚠️ **Small test set** (6 acts) limits confidence in metrics
-- **Recommendation:** Report validation set metrics prominently; use test set for final evaluation only
-
----
-
-### Finding 6: Text Length Mismatch in Model A ⚠️ **MONITORING REQUIRED**
-
-**Reality:**
-
-- **Positive examples** (acts): Median ~2,000 characters
-- **Negative examples** (paragraphs): Median ~400 characters
-- **10x length difference**
-
-**Risk:**
-
-- Model might learn **"longer = act"** heuristic instead of content-based detection
-
-**Mitigation:**
-
-- **Few-shot examples** should include short acts and long non-acts
-- **Monitor performance** by text length quartile during evaluation
-- If issue detected, sample negative examples with similar length distribution
-
----
-
-## Recommendations for Phase 0 Execution
-
-### Immediate Actions (Before Model Implementation):
-
-1. **Adjust Few-Shot Strategy:**
-   - **Model A:** 5 positive + 8 negative = 13 total (down from 20)
-   - **Model B:** 2-3 per class = 8-12 total (down from 20)
-   - **Model C:** 3-5 examples (add few-shot, not in original plan)
-
-2. **Revise Success Criteria:**
-   - **Model B accuracy:** 0.70 (down from 0.75) — realistic for 44 examples
-   - **Model B Countercyclical:** Use validation set for evaluation
-   - **Model A/C:** Keep original targets (sufficient data)
-
-3. **Evaluation Protocol:**
-   - **Primary:** Validation set metrics
-   - **Test set:** Final evaluation only with confidence intervals
-   - **Cross-validation:** Implement 5-fold CV for Model B
-
-### Documentation Updates:
-
-4. **Phase 0 Report Must Include:**
-   - "Data Limitations and Mitigation Strategies" section
-   - Explicit note: "Countercyclical performance based on validation set (n=2)"
-   - Comparison: Expected (126 acts) vs Actual (44 acts)
-
-5. **Malaysia Planning (Phase 1):**
-   - **Expected: 20-40 acts** (1980-2022 political stable window)
-   - **Approach:** Cross-country transfer learning with expert validation (≥80% agreement target)
-   - **Focus:** Methodology validation, not scale
-   - **Extract all implementation phases** (not just first quarter)
-   - See `docs/phase_1/malaysia_strategy.md` for full strategic plan
-
----
-
-## Contrast with Phase 0 Plan: Summary Table
-
-```{r plan-vs-reality, echo=FALSE}
 tibble(
-  `Assumption (Plan)` = c(
-    "126 acts available",
-    "Countercyclical: 29 acts",
-    "Class balance 'relatively balanced'",
-    "Median ~3 passages/act",
-    "Split ratios: 60/20/20",
-    "Model A: 76/25/25 split",
-    "All quarters available",
-    "Table extraction critical"
+  Metric = c(
+    "Acts with Tier 1 (verbatim) coverage",
+    "Acts with Tier 2 (name mention) coverage",
+    "Acts with any chunk coverage",
+    "Total labeled acts"
   ),
-  `Reality (Data)` = c(
-    "44 acts (35%)",
-    "6 acts (21%)",
-    "6-15 acts per category",
-    "Median 8 passages/act",
-    "Actual: 64/23/14",
-    "Actual: stratified by motivation",
-    "Only first quarter used",
-    "93% acts have complete data"
-  ),
-  Impact = c(
-    "🔴 High",
-    "🔴 High",
-    "🟡 Medium",
-    "🟢 Low",
-    "🟢 Low",
-    "🟢 Low",
-    "🟡 Medium",
-    "🟢 Low"
-  ),
-  `Action Required` = c(
-    "Reduce few-shot examples, adjust targets",
-    "Use val set, flag predictions",
-    "Stratified sampling critical",
-    "Benefit: richer context",
-    "Acceptable deviation",
-    "Stratification justified",
-    "Update Model C to extract phases",
-    "Validates approach"
+  Value = c(
+    sprintf("%d / %d (%.0f%%)", tier1_acts, total_acts, 100 * tier1_acts / total_acts),
+    sprintf("%d / %d (%.0f%%)", tier2_acts, total_acts, 100 * tier2_acts / total_acts),
+    sprintf("%d / %d (%.0f%%)",
+            n_distinct(c(c1_chunk_data$tier1$act_name, c1_chunk_data$tier2$act_name)),
+            total_acts,
+            100 * n_distinct(c(c1_chunk_data$tier1$act_name, c1_chunk_data$tier2$act_name)) / total_acts),
+    as.character(total_acts)
   )
 ) %>%
   gt() %>%
   tab_header(
-    title = "Phase 0 Plan vs Reality",
-    subtitle = "Key discrepancies and their implications"
+    title = "C1 Chunk Tier Coverage",
+    subtitle = "How many acts have chunks assigned to each tier"
   ) %>%
-  cols_label(
-    `Assumption (Plan)` = "Plan Assumption",
-    `Reality (Data)` = "Actual Data",
-    Impact = "Impact",
-    `Action Required` = "Action"
-  ) %>%
-  tab_options(table.width = pct(100))
+  cols_label(Metric = "Metric", Value = "Value") %>%
+  gt_theme_report()
 ```
 
----
+Tier 1 coverage indicates how many labeled acts have their verbatim passage text recoverable in the chunked corpus. Acts without Tier 1 coverage may have passages that span chunk boundaries or come from documents not yet extracted. Tier 2 provides additional coverage through whitespace-normalized substring matching, subcomponent decomposition for compound act names, and co-occurrence matching for event-type names. See `notebooks/verify_chunk_tiers.qmd` for detailed per-act analysis of matching mechanisms and temporal consistency.
 
-## Strategic Implications for Project Objectives
-
-### For Two-Pager (`docs/two_pager.qmd`):
-
-The concept note states:
-
-> "The project begins by training and benchmarking an LLM on the US narrative corpus with Romer & Romer's original tax-shock labels."
-
-**Reality Check:**
-
-- ✅ **Gold-standard benchmark:** Yes, but with **44 acts** (subset of 126-act corpus)
-- ✅ **Transfer learning framing:** 44 acts sufficient for few-shot methodology testing
-- ✅ **Core validation sound:** Tests cross-country transfer, not just scale
-- ✅ **Malaysia realistic:** Phase 1 expects 20-40 acts with expert validation (not 100+)
-
-**Recommended Addition:**
-
-Add footnote: "US benchmark validated on 44 labeled acts (Romer & Romer's narrative passages subset with complete ground truth). Phase 1 tests cross-country transfer to Malaysia (estimated 20-40 acts, 1980-2022) with expert validation to demonstrate methodology generalizability."
-
----
 
 ## Conclusion
 
-The training data is **production-ready for Phase 0 proof-of-concept**, with the following caveats:
+The training data is **ready for Phase 0 codebook evaluation** with the C1-C4 framework.
 
 **Strengths:**
 
-- ✅ 100% alignment rate between labels and shocks
-- ✅ 0% negative example contamination
-- ✅ Perfect data isolation (no leakage between splits)
-- ✅ Rich passage context (median 8 passages per act)
+- 100% alignment rate between labels and shocks
+- Chunk-based evaluation matches production conditions (long documents, fiscal measures amid noise)
+- Three-tier system provides diagnostic granularity (Tier 1 gold standard, Tier 2 generalization, Negatives for precision)
+- Tier 2 matching uses whitespace normalization, subcomponent decomposition, and co-occurrence matching to achieve near-complete act coverage
+- Negative chunks tagged with continuous `key_density` for stratified precision analysis in S3 (no arbitrary relevance-key exclusion)
+- Rich passage context (median 8 passages per act) preserved in aligned_data for few-shot examples
+- LOOCV design uses all 44 acts for both training and evaluation
 
-**Adjustments Required:**
+**Known Limitations:**
 
-1. **Reduce few-shot examples** (8-12 instead of 20 for Model B)
-2. **Lower Model B target** (0.70 accuracy instead of 0.75)
-3. **Use validation set** for Countercyclical evaluation
-4. **Document limitations** clearly in Phase 0 report
+- **44 acts total:** Small sample, but LOOCV maximizes use of available data
+- **Countercyclical under-representation:** Only 6 acts in this motivation category
+- **First-quarter simplification:** Multi-quarter acts reduced to single representative
+- **Tier 1 coverage gaps:** Some acts may lack verbatim passage matches if passages span chunk boundaries or come from unextracted documents
+- **No ground truth for Malaysia:** Phase 2 requires expert validation (target: at least 80% agreement on C1)
 
-**Critical for Malaysia (Phase 1):**
-
-- **Expected: 20-40 acts** (1980-2022 political stable window, not 100+)
-- **Approach:** Deploy US-trained models with expert validation (target ≥80% agreement)
-- **Focus:** Test cross-country transfer learning, not dataset scale
-- **Extract all implementation phases** (not just first quarter)
-- See `docs/phase_1/malaysia_strategy.md` for full strategic plan
-
-🎯 **Bottom Line:** Proceed with Phase 0 with adjusted expectations. The methodology is sound, and **Malaysia (Phase 1) is critical** for validating cross-country transfer learning (not "scalable pipeline generating 100+ acts per country").
+**Evaluation Strategy:** Each codebook (C1-C4) is evaluated through the Halterman & Keith 5-stage framework: S0 (codebook prep), S1 (behavioral tests), S2 (LOOCV on 44 acts with bootstrap CIs), S3 (error analysis and ablation), with S4 (fine-tuning) reserved as a last resort. C1 uses chunk-level inputs for S1-S3, with passage-level few-shot examples and chunk-level test inputs.

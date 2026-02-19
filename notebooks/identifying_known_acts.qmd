@@ -1,12 +1,8 @@
 ---
 title: "Identifying Known Acts in Document Chunks"
 subtitle: "Exploring matching strategies for C1 positive chunk identification"
-date: today
-date-format: long
 execute:
-  cache: true
-  warning: false
-  message: false
+  cache: false
 ---
 
 ## Motivation
@@ -20,7 +16,7 @@ Our current tier system identifies positives at two levels:
 
 The question is whether these criteria are too strict, causing false negatives (chunks that genuinely discuss a known act but are missed by our matching). This notebook investigates the problem and explores solutions.
 
-```{r setup}
+```{r}
 #| label: setup
 #| cache: false
 
@@ -34,22 +30,35 @@ tar_config_set(store = here("_targets"))
 source(here("R/gt_theme.R"))
 set_theme(theme_minimal())
 
+
+```
+
+
+```{r}
+#| label: load-data
 # Load data
 aligned_data <- tar_read(aligned_data)
 chunks <- tar_read(chunks)
 c1_chunk_data <- tar_read(c1_chunk_data)
-```
 
+# Pre-compute normalized text ONCE (chunks$text is ~470 MB per copy)
+chunks_squished <- str_squish(tolower(chunks$text))
+chunks_lower <- tolower(chunks$text)
+n_chunks <- nrow(chunks)
+
+# Free the 470 MB data frame — only the pre-computed vectors are needed below
+rm(chunks)
+invisible(gc())
+```
 
 ## Current State: Tier Distribution
 
-```{r current-tiers}
+```{r}
+#| label: tbl-current-tiers
+#| tbl-cap: "Current Chunk Tier Distribution"
+
 c1_chunk_data$summary %>%
   gt() %>%
-  tab_header(
-    title = "Current Chunk Tier Distribution",
-    subtitle = "Most chunks fall in the excluded gray zone"
-  ) %>%
   cols_label(category = "Tier", n_chunks = "Chunks", pct = "Percent") %>%
   fmt_number(columns = pct, decimals = 1, pattern = "{x}%") %>%
   gt_theme_report()
@@ -60,9 +69,12 @@ c1_chunk_data$summary %>%
 
 ## Why Passages Don't Help with Alias Discovery
 
-The @romer2010 passages are presidential speeches and committee testimony selected to illustrate each act's **motivation**. They rarely name the act itself.
+One natural idea is to extract alternative act names from the @romer2010 passage text. But these passages are presidential speeches and committee testimony selected to illustrate each act's **motivation**, not to name the legislation. They rarely name the act itself.
 
-```{r passage-name-check}
+```{r}
+#| label: tbl-passage-name-check
+#| tbl-cap: "Do R&R Passages Name the Act?"
+
 passage_analysis <- aligned_data %>%
   mutate(
     text_lower = tolower(passages_text),
@@ -87,10 +99,6 @@ tibble(
   )
 ) %>%
   gt() %>%
-  tab_header(
-    title = "Do R&R Passages Name the Act?",
-    subtitle = "Passages describe motivation, not the legislation itself"
-  ) %>%
   cols_label(Metric = "Check", Value = "Result") %>%
   gt_theme_report()
 ```
@@ -114,10 +122,8 @@ Current Tier 2 uses `str_detect(text, fixed(act_name))` which requires the name 
 
 We compare current Tier 2 matching (exact `fixed()` on raw text) against matching after `str_squish()` collapses all whitespace.
 
-```{r squish-test}
-# Pre-compute squished text once
-chunks_squished <- str_squish(tolower(chunks$text))
-chunks_lower <- tolower(chunks$text)
+```{r}
+#| label: squish-test
 
 squish_results <- aligned_data %>%
   rowwise() %>%
@@ -129,9 +135,16 @@ squish_results <- aligned_data %>%
     gained = t2_squished - t2_current
   ) %>%
   ungroup()
+
+# Free the ~470 MB vector (only needed for the current vs squished comparison)
+rm(chunks_lower)
+invisible(gc())
 ```
 
-```{r squish-summary}
+```{r}
+#| label: tbl-squish-summary
+#| tbl-cap: "Impact of Whitespace Normalization on Tier 2 Matching"
+
 tibble(
   Metric = c(
     "Total Tier 2 matches (current)",
@@ -151,23 +164,18 @@ tibble(
   )
 ) %>%
   gt() %>%
-  tab_header(
-    title = "Impact of Whitespace Normalization on Tier 2 Matching",
-    subtitle = "str_squish() recovers OCR line-break matches"
-  ) %>%
   cols_label(Metric = "Metric", Value = "Value") %>%
   gt_theme_report()
 ```
 
-```{r squish-detail}
+```{r}
+#| label: tbl-squish-detail
+#| tbl-cap: "Per-Act Impact of Whitespace Normalization"
+
 squish_results %>%
   select(act_name, year, t2_current, t2_squished, gained) %>%
   arrange(desc(gained)) %>%
   gt() %>%
-  tab_header(
-    title = "Per-Act Impact of Whitespace Normalization",
-    subtitle = "Sorted by number of additional matches recovered"
-  ) %>%
   cols_label(
     act_name = "Act",
     year = "Year",
@@ -191,74 +199,154 @@ squish_results %>%
 
 ## The Five Unmatched Acts
 
-```{r unmatched-acts}
+```{r}
+#| label: tbl-unmatched-acts
+#| tbl-cap: "Acts with Zero Tier 2 Matches Even After Whitespace Fix"
+
 unmatched <- squish_results %>%
   filter(t2_squished == 0) %>%
   select(act_name, year)
 
 unmatched %>%
   gt() %>%
-  tab_header(
-    title = "Acts with Zero Tier 2 Matches Even After Whitespace Fix",
-    subtitle = "These require structural matching improvements"
-  ) %>%
   cols_label(act_name = "Act Name", year = "Year") %>%
   gt_theme_report()
 ```
 
-Each has a distinct problem:
+Each has a distinct naming problem:
 
-1. **Changes in Depreciation Guidelines and Revenue Act of 1962**: Compound name. Documents likely reference "Revenue Act of 1962" separately from "depreciation guidelines."
-2. **Expiration of Excess Profits Tax and of Temporary Income Tax Increases**: Descriptive name, not a formal legislative title. Documents likely describe the event rather than using this label.
-3. **Public Law 89-800 / 90-26**: Numbered public laws. Documents reference these by their common names ("suspension/restoration of the investment tax credit").
-4. **Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997**: Compound name joining two separate acts.
+1. **Changes in Depreciation Guidelines and Revenue Act of 1962**: Compound name joining an executive action with a legislative act. Documents reference each component separately.
+2. **Expiration of Excess Profits Tax and of Temporary Income Tax Increases**: Descriptive event label, not a formal legislative title. Documents describe the expiration itself.
+3. **Public Law 89-800 / 90-26**: Numbered public laws. Documents reference these by their common policy names ("suspension/restoration of the investment tax credit").
+4. **Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997**: Compound name joining two separate acts that passed together.
 
-### Can we match subcomponents of compound names?
+### Subcomponent Decomposition
 
-```{r compound-name-test}
-# Try matching subcomponents of the 5 unmatched acts
-compound_tests <- tribble(
-  ~act_name, ~subcomponent, ~year,
-  "Changes in Depreciation Guidelines and Revenue Act of 1962",
-    "Revenue Act of 1962", 1962,
-  "Changes in Depreciation Guidelines and Revenue Act of 1962",
-    "depreciation guidelines", 1962,
-  "Expiration of Excess Profits Tax and of Temporary Income Tax Increases",
-    "excess profits tax", 1954,
-  "Public Law 89-800 (Suspension of Investment Tax Credit)",
-    "investment tax credit", 1966,
-  "Public Law 89-800 (Suspension of Investment Tax Credit)",
-    "suspension of the investment tax credit", 1966,
-  "Public Law 90-26 (Restoration of the Investment Tax Credit)",
-    "investment tax credit", 1967,
-  "Public Law 90-26 (Restoration of the Investment Tax Credit)",
-    "restoration of the investment tax credit", 1967,
-  "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997",
-    "Taxpayer Relief Act of 1997", 1997,
-  "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997",
-    "Balanced Budget Act of 1997", 1997
-)
+To handle these compound names systematically, we define a `generate_subcomponents()` function that decomposes any act name into searchable terms. The function applies five strategies: split on "and", extract parenthetical content, find embedded formal act names (e.g., "Revenue Act of 1962" inside a compound), extract Public Law numbers, and construct action + subject phrases for event-type names. It also excludes overly broad terms: both topic-level phrases ("excess profits tax") and generic split fragments ("Revenue", "Jobs") that match too widely to identify specific legislation (see @tbl-broad-exclusions below).
 
-compound_results <- compound_tests %>%
-  rowwise() %>%
-  mutate(
-    sub_lower = tolower(subcomponent),
-    sub_squished = str_squish(sub_lower),
-    n_matches = sum(str_detect(chunks_squished, fixed(sub_squished)))
-  ) %>%
-  ungroup()
+```{r}
+#| label: define-subcomponents
 
-compound_results %>%
-  select(act_name, subcomponent, n_matches) %>%
+generate_subcomponents <- function(act_name) {
+  rows <- list()
+
+  # Full name always included
+  rows[[length(rows) + 1]] <- tibble(term = act_name, mechanism = "Full name")
+
+  # Split on " and "
+  if (str_detect(act_name, " and ")) {
+    parts <- str_trim(str_split(act_name, " and ")[[1]])
+    for (p in parts) {
+      rows[[length(rows) + 1]] <- tibble(term = p, mechanism = "Split on 'and'")
+    }
+  }
+
+  # Parenthetical content + "of the" variant
+  if (str_detect(act_name, "\\(")) {
+    paren <- str_extract(act_name, "(?<=\\()([^)]+)(?=\\))")
+    if (!is.na(paren)) {
+      rows[[length(rows) + 1]] <- tibble(term = paren, mechanism = "Parenthetical")
+      if (str_detect(paren, " of ") && !str_detect(paren, " of the ")) {
+        rows[[length(rows) + 1]] <- tibble(
+          term = str_replace(paren, " of ", " of the "),
+          mechanism = "Parenthetical + article"
+        )
+      }
+    }
+    before_paren <- str_trim(str_remove(act_name, "\\s*\\([^)]+\\)"))
+    rows[[length(rows) + 1]] <- tibble(term = before_paren, mechanism = "Before parenthetical")
+  }
+
+  # Embedded formal act names: "Xyz Act of YYYY"
+  formal <- str_extract_all(
+    act_name,
+    "[A-Z][\\w-]+(?:\\s+[A-Z][\\w-]+)*\\s+Act\\s+of\\s+\\d{4}"
+  )[[1]]
+  for (f in formal) {
+    rows[[length(rows) + 1]] <- tibble(term = f, mechanism = "Embedded formal name")
+  }
+
+  # Public Law numbers
+  pl <- str_extract(act_name, "Public Law \\d+-\\d+")
+  if (!is.na(pl)) {
+    rows[[length(rows) + 1]] <- tibble(term = pl, mechanism = "Public Law number")
+  }
+
+  # Action + subject phrases for event-type names
+  event_match <- str_match(
+    act_name,
+    "^(Expiration|Suspension|Restoration|Changes)\\s+(?:in\\s+)?(.*?)(?:\\s+and\\s+|$)"
+  )
+  if (!is.na(event_match[1, 1]) && !is.na(event_match[1, 2]) && !is.na(event_match[1, 3])) {
+    action <- tolower(event_match[1, 2])
+    subject <- tolower(str_trim(event_match[1, 3]))
+    rows[[length(rows) + 1]] <- tibble(
+      term = paste(action, "of the", subject),
+      mechanism = "Action + subject"
+    )
+    rows[[length(rows) + 1]] <- tibble(
+      term = paste(action, "of", subject),
+      mechanism = "Action + subject"
+    )
+  }
+
+  result <- bind_rows(rows)
+
+  # Exclude overly broad terms
+  broad_exclusions <- c(
+    # Topic-level phrases (match policy areas, not specific acts)
+    "investment tax credit", "balanced budget",
+    "taxpayer relief", "excess profits tax",
+    "depreciation guidelines", "temporary income tax",
+    # Fragments from splitting on "and" (too generic)
+    "revenue", "economic growth", "jobs",
+    "tax reduction", "job creation", "tax equity"
+  )
+  result <- result %>% filter(!tolower(term) %in% broad_exclusions)
+
+  # Deduplicate by term (keep first mechanism label)
+  result %>% distinct(term, .keep_all = TRUE)
+}
+```
+
+@tbl-name-decomposition applies the function to the 5 unmatched acts and counts chunk matches for each generated search term.
+
+```{r}
+#| label: tbl-name-decomposition
+#| tbl-cap: "Subcomponent Matches for the 5 Unmatched Acts"
+
+unmatched_acts <- squish_results %>%
+  filter(t2_squished == 0)
+
+decomp_rows <- list()
+for (i in seq_len(nrow(unmatched_acts))) {
+  act <- unmatched_acts$act_name[i]
+  yr <- unmatched_acts$year[i]
+  subs <- generate_subcomponents(act)
+
+  for (j in seq_len(nrow(subs))) {
+    sub_sq <- str_squish(tolower(subs$term[j]))
+    n <- sum(str_detect(chunks_squished, fixed(sub_sq)))
+    decomp_rows[[length(decomp_rows) + 1]] <- tibble(
+      act_name = act,
+      year = yr,
+      mechanism = subs$mechanism[j],
+      search_term = subs$term[j],
+      n_matches = n
+    )
+  }
+}
+
+decomp_tbl <- bind_rows(decomp_rows)
+
+decomp_tbl %>%
   gt() %>%
-  tab_header(
-    title = "Subcomponent Matching for Unmatched Acts",
-    subtitle = "Breaking compound names into searchable parts"
-  ) %>%
   cols_label(
-    act_name = "Full Act Name",
-    subcomponent = "Subcomponent Searched",
-    n_matches = "Chunk Matches"
+    act_name = "Act",
+    year = "Year",
+    mechanism = "Mechanism",
+    search_term = "Search Term",
+    n_matches = "Matches"
   ) %>%
   tab_style(
     style = cell_fill(color = "#e8f5e9"),
@@ -268,66 +356,102 @@ compound_results %>%
     style = cell_fill(color = "#ffebee"),
     locations = cells_body(rows = n_matches == 0)
   ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = n_matches, rows = n_matches > 0)
+  ) %>%
   gt_theme_report()
 ```
+
+**Key findings:**
+
+- **4 of 5 acts become findable** through subcomponent decomposition. Split on "and" recovers formal legislative names ("Revenue Act of 1962" with 56 matches; "Taxpayer Relief Act of 1997" with 20; "Balanced Budget Act of 1997" with 70). Parenthetical extraction finds "Suspension of the Investment Tax Credit" (9 matches) and "Restoration of the Investment Tax Credit" (6 matches) for the Public Law acts.
+- **Public Law numbers** (89-800, 90-26) provide additional specific matches (2-3 chunks each).
+- **The Expiration of Excess Profits Tax act remains at 0 matches.** The action + subject mechanism produces malformed phrases ("expiration of the of excess profits tax") due to the unusual "of...and of" structure. This act requires a different approach, explored in the next section.
 
 
 ## Proposed Matching Improvements
 
-Based on these findings, we can improve positive identification with two changes that stay at chunk level throughout:
+Based on these findings, we can improve positive identification with changes that stay at chunk level throughout. This section addresses the first two; a third mechanism (co-occurrence matching) emerges from the excess profits investigation in the next section.
 
 ### 1. Whitespace normalization before matching
 
 Apply `str_squish()` to both act names and chunk text before `str_detect()`. This collapses OCR line breaks without changing the matching logic. No new dependencies, no mixed granularities.
 
-**Expected impact:** Recovers additional matches for 35 of 40 acts, with some acts doubling their match count.
+**Expected impact:** Recovers additional matches for most acts (29 of 40), with some doubling their match count.
 
 ### 2. Subcomponent matching for compound act names
 
-For act names containing "and" or parenthetical descriptions, split into subcomponents and match each separately. This handles:
+Apply `generate_subcomponents()` (defined above) to decompose compound act names into searchable terms. As demonstrated in @tbl-name-decomposition, this recovers the 5 previously unmatched acts.
 
-- "Taxpayer Relief Act of 1997 **and** Balanced Budget Act of 1997" → search for each half
-- "Public Law 89-800 **(Suspension of Investment Tax Credit)**" → search for the parenthetical description
-- "Changes in Depreciation Guidelines **and** Revenue Act of 1962" → search for each component
+### 3. Search terms to exclude from Tier 2
 
-```{r proposed-impact}
-#| cache: false
+The decomposition and audit analysis identified two categories of overly broad terms that `generate_subcomponents()` excludes. **Topic-level phrases** match policy areas rather than specific acts. **Split fragments** are single words or short phrases produced by splitting compound act names on "and" that are too generic to identify any legislation.
 
-# Estimate total positive chunks under proposed system
-# Current T2: exact match on raw text
-# Proposed: squished + subcomponent matching
+```{r}
+#| label: tbl-broad-exclusions
+#| tbl-cap: "Search Terms Excluded from Tier 2 as Overly Broad"
 
-# For compound names, generate subcomponents
-generate_subcomponents <- function(act_name) {
-  subs <- character()
+excluded_terms <- tibble(
+  phrase = c(
+    "revenue", "economic growth", "jobs",
+    "tax reduction", "job creation", "tax equity",
+    "balanced budget", "excess profits tax",
+    "investment tax credit", "taxpayer relief",
+    "depreciation guidelines", "temporary income tax"
+  ),
+  category = c(
+    rep("Split fragment", 6),
+    rep("Topic phrase", 6)
+  ),
+  problem = c(
+    "Common fiscal term appearing in nearly every document",
+    "Generic macroeconomic phrase",
+    "Generic labor-market term",
+    "Matches any tax cut discussion",
+    "Generic labor-market phrase",
+    "Matches any tax fairness discussion",
+    "Matches general budget balance commentary",
+    "Matches Korean War era and WWII discussions broadly",
+    "Matches every ITC discussion across 80 years",
+    "Generic phrase used in many policy contexts",
+    "Matches general depreciation policy",
+    "Matches any temporary tax discussion"
+  )
+)
 
-  # Split on " and " (but not "and of")
-  if (str_detect(act_name, " and (?!of )")) {
-    parts <- str_split(act_name, " and (?!of )")[[1]]
-    subs <- c(subs, str_trim(parts))
-  }
+# Compute match counts dynamically
+excluded_terms <- excluded_terms %>%
+  rowwise() %>%
+  mutate(matches = sum(str_detect(chunks_squished, fixed(phrase)))) %>%
+  ungroup() %>%
+  arrange(desc(matches))
 
-  # Extract parenthetical content
-  if (str_detect(act_name, "\\(")) {
-    paren <- str_extract(act_name, "\\(([^)]+)\\)")
-    if (!is.na(paren)) {
-      subs <- c(subs, str_remove_all(paren, "[()]"))
-    }
-  }
+excluded_terms %>%
+  gt() %>%
+  cols_label(
+    phrase = "Excluded Phrase",
+    category = "Category",
+    matches = "Matches",
+    problem = "Problem"
+  ) %>%
+  gt_theme_report()
+```
 
-  # Always include the full name
-  subs <- c(act_name, subs)
-  unique(str_trim(subs))
-}
+For compound-name acts, we rely on the remaining specific subcomponents: formal legislative names ("Revenue Act of 1962", "Balanced Budget Act of 1997"), parenthetical descriptions ("Suspension of the Investment Tax Credit"), and Public Law numbers.
+
+```{r}
+#| label: tbl-proposed-impact
+#| tbl-cap: "Cumulative Impact of Proposed Matching Improvements"
 
 # Count matches for each act under proposed system
 proposed_results <- aligned_data %>%
   rowwise() %>%
   mutate(
     subcomponents = list(generate_subcomponents(act_name)),
-    n_subs = length(subcomponents),
+    n_subs = nrow(subcomponents),
     matches_proposed = {
-      subs_squished <- str_squish(tolower(subcomponents))
+      subs_squished <- str_squish(tolower(subcomponents$term))
       matched_chunks <- logical(length(chunks_squished))
       for (s in subs_squished) {
         matched_chunks <- matched_chunks | str_detect(chunks_squished, fixed(s))
@@ -367,61 +491,398 @@ tibble(
   )
 ) %>%
   gt() %>%
-  tab_header(
-    title = "Cumulative Impact of Proposed Matching Improvements",
-    subtitle = "Each strategy builds on the previous"
-  ) %>%
   cols_label(
     Strategy = "Strategy",
     `Total Chunk Matches` = "Total Matches",
     `Acts with 0 Matches` = "Unmatched Acts"
   ) %>%
+  tab_footnote("Each strategy builds on the previous.") %>%
   gt_theme_report()
 ```
 
-```{r per-act-comparison}
+```{r}
+#| label: tbl-per-act-comparison
+#| tbl-cap: "Per-Act Chunk Matches Under Proposed Strategy"
+
 comparison %>%
-  arrange(desc(matches_proposed - t2_current)) %>%
+  select(act_name, year, matches_proposed) %>%
+  arrange(desc(matches_proposed)) %>%
   gt() %>%
-  tab_header(
-    title = "Per-Act Comparison Across Strategies",
-    subtitle = "Sorted by total improvement over current matching"
-  ) %>%
   cols_label(
     act_name = "Act",
     year = "Year",
-    t2_current = "Current",
-    t2_squished = "Squished",
-    matches_proposed = "Proposed",
-    gained_squish = "+Squish",
-    gained_subcomp = "+Subcomp"
-  ) %>%
-  tab_style(
-    style = cell_fill(color = "#e8f5e9"),
-    locations = cells_body(
-      columns = matches_proposed,
-      rows = matches_proposed > t2_current
-    )
+    matches_proposed = "Matching Chunks"
   ) %>%
   tab_style(
     style = cell_fill(color = "#ffebee"),
+    locations = cells_body(rows = matches_proposed == 0)
+  ) %>%
+  gt_theme_report()
+```
+
+### Search term audit
+
+The tables below list every search term that `generate_subcomponents()` produces across all 40 acts. @tbl-subcomponent-audit shows each term with its chunk match count (orange rows exceed 100 matches and warrant manual review). @tbl-mechanism-summary pivots the same data by mechanism, so we can see which decomposition strategy drives matches for each act.
+
+```{r}
+#| label: tbl-subcomponent-audit
+#| tbl-cap: "Subcomponent Audit: All Search Terms Generated by generate_subcomponents()"
+
+# Build audit table for all 40 acts
+audit_rows <- list()
+for (i in seq_len(nrow(aligned_data))) {
+  act <- aligned_data$act_name[i]
+  yr <- aligned_data$year[i]
+  subs <- generate_subcomponents(act)
+
+  for (j in seq_len(nrow(subs))) {
+    sub_sq <- str_squish(tolower(subs$term[j]))
+    n <- sum(str_detect(chunks_squished, fixed(sub_sq)))
+    audit_rows[[length(audit_rows) + 1]] <- tibble(
+      act_name = act,
+      year = yr,
+      mechanism = subs$mechanism[j],
+      search_term = subs$term[j],
+      n_matches = n
+    )
+  }
+}
+audit_tbl <- bind_rows(audit_rows)
+
+audit_tbl %>%
+  arrange(desc(n_matches)) %>%
+  gt() %>%
+  cols_label(
+    act_name = "Act",
+    year = "Year",
+    mechanism = "Mechanism",
+    search_term = "Search Term",
+    n_matches = "Matches"
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#fff3e0"),
+    locations = cells_body(rows = n_matches > 100)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#ffebee"),
+    locations = cells_body(rows = n_matches == 0)
+  ) %>%
+  gt_theme_report()
+```
+
+```{r}
+#| label: tbl-mechanism-summary
+#| tbl-cap: "Per-Act Chunk Matches by Matching Mechanism"
+
+# Pivot audit table: one column per mechanism, sum matches
+mechanism_wide <- audit_tbl %>%
+  group_by(act_name, year, mechanism) %>%
+  summarize(n_matches = sum(n_matches), .groups = "drop") %>%
+  pivot_wider(
+    names_from = mechanism,
+    values_from = n_matches,
+    values_fill = 0
+  )
+
+# Add grand total (union-based) from proposed_results
+mechanism_wide <- mechanism_wide %>%
+  left_join(
+    comparison %>% select(act_name, matches_proposed),
+    by = "act_name"
+  ) %>%
+  rename(`Grand Total` = matches_proposed) %>%
+  arrange(desc(`Grand Total`))
+
+mechanism_wide %>%
+  gt() %>%
+  cols_label(act_name = "Act", year = "Year") %>%
+  sub_missing(missing_text = "—") %>%
+  tab_style(
+    style = cell_fill(color = "#ffebee"),
     locations = cells_body(
-      columns = matches_proposed,
-      rows = matches_proposed == 0
+      columns = `Grand Total`,
+      rows = `Grand Total` == 0
     )
   ) %>%
   gt_theme_report()
 ```
+
+
+## Finding the Excess Profits Tax Expiration
+
+The act "Expiration of Excess Profits Tax and of Temporary Income Tax Increases" is the hardest to match via subcomponent decomposition. The full name yields 0 matches, the split-on-"and" terms are fragile, and the action+subject mechanism produces malformed phrases. Meanwhile "excess profits tax" alone was excluded as overly broad (336 matches). But how broad is it really? If those matches cluster around the Korean War era, "excess profits tax" may be specific enough in practice.
+
+```{r}
+#| label: excess-profits-data
+#| cache: false
+
+# Reload chunks for year metadata (text not needed, but year is not in chunks_squished)
+chunks_years <- tar_read(chunks) %>% select(year)
+
+# Match "excess profits tax" and tabulate by year
+ept_by_year <- tibble(
+  year = chunks_years$year,
+  hit = str_detect(chunks_squished, fixed("excess profits tax"))
+) %>%
+  filter(hit) %>%
+  count(year, name = "n_chunks") %>%
+  arrange(year)
+
+rm(chunks_years)
+invisible(gc())
+```
+
+```{r}
+#| label: fig-excess-profits-year-distribution
+#| fig-cap: "Chunks matching \"excess profits tax\" by document year. The Korean War era (1950--1955, shaded) accounts for the majority of mentions."
+
+ept_by_year %>%
+  ggplot(aes(x = year, y = n_chunks)) +
+  annotate(
+    "rect",
+    xmin = 1949.5, xmax = 1955.5, ymin = -Inf, ymax = Inf,
+    fill = "#a5d6a7", alpha = 0.3
+  ) +
+  geom_col(fill = "#455a64") +
+  annotate(
+    "text",
+    x = 1952.5, y = Inf, label = "Korean War era",
+    vjust = 1.5, size = 3.2, color = "#2e7d32"
+  ) +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  labs(x = "Year", y = "Chunks")
+```
+
+```{r}
+#| label: tbl-excess-profits-decade-summary
+#| tbl-cap: "Decade Summary: \"excess profits tax\" Mentions"
+
+ept_by_year %>%
+  mutate(decade = paste0(floor(year / 10) * 10, "s")) %>%
+  group_by(decade) %>%
+  summarize(n_chunks = sum(n_chunks), .groups = "drop") %>%
+  gt() %>%
+  cols_label(decade = "Decade", n_chunks = "Chunks") %>%
+  gt_theme_report()
+```
+
+@fig-excess-profits-year-distribution and @tbl-excess-profits-decade-summary show that mentions cluster heavily in the Korean War era, but the term persists across decades. Regardless of concentration, the term alone is too generic: it matches any discussion of the policy area, not the specific 1953 expiration event. The strategy comparison below confirms that **co-occurrence** ("expiration" AND "excess profits" in the same chunk) is the right approach: it captures the policy event precisely without requiring exact substring ordering, making it robust to OCR artifacts and varied phrasing.
+
+```{r}
+#| label: tbl-excess-profits-cooccurrence
+#| tbl-cap: "Matching Strategies for \"Expiration of Excess Profits Tax\""
+
+# Compare strategies for this act
+ept_strategies <- tibble(
+  Strategy = c(
+    "\"excess profits tax\" (all years)",
+    "\"expiration\" AND \"excess profits\" (co-occurrence)",
+    "\"expiration of excess profits tax\" (exact substring)"
+  ),
+  Matches = c(
+    sum(str_detect(chunks_squished, fixed("excess profits tax"))),
+    sum(
+      str_detect(chunks_squished, fixed("expiration")) &
+        str_detect(chunks_squished, fixed("excess profits"))
+    ),
+    sum(str_detect(chunks_squished, fixed("expiration of excess profits tax")))
+  )
+)
+
+ept_strategies %>%
+  gt() %>%
+  cols_label(Strategy = "Strategy", Matches = "Chunks") %>%
+  gt_theme_report()
+```
+
+**Decision:** For "Expiration of Excess Profits Tax and of Temporary Income Tax Increases", the pipeline will use **co-occurrence matching**: a chunk is positive if it contains both "expiration" and "excess profits". This introduces a new matching mechanism alongside substring matching and subcomponent decomposition. The `identify_tier2_chunks()` function will need a co-occurrence lookup table for acts where single-term matching is insufficient.
+
+
+## Timing Consistency Across All Acts
+
+The excess profits investigation above examined one act's temporal distribution. This section generalizes the analysis to all 44 acts, asking: **do matching chunks come from documents published near the act's year, or are matches scattered across the full corpus?** Temporal clustering around the act year is a sign of precise matching; a flat distribution signals that the search terms are too generic.
+
+We compute two views. First, the raw document-year distribution for each act's matching chunks. Second, for acts with a year in their name, the difference between the chunk's parent document year and the year embedded in the act name. A concentration around zero in the difference plot means the matching chunks come from contemporaneous documents.
+
+```{r}
+#| label: timing-data
+
+# Reload chunk years (freed earlier to save memory)
+chunks_meta <- tar_read(chunks) %>% select(year)
+
+# Co-occurrence rules from the excess profits investigation
+cooccurrence_rules <- list(
+  "Expiration of Excess Profits Tax and of Temporary Income Tax Increases" = list(
+    c("expiration", "excess profits")
+  )
+)
+
+# For each act, find which chunks match and record their document years
+timing_data <- list()
+for (i in seq_len(nrow(proposed_results))) {
+  act <- proposed_results$act_name[i]
+  subs <- proposed_results$subcomponents[[i]]
+  subs_squished <- str_squish(tolower(subs$term))
+
+  # Acts with co-occurrence rules use ONLY co-occurrence (not subcomponents)
+  if (act %in% names(cooccurrence_rules)) {
+    matched <- logical(length(chunks_squished))
+    for (rule in cooccurrence_rules[[act]]) {
+      co_match <- Reduce(`&`, lapply(rule, function(term) {
+        str_detect(chunks_squished, fixed(term))
+      }))
+      matched <- matched | co_match
+    }
+  } else {
+    matched <- logical(length(chunks_squished))
+    for (s in subs_squished) {
+      matched <- matched | str_detect(chunks_squished, fixed(s))
+    }
+  }
+
+  if (any(matched)) {
+    timing_data[[length(timing_data) + 1]] <- tibble(
+      act_name = act,
+      chunk_year = chunks_meta$year[matched]
+    )
+  }
+}
+
+timing_df <- bind_rows(timing_data) %>%
+  left_join(
+    aligned_data %>% select(act_name, signed_year = year),
+    by = "act_name"
+  ) %>%
+  mutate(
+    act_name_year = as.integer(str_extract(act_name, "\\d{4}")),
+    has_name_year = !is.na(act_name_year),
+    year_diff = chunk_year - act_name_year
+  )
+
+# Short labels for facets (truncate long names)
+timing_df <- timing_df %>%
+  mutate(
+    label = if_else(
+      nchar(act_name) > 40,
+      paste0(str_trunc(act_name, 37), " (", signed_year, ")"),
+      paste0(act_name, " (", signed_year, ")")
+    )
+  )
+
+rm(chunks_meta)
+invisible(gc())
+```
+
+### Raw chunk-year distributions
+
+@fig-chunk-years shows the document-year distribution of matching chunks for each act. The red dashed line marks the act's signed year from `aligned_data`. Acts with tight clustering around the red line have precise, temporally specific matches. Acts with dispersed distributions (e.g., those containing common policy terms) may need tighter matching criteria.
+
+```{r}
+#| label: fig-chunk-years
+#| fig-cap: "Document-year distribution of matching chunks for each known act. Red dashed line marks the act's signed year."
+#| fig-height: 20
+#| fig-width: 20
+#| column: page
+
+timing_df %>%
+  ggplot(aes(x = chunk_year)) +
+  geom_histogram(binwidth = 2, fill = "#455a64", color = "white", linewidth = 0.1) +
+  geom_vline(aes(xintercept = signed_year), color = "#c62828", linetype = "dashed") +
+  facet_wrap(~label, scales = "free_y", ncol = 6) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 4)) +
+  labs(x = "Document Year", y = "Chunks") +
+  theme(
+    strip.text = element_text(size = 6),
+    axis.text = element_text(size = 6)
+  )
+```
+
+### Year-difference distributions
+
+For the subset of acts with a year in their name (e.g., "Revenue Act of **1962**"), @fig-year-diff plots the difference between each matching chunk's document year and the year embedded in the act name. A spike at zero means most matches come from the same year the act was enacted. Positive values indicate retrospective discussion in later documents (common in Economic Reports of the President). Negative values would indicate pre-enactment discussion.
+
+```{r}
+#| label: fig-year-diff
+#| fig-cap: "Distribution of (document year − act name year) for matching chunks. Only acts with a year in their name are shown. Blue dashed line marks zero (contemporaneous)."
+#| fig-height: 24
+#| fig-width: 10
+
+timing_df %>%
+  filter(has_name_year) %>%
+  ggplot(aes(x = year_diff)) +
+  geom_histogram(binwidth = 1, fill = "#455a64", color = "white", linewidth = 0.1) +
+  geom_vline(xintercept = 0, color = "#1565c0", linetype = "dashed") +
+  facet_wrap(~label, scales = "free_y", ncol = 4) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 4)) +
+  labs(x = "Document Year \u2212 Act Year", y = "Chunks") +
+  theme(
+    strip.text = element_text(size = 6),
+    axis.text = element_text(size = 6)
+  )
+```
+
+```{r}
+#| label: tbl-timing-summary
+#| tbl-cap: "Timing Consistency Summary for Acts with a Year in Their Name"
+
+timing_df %>%
+  filter(has_name_year) %>%
+  group_by(act_name, signed_year, act_name_year) %>%
+  summarize(
+    n_chunks = n(),
+    median_diff = median(year_diff),
+    pct_within_2 = mean(abs(year_diff) <= 2) * 100,
+    pct_within_5 = mean(abs(year_diff) <= 5) * 100,
+    .groups = "drop"
+  ) %>%
+  arrange(pct_within_2) %>%
+  gt() %>%
+  cols_label(
+    act_name = "Act",
+    signed_year = "Signed",
+    act_name_year = "Name Year",
+    n_chunks = "Chunks",
+    median_diff = "Median Diff",
+    pct_within_2 = "Within ±2 yr",
+    pct_within_5 = "Within ±5 yr"
+  ) %>%
+  fmt_number(columns = c(pct_within_2, pct_within_5), decimals = 1, pattern = "{x}%") %>%
+  tab_style(
+    style = cell_fill(color = "#e8f5e9"),
+    locations = cells_body(rows = pct_within_2 >= 50)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#fff3e0"),
+    locations = cells_body(rows = pct_within_2 < 50 & pct_within_2 >= 25)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#ffebee"),
+    locations = cells_body(rows = pct_within_2 < 25)
+  ) %>%
+  tab_footnote("Sorted by within ±2 year percentage (ascending). Green ≥50%, orange 25–50%, red <25%.") %>%
+  gt_theme_report()
+```
+
+Acts with low temporal concentration (red rows in @tbl-timing-summary) are candidates for tighter matching: their search terms may be matching generic policy discussion rather than the specific legislation. Acts with high concentration (green rows) confirm that our proposed matching strategy identifies the right documents.
 
 
 ## Rethinking Negatives
 
 With improved positive matching, we can also relax the negative criterion. The current system excludes all chunks matching `relevance_keys` from the negative pool, leaving only 35 clean negatives (1.2% of all chunks). This makes precision untestable.
 
-**Proposed:** Include gray-zone chunks (have relevance keys but no positive tier match) as **hard negatives**. Tag them so we can analyze performance separately.
+**Proposed:** Include all non-positive chunks as negatives, and compute a continuous **key density** score (`n_relevance_keys / n_words`) that measures how much fiscal vocabulary each negative chunk contains. This replaces the binary easy/hard distinction with a gradient:
 
-```{r negative-proposal}
-n_total <- nrow(chunks)
+- Low density (e.g., < 1%): general economic forecasts, administrative content
+- Medium density (e.g., 1-5%): economic commentary with some fiscal vocabulary
+- High density (e.g., > 5%): substantive fiscal policy discussion without naming a specific act
+
+This continuous measure feeds directly into S3 error analysis: we can plot the model's false positive rate against key density to identify the threshold where discrimination breaks down. No arbitrary cutoff needed at the data preparation stage.
+
+```{r}
+#| label: tbl-negative-proposal
+#| tbl-cap: "Proposed Tier System with Expanded Negative Pool"
+
+n_total <- n_chunks
 n_tier1 <- nrow(c1_chunk_data$tier1)
 n_clean_neg <- nrow(c1_chunk_data$negatives)
 
@@ -437,37 +898,36 @@ n_gray_zone <- n_total - n_current_positives - n_clean_neg
 tibble(
   Category = c(
     "Tier 1 (verbatim passage)",
-    "Tier 2 (act name match) — current",
-    "Easy negatives (no relevance keys)",
-    "Hard negatives (relevance keys, no act match)",
+    "Tier 2 (act name match)",
+    "Negatives (no act match, no relevance keys)",
+    "Negatives (no act match, has relevance keys)",
     "Total"
   ),
   Chunks = c(n_tier1, n_current_positives - n_tier1, n_clean_neg, n_gray_zone, n_total),
   Role = c(
     "Gold standard positive",
     "Inferred positive",
-    "Precision test (easy)",
-    "Precision test (challenging)",
+    "Negative (low key density expected)",
+    "Negative (higher key density expected)",
     ""
   )
 ) %>%
   gt() %>%
-  tab_header(
-    title = "Proposed Tier System with Hard Negatives",
-    subtitle = "Gray-zone chunks become hard negatives instead of being excluded"
-  ) %>%
   cols_label(Category = "Category", Chunks = "N", Role = "Evaluation Role") %>%
   gt_theme_report()
 ```
+
+Under this scheme, `prepare_c1_chunk_data()` will compute `key_density` for every negative chunk. During S3 error analysis, we can stratify false positives by density bins to understand whether the model struggles with fiscal-vocabulary-rich negatives (expected) or also fails on clean negatives (a more serious problem).
 
 
 ## Next Steps
 
 1. **Implement whitespace normalization** in `identify_tier2_chunks()`: apply `str_squish()` to both act names and chunk text before matching
-2. **Implement subcomponent matching** for compound act names: split on " and ", extract parenthetical descriptions
-3. **Relax negative criterion**: remove `relevance_keys` exclusion, tag chunks with a `difficulty` flag (easy/hard) instead
-4. **Investigate remaining unmatched acts**: if any acts still have zero matches after improvements, consider OCR-tolerant fuzzy matching as a targeted fix
-5. **Update `prepare_c1_chunk_data()`** to return the revised tier assignments and hard/easy negative distinction
+2. **Implement subcomponent matching** for compound act names: split on " and ", extract parenthetical descriptions, find embedded formal act names. Exclude the 5 overly broad phrases identified above.
+3. **Implement co-occurrence matching** for event-type acts: a lookup table mapping acts to term pairs (e.g., "expiration" + "excess profits") for cases where substring matching is insufficient
+4. **Relax negative criterion**: remove `relevance_keys` exclusion from negatives. Compute `key_density` (`n_relevance_keys / n_words`) as a continuous measure for each negative chunk. This feeds into S3 error analysis.
+5. **Validate coverage**: confirm all 44 acts have at least one Tier 2 match after improvements
+6. **Update `prepare_c1_chunk_data()`** to return the revised tier assignments and key-density-tagged negatives
 
 
 ## References {.unnumbered}
