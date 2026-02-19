@@ -1,18 +1,7 @@
 ---
 title: "Model A Progress Report: Automated Detection of Fiscal Policy Acts"
 subtitle: "Training Results for Phase 0 - U.S. Benchmark Dataset"
-author: "Fiscal Shocks Research Team"
-date: "January 21, 2026"
-format:
-  html:
-    toc: true
-    toc-depth: 2
-    code-fold: true
-    theme: cosmo
-execute:
-  echo: false
-  warning: false
-  message: false
+date: "2026-01-26"
 ---
 
 ```{r setup}

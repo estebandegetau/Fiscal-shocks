@@ -13,4 +13,6 @@ execute:
   warning: false
   message: false
   echo: false
+  freeze: true  # never re-render when rendering project
 
+date-format: long

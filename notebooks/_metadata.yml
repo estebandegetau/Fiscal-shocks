@@ -9,3 +9,8 @@ format:
 
 execute:
   echo: true
+  warning: false
+  message: false
+
+date: today
+date-format: long

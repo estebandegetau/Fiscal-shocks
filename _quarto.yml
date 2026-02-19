@@ -4,9 +4,10 @@ project:
   render:
     - docs/*.qmd
     - notebooks/*.qmd
-    - reports/*.qmd
+    # - reports/*.qmd
     - index.qmd
     - "!*unused/"
+    - "!notebooks/c1*.qmd"
 
 website: 
   sidebar: 

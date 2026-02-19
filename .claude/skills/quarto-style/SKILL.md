@@ -81,16 +81,20 @@ All tables must end with `%>% gt_theme_report()` (defined in `R/gt_theme.R`, sou
 Required pattern:
 
 ```r
+#| label: tbl-descriptive-name
+#| tbl-cap: "Human-readable table caption"
+
 data %>%
   gt() %>%
-  tab_header(title = "Table Title") %>%
   cols_label(col1 = "Readable Name") %>%
   gt_theme_report()
 ```
 
 ### Rules
 
-- Always include `tab_header()` with at least a title
+- Always use Quarto chunk options `label: tbl-{ref}` and `tbl-cap:` for table titles and cross-referencing
+- Reference tables in text with `@tbl-{ref}` (e.g., `@tbl-descriptive-name`)
+- Do **not** use `tab_header()` for the main title; use `tbl-cap:` instead so Quarto handles numbering and cross-references
 - Always pipe `gt_theme_report()` as the **last** step in the gt chain
 - Let tables take their natural width; do not force `table.width = pct(100)`
 - Use `tab_footnote()` for methodological notes
@@ -103,17 +107,21 @@ data %>%
 Set the global theme once in the setup chunk via `set_theme(theme_minimal())`. Individual plots should **not** add `+ theme_minimal()`.
 
 ```r
+#| label: fig-descriptive-name
+#| fig-cap: "Human-readable figure caption"
+
 ggplot(data, aes(x, y)) +
   geom_*() +
   labs(
-    title = "Descriptive Title",
-    subtitle = "Additional context if needed",
     x = "X Axis Label",
     y = "Y Axis Label"
   )
 ```
 
-- Always provide `title` and axis labels via `labs()`
+- Always use Quarto chunk options `label: fig-{ref}` and `fig-cap:` for figure titles and cross-referencing
+- Reference figures in text with `@fig-{ref}` (e.g., `@fig-descriptive-name`)
+- Do **not** put the main title in `labs(title = ...)`; use `fig-cap:` instead so Quarto handles numbering and cross-references
+- Always provide axis labels via `labs()`
 - `theme_minimal()` is set globally in setup; do not repeat per plot
 - Use `scales::comma`, `scales::percent`, `scales::dollar_format()` for axis formatting
 
@@ -169,6 +177,10 @@ A caveat or limitation.
 ### Cross-references
 
 Use Quarto cross-reference syntax for figures, tables, and sections when the document is long enough to benefit from it.
+
+- Figures: `label: fig-{ref}` + `fig-cap:` in chunk options, reference with `@fig-{ref}`
+- Tables: `label: tbl-{ref}` + `tbl-cap:` in chunk options, reference with `@tbl-{ref}`
+- Sections: `{#sec-label}` on heading, reference with `@sec-label`
 
 ## Citations
 
@@ -256,9 +268,14 @@ cat("- Finding 2\n")
 
 ### Chunk labels
 
-Use descriptive kebab-case labels for chunks that produce figures or tables:
+Use Quarto's `fig-` and `tbl-` prefixes so cross-references work automatically:
 
 ```r
-#| label: codebook-performance-table
-#| label: magnitude-distribution-plot
+#| label: fig-magnitude-distribution
+#| fig-cap: "Distribution of fiscal shock magnitudes"
+
+#| label: tbl-codebook-performance
+#| tbl-cap: "Codebook performance across all stages"
 ```
+
+Labels must be descriptive kebab-case with the appropriate prefix (`fig-` or `tbl-`). Chunks that produce neither a figure nor a table use plain kebab-case labels (e.g., `label: setup`, `label: load-data`).
