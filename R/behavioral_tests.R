@@ -78,19 +78,38 @@ test_legal_outputs <- function(codebook,
 test_definition_recovery <- function(codebook,
                                      model = "claude-haiku-4-5-20251001") {
   system_prompt <- construct_codebook_prompt(codebook)
+  valid_labels <- get_valid_labels(codebook)
 
   results <- purrr::map(codebook$classes, function(cls) {
-    # Use the label definition as input text
+    # Frame as label-matching task, NOT passage classification (H&K spec)
+    user_message <- paste0(
+      "The following is a class definition from the codebook. ",
+      "Return the label that this definition corresponds to.\n\n",
+      "Definition: ", cls$label_definition, "\n\n",
+      "Return your answer as JSON:\n",
+      '{"label": "<the matching label>", "reasoning": "Brief explanation"}'
+    )
+
     response <- tryCatch({
-      classify_with_codebook(
-        text = cls$label_definition,
-        codebook = codebook,
+      raw <- call_claude_api(
+        messages = list(list(role = "user", content = user_message)),
         model = model,
+        max_tokens = 300,
         temperature = 0,
-        system_prompt = system_prompt
+        system = system_prompt
       )
+      parsed <- parse_json_response(
+        raw$content[[1]]$text,
+        required_fields = c("label")
+      )
+      label <- if (!is.null(parsed$label) && parsed$label %in% valid_labels) {
+        parsed$label
+      } else {
+        NA_character_
+      }
+      list(label = label, reasoning = parsed$reasoning %||% NA_character_)
     }, error = function(e) {
-      list(label = NA_character_)
+      list(label = NA_character_, reasoning = e$message)
     })
 
     tibble::tibble(

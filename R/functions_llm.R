@@ -165,7 +165,7 @@ parse_json_response <- function(response_text, required_fields = NULL) {
 
   # Extract JSON from markdown code blocks if present
   json_pattern <- "```json\\s*\\n(.+?)\\n```"
-  json_match <- stringr::str_match(response_text, regex(json_pattern, dotall = TRUE))
+  json_match <- stringr::str_match(response_text, stringr::regex(json_pattern, dotall = TRUE))
 
   if (!is.na(json_match[1, 2])) {
     # Found JSON in code block
