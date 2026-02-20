@@ -1,0 +1,213 @@
+codebook:
+  name: "C1: Measure Identification"
+  version: "0.1.0"
+  description: >
+    This codebook operationalizes the Romer & Romer "significant mention" rule (RR2) for identifying
+    fiscal measures in government documents. The task is to classify whether a chunk from an official
+    government document substantively describes a specific enacted legislative or executive action
+    that changes fiscal liabilities or obligations, as distinct from general economic commentary
+    or proposals.
+
+  instructions: >
+    You will be provided with a chunk from an official government economic or budget document.
+    The chunk may be long (up to thousands of words). Your task is to determine whether the chunk
+    contains at least one substantive description of a fiscal measure meeting the following criteria:
+
+    1. It describes a specific enacted fiscal action (not a proposal or recommendation)
+    2. The description provides substantive detail beyond an incidental mention
+    3. The action changes fiscal liabilities or obligations (taxes, spending authorizations)
+
+    Focus on whether the chunk contains at least one substantive description of an enacted fiscal
+    measure, even if the majority of the text covers other topics. Read the class definitions
+    carefully and classify the chunk using the provided categories.
+
+  classes:
+    - label: "FISCAL_MEASURE"
+      label_definition: >
+        A passage that substantively describes a specific enacted legislative or executive action
+        that changes fiscal liabilities or obligations.
+
+      clarification:
+        - "The passage describes a legislated change in fiscal liabilities, including tax rates, tax brackets, tax credits, tax deductions, tax exemptions, spending authorizations, or changes to depreciation schedules and investment incentives"
+        - "The action was enacted into law or implemented by executive order, not merely proposed, debated, or recommended by officials or advisory bodies"
+        - "Retrospective references that name a specific act and provide substantive detail about its provisions should be classified as FISCAL_MEASURE"
+        - "The passage provides substantive detail about what the measure does, such as specific rate changes, affected populations, program descriptions, revenue estimates, or effective dates, rather than merely naming or listing the measure"
+        - "Executive actions changing depreciation schedules, investment tax credits, or capital cost recovery provisions count as fiscal measures even when not legislated"
+
+      negative_clarification:
+        - "Unenacted proposals, recommendations from executive officials, advisory committee suggestions, or bills that did not become law are excluded, regardless of how detailed the description"
+        - "Simple extensions or renewals of existing provisions that do not alter rates, coverage, or scope are excluded from classification as fiscal measures"
+        - "Changes to withholding schedules, payment timing, or tax collection procedures that do not alter the underlying liabilities owed by taxpayers or recipients are excluded"
+        - "Automatic adjustments such as inflation indexing or bracket creep corrections that occur mechanically without new legislative action are excluded"
+
+      positive_examples:
+        - text: >
+            The Revenue Act of 1964 reduced income tax rates across all brackets, with the standard
+            deduction increased from $1,000 to $1,200 for married couples filing jointly. The act
+            reduced the top marginal rate from 91 percent to 70 percent and the bottom rate from
+            20 percent to 14 percent. Corporate income tax rates were reduced from 52 percent to
+            48 percent. The changes took effect in two phases: individual tax reductions began
+            January 1, 1964, with further reductions scheduled for January 1, 1965. The Treasury
+            estimates the revenue reduction at $11.5 billion annually when fully implemented.
+          reasoning: >
+            This passage clearly describes an enacted fiscal measure (Revenue Act of 1964) with
+            substantive detail meeting all criteria: it specifies the legislation by name, describes
+            changes to fiscal liabilities (tax rate reductions across brackets), provides concrete
+            implementation details (effective dates, phasing), includes affected populations
+            (individuals and corporations), and cites a revenue estimate.
+
+        - text: >
+            The Tax Reform Act of 1986 had established a two-bracket structure with rates of
+            15 percent and 28 percent, representing a dramatic simplification from the previous
+            system's fourteen brackets. That reform eliminated many deductions and preferences
+            in exchange for lower marginal rates, following the principle of base broadening
+            and rate reduction that had guided tax policy debates throughout the decade.
+          reasoning: >
+            Although this passage uses retrospective language ("had established"), it names a
+            specific enacted fiscal measure (Tax Reform Act of 1986) and provides substantive
+            detail about its provisions (two-bracket structure, specific rates, elimination of
+            deductions). Retrospective references that name a specific act and describe its
+            provisions qualify as FISCAL_MEASURE.
+
+        - text: >
+            By executive order signed July 12, 1962, the Treasury issued revised depreciation
+            guidelines that shortened the useful life assumptions for machinery and equipment
+            across industries. The new guidelines reduce the average depreciable life for equipment
+            from approximately 19 years to 12 years, increasing the present value of depreciation
+            deductions. Additionally, firms may elect a "reserve ratio test" allowing even faster
+            writeoffs if their actual retirement patterns support it. The Joint Committee on
+            Taxation estimates these changes will reduce corporate tax liabilities by $1.5 billion
+            in the first full year of implementation.
+          reasoning: >
+            This passage describes an executive action that changes fiscal liabilities by altering
+            depreciation schedules, meeting the criterion that executive changes to capital cost
+            recovery provisions count as fiscal measures. The passage provides substantive detail
+            (specific useful life changes from 19 to 12 years, the reserve ratio test mechanism)
+            and a quantified revenue impact estimate, satisfying the requirement for more than
+            incidental mention.
+
+      negative_examples:
+        - text: >
+            The Administration has proposed a comprehensive tax reform package that would reduce
+            marginal rates in exchange for eliminating numerous deductions and credits. The proposal
+            would lower the top rate to 28 percent and consolidate the current fourteen brackets into
+            three. The President submitted the proposal to Congress in May and urged prompt action,
+            arguing that simplification would improve economic efficiency and horizontal equity.
+            The House Ways and Means Committee has scheduled hearings for July.
+          reasoning: >
+            This passage describes a proposal that has not been enacted into law, failing the
+            requirement that the action must be enacted rather than merely proposed. Despite
+            substantive detail about rate changes and bracket consolidation, the use of "proposed",
+            "would reduce", and "submitted to Congress" indicates this is a recommendation under
+            deliberation, not implemented policy. The mention of scheduled hearings confirms the
+            measure has not yet passed, violating the enacted-action criterion.
+
+        - text: >
+            Federal tax receipts declined by 2.1 percent in real terms during the first half of the
+            fiscal year, reflecting the combined effects of slower income growth and reduced capital
+            gains realizations following the equity market correction. Corporate tax payments fell
+            particularly sharply, down 8.3 percent from the same period a year earlier. Withholding
+            receipts remained roughly stable despite higher unemployment, as average wages for
+            continuing workers grew modestly.
+          reasoning: >
+            This passage discusses changes in tax revenue aggregates without identifying any specific
+            enacted fiscal measure causing those changes. The passage analyzes revenue trends resulting
+            from economic conditions (slower income growth, equity market correction, unemployment)
+            rather than describing a legislative or executive action that altered liabilities. It fails
+            the criterion that the passage must describe a specific fiscal action, not merely observe
+            revenue patterns. This is general economic commentary, not measure identification.
+
+    - label: "NOT_FISCAL_MEASURE"
+      label_definition: >
+        A passage that does not describe any specific enacted fiscal measure meeting the criteria
+        for substantive contemporaneous description of liability-changing actions.
+
+      clarification:
+        - "General economic analysis, forecasts, or trend discussion without reference to a specific enacted fiscal action"
+        - "Discussion of fiscal aggregates such as total revenue, total spending, or deficit levels without identifying the specific legislative or executive measure causing the change"
+        - "Administrative guidance, regulatory procedures, tax collection processes, or compliance reporting requirements that do not alter underlying fiscal liabilities"
+        - "Passages that merely name past legislation without providing substantive detail about what the measure changed (e.g., 'following the reforms of the 1980s') are not fiscal measures"
+
+      negative_clarification:
+        - "A passage is not excluded from FISCAL_MEASURE classification merely because it contains fiscal vocabulary such as 'tax', 'revenue', 'spending', or 'budget'; it must describe a specific enacted measure to qualify"
+        - "Brief historical references that merely name past legislation without substantive detail about provisions are NOT_FISCAL_MEASURE, but retrospective descriptions that provide substantive detail about an act's specific provisions should be classified as FISCAL_MEASURE"
+        - "Passages discussing proposed legislation that includes brief references to what existing law currently does (for comparison) are NOT_FISCAL_MEASURE if the proposal was not enacted"
+
+      positive_examples:
+        - text: >
+            Economic growth is expected to moderate to 2.5 percent in the coming year, down from
+            3.1 percent in the current year, as the effects of previous monetary tightening work
+            through the economy. Inflation should remain contained near 2 percent, consistent with
+            the central bank's target range. Labor markets are projected to remain tight, with
+            unemployment holding steady near 4.2 percent, close to estimates of the natural rate.
+            The output gap is estimated to be near zero, suggesting the economy is operating close
+            to potential.
+          reasoning: >
+            This passage provides general economic forecasts and analysis without describing any
+            specific enacted fiscal measure. It discusses growth rates, inflation, unemployment,
+            and the output gap, which are economic outcomes, not fiscal policy actions. There is
+            no mention of legislation, executive orders, or changes to fiscal liabilities. This is
+            economic commentary, clearly falling under NOT_FISCAL_MEASURE.
+
+        - text: >
+            The Internal Revenue Service issued revised Publication 17 clarifying the treatment
+            of home office deductions for self-employed taxpayers. The guidance specifies
+            documentation requirements for establishing regular and exclusive business use of the
+            space, including contemporaneous logs and receipts for claimed expenses. Taxpayers
+            must maintain records for at least three years from the filing date. The publication
+            also provides examples of common errors in calculating the allocable business portion
+            of mortgage interest and utilities.
+          reasoning: >
+            This passage describes administrative guidance and reporting requirements, not changes
+            to underlying fiscal liabilities. The IRS publication clarifies how to comply with
+            existing law (documentation requirements, recordkeeping) but does not describe enacted
+            legislation or executive action that altered the tax treatment of home office deductions.
+            Administrative procedures that implement existing law without changing liabilities are
+            NOT_FISCAL_MEASURE.
+
+      negative_examples:
+        - text: >
+            Following the 1990 budget agreement, discretionary spending caps were established for
+            defense, international, and domestic programs, with separate limits extending through
+            fiscal year 1995. The agreement also introduced pay-as-you-go rules requiring that any
+            legislation increasing mandatory spending or reducing revenues must be offset by
+            equivalent savings or revenue increases elsewhere. These procedural reforms aimed to
+            enforce deficit reduction agreed upon in the Budget Enforcement Act of 1990.
+          reasoning: >
+            This passage describes specific enacted procedural provisions from the Budget Enforcement
+            Act of 1990, including discretionary spending caps and pay-as-you-go rules, written
+            contemporaneously as indicated by the implementation timeline extending to 1995. While
+            these are procedural rather than direct liability changes, they represent legislated
+            spending authorizations with binding enforcement mechanisms. This is a borderline case,
+            but the substantive detail about specific caps and PAYGO offset requirements, combined
+            with naming the enacting legislation, suggests this should be classified as FISCAL_MEASURE
+            if it meets the significant mention threshold for spending authorizations.
+
+        - text: >
+            Projected revenue growth over the next five years reflects the assumption that current
+            law remains unchanged, with no expiration of temporary provisions and no new tax
+            legislation. Under this baseline, individual income tax receipts are expected to grow
+            at an average annual rate of 5.8 percent, driven primarily by nominal wage growth and
+            the progressive rate structure. Corporate receipts are projected to grow more slowly,
+            at 4.2 percent annually, reflecting moderate profit growth.
+          reasoning: >
+            This passage discusses projected future revenue under the assumption of no policy changes,
+            which is closer to NOT_FISCAL_MEASURE than the previous example. However, the mention of
+            "no expiration of temporary provisions" could imply extension of existing measures, which
+            if the document is describing an actual enacted extension (even though presented as a
+            baseline assumption) might constitute a fiscal measure. The ambiguity highlights the
+            importance of context, but absent clear evidence of enacted legislation, the focus on
+            baseline projections and growth rates driven by economic factors (wage growth, profit
+            growth) makes this NOT_FISCAL_MEASURE.
+
+  output_instructions: >
+    Classify the chunk using exactly one of: FISCAL_MEASURE, NOT_FISCAL_MEASURE.
+
+    If the chunk contains multiple fiscal measures, name the most prominent one.
+
+    Return your answer as JSON:
+    {
+      "label": "FISCAL_MEASURE" or "NOT_FISCAL_MEASURE",
+      "measure_name": "Name of the most prominent act if FISCAL_MEASURE, null otherwise",
+      "reasoning": "Brief explanation citing specific evidence from the chunk"
+    }

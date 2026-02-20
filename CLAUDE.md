@@ -213,6 +213,10 @@ See `.claude/skills/quarto-style/SKILL.md` for complete Quarto conventions (tabl
 - **Never end a section with a `---` divider**
 - **Minimize em dashes**
 
+### Iteration Logging
+
+Use `/log-iteration` after running a pipeline stage (S1/S2/S3) to record what changed, what the metrics show, and what to do next. Creates YAML entries in `prompts/iterations/<codebook>.yml` with auto-gathered metrics and git commit hashes. See `.claude/skills/log-iteration/SKILL.md`.
+
 ## {targets} Pipeline Conventions
 
 ### Reference

@@ -241,7 +241,7 @@ list(
       c1_codebook,
       aligned_data,
       c1_chunk_data,
-      model = "claude-haiku-3-5"
+      model = "claude-haiku-4-5-20251001"
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
@@ -255,7 +255,7 @@ list(
       aligned_data,
       c1_chunk_data,
       codebook_type = "C1",
-      model = "claude-haiku-3-5",
+      model = "claude-haiku-4-5-20251001",
       n_few_shot = 5,
       seed = 20251206
     ),
@@ -276,7 +276,7 @@ list(
       c1_s2_results,
       aligned_data,
       c1_chunk_data,
-      model = "claude-haiku-3-5"
+      model = "claude-haiku-4-5-20251001"
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"

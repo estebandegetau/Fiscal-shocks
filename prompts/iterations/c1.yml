@@ -1,0 +1,41 @@
+# Iteration log for C1: Measure Identification
+# Each entry records a pipeline run: what changed, what happened, what to do next.
+# Retrieve any past codebook version: git show <git_commit>:prompts/c1_measure_id.yml
+
+iterations:
+  - iteration: 1
+    codebook_version: "0.1.0"
+    date: "2026-02-20"
+    git_commit: "0ecc0db"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      Initial codebook (v0.1.0). No changes from S0 draft.
+    results:
+      overall_pass: false
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 0.5000
+          threshold: 1.0000
+          pass: false
+        - test: "III_example_recovery"
+          value: 0.8889
+          threshold: 1.0000
+          pass: false
+        - test: "IV_order_invariance"
+          value: 0.1000
+          threshold: 0.0500
+          pass: false
+    interpretation: >
+      Model refused to classify the FISCAL_MEASURE label_definition, recognizing
+      it as its own instructions echoed back and returning prose instead of JSON.
+      The NOT_FISCAL_MEASURE definition was classified correctly. Test III failed
+      on one borderline example (Budget Enforcement Act passage). Test IV showed
+      one flip on a borderline text (text_id 4) when label order was reversed.
+    decision: >
+      Tighten prompt to force classification output on any input. If unsuccessful,
+      try rewording the FISCAL_MEASURE label_definition.

@@ -1,0 +1,333 @@
+---
+title: "C1: Measure Identification"
+subtitle: "H&K Stages S0-S3 Evaluation"
+date: today
+date-format: long
+---
+
+## Setup
+
+```{r}
+#| label: setup
+#| cache: false
+
+library(targets)
+library(tidyverse)
+library(gt)
+library(here)
+
+here::i_am("notebooks/c1_measure_id.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
+set_theme(theme_minimal())
+
+# Load pipeline targets
+c1_codebook <- tar_read(c1_codebook)
+c1_neg <- tar_read(c1_negative_examples)
+aligned <- tar_read(aligned_data)
+```
+
+## S0: Codebook Design
+
+C1 implements R&R Step 2 (Measure Identification): determining whether a passage substantively describes a specific enacted fiscal measure. This is a binary classification task.
+
+**Classes:**
+
+- `FISCAL_MEASURE`: Contemporaneous, substantive description of an enacted fiscal action
+- `NOT_FISCAL_MEASURE`: Everything else (proposals, retrospective references, economic commentary)
+
+### Codebook Summary
+
+```{r}
+#| label: s0-summary
+
+tibble(
+  field = c("Name", "Version", "Classes", "Clarifications per class",
+            "Neg. clarifications per class", "Examples per class"),
+  value = c(
+    c1_codebook$name,
+    c1_codebook$version,
+    length(c1_codebook$classes),
+    paste(map_int(c1_codebook$classes, ~length(.x$clarification)), collapse = ", "),
+    paste(map_int(c1_codebook$classes, ~length(.x$negative_clarification)), collapse = ", "),
+    paste(map_int(c1_codebook$classes, ~length(.x$positive_examples) + length(.x$negative_examples)), collapse = ", ")
+  )
+) |>
+  gt() |>
+  cols_label(field = "Field", value = "Value") |>
+  gt_theme_report()
+```
+
+### Negative Examples
+
+The evaluation uses stratified hard negatives from `us_body`, designed to test the most common confusion patterns.
+
+```{r}
+#| label: s0-negatives
+
+c1_neg |>
+  count(negative_type) |>
+  mutate(pct = n / sum(n) * 100) |>
+  gt() |>
+  cols_label(negative_type = "Type", n = "Count", pct = "%") |>
+  fmt_number(columns = pct, decimals = 1) |>
+  gt_theme_report()
+```
+
+### Evaluation Data
+
+```{r}
+#| label: s0-data-summary
+
+n_acts <- nrow(aligned)
+n_passages <- sum(aligned$n_passages)
+n_neg <- nrow(c1_neg)
+
+tibble(
+  source = c("Positive (aligned_data passages)", "Negative (stratified hard negatives)", "Total"),
+  n = c(n_passages, n_neg, n_passages + n_neg)
+) |>
+  gt() |>
+  cols_label(source = "Source", n = "Count") |>
+  gt_theme_report()
+```
+
+## S1: Behavioral Tests
+
+```{r}
+#| label: s1-load
+
+s1 <- tar_read(c1_s1_results)
+```
+
+### Results Summary
+
+```{r}
+#| label: s1-summary
+
+s1$summary |>
+  mutate(
+    result = case_when(
+      comparison == ">=" & metric >= threshold ~ "PASS",
+      comparison == "<" & metric < threshold ~ "PASS",
+      TRUE ~ "FAIL"
+    ),
+    metric_fmt = case_when(
+      comparison == "<" ~ sprintf("%.1f%%", metric * 100),
+      TRUE ~ sprintf("%.0f%%", metric * 100)
+    ),
+    threshold_fmt = case_when(
+      comparison == "<" ~ sprintf("< %.0f%%", threshold * 100),
+      TRUE ~ sprintf(">= %.0f%%", threshold * 100)
+    )
+  ) |>
+  select(test, metric_fmt, threshold_fmt, result) |>
+  gt() |>
+  cols_label(
+    test = "Test", metric_fmt = "Result",
+    threshold_fmt = "Threshold", result = "Status"
+  ) |>
+  gt_theme_report()
+```
+
+### Test IV: Order Invariance Details
+
+```{r}
+#| label: s1-order-invariance
+
+if (!s1$test_iv$pass) {
+  cat("Order invariance test FAILED. Changed predictions:\n")
+  s1$test_iv$details |>
+    filter(changed) |>
+    select(text_id, label_original, label_reversed) |>
+    gt() |>
+    gt_theme_report()
+} else {
+  cat(sprintf("Order invariance passed with %.1f%% change rate (threshold: <5%%).\n",
+              s1$test_iv$change_rate * 100))
+}
+```
+
+## S2: LOOCV Evaluation
+
+```{r}
+#| label: s2-load
+#| eval: false
+
+s2_results <- tar_read(c1_s2_results)
+s2_eval <- tar_read(c1_s2_eval)
+```
+
+### Primary Metrics
+
+```{r}
+#| label: s2-metrics
+#| eval: false
+
+ci_fmt <- function(est, ci) {
+  sprintf("%.1f%% [%.1f%%, %.1f%%]", est * 100, ci[1] * 100, ci[2] * 100)
+}
+
+tibble(
+  metric = c("Recall", "Precision", "F1", "Accuracy", "Specificity"),
+  estimate = c(
+    ci_fmt(s2_eval$recall, s2_eval$recall_ci),
+    ci_fmt(s2_eval$precision, s2_eval$precision_ci),
+    ci_fmt(s2_eval$f1, s2_eval$f1_ci),
+    ci_fmt(s2_eval$accuracy, s2_eval$accuracy_ci),
+    ci_fmt(s2_eval$specificity, s2_eval$specificity_ci)
+  ),
+  target = c(">= 90%", ">= 80%", "—", "—", "—")
+) |>
+  gt() |>
+  cols_label(metric = "Metric", estimate = "Estimate [95% CI]", target = "Target") |>
+  gt_theme_report()
+```
+
+### Confusion Matrix
+
+```{r}
+#| label: s2-confusion
+#| eval: false
+
+as.data.frame.matrix(s2_eval$confusion_matrix) |>
+  rownames_to_column("Predicted") |>
+  gt() |>
+  tab_header(title = "Confusion Matrix", subtitle = "Rows = Predicted, Columns = True") |>
+  gt_theme_report()
+```
+
+### Per-Act Recall
+
+Acts with the lowest passage-level recall may indicate codebook weaknesses.
+
+```{r}
+#| label: s2-act-recall
+#| eval: false
+
+s2_eval$act_recall |>
+  filter(recall < 1) |>
+  arrange(recall) |>
+  gt() |>
+  cols_label(
+    act_name = "Act", year = "Year", n_passages = "Passages",
+    n_correct = "Correct", recall = "Recall"
+  ) |>
+  fmt_number(columns = recall, decimals = 2) |>
+  gt_theme_report()
+```
+
+### Error Details
+
+```{r}
+#| label: s2-errors
+#| eval: false
+
+if (nrow(s2_eval$error_analysis) > 0) {
+  s2_eval$error_analysis |>
+    select(act_name, year, text_type, true_label, pred_label, confidence) |>
+    slice_head(n = 20) |>
+    gt() |>
+    cols_label(
+      act_name = "Act", year = "Year", text_type = "Type",
+      true_label = "True", pred_label = "Predicted", confidence = "Conf."
+    ) |>
+    fmt_number(columns = confidence, decimals = 2) |>
+    gt_theme_report()
+} else {
+  cat("No errors in S2 evaluation.")
+}
+```
+
+## S3: Error Analysis
+
+```{r}
+#| label: s3-load
+#| eval: false
+
+s3 <- tar_read(c1_s3_results)
+```
+
+### Error Category Distribution
+
+```{r}
+#| label: s3-error-categories
+#| eval: false
+
+s3$error_categories |>
+  count(error_category) |>
+  mutate(pct = n / sum(n) * 100) |>
+  gt() |>
+  cols_label(error_category = "Category", n = "Count", pct = "%") |>
+  fmt_number(columns = pct, decimals = 1) |>
+  gt_theme_report()
+```
+
+### Ablation Study
+
+Components ranked by accuracy drop when removed. Larger drops indicate more important components.
+
+```{r}
+#| label: s3-ablation
+#| eval: false
+
+s3$ablation |>
+  select(class, component_type, component_idx, baseline_accuracy,
+         ablated_accuracy, accuracy_drop) |>
+  arrange(desc(accuracy_drop)) |>
+  mutate(across(c(baseline_accuracy, ablated_accuracy, accuracy_drop),
+                ~. * 100)) |>
+  gt() |>
+  cols_label(
+    class = "Class", component_type = "Type", component_idx = "#",
+    baseline_accuracy = "Baseline %", ablated_accuracy = "Ablated %",
+    accuracy_drop = "Drop %"
+  ) |>
+  fmt_number(columns = c(baseline_accuracy, ablated_accuracy, accuracy_drop),
+             decimals = 1) |>
+  gt_theme_report()
+```
+
+### Test VI: Generic Labels
+
+```{r}
+#| label: s3-test-vi
+#| eval: false
+
+tibble(
+  condition = c("Original labels", "Generic labels (LABEL_1, LABEL_2)"),
+  accuracy = c(s3$test_vi$original_accuracy, s3$test_vi$generic_accuracy) * 100,
+) |>
+  mutate(change_rate = c(NA, s3$test_vi$change_rate * 100)) |>
+  gt() |>
+  cols_label(condition = "Condition", accuracy = "Accuracy %",
+             change_rate = "Label Change %") |>
+  fmt_number(columns = c(accuracy, change_rate), decimals = 1) |>
+  sub_missing() |>
+  gt_theme_report()
+```
+
+### Test VII: Swapped Labels
+
+```{r}
+#| label: s3-test-vii
+#| eval: false
+
+tibble(
+  behavior = c("Follows definitions", "Follows label names"),
+  rate = c(s3$test_vii$follows_definitions_rate,
+           s3$test_vii$follows_names_rate) * 100
+) |>
+  gt() |>
+  cols_label(behavior = "Behavior", rate = "Rate %") |>
+  fmt_number(columns = rate, decimals = 1) |>
+  gt_theme_report()
+```
+
+<!-- `r s3$test_vii$interpretation` -->
+
+## Iteration Notes
+
+Record codebook revision decisions and their rationale here after reviewing S2 and S3 results.
+
+- **v0.1.0**: Initial codebook. Review results above before deciding on revisions.
