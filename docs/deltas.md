@@ -9,12 +9,12 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
-## 2026-02-21: C1 S1 behavioral tests — 2 iterations complete, Tests III-IV failing
+## 2026-02-21: C1 S1 behavioral tests — all 4 tests pass (iteration 3)
 
 **Type:** status-change
 **Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation
-**Detail:** C1 S1 behavioral tests have been run twice. Iteration 1 revealed Test II (Definition Recovery) was incorrectly implemented — it routed definitions through the passage classifier instead of using a label-matching prompt per H&K spec. Fixed in iteration 2 (commit `1f318cc`). Current S1 status: Tests I (Legal Outputs) and II (Definition Recovery) pass at 100%. Test III (Example Recovery) fails at 8/9 — NOT_FISCAL_MEASURE negative example 2 (Budget Enforcement Act passage) misclassified. Test IV (Order Invariance) fails at 10% change rate (threshold <5%) — 1 of 10 texts flips when class order reversed. Next step: investigate Test III/IV failures before S2.
-**Suggested edit:** Update C1 step status to reflect S1 in progress with partial pass.
+**Detail:** C1 S1 behavioral tests pass after 3 iterations (commit `d6ce722`). Iteration 3 fixed the root cause of Test III failure: NOT_FISCAL_MEASURE negative_example 2 had reasoning that contradicted its structural label (concluded "makes this NOT_FISCAL_MEASURE" for a text whose placement required FISCAL_MEASURE). Replaced with an enacted corporate rate cut in forward-looking language. Also tightened NE-1 reasoning (removed "borderline case" hedging), which resolved Test IV order sensitivity. Added `c1_codebook_file` target (format="file") for automatic YAML change detection. Test III implementation also updated to use recall-framed prompt per H&K memorization test spec.
+**Suggested edit:** Update C1 S1 status to "complete" in Phase 0 blueprint.
 
 ## ~~2026-02-19: C1 evaluation corpus filtered to max_doc_year = 2007~~ RESOLVED
 
