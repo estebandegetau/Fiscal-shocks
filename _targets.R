@@ -227,11 +227,17 @@ list(
     deployment = "main"
   ),
 
-  # S0: Load and validate codebook
+  # S0: Track codebook file so YAML edits invalidate downstream targets
+  tar_target(
+    c1_codebook_file,
+    here::here("prompts", "c1_measure_id.yml"),
+    format = "file",
+    packages = "here"
+  ),
   tar_target(
     c1_codebook,
-    load_validate_codebook(here::here("prompts", "c1_measure_id.yml")),
-    packages = c("yaml", "here")
+    load_validate_codebook(c1_codebook_file),
+    packages = "yaml"
   ),
 
   # S1: Behavioral tests (Tests I-IV) on chunk-length inputs

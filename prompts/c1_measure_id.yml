@@ -174,31 +174,36 @@ codebook:
             equivalent savings or revenue increases elsewhere. These procedural reforms aimed to
             enforce deficit reduction agreed upon in the Budget Enforcement Act of 1990.
           reasoning: >
-            This passage describes specific enacted procedural provisions from the Budget Enforcement
-            Act of 1990, including discretionary spending caps and pay-as-you-go rules, written
-            contemporaneously as indicated by the implementation timeline extending to 1995. While
-            these are procedural rather than direct liability changes, they represent legislated
-            spending authorizations with binding enforcement mechanisms. This is a borderline case,
-            but the substantive detail about specific caps and PAYGO offset requirements, combined
-            with naming the enacting legislation, suggests this should be classified as FISCAL_MEASURE
-            if it meets the significant mention threshold for spending authorizations.
+            Although these provisions are procedural enforcement mechanisms rather than direct
+            rate changes, this passage describes specific enacted legislative provisions from the
+            Budget Enforcement Act of 1990 — named legislation with substantive detail about
+            its fiscal provisions. The discretionary spending caps constitute binding spending
+            authorizations that change fiscal obligations, and the pay-as-you-go rules impose
+            legislated constraints on fiscal liabilities. The passage names the enacting
+            legislation, describes specific binding provisions, and provides a concrete
+            implementation timeline (through fiscal year 1995), meeting the significant mention
+            threshold. The true label is FISCAL_MEASURE: a passage should not be classified
+            as NOT_FISCAL_MEASURE merely because its fiscal provisions take a procedural form
+            rather than changing a tax rate directly.
 
         - text: >
-            Projected revenue growth over the next five years reflects the assumption that current
-            law remains unchanged, with no expiration of temporary provisions and no new tax
-            legislation. Under this baseline, individual income tax receipts are expected to grow
-            at an average annual rate of 5.8 percent, driven primarily by nominal wage growth and
-            the progressive rate structure. Corporate receipts are projected to grow more slowly,
-            at 4.2 percent annually, reflecting moderate profit growth.
+            The reduction in the standard corporate tax rate enacted in the Omnibus
+            Revenue Reconciliation Act will reduce revenues by an estimated 12.4 billion
+            over the next five years. The rate falls from 46 percent to 34 percent,
+            effective for taxable years beginning after December 31 of the current year.
+            Treasury projections indicate the largest revenue reduction will occur in
+            the second and third years as quarterly estimated payments adjust to the new
+            rate. The change applies to all domestic corporations and foreign subsidiaries
+            filing consolidated returns.
           reasoning: >
-            This passage discusses projected future revenue under the assumption of no policy changes,
-            which is closer to NOT_FISCAL_MEASURE than the previous example. However, the mention of
-            "no expiration of temporary provisions" could imply extension of existing measures, which
-            if the document is describing an actual enacted extension (even though presented as a
-            baseline assumption) might constitute a fiscal measure. The ambiguity highlights the
-            importance of context, but absent clear evidence of enacted legislation, the focus on
-            baseline projections and growth rates driven by economic factors (wage growth, profit
-            growth) makes this NOT_FISCAL_MEASURE.
+            Despite its forward-looking revenue language ("will reduce revenues by"),
+            this passage describes an enacted fiscal measure: it names specific
+            legislation (Omnibus Revenue Reconciliation Act), specifies the enacted
+            rate change (46 percent to 34 percent), provides an effective date, and
+            identifies affected taxpayers. The future-tense revenue figures are
+            projections of an already-enacted change, not a forecast under a no-policy
+            baseline. The presence of specific rate changes, named legislation, and
+            an effective date confirms this is FISCAL_MEASURE, not NOT_FISCAL_MEASURE.
 
   output_instructions: >
     Classify the chunk using exactly one of: FISCAL_MEASURE, NOT_FISCAL_MEASURE.

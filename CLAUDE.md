@@ -45,7 +45,7 @@ The contribution is **methodological**, not just dataset scale:
 ### Current Status
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
-  - **C1 (Measure ID)**: S0 codebook drafted (`prompts/c1_measure_id.yml`); S1-S3 pipeline implemented in `_targets.R`; evaluation notebook ready (`notebooks/c1_measure_id.qmd`)
+  - **C1 (Measure ID)**: S0 codebook drafted (`prompts/c1_measure_id.yml`); S1 behavioral tests run (2 iterations: Tests I-II pass, Tests III-IV failing — investigating); S2-S3 not yet run
   - **C2 (Motivation)**: Not started
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started

@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-02-21: C1 S1 behavioral tests — 2 iterations complete, Tests III-IV failing
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation
+**Detail:** C1 S1 behavioral tests have been run twice. Iteration 1 revealed Test II (Definition Recovery) was incorrectly implemented — it routed definitions through the passage classifier instead of using a label-matching prompt per H&K spec. Fixed in iteration 2 (commit `1f318cc`). Current S1 status: Tests I (Legal Outputs) and II (Definition Recovery) pass at 100%. Test III (Example Recovery) fails at 8/9 — NOT_FISCAL_MEASURE negative example 2 (Budget Enforcement Act passage) misclassified. Test IV (Order Invariance) fails at 10% change rate (threshold <5%) — 1 of 10 texts flips when class order reversed. Next step: investigate Test III/IV failures before S2.
+**Suggested edit:** Update C1 step status to reflect S1 in progress with partial pass.
+
 ## ~~2026-02-19: C1 evaluation corpus filtered to max_doc_year = 2007~~ RESOLVED
 
 **Resolved:** Added "Corpus scope" paragraph to `docs/strategy.md` > C1 Blueprint, after the Chunk Tier System table.

@@ -137,7 +137,10 @@ test_definition_recovery <- function(codebook,
 #' Test III: Example Recovery
 #'
 #' Feeds each positive and negative example from the codebook and verifies
-#' the model returns correct labels. This is a memorization test.
+#' the model returns correct labels. This is a memorization test per H&K:
+#' "we provide verbatim examples from the codebook and ask for their labels."
+#' Uses a recall-framed prompt (not classification) so the model pattern-matches
+#' against examples it already saw in the system prompt.
 #'
 #' @param codebook A validated codebook object
 #' @param model Character model ID
@@ -146,22 +149,43 @@ test_definition_recovery <- function(codebook,
 test_example_recovery <- function(codebook,
                                   model = "claude-haiku-4-5-20251001") {
   system_prompt <- construct_codebook_prompt(codebook)
+  valid_labels <- get_valid_labels(codebook)
   results <- list()
 
   for (cls in codebook$classes) {
     # Test positive examples — should return THIS class label
     for (i in seq_along(cls$positive_examples)) {
       ex <- cls$positive_examples[[i]]
+
+      # Recall-framed prompt: ask the model to recall the label, not classify
+      user_message <- paste0(
+        "The following text appears verbatim as an example in the codebook. ",
+        "What label is it associated with?\n\n",
+        "Text: ", ex$text, "\n\n",
+        "Return your answer as JSON:\n",
+        '{"label": "<the label>", "reasoning": "Brief explanation"}'
+      )
+
       response <- tryCatch({
-        classify_with_codebook(
-          text = ex$text,
-          codebook = codebook,
+        raw <- call_claude_api(
+          messages = list(list(role = "user", content = user_message)),
           model = model,
+          max_tokens = 300,
           temperature = 0,
-          system_prompt = system_prompt
+          system = system_prompt
         )
+        parsed <- parse_json_response(
+          raw$content[[1]]$text,
+          required_fields = c("label")
+        )
+        label <- if (!is.null(parsed$label) && parsed$label %in% valid_labels) {
+          parsed$label
+        } else {
+          NA_character_
+        }
+        list(label = label, reasoning = parsed$reasoning %||% NA_character_)
       }, error = function(e) {
-        list(label = NA_character_)
+        list(label = NA_character_, reasoning = e$message)
       })
 
       results[[length(results) + 1]] <- tibble::tibble(
@@ -175,32 +199,51 @@ test_example_recovery <- function(codebook,
     }
 
     # Test negative examples — should NOT return THIS class label
+    other_labels <- setdiff(valid_labels, cls$label)
+
     for (i in seq_along(cls$negative_examples)) {
       ex <- cls$negative_examples[[i]]
+
+      # Same recall-framed prompt — neutral, doesn't hint positive/negative
+      user_message <- paste0(
+        "The following text appears verbatim as an example in the codebook. ",
+        "What label is it associated with?\n\n",
+        "Text: ", ex$text, "\n\n",
+        "Return your answer as JSON:\n",
+        '{"label": "<the label>", "reasoning": "Brief explanation"}'
+      )
+
       response <- tryCatch({
-        classify_with_codebook(
-          text = ex$text,
-          codebook = codebook,
+        raw <- call_claude_api(
+          messages = list(list(role = "user", content = user_message)),
           model = model,
+          max_tokens = 300,
           temperature = 0,
-          system_prompt = system_prompt
+          system = system_prompt
         )
+        parsed <- parse_json_response(
+          raw$content[[1]]$text,
+          required_fields = c("label")
+        )
+        label <- if (!is.null(parsed$label) && parsed$label %in% valid_labels) {
+          parsed$label
+        } else {
+          NA_character_
+        }
+        list(label = label, reasoning = parsed$reasoning %||% NA_character_)
       }, error = function(e) {
-        list(label = NA_character_)
+        list(label = NA_character_, reasoning = e$message)
       })
 
       # For binary codebooks: negative example of class X should be the other class
       # For multi-class: just check it's NOT this class
-      other_labels <- setdiff(get_valid_labels(codebook), cls$label)
-      expected_correct <- response$label %in% other_labels
-
       results[[length(results) + 1]] <- tibble::tibble(
         class = cls$label,
         example_type = "negative",
         example_idx = i,
         true_label = paste(other_labels, collapse = "/"),
         pred_label = response$label %||% NA_character_,
-        correct = expected_correct
+        correct = response$label %in% other_labels
       )
     }
   }
