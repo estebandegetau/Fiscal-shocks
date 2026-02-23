@@ -25,6 +25,7 @@
 #' @param seed Integer base random seed (default 20251206)
 #' @param use_self_consistency Logical (default FALSE for LOOCV)
 #' @param show_progress Logical show progress bar (default TRUE)
+#' @param max_retries Integer for number of retry attempts (default 10 for long pipelines)
 #' @return Tibble with prediction results for all folds
 #' @export
 run_loocv <- function(codebook,
@@ -37,7 +38,8 @@ run_loocv <- function(codebook,
                       n_tier2_per_fold = 20,
                       seed = 20251206,
                       use_self_consistency = FALSE,
-                      show_progress = TRUE) {
+                      show_progress = TRUE,
+                      max_retries = 10) {
 
   n_acts <- nrow(aligned_data)
   message(sprintf("Running %s chunk-based LOOCV on %d acts...",
@@ -102,7 +104,8 @@ run_loocv <- function(codebook,
       fold_examples = fold_examples,
       model = model,
       use_self_consistency = use_self_consistency,
-      system_prompt = system_prompt
+      system_prompt = system_prompt,
+      max_retries = max_retries
     )
 
     # Classify Tier 2 chunks
@@ -118,7 +121,8 @@ run_loocv <- function(codebook,
       fold_examples = fold_examples,
       model = model,
       use_self_consistency = use_self_consistency,
-      system_prompt = system_prompt
+      system_prompt = system_prompt,
+      max_retries = max_retries
     )
 
     # Classify negative chunk sample
@@ -137,7 +141,8 @@ run_loocv <- function(codebook,
       fold_examples = fold_examples,
       model = model,
       use_self_consistency = use_self_consistency,
-      system_prompt = system_prompt
+      system_prompt = system_prompt,
+      max_retries = max_retries
     )
 
     dplyr::bind_rows(tier1_results, tier2_results, neg_results)
@@ -179,12 +184,14 @@ run_loocv <- function(codebook,
 #' @param model Character model ID
 #' @param use_self_consistency Logical
 #' @param system_prompt Character system prompt
+#' @param max_retries Integer for number of retry attempts (default 10)
 #' @return Tibble with classification results
 #' @keywords internal
 classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
                                      true_label, text_type, codebook,
                                      fold_examples, model,
-                                     use_self_consistency, system_prompt) {
+                                     use_self_consistency, system_prompt,
+                                     max_retries = 10) {
   positive_label <- get_valid_labels(codebook)[1]
 
   if (nrow(chunks) == 0) {
@@ -206,7 +213,8 @@ classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
         model = model,
         temperature = 0,
         use_self_consistency = use_self_consistency,
-        system_prompt = system_prompt
+        system_prompt = system_prompt,
+        max_retries = max_retries
       )
     }, error = function(e) {
       list(label = NA_character_, reasoning = e$message, confidence = NA_real_)

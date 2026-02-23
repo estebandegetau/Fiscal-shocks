@@ -7,7 +7,7 @@
 #' @param model Character string for model ID (default: claude-sonnet-4-5-20250514)
 #' @param max_tokens Integer for max output tokens
 #' @param temperature Numeric 0-1 for sampling temperature
-#' @param max_retries Integer for number of retry attempts
+#' @param max_retries Integer for number of retry attempts (default 10 for long pipelines)
 #' @param system Optional system prompt string
 #'
 #' @return List with response content and metadata
@@ -16,7 +16,7 @@ call_claude_api <- function(messages,
                             model = "claude-sonnet-4-5-20250514",
                             max_tokens = 1000,
                             temperature = 0.0,
-                            max_retries = 3,
+                            max_retries = 10,
                             system = NULL) {
 
   # Check for API key
@@ -93,6 +93,10 @@ call_claude_api <- function(messages,
       if (grepl("429|Too Many Requests", e$message)) {
         wait_time <- 60  # Wait 60 seconds for rate limit
         message("Rate limit hit (attempt ", attempt, "/", max_retries,
+                "), waiting ", wait_time, "s...")
+      } else if (grepl("529|overloaded", e$message, ignore.case = TRUE)) {
+        wait_time <- 60  # Server overloaded needs long backoff
+        message("Server overloaded (attempt ", attempt, "/", max_retries,
                 "), waiting ", wait_time, "s...")
       } else {
         # Exponential backoff for other errors: 2s, 4s, 8s

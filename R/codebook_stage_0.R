@@ -210,6 +210,7 @@ construct_codebook_prompt <- function(codebook,
 #' @param sc_temperature Numeric temperature for self-consistency sampling
 #' @param system_prompt Optional override for system prompt (NULL = construct from codebook)
 #' @param max_tokens Integer max output tokens
+#' @param max_retries Integer for number of retry attempts (default 10 for long pipelines)
 #' @return List with label, reasoning, and raw response
 #' @export
 classify_with_codebook <- function(text,
@@ -221,7 +222,8 @@ classify_with_codebook <- function(text,
                                    n_samples = 5,
                                    sc_temperature = 0.7,
                                    system_prompt = NULL,
-                                   max_tokens = 500) {
+                                   max_tokens = 500,
+                                   max_retries = 10) {
   # Build system prompt from codebook if not overridden
   if (is.null(system_prompt)) {
     system_prompt <- construct_codebook_prompt(codebook)
@@ -278,6 +280,7 @@ classify_with_codebook <- function(text,
       n_samples = n_samples,
       temperature = sc_temperature,
       max_tokens = max_tokens,
+      max_retries = max_retries,
       parse_fn = parse_fn,
       extract_class_fn = extract_class_fn,
       system = system_prompt
@@ -307,6 +310,7 @@ classify_with_codebook <- function(text,
       model = model,
       max_tokens = max_tokens,
       temperature = temperature,
+      max_retries = max_retries,
       system = system_prompt
     )
 
