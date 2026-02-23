@@ -190,6 +190,11 @@ Review whether any recent implementation work contradicts, extends, or validates
 - Were any assumptions validated or invalidated? Log finding.
 - Did a phase or stage gate status change? Log transition.
 
+**Stage-gate detection (auto):** For each codebook (C1-C4), check if `prompts/iterations/c<N>.yml` exists. If it does, read the latest iteration entry. If `overall_pass: true` for a stage not previously logged as passing:
+
+1. Auto-log a delta to `docs/deltas.md` (e.g., "C1 S1 behavioral tests pass — all 4 tests meet thresholds")
+2. Update the root `CLAUDE.md` "Current Status" section to reflect the latest stage completion per codebook (Tier 1 auto-update)
+
 ### Step 5: Append to delta log
 
 Add entries to `docs/deltas.md` following the format above. Do not modify existing entries.

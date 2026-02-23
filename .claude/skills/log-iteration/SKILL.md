@@ -204,6 +204,8 @@ Show the user a formatted summary of the results. Then ask for:
 1. **Interpretation**: What do these results mean? Why do they look this way? (Free text, will be stored as a YAML block scalar)
 2. **Decision**: What to do next? (e.g., "Proceed to S2", "Revise clarification 3 to handle X", "Add negative example for Y")
 
+> **Tip:** If the user has already run `/review-iteration` for this codebook+stage, reference that analysis for the interpretation field rather than asking the user to repeat their reasoning. If they haven't analyzed results in depth yet, suggest running `/review-iteration` first — it provides structured diagnosis that makes interpretation easier.
+
 ### Step 6: Append to iteration log
 
 **Directory**: `prompts/iterations/`

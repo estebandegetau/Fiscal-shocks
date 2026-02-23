@@ -191,6 +191,28 @@ The project includes 10 specialized agents in `.claude/agents/` organized by fun
 
 Use these agents via the Task tool for specialized work.
 
+## Workflow Conventions
+
+These rules govern how Claude Code operates in this project. They prevent recurring friction patterns identified during codebook development.
+
+1. **Plan-first mode.** When asked to diagnose, investigate, or propose, present findings and wait. Do NOT implement changes or run code unless explicitly told to.
+2. **Root cause first.** When something fails, identify the root cause before proposing a fix. Do not patch symptoms (e.g., don't fix test implementation when the codebook example is the problem).
+3. **Model ID validation.** Before writing any model parameter, verify against known valid IDs. Current valid: `claude-haiku-4-5-20251001`, `claude-sonnet-4-5-20250514`. Flag any legacy IDs (e.g., `claude-3-5-sonnet-20241022`).
+4. **Prefer existing files.** Search with Glob/Grep before creating new files. Duplicate implementations create maintenance burden.
+5. **NO autonomous API calls.** Never run `tar_make()` on API-calling targets without explicit user approval. Read-only operations (`tar_read()`, `tar_outdated()`, `tar_visnetwork()`) are always safe.
+6. **Commit before pipeline runs.** Before running API-calling targets, ensure no uncommitted changes to codebook YAML or R function files. The iteration log stores git hashes for reproducibility.
+7. **One change at a time.** When iterating on a codebook, change one component per iteration. This makes the iteration log interpretable and supports ablation-style reasoning.
+8. **Pipeline data validation.** After `tar_make()` completes, verify result shape with `tar_read(<target>) |> str()` before proceeding.
+9. **Quarto render safety.** Always render specific files (`quarto render notebooks/c1_measure_id.qmd`), never the full project.
+
+### Multi-Agent Workflow Patterns
+
+Three reusable patterns for parallel agent coordination:
+
+- **Pattern 1: Codebook Review.** Two specialist agents (`fiscal-policy-specialist` + `llm-eval-specialist`) review a proposed codebook change in parallel. Main session synthesizes their feedback for the user.
+- **Pattern 2: Pre-Pipeline Validation.** `pipeline-manager` + `strategy-reviewer` verify target readiness in parallel before user runs `tar_make()`.
+- **Pattern 3: Post-Stage Documentation.** `doc-writer` + `notebook-reviewer` update and verify a notebook in parallel after a stage gate is crossed.
+
 ## Data Sources
 
 US Government Documents (1946-present):
