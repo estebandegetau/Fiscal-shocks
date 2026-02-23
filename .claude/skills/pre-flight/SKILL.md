@@ -81,12 +81,14 @@ Read `_targets.R` and search for the model parameter used by the target. Verify 
 
 #### Check 6: API key present
 
+This project uses `dotenv` to load environment variables from `.env`. Check the key after loading `.env`:
+
 ```bash
-Rscript -e 'cat(nchar(Sys.getenv("ANTHROPIC_API_KEY")) > 0)'
+Rscript -e 'dotenv::load_dot_env(); cat(nchar(Sys.getenv("ANTHROPIC_API_KEY")) > 0)'
 ```
 
 - **Pass**: `TRUE`
-- **Fail**: API key not set
+- **Fail**: API key not set. Verify `.env` file exists at the project root and contains `ANTHROPIC_API_KEY=sk-ant-...`
 
 #### Check 7: Cost estimate
 
