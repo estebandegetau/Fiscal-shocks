@@ -21,6 +21,7 @@
 #' @param model Character model ID (default: "claude-haiku-4-5-20251001")
 #' @param n_few_shot Integer few-shot examples per class per fold (default 5)
 #' @param n_neg_per_fold Integer negative test chunks per fold (default 10)
+#' @param n_tier2_per_fold Integer max Tier 2 test chunks per act per fold (default 20). Set NULL for no cap.
 #' @param seed Integer base random seed (default 20251206)
 #' @param use_self_consistency Logical (default FALSE for LOOCV)
 #' @param show_progress Logical show progress bar (default TRUE)
@@ -33,6 +34,7 @@ run_loocv <- function(codebook,
                       model = "claude-haiku-4-5-20251001",
                       n_few_shot = 5,
                       n_neg_per_fold = 10,
+                      n_tier2_per_fold = 20,
                       seed = 20251206,
                       use_self_consistency = FALSE,
                       show_progress = TRUE) {
@@ -73,6 +75,10 @@ run_loocv <- function(codebook,
       dplyr::filter(act_name == test_act$act_name)
     act_tier2 <- tier2_chunks |>
       dplyr::filter(act_name == test_act$act_name)
+    if (!is.null(n_tier2_per_fold) && nrow(act_tier2) > n_tier2_per_fold) {
+      act_tier2 <- act_tier2 |>
+        dplyr::slice_sample(n = n_tier2_per_fold)
+    }
 
     # Generate passage-level few-shot examples from training data
     fold_examples <- generate_c1_loocv_fold_examples(
