@@ -211,6 +211,9 @@ construct_codebook_prompt <- function(codebook,
 #' @param system_prompt Optional override for system prompt (NULL = construct from codebook)
 #' @param max_tokens Integer max output tokens
 #' @param max_retries Integer for number of retry attempts (default 10 for long pipelines)
+#' @param use_cache Logical, use Anthropic prompt caching (default FALSE).
+#'   When TRUE, system prompt and few-shot examples are sent as content block
+#'   arrays with cache_control markers for Anthropic's prompt caching.
 #' @return List with label, reasoning, and raw response
 #' @export
 classify_with_codebook <- function(text,
@@ -223,21 +226,20 @@ classify_with_codebook <- function(text,
                                    sc_temperature = 0.7,
                                    system_prompt = NULL,
                                    max_tokens = 500,
-                                   max_retries = 10) {
+                                   max_retries = 10,
+                                   use_cache = FALSE) {
   # Build system prompt from codebook if not overridden
   if (is.null(system_prompt)) {
     system_prompt <- construct_codebook_prompt(codebook)
   }
 
-  # Build user message with few-shot examples and input text only
-  # (system prompt is passed separately via the API system parameter)
-  user_parts <- character()
-
+  # Build few-shot examples text
+  examples_text <- ""
   if (!is.null(few_shot_examples) && length(few_shot_examples) > 0) {
-    user_parts <- c(user_parts, "# Examples\n\n")
+    examples_parts <- c("# Examples\n\n")
     for (i in seq_along(few_shot_examples)) {
       ex <- few_shot_examples[[i]]
-      user_parts <- c(user_parts,
+      examples_parts <- c(examples_parts,
         sprintf("Example %d:\n", i),
         "Input:\n", ex$input,
         "\n\nOutput:\n",
@@ -245,15 +247,38 @@ classify_with_codebook <- function(text,
         "\n\n"
       )
     }
+    examples_text <- paste(examples_parts, collapse = "")
   }
 
-  user_parts <- c(user_parts,
+  # Build chunk text (unique per call)
+  chunk_text <- paste0(
     "# Your Task\n\n",
     "Now analyze this passage:\n\n",
     "Input:\n", text,
     "\n\nOutput:\n"
   )
-  user_content <- paste(user_parts, collapse = "")
+
+  # Build API inputs: plain strings (default) or content block arrays (cached)
+  if (use_cache && nchar(examples_text) > 0) {
+    # System prompt as content block array with cache_control
+    system_for_api <- list(
+      list(type = "text", text = system_prompt,
+           cache_control = list(type = "ephemeral"))
+    )
+
+    # User message as two content blocks:
+    # Block 1: few-shot examples (cached within fold)
+    # Block 2: chunk text (unique per call, NOT cached)
+    user_content <- list(
+      list(type = "text", text = examples_text,
+           cache_control = list(type = "ephemeral")),
+      list(type = "text", text = chunk_text)
+    )
+  } else {
+    # Plain strings — identical to previous behavior
+    system_for_api <- system_prompt
+    user_content <- paste0(examples_text, chunk_text)
+  }
 
   valid_labels <- get_valid_labels(codebook)
 
@@ -283,7 +308,7 @@ classify_with_codebook <- function(text,
       max_retries = max_retries,
       parse_fn = parse_fn,
       extract_class_fn = extract_class_fn,
-      system = system_prompt
+      system = system_for_api
     )
 
     # Extract additional fields from the majority result
@@ -311,7 +336,7 @@ classify_with_codebook <- function(text,
       max_tokens = max_tokens,
       temperature = temperature,
       max_retries = max_retries,
-      system = system_prompt
+      system = system_for_api
     )
 
     parsed <- parse_fn(response$content[[1]]$text)

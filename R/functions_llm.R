@@ -68,11 +68,13 @@ call_claude_api <- function(messages,
       # Parse response
       result <- httr2::resp_body_json(response)
 
-      # Log API call
+      # Log API call (include cache token fields from response)
       log_api_call(
         model = model,
         input_tokens = result$usage$input_tokens,
         output_tokens = result$usage$output_tokens,
+        cache_creation_input_tokens = result$usage$cache_creation_input_tokens %||% 0L,
+        cache_read_input_tokens = result$usage$cache_read_input_tokens %||% 0L,
         timestamp = Sys.time()
       )
 
@@ -201,27 +203,64 @@ parse_json_response <- function(response_text, required_fields = NULL) {
 }
 
 
+#' Get per-token pricing for a Claude model
+#'
+#' Returns input, output, cache_write, and cache_read prices per 1K tokens.
+#' Falls back to Haiku pricing for unknown model IDs.
+#'
+#' @param model Character string for model ID
+#' @return Named list with input, output, cache_write, cache_read ($/1K tokens)
+#' @keywords internal
+get_model_pricing <- function(model) {
+  pricing_table <- list(
+    "claude-haiku-4-5-20251001" = list(
+      input = 0.001, output = 0.005,
+      cache_write = 0.00125, cache_read = 0.0001
+    ),
+    "claude-sonnet-4-5-20250514" = list(
+      input = 0.003, output = 0.015,
+      cache_write = 0.00375, cache_read = 0.0003
+    )
+  )
+
+  if (model %in% names(pricing_table)) {
+    pricing_table[[model]]
+  } else {
+    warning("Unknown model '", model, "' — using claude-haiku-4-5-20251001 pricing as fallback")
+    pricing_table[["claude-haiku-4-5-20251001"]]
+  }
+}
+
+
 #' Log API call to CSV file
 #'
 #' @param model Character string for model ID
 #' @param input_tokens Integer
 #' @param output_tokens Integer
+#' @param cache_creation_input_tokens Integer tokens written to cache (default 0)
+#' @param cache_read_input_tokens Integer tokens read from cache (default 0)
 #' @param timestamp POSIXct timestamp
 #'
 #' @return NULL (side effect: appends to logs/api_calls.csv)
 #' @export
-log_api_call <- function(model, input_tokens, output_tokens, timestamp) {
+log_api_call <- function(model, input_tokens, output_tokens,
+                         cache_creation_input_tokens = 0L,
+                         cache_read_input_tokens = 0L,
+                         timestamp) {
 
-  # Calculate cost (Claude 3.5 Sonnet pricing as of 2024)
-  # Input: $0.003 per 1K tokens
-  # Output: $0.015 per 1K tokens
-  cost_usd <- (input_tokens / 1000 * 0.003) + (output_tokens / 1000 * 0.015)
+  pricing <- get_model_pricing(model)
+  cost_usd <- (input_tokens / 1000 * pricing$input) +
+    (output_tokens / 1000 * pricing$output) +
+    (cache_creation_input_tokens / 1000 * pricing$cache_write) +
+    (cache_read_input_tokens / 1000 * pricing$cache_read)
 
   log_entry <- tibble::tibble(
     timestamp = timestamp,
     model = model,
     input_tokens = input_tokens,
     output_tokens = output_tokens,
+    cache_creation_input_tokens = cache_creation_input_tokens,
+    cache_read_input_tokens = cache_read_input_tokens,
     cost_usd = cost_usd
   )
 
@@ -290,13 +329,37 @@ get_api_cost_summary <- function() {
     ))
   }
 
-  readr::read_csv(log_file, show_col_types = FALSE) |>
+  log_data <- readr::read_csv(log_file, show_col_types = FALSE)
+
+  # Backward compat: old logs may lack cache columns
+  if (!"cache_creation_input_tokens" %in% names(log_data)) {
+    log_data$cache_creation_input_tokens <- 0L
+  }
+  if (!"cache_read_input_tokens" %in% names(log_data)) {
+    log_data$cache_read_input_tokens <- 0L
+  }
+
+  log_data |>
     dplyr::group_by(model) |>
     dplyr::summarize(
       n_calls = dplyr::n(),
       total_input_tokens = sum(input_tokens),
       total_output_tokens = sum(output_tokens),
+      total_cache_creation_tokens = sum(cache_creation_input_tokens, na.rm = TRUE),
+      total_cache_read_tokens = sum(cache_read_input_tokens, na.rm = TRUE),
       total_cost_usd = sum(cost_usd),
+      cache_hit_rate = ifelse(
+        sum(cache_creation_input_tokens + cache_read_input_tokens, na.rm = TRUE) > 0,
+        sum(cache_read_input_tokens, na.rm = TRUE) /
+          sum(cache_creation_input_tokens + cache_read_input_tokens, na.rm = TRUE),
+        NA_real_
+      ),
       .groups = "drop"
     )
+}
+
+
+# Null coalescing operator
+if (!exists("%||%", mode = "function", envir = environment())) {
+  `%||%` <- function(x, y) if (is.null(x)) y else x
 }

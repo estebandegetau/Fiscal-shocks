@@ -39,7 +39,8 @@ run_loocv <- function(codebook,
                       seed = 20251206,
                       use_self_consistency = FALSE,
                       show_progress = TRUE,
-                      max_retries = 10) {
+                      max_retries = 10,
+                      use_cache = TRUE) {
 
   n_acts <- nrow(aligned_data)
   message(sprintf("Running %s chunk-based LOOCV on %d acts...",
@@ -105,7 +106,8 @@ run_loocv <- function(codebook,
       model = model,
       use_self_consistency = use_self_consistency,
       system_prompt = system_prompt,
-      max_retries = max_retries
+      max_retries = max_retries,
+      use_cache = use_cache
     )
 
     # Classify Tier 2 chunks
@@ -122,7 +124,8 @@ run_loocv <- function(codebook,
       model = model,
       use_self_consistency = use_self_consistency,
       system_prompt = system_prompt,
-      max_retries = max_retries
+      max_retries = max_retries,
+      use_cache = use_cache
     )
 
     # Classify negative chunk sample
@@ -142,7 +145,8 @@ run_loocv <- function(codebook,
       model = model,
       use_self_consistency = use_self_consistency,
       system_prompt = system_prompt,
-      max_retries = max_retries
+      max_retries = max_retries,
+      use_cache = use_cache
     )
 
     dplyr::bind_rows(tier1_results, tier2_results, neg_results)
@@ -191,7 +195,8 @@ classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
                                      true_label, text_type, codebook,
                                      fold_examples, model,
                                      use_self_consistency, system_prompt,
-                                     max_retries = 10) {
+                                     max_retries = 10,
+                                     use_cache = FALSE) {
   positive_label <- get_valid_labels(codebook)[1]
 
   if (nrow(chunks) == 0) {
@@ -214,7 +219,8 @@ classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
         temperature = 0,
         use_self_consistency = use_self_consistency,
         system_prompt = system_prompt,
-        max_retries = max_retries
+        max_retries = max_retries,
+        use_cache = use_cache
       )
     }, error = function(e) {
       list(label = NA_character_, reasoning = e$message, confidence = NA_real_)
