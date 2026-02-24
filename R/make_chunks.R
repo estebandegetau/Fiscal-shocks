@@ -3,7 +3,9 @@
 #' Splits documents into overlapping chunks that fit within LLM context windows.
 #' Uses a sliding window approach to ensure context continuity across chunk boundaries.
 #'
-#' @param pages_df Data frame with document metadata and text column (list of page texts)
+#' @param pages_df Data frame with document metadata and text column (list of page texts).
+#'   Rows sharing the same `package_id` (or `doc_id`) are automatically aggregated
+#'   before chunking so that each document produces a single sequence of chunk IDs.
 #' @param window_size Number of pages per chunk (default: 50)
 #' @param overlap Number of overlapping pages between consecutive chunks (default: 10)
 #' @param max_tokens Maximum estimated tokens per chunk (default: 40000)
@@ -41,6 +43,28 @@ make_chunks <- function(pages_df,
 
   if (overlap >= window_size) {
     stop("overlap must be less than window_size")
+  }
+
+  # --- Aggregate rows that share the same doc identifier ---
+  id_col <- if ("package_id" %in% names(pages_df)) "package_id" else
+             if ("doc_id"     %in% names(pages_df)) "doc_id" else NULL
+
+  if (!is.null(id_col)) {
+    dup_ids <- unique(pages_df[[id_col]][duplicated(pages_df[[id_col]])])
+    if (length(dup_ids) > 0) {
+      message(sprintf(
+        "make_chunks: %d %s(s) span multiple rows; aggregating pages: %s",
+        length(dup_ids), id_col,
+        paste(sort(dup_ids), collapse = ", ")
+      ))
+      pages_df <- pages_df |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(id_col))) |>
+        dplyr::summarise(
+          text = list(purrr::reduce(text, c)),
+          dplyr::across(-text, ~ dplyr::first(.x)),
+          .groups = "drop"
+        )
+    }
   }
 
   # Process each document
