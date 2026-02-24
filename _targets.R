@@ -195,7 +195,7 @@ list(
 
   tar_target(
     chunks,
-    make_chunks(us_body, window_size = 50, overlap = 10, max_tokens = 160000),
+    make_chunks(us_body, window_size = 10, overlap = 3, max_tokens = 40000),
     packages = c("tidyverse", "purrr")
   ),
 

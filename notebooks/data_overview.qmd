@@ -560,8 +560,8 @@ tibble(
 
 **Key Logic:**
 
-1. **Sliding window:** 50-page window with 10-page overlap between consecutive chunks
-2. **Token limit:** 160,000 tokens (advisory; warns but does not split)
+1. **Sliding window:** 10-page window with 3-page overlap between consecutive chunks
+2. **Token limit:** 40,000 tokens (advisory; warns but does not split)
 3. **Page separators:** Pages joined with `--- PAGE BREAK ---` markers for page number tracking
 4. **Token estimation:** Characters / 4 as approximate token count
 
@@ -571,7 +571,7 @@ Chunks are the unit of input for C1 evaluation and production. Chunk-based evalu
 
 **Context window budget:**
 
-The largest chunks approach 155K tokens. With prompt overhead (~9K tokens for codebook, few-shot examples, and system instructions) and a 2K output buffer, all chunks fit within the 200K context window used by both Haiku 3.5 (S1/S2/S3 evaluation) and Sonnet/Opus (production).
+With 10-page windows, chunks are well within the 40K token advisory limit. With prompt overhead (~9K tokens for codebook, few-shot examples, and system instructions) and a 2K output buffer, all chunks fit comfortably within the 200K context window used by both Haiku 3.5 (S1/S2/S3 evaluation) and Sonnet/Opus (production).
 
 | Component | Approx. tokens |
 |:----------|---------------:|
@@ -877,7 +877,7 @@ tibble(
   `Key Operation` = c(
     "Group passages by act, concatenate",
     "Use first quarter as representative",
-    "Sliding window (50 pages, 10 overlap, 40K token limit)",
+    "Sliding window (10 pages, 3 overlap, 40K token limit)",
     "Verbatim match (T1), name/subcomponent/co-occurrence match (T2), all remaining (Neg)"
   ),
   `Rows In` = c(

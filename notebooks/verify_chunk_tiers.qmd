@@ -7,7 +7,7 @@ execute:
 
 ## Overview
 
-This notebook verifies the known act identification system that supports C1 (Measure ID) codebook development. The system classifies document chunks (50-page sliding windows) from US government documents into three tiers:
+This notebook verifies the known act identification system that supports C1 (Measure ID) codebook development. The system classifies document chunks (10-page sliding windows) from US government documents into three tiers:
 
 - **Tier 1**: Verbatim passage matches from `aligned_data` (gold standard)
 - **Tier 2**: Act name matches via whitespace-normalized substring, subcomponent decomposition, or co-occurrence rules

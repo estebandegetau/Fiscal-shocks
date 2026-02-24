@@ -72,7 +72,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - Documents the passage-to-act aggregation (grouping, concatenation with `\n\n` separator).
 - Documents fuzzy matching (Jaro-Winkler, threshold 0.85) for act name alignment.
 - Documents first-quarter simplification for multi-quarter acts.
-- Documents chunk sliding window parameters (50-page window, 10-page overlap, 160K token advisory limit).
+- Documents chunk sliding window parameters (10-page window, 3-page overlap, 40K token advisory limit).
 - Documents the three-tier chunk classification: Tier 1 (verbatim passage match), Tier 2 (act name + keyword co-occurrence), Negative (no fiscal signals).
 - Context window budget analysis showing all chunks fit within 200K with ~9.3K overhead.
 - **Key findings:** 44 labeled acts (not 126), median 8 passages per act, multi-quarter acts (median 7 quarters), tier coverage gaps for some acts.
