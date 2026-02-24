@@ -16,7 +16,22 @@ website:
     title: "Scaling Fiscal Shocks"
     contents:
       - index.qmd
-      - auto: "*.qmd"
+      - section: "Data Foundation"
+        contents:
+          - notebooks/review_data.qmd
+          - notebooks/verify_body.qmd
+          - notebooks/data_overview.qmd
+      - section: "Data Quality"
+        contents:
+          - notebooks/test_training_data.qmd
+          - notebooks/test_text_extraction.qmd
+      - section: "Pipeline Design"
+        contents:
+          - notebooks/identifying_known_acts.qmd
+          - notebooks/verify_chunk_tiers.qmd
+      - section: "Codebook Evaluation"
+        contents:
+          - notebooks/c1_measure_id.qmd
 
 
 title-block-banner: true
