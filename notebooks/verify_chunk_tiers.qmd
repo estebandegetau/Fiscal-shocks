@@ -255,6 +255,20 @@ mechanism_summary %>%
 
 Subcomponent decomposition provides redundancy across multiple mechanisms (full name, split-on-"and", parenthetical extraction, embedded formal names, Public Law numbers). Co-occurrence rules target acts with generic names that require multi-term matching. Acts with zero total matches require investigation.
 
+### Matching conservatism for non-decomposable names
+
+The subcomponent strategies only fire when specific structural patterns are present ("and", parentheticals, "Act of YYYY", Public Law numbers, event-type prefixes). For acts whose names lack these patterns, `generate_subcomponents` produces only the full name as a search term. Since Tier 2 matching uses `fixed()` substring search, the full string must appear contiguously in the chunk text.
+
+Consider an act named "Internal Revenue Code of 1954". None of the decomposition branches fire:
+
+- No `" and "` to split on
+- No parenthetical content
+- The embedded formal name regex requires `Act of YYYY`, not `Code of YYYY`
+- No Public Law number
+- Does not start with Expiration/Suspension/Restoration/Changes
+
+The only search term is the full name `"internal revenue code of 1954"`. A chunk that mentions "Internal Revenue Code" without the trailing "of 1954" would *not* match Tier 2. This is a recall gap: the matching is conservative for acts whose names do not decompose into shorter distinctive terms. The mechanism detail table above shows which acts rely on a single full-name term versus those with redundant subcomponent coverage.
+
 ## Temporal Consistency
 
 ```{r}
