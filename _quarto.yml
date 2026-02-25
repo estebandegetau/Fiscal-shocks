@@ -23,7 +23,6 @@ website:
           - notebooks/data_overview.qmd
       - section: "Data Quality"
         contents:
-          - notebooks/test_training_data.qmd
           - notebooks/test_text_extraction.qmd
       - section: "Pipeline Design"
         contents:
