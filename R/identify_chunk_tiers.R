@@ -136,11 +136,18 @@ generate_subcomponents <- function(act_name) {
 #' source and year when possible.
 #'
 #' @param aligned_data Tibble from align_labels_shocks() with passages_text
-#' @param chunks Tibble from make_chunks() with doc_id, year, text
+#' @param chunks Tibble from make_chunks() with doc_id, year, text (text
+#'   column optional when chunks_squished is provided)
+#' @param chunks_squished Optional pre-computed character vector of
+#'   str_squish(tolower(chunks$text)). When provided, searching uses this
+#'   vector with index-based matching (memory-safe: avoids filtering the
+#'   text tibble column). Search strings are also lowercased to match.
 #' @return Tibble with chunk_id, doc_id, year, act_name, tier, passage_idx
 #' @export
-identify_tier1_chunks <- function(aligned_data, chunks) {
+identify_tier1_chunks <- function(aligned_data, chunks,
+                                  chunks_squished = NULL) {
   results <- list()
+  use_squished <- !is.null(chunks_squished)
 
   for (i in seq_len(nrow(aligned_data))) {
     act <- aligned_data[i, ]
@@ -149,36 +156,55 @@ identify_tier1_chunks <- function(aligned_data, chunks) {
     passages <- passages[nchar(passages) > 50]
 
     for (j in seq_along(passages)) {
-      # Extract first 100 chars as search substring
       passage <- passages[j]
-      search_str <- substr(stringr::str_squish(passage), 1, 100)
 
-      # Try exact substring match (no year filter — maximize recall)
-      matches <- chunks |>
-        dplyr::filter(
-          stringr::str_detect(text, stringr::fixed(search_str))
+      if (use_squished) {
+        # Search squished text — lowercase search string to match
+        search_str <- substr(stringr::str_squish(tolower(passage)), 1, 100)
+        match_idx <- which(
+          stringr::str_detect(chunks_squished, stringr::fixed(search_str))
         )
-
-      if (nrow(matches) == 0) {
-        # Fall back to shorter substring (first 60 chars)
-        search_str <- substr(stringr::str_squish(passage), 1, 60)
+        if (length(match_idx) == 0) {
+          search_str <- substr(stringr::str_squish(tolower(passage)), 1, 60)
+          match_idx <- which(
+            stringr::str_detect(chunks_squished, stringr::fixed(search_str))
+          )
+        }
+        if (length(match_idx) > 0) {
+          idx <- match_idx[1]
+          results[[length(results) + 1]] <- tibble::tibble(
+            chunk_id = chunks$chunk_id[idx],
+            doc_id = chunks$doc_id[idx],
+            year = chunks$year[idx],
+            act_name = act$act_name,
+            tier = 1L,
+            passage_idx = j
+          )
+        }
+      } else {
+        # Original path: search raw text column
+        search_str <- substr(stringr::str_squish(passage), 1, 100)
         matches <- chunks |>
           dplyr::filter(
             stringr::str_detect(text, stringr::fixed(search_str))
           )
-      }
-
-      if (nrow(matches) > 0) {
-        # Take the first match (if multiple chunks contain the passage due to
-        # overlap, any one is a valid Tier 1 representative)
-        results[[length(results) + 1]] <- tibble::tibble(
-          chunk_id = matches$chunk_id[1],
-          doc_id = matches$doc_id[1],
-          year = matches$year[1],
-          act_name = act$act_name,
-          tier = 1L,
-          passage_idx = j
-        )
+        if (nrow(matches) == 0) {
+          search_str <- substr(stringr::str_squish(passage), 1, 60)
+          matches <- chunks |>
+            dplyr::filter(
+              stringr::str_detect(text, stringr::fixed(search_str))
+            )
+        }
+        if (nrow(matches) > 0) {
+          results[[length(results) + 1]] <- tibble::tibble(
+            chunk_id = matches$chunk_id[1],
+            doc_id = matches$doc_id[1],
+            year = matches$year[1],
+            act_name = act$act_name,
+            tier = 1L,
+            passage_idx = j
+          )
+        }
       }
     }
   }
@@ -225,15 +251,21 @@ identify_tier1_chunks <- function(aligned_data, chunks) {
 #' downstream codebooks (C2-C4) handle precision filtering.
 #'
 #' @param aligned_data Tibble from align_labels_shocks()
-#' @param chunks Tibble from make_chunks()
+#' @param chunks Tibble from make_chunks() (text column optional when
+#'   chunks_squished is provided)
 #' @param tier1_chunks Tibble of Tier 1 chunks (must have doc_id, chunk_id)
+#' @param chunks_squished Optional pre-computed character vector of
+#'   str_squish(tolower(chunks$text)). Avoids recomputing inside the function.
 #' @return Tibble with chunk_id, doc_id, year, act_name, tier
 #' @export
-identify_tier2_chunks <- function(aligned_data, chunks, tier1_chunks) {
+identify_tier2_chunks <- function(aligned_data, chunks, tier1_chunks,
+                                  chunks_squished = NULL) {
   act_names <- unique(aligned_data$act_name)
 
   # Pre-compute whitespace-normalized text once (handles OCR line breaks)
-  chunks_squished <- stringr::str_squish(tolower(chunks$text))
+  if (is.null(chunks_squished)) {
+    chunks_squished <- stringr::str_squish(tolower(chunks$text))
+  }
 
   # Build logical Tier 1 mask via ID matching
   tier1_ids <- paste(tier1_chunks$doc_id, tier1_chunks$chunk_id, sep = "||")
@@ -297,54 +329,97 @@ identify_tier2_chunks <- function(aligned_data, chunks, tier1_chunks) {
 #' fiscal vocabulary concentration. This replaces the binary relevance-key
 #' exclusion with a gradient for S3 error analysis.
 #'
-#' @param chunks Tibble from make_chunks()
+#' @param chunks Tibble from make_chunks() (text column optional when
+#'   chunks_squished is provided)
 #' @param tier1_chunks Tibble of Tier 1 chunks (must have doc_id, chunk_id)
 #' @param tier2_chunks Tibble of Tier 2 chunks (must have doc_id, chunk_id)
 #' @param relevance_keys Character vector of relevance keywords
-#' @return Tibble with chunk_id, doc_id, year, source_type, text, approx_tokens,
-#'   key_density, n_relevance_keys, n_words
+#' @param chunks_squished Optional pre-computed character vector of
+#'   str_squish(tolower(chunks$text)). When provided, uses index-based
+#'   negative mask and squished text for key_density computation.
+#' @return Tibble with chunk_id, doc_id, year, source_type,
+#'   key_density, n_relevance_keys, n_words, and optionally text,
+#'   approx_tokens (when chunks has a text column)
 #' @export
 identify_negative_chunks <- function(chunks, tier1_chunks, tier2_chunks,
-                                     relevance_keys) {
+                                     relevance_keys,
+                                     chunks_squished = NULL) {
   # Build relevance key pattern (word-boundary matching)
   relevance_pattern <- paste0(
     "\\b(", paste(relevance_keys, collapse = "|"), ")\\b"
   )
 
-  # Exclude all Tier 1 and Tier 2 chunks using anti_join
-  all_positives <- dplyr::bind_rows(
-    tier1_chunks |> dplyr::select(doc_id, chunk_id),
-    tier2_chunks |> dplyr::select(doc_id, chunk_id)
-  ) |>
-    dplyr::distinct()
+  use_squished <- !is.null(chunks_squished)
 
-  negatives <- chunks |>
-    dplyr::anti_join(all_positives, by = c("doc_id", "chunk_id"))
+  if (use_squished) {
+    # Index-based path: works even when chunks lacks a text column
+    all_positive_ids <- paste(
+      c(tier1_chunks$doc_id, tier2_chunks$doc_id),
+      c(tier1_chunks$chunk_id, tier2_chunks$chunk_id),
+      sep = "||"
+    )
+    chunk_ids <- paste(chunks$doc_id, chunks$chunk_id, sep = "||")
+    neg_mask <- !chunk_ids %in% all_positive_ids
+    neg_idx <- which(neg_mask)
 
-  # Compute key_density: n_relevance_keys / n_words
-  text_lower <- tolower(negatives$text)
-  negatives <- negatives |>
-    dplyr::mutate(
+    neg_text <- chunks_squished[neg_idx]  # already lowercased
+    negatives <- tibble::tibble(
+      chunk_id = chunks$chunk_id[neg_idx],
+      doc_id = chunks$doc_id[neg_idx],
+      year = chunks$year[neg_idx],
       n_relevance_keys = stringr::str_count(
-        text_lower,
-        stringr::regex(relevance_pattern)
+        neg_text, stringr::regex(relevance_pattern)
       ),
-      n_words = stringr::str_count(text_lower, "\\S+"),
+      n_words = stringr::str_count(neg_text, "\\S+"),
       key_density = dplyr::if_else(
         n_words > 0, n_relevance_keys / n_words, 0
       )
     )
+    # Include approx_tokens if available
+    if ("approx_tokens" %in% names(chunks)) {
+      negatives$approx_tokens <- chunks$approx_tokens[neg_idx]
+    }
+  } else {
+    # Original path: anti_join on tibble with text column
+    all_positives <- dplyr::bind_rows(
+      tier1_chunks |> dplyr::select(doc_id, chunk_id),
+      tier2_chunks |> dplyr::select(doc_id, chunk_id)
+    ) |>
+      dplyr::distinct()
+
+    negatives <- chunks |>
+      dplyr::anti_join(all_positives, by = c("doc_id", "chunk_id"))
+
+    text_lower <- tolower(negatives$text)
+    negatives <- negatives |>
+      dplyr::mutate(
+        n_relevance_keys = stringr::str_count(
+          text_lower,
+          stringr::regex(relevance_pattern)
+        ),
+        n_words = stringr::str_count(text_lower, "\\S+"),
+        key_density = dplyr::if_else(
+          n_words > 0, n_relevance_keys / n_words, 0
+        )
+      )
+  }
 
   # Derive source_type from doc_id pattern
   negatives <- negatives |>
     dplyr::mutate(
       source_type = dplyr::case_when(
-        stringr::str_detect(doc_id, stringr::regex("erp|economic.report",
-                                                    ignore_case = TRUE)) ~ "ERP",
-        stringr::str_detect(doc_id, stringr::regex("treasury|annual.report",
-                                                    ignore_case = TRUE)) ~ "Treasury",
-        stringr::str_detect(doc_id, stringr::regex("budget",
-                                                    ignore_case = TRUE)) ~ "Budget",
+        stringr::str_detect(
+          doc_id,
+          stringr::regex("erp|economic.report", ignore_case = TRUE)
+        ) ~ "ERP",
+        stringr::str_detect(
+          doc_id,
+          stringr::regex("treasury|annual.report", ignore_case = TRUE)
+        ) ~ "Treasury",
+        stringr::str_detect(
+          doc_id,
+          stringr::regex("budget", ignore_case = TRUE)
+        ) ~ "Budget",
         TRUE ~ "Other"
       )
     )
@@ -364,11 +439,196 @@ identify_negative_chunks <- function(chunks, tier1_chunks, tier2_chunks,
     max(negatives$key_density)
   ))
 
+  # Select output columns — use any_of for optional text/approx_tokens
   negatives |>
     dplyr::select(
-      chunk_id, doc_id, year, source_type, text, approx_tokens,
+      chunk_id, doc_id, year, source_type,
+      dplyr::any_of(c("text", "approx_tokens")),
       key_density, n_relevance_keys, n_words
     )
+}
+
+
+#' Compute C1 chunk tiers (memory-safe, no text in output)
+#'
+#' Memory-safe orchestrator that squishes text in-place, runs all tier
+#' matching, and returns IDs + metadata without text columns. Designed
+#' for the two-target split: c1_chunk_tiers (this) + c1_chunk_data
+#' (assemble_c1_chunk_data joins text back).
+#'
+#' @param aligned_data Tibble from align_labels_shocks()
+#' @param chunks Tibble from make_chunks() with doc_id, year, text
+#' @param relevance_keys Character vector of relevance keywords
+#' @param max_doc_year Integer year cutoff for corpus filtering
+#' @return List with tier1, tier2, negatives (no text), summary,
+#'   negative_density_summary, n_total_chunks
+#' @export
+compute_c1_chunk_tiers <- function(aligned_data, chunks, relevance_keys,
+                                   max_doc_year = 2007L) {
+  message("=== Computing C1 chunk tiers (memory-safe) ===")
+
+  # Step 1: Year filter (creates a new tibble — new text vector)
+  if (!is.null(max_doc_year)) {
+    n_before <- nrow(chunks)
+    chunks <- chunks |> dplyr::filter(is.na(year) | year <= max_doc_year)
+    message(sprintf(
+      "  Filtered chunks to doc_year <= %d: %d -> %d chunks",
+      max_doc_year, n_before, nrow(chunks)
+    ))
+  }
+
+  n_total_chunks <- nrow(chunks)
+
+  # Step 2: Extract text vector, drop text column from tibble, gc
+  # After this, raw_text has refcount=1 so in-place modification works
+  raw_text <- chunks$text
+  chunks$text <- NULL
+  gc()
+  message("  Extracted text vector, freed text column from chunks tibble")
+
+  # Step 3: Batch-squish in-place (refcount=1 avoids copy)
+  n <- length(raw_text)
+  batch_size <- 2000L
+  for (b in seq(1L, n, by = batch_size)) {
+    end <- min(b + batch_size - 1L, n)
+    raw_text[b:end] <- stringr::str_squish(tolower(raw_text[b:end]))
+  }
+  gc()
+  message("  Squished text in-place (batch)")
+
+  # Step 4: Tier 1 — verbatim passage matches (on squished text)
+  tier1 <- identify_tier1_chunks(
+    aligned_data, chunks, chunks_squished = raw_text
+  )
+
+  # Step 5: Tier 2 — act name mentions (on squished text)
+  tier2 <- identify_tier2_chunks(
+    aligned_data, chunks, tier1, chunks_squished = raw_text
+  )
+
+  # Step 6: Negatives (on squished text, no text column needed)
+  negatives <- identify_negative_chunks(
+    chunks, tier1, tier2, relevance_keys, chunks_squished = raw_text
+  )
+
+  # Free squished text and lightweight chunks
+  rm(raw_text, chunks)
+  gc()
+
+  # Coverage validation
+  acts_in_tier1 <- unique(tier1$act_name)
+  acts_in_tier2 <- unique(tier2$act_name)
+  all_covered <- unique(c(acts_in_tier1, acts_in_tier2))
+  uncovered <- setdiff(aligned_data$act_name, all_covered)
+  if (length(uncovered) > 0) {
+    warning(sprintf(
+      "%d act(s) have zero Tier 1 AND zero Tier 2 matches: %s",
+      length(uncovered),
+      paste(uncovered, collapse = "; ")
+    ))
+  }
+
+  # Summary statistics
+  n_tier1 <- nrow(tier1)
+  n_tier2 <- nrow(tier2)
+  n_negative <- nrow(negatives)
+
+  summary_tbl <- tibble::tibble(
+    category = c("Tier 1", "Tier 2", "Negative", "Total"),
+    n_chunks = c(n_tier1, n_tier2, n_negative, n_total_chunks),
+    pct = round(n_chunks / n_total_chunks * 100, 1)
+  )
+
+  message("\n=== Chunk Tier Summary ===")
+  message(sprintf("  Tier 1 (verbatim passage): %d chunks", n_tier1))
+  message(sprintf("  Tier 2 (act name mention): %d chunks", n_tier2))
+  message(sprintf("  Negative (all remaining):  %d chunks", n_negative))
+  message(sprintf("  Total:                     %d chunks", n_total_chunks))
+
+  # Negative key_density distribution
+  density_breaks <- c(0, 0.001, 0.01, 0.03, 0.05, Inf)
+  density_labels <- c("0", "(0, 1%]", "(1%, 3%]", "(3%, 5%]", ">5%")
+  negative_density_summary <- negatives |>
+    dplyr::mutate(
+      density_bin = cut(
+        key_density,
+        breaks = density_breaks,
+        labels = density_labels,
+        include.lowest = TRUE,
+        right = TRUE
+      )
+    ) |>
+    dplyr::count(density_bin, .drop = FALSE) |>
+    dplyr::mutate(pct = round(n / sum(n) * 100, 1))
+
+  list(
+    tier1 = tier1,
+    tier2 = tier2,
+    negatives = negatives,
+    summary = summary_tbl,
+    negative_density_summary = negative_density_summary,
+    n_total_chunks = n_total_chunks
+  )
+}
+
+
+#' Assemble C1 chunk data by joining text back onto tier results
+#'
+#' Takes the lightweight tier output from compute_c1_chunk_tiers() and
+#' joins text from the full chunks tibble. Produces the same output
+#' contract as the original prepare_c1_chunk_data().
+#'
+#' @param c1_chunk_tiers List from compute_c1_chunk_tiers()
+#' @param chunks Tibble from make_chunks() with doc_id, chunk_id, text
+#' @param max_doc_year Integer year cutoff (must match compute step)
+#' @return List with tier1, tier2, negatives (with text), summary,
+#'   negative_density_summary
+#' @export
+assemble_c1_chunk_data <- function(c1_chunk_tiers, chunks,
+                                   max_doc_year = 2007L) {
+  message("=== Assembling C1 chunk data (joining text) ===")
+
+  # Apply same year filter as compute step
+  if (!is.null(max_doc_year)) {
+    chunks <- chunks |>
+      dplyr::filter(is.na(year) | year <= max_doc_year)
+  }
+
+  # Build text lookup
+  text_lookup <- chunks |>
+    dplyr::select(doc_id, chunk_id, text, approx_tokens)
+
+  # Join text to tier1 and tier2
+  tier1_with_text <- c1_chunk_tiers$tier1 |>
+    dplyr::left_join(text_lookup, by = c("doc_id", "chunk_id"))
+
+  tier2_with_text <- c1_chunk_tiers$tier2 |>
+    dplyr::left_join(text_lookup, by = c("doc_id", "chunk_id"))
+
+  # Join text to negatives (only join columns not already present)
+  neg_join_cols <- c("doc_id", "chunk_id", "text")
+  if (!"approx_tokens" %in% names(c1_chunk_tiers$negatives)) {
+    neg_join_cols <- c(neg_join_cols, "approx_tokens")
+  }
+  negatives_with_text <- c1_chunk_tiers$negatives |>
+    dplyr::left_join(
+      text_lookup |> dplyr::select(dplyr::all_of(neg_join_cols)),
+      by = c("doc_id", "chunk_id")
+    )
+
+  message(sprintf(
+    "  Joined text: tier1=%d, tier2=%d, negatives=%d",
+    nrow(tier1_with_text), nrow(tier2_with_text),
+    nrow(negatives_with_text)
+  ))
+
+  list(
+    tier1 = tier1_with_text,
+    tier2 = tier2_with_text,
+    negatives = negatives_with_text,
+    summary = c1_chunk_tiers$summary,
+    negative_density_summary = c1_chunk_tiers$negative_density_summary
+  )
 }
 
 
@@ -490,15 +750,18 @@ prepare_c1_chunk_data <- function(aligned_data, chunks, relevance_keys,
 #'
 #' @param aligned_data Tibble from align_labels_shocks()
 #' @param chunks Tibble from make_chunks() with doc_id, year, text
+#' @param c1_positive_ids Tibble with doc_id, chunk_id for all positive
+#'   (Tier 1 + Tier 2) chunks. Decouples diagnostics from c1_chunk_data.
+#' @param max_doc_year Integer year cutoff for corpus filtering
 #' @return List with mechanism_tbl, timing_df, corpus_year_counts,
 #'   contamination_rate, contamination_examples
 #' @export
 prepare_chunk_tier_diagnostics <- function(aligned_data, chunks,
-                                           c1_chunk_data,
+                                           c1_positive_ids,
                                            max_doc_year = 2007L) {
   message("=== Pre-computing chunk tier diagnostics ===")
 
-  # Apply same year filter as prepare_c1_chunk_data
+  # Apply same year filter as compute_c1_chunk_tiers
   if (!is.null(max_doc_year)) {
     chunks <- chunks |>
       dplyr::filter(is.na(year) | year <= max_doc_year)
@@ -506,17 +769,29 @@ prepare_chunk_tier_diagnostics <- function(aligned_data, chunks,
                     max_doc_year, nrow(chunks)))
   }
 
-  # Extract lightweight vectors from chunks, then free the heavy tibble.
-  # This avoids holding chunks (~400-650 MB) AND chunks_squished (~400-650 MB)
-  # simultaneously, which OOMs in the 8 GB container.
+  # Extract lightweight vectors, then batch-squish in-place to avoid
+  # holding chunks (~566 MB) AND squished text (~500 MB) simultaneously.
   chunk_years <- chunks$year
   chunk_doc_ids <- chunks$doc_id
   chunk_chunk_ids <- chunks$chunk_id
   corpus_year_counts <- dplyr::count(chunks, year)
-  chunks_squished <- stringr::str_squish(tolower(chunks$text))
+
+  # Extract text, free chunks tibble
+  chunks_squished <- chunks$text
   rm(chunks)
   gc()
-  message("  Freed chunks tibble, retained squished text + metadata vectors")
+
+  # Batch-squish in-place (refcount=1 after rm above)
+  n <- length(chunks_squished)
+  batch_size <- 2000L
+  for (b in seq(1L, n, by = batch_size)) {
+    end <- min(b + batch_size - 1L, n)
+    chunks_squished[b:end] <- stringr::str_squish(
+      tolower(chunks_squished[b:end])
+    )
+  }
+  gc()
+  message("  Freed chunks tibble, batch-squished text in-place")
 
   # --- 1. Mechanism analysis (per-act, per-search-term match counts) ---
   mechanism_rows <- list()
@@ -626,10 +901,10 @@ prepare_chunk_tier_diagnostics <- function(aligned_data, chunks,
     stringr::regex(act_names_pattern)
   )
 
-  # Derive negative mask from c1_chunk_data (avoids re-running tier ID)
+  # Derive negative mask from c1_positive_ids (lightweight tibble)
   all_positive_ids <- paste(
-    c(c1_chunk_data$tier1$doc_id, c1_chunk_data$tier2$doc_id),
-    c(c1_chunk_data$tier1$chunk_id, c1_chunk_data$tier2$chunk_id),
+    c1_positive_ids$doc_id,
+    c1_positive_ids$chunk_id,
     sep = "||"
   )
   chunk_ids <- paste(chunk_doc_ids, chunk_chunk_ids, sep = "||")

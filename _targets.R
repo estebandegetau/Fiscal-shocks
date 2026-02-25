@@ -204,18 +204,39 @@ list(
   # C1 Codebook Pipeline: Measure Identification (H&K S0-S3)
   # =============================================================================
 
-  # C1 chunk tier identification (Tier 1/2/Negative)
+  # C1 chunk tier identification — two-target split for memory safety.
+  # c1_chunk_tiers: squish in-place, match tiers, return IDs (no text).
+  # c1_chunk_data: join text from chunks onto tier results.
+  # With garbage_collection = TRUE, targets gc's between them so peak
+  # memory never exceeds ~600 MB (vs ~1.1 GB in the single-target version).
+  tar_target(
+    c1_chunk_tiers,
+    compute_c1_chunk_tiers(aligned_data, chunks, relevance_keys,
+                           max_doc_year = 2007L),
+    packages = c("tidyverse", "stringr")
+  ),
   tar_target(
     c1_chunk_data,
-    prepare_c1_chunk_data(aligned_data, chunks, relevance_keys,
-                          max_doc_year = 2007L),
-    packages = c("tidyverse", "stringr")
+    assemble_c1_chunk_data(c1_chunk_tiers, chunks,
+                           max_doc_year = 2007L),
+    packages = c("tidyverse")
+  ),
+
+  # Lightweight positive ID extract for diagnostics (avoids loading
+  # c1_chunk_data's text columns into the diagnostics target)
+  tar_target(
+    c1_positive_ids,
+    dplyr::bind_rows(
+      c1_chunk_data$tier1 |> dplyr::select(doc_id, chunk_id),
+      c1_chunk_data$tier2 |> dplyr::select(doc_id, chunk_id)
+    ) |> dplyr::distinct(),
+    packages = "dplyr"
   ),
 
   # Pre-computed diagnostics for verify_chunk_tiers notebook (avoids OOM)
   tar_target(
     c1_tier_diagnostics,
-    prepare_chunk_tier_diagnostics(aligned_data, chunks, c1_chunk_data,
+    prepare_chunk_tier_diagnostics(aligned_data, chunks, c1_positive_ids,
                                    max_doc_year = 2007L),
     packages = c("tidyverse", "stringr")
   ),
