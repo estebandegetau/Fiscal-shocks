@@ -47,21 +47,6 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - Quality metrics dashboard (PASS/WARN/FAIL).
 - **Decision:** This was a proof-of-concept for the extraction pipeline. Superseded by the more comprehensive `verify_body.qmd` for production validation.
 
-### `test_training_data.qmd` -- Training Data Quality Tests
-
-**Purpose:** Comprehensive test suites (7 suites, 23 tests) verifying all training data generated for the legacy Model A/B/C framework. Tests alignment, splits, class balance, negative example quality, and cross-dataset consistency.
-
-**Key tests and decisions:**
-
-- **Suite 1 (Alignment):** 44/44 acts aligned (100%), median 8 passages per act, no missing fields.
-- **Suite 2 (Splits):** 64/23/14% split (target 60/20/20). Test set deviation is a mathematical constraint with 44 acts + stratification, not a data error. No data leakage.
-- **Suite 3 (Model A):** 1:4.5 class balance, 0% negative contamination, reasonable text lengths.
-- **Suite 4 (Model B):** All 4 motivation categories present. 100% exogenous flag consistency. Countercyclical under-represented (6 acts, 0 in test set).
-- **Suite 5 (Model C):** 41/41 acts have complete timing and magnitude. Both tax increases and cuts represented.
-- **Suite 6 (Chunks):** 199/304 documents chunked (65.5%, reflecting extraction failures). Median 37K tokens, max 155K. 10-page overlap working correctly.
-- **Suite 7 (Cross-Dataset):** 100% act name consistency and split consistency across all datasets.
-- **Decision:** 22/23 tests pass. Single failure (split ratio) accepted for Phase 0. Data suitable for codebook development.
-
 ### `data_overview.qmd` -- Training Data Overview
 
 **Purpose:** Document the complete data transformation pipeline from raw sources to evaluation-ready datasets. Transparency document showing observation-level changes at each stage.
@@ -132,16 +117,16 @@ Located in `notebooks/unused/` unless noted otherwise. These are from earlier ex
 - `review_us.qmd` -- Early US data review
 - `review_model_a.qmd` -- Legacy Model A review (deleted from repo; superseded by C1-C4 framework)
 - `review_model_b.qmd` -- Legacy Model B review (deleted from repo; superseded by C1-C4 framework)
+- `test_training_data.qmd` -- Legacy Model A/B/C training data quality tests (moved to `notebooks/unused/`; superseded by C1-C4 pipeline targets)
 
 ## Reading Order for New Contributors
 
 1. `review_data.qmd` -- Understand the ground-truth data (us_shocks, us_labels)
 2. `verify_body.qmd` -- Understand the document corpus (us_body)
 3. `data_overview.qmd` -- Understand the full transformation pipeline
-4. `test_training_data.qmd` -- Verify data quality (legacy test suite, still informative)
-5. `identifying_known_acts.qmd` -- Understand chunk-act matching design decisions
-6. `verify_chunk_tiers.qmd` -- Verify the implemented tier system
-7. `c1_measure_id.qmd` -- See the C1 evaluation framework (template for C2-C4)
+4. `identifying_known_acts.qmd` -- Understand chunk-act matching design decisions
+5. `verify_chunk_tiers.qmd` -- Verify the implemented tier system
+6. `c1_measure_id.qmd` -- See the C1 evaluation framework (template for C2-C4)
 
 ## Conventions
 

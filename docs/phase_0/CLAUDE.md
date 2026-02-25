@@ -171,7 +171,7 @@ Load in R: `dotenv::load_dot_env()` at start of `_targets.R`
 
 ### API Usage
 
-**Model**: Claude 3.5 Sonnet (`claude-3-5-sonnet-20241022`)
+**Model**: Claude Haiku 4.5 (`claude-haiku-4-5-20251001`)
 
 - 200K context window (handles long documents)
 - JSON mode for structured outputs

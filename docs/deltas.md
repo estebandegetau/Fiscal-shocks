@@ -9,6 +9,27 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-02-25: Chunk window reduced from 50 to 10 pages
+
+**Type:** correction
+**Affects:** `docs/strategy.md` > C1 Implementation Blueprint > Chunk Tier System
+**Detail:** Chunk sliding window parameters changed from 50-page window / 10-page overlap to 10-page window / 3-page overlap (commit `c87283a`). This reduces LOOCV cost by ~75% while keeping all chunks within the 40K token advisory limit. The `data_overview.qmd` notebook documents the new parameters. If `docs/strategy.md` specifies chunk window size, it should be updated.
+**Suggested edit:** Update any chunk window references from "50-page window, 10-page overlap" to "10-page window, 3-page overlap".
+
+## 2026-02-25: Internal Revenue Code of 1954 excluded from evaluation data
+
+**Type:** new-constraint
+**Affects:** `docs/strategy.md` > Data Constraints; `docs/strategy.md` > C1 Implementation Blueprint
+**Detail:** The Internal Revenue Code of 1954 is excluded from `aligned_data` via `exclude_acts` parameter (commit `ff9c8c9`). This act is a comprehensive codification rather than a discrete fiscal shock, making it unsuitable for C1 evaluation. Effective evaluation set is now 43 acts, not 44.
+**Suggested edit:** Update "44 labeled acts" references to "43 labeled acts (44 minus Internal Revenue Code of 1954 exclusion)" where evaluation-specific, or add a footnote noting the exclusion.
+
+## 2026-02-25: Legacy test_training_data.qmd removed from active notebooks
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Files to Create (if listed)
+**Detail:** `notebooks/test_training_data.qmd` deleted from active directory and moved to `notebooks/unused/` (commit `c2f90db`). This notebook tested the legacy Model A/B/C training data pipeline, which is superseded by the C1-C4 codebook framework. Data quality is now validated through pipeline targets and `verify_chunk_tiers.qmd`.
+**Suggested edit:** None needed (notebook was not referenced in strategy.md).
+
 ## 2026-02-21: C1 S1 behavioral tests — all 4 tests pass (iteration 3)
 
 **Type:** status-change
