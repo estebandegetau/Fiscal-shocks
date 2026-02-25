@@ -21,7 +21,8 @@ clean_act_name <- function(act_name) {
 #' @param us_shocks Tibble with columns: act_name, date_signed, change_in_liabilities_*, present_value_*, reasoning
 #' @param threshold Similarity threshold for fuzzy matching (default 0.9)
 #' @return Tibble with aligned labels and shocks data (one row per act, with nested shock details)
-align_labels_shocks <- function(us_labels, us_shocks, threshold = 0.9) {
+align_labels_shocks <- function(us_labels, us_shocks, threshold = 0.9,
+                                exclude_acts = NULL) {
 
   # Clean act names in both datasets
   labels_clean <- us_labels %>%
@@ -175,6 +176,15 @@ align_labels_shocks <- function(us_labels, us_shocks, threshold = 0.9) {
       year = lubridate::year(date_signed),
       exogenous = exogenous_flag == "Exogenous"
     )
+
+  if (!is.null(exclude_acts)) {
+    n_before <- nrow(aligned_data)
+    aligned_data <- aligned_data |>
+      dplyr::filter(!act_name %in% exclude_acts)
+    message(sprintf("Excluded %d act(s): %s",
+                    n_before - nrow(aligned_data),
+                    paste(exclude_acts, collapse = "; ")))
+  }
 
   message(sprintf("Final alignment: %d acts with %d total passages",
                   nrow(aligned_data),

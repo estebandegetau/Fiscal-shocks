@@ -181,7 +181,8 @@ list(
   # Phase 0 Training Data Preparation
   tar_target(
     aligned_data,
-    align_labels_shocks(us_labels, us_shocks, threshold = 0.85),
+    align_labels_shocks(us_labels, us_shocks, threshold = 0.85,
+                        exclude_acts = "Internal Revenue Code of 1954"),
     packages = c("tidyverse", "stringdist")
   ),
   tar_quarto(

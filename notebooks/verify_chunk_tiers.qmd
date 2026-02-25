@@ -112,7 +112,7 @@ n_uncovered <- nrow(uncovered_acts)
 
 **Coverage Status**: `r if(n_uncovered == 0) "PASS" else paste0("FAIL - ", n_uncovered, " uncovered acts")`
 
-All 44 acts should have at least one tier match. `r if(n_uncovered > 0) paste0("Uncovered acts: ", paste(uncovered_acts$act_name, collapse = "; ")) else "All acts successfully matched."`
+All `r nrow(aligned_data)` acts should have at least one tier match. `r if(n_uncovered > 0) paste0("Uncovered acts: ", paste(uncovered_acts$act_name, collapse = "; ")) else "All acts successfully matched."`
 
 ## Per-Act Chunk Matches
 
@@ -268,6 +268,10 @@ Consider an act named "Internal Revenue Code of 1954". None of the decomposition
 - Does not start with Expiration/Suspension/Restoration/Changes
 
 The only search term is the full name `"internal revenue code of 1954"`. A chunk that mentions "Internal Revenue Code" without the trailing "of 1954" would *not* match Tier 2. This is a recall gap: the matching is conservative for acts whose names do not decompose into shorter distinctive terms. The mechanism detail table above shows which acts rely on a single full-name term versus those with redundant subcomponent coverage.
+
+### Excluded act: Internal Revenue Code of 1954
+
+The Internal Revenue Code of 1954 is excluded from evaluation data (`exclude_acts` in `align_labels_shocks()`). Its name doubles as the permanent legal name of the US tax code, so it is cited routinely across decades in contexts unrelated to the fiscal shock of its original enactment. Tier 2 matching flags every such mention as a positive, causing systematic contamination of evaluation data. Since the tier system is US-only infrastructure (Malaysia and other countries use the full codebook suite with expert validation), an act-level exclusion is the most defensible fix. The evaluation dataset contains 43 acts after this exclusion.
 
 ## Temporal Consistency
 
@@ -530,7 +534,7 @@ verification_results <- tibble(
     "Token distribution (similar across tiers)"
   ),
   result = c(
-    paste0(sum(coverage$has_any), " / 44 acts"),
+    paste0(sum(coverage$has_any), " / ", nrow(aligned_data), " acts"),
     paste0(nrow(overlap), " overlapping chunks"),
     paste0(sum(temporal_summary$pct_within_2 >= 0.5, na.rm = TRUE), " / ", nrow(temporal_summary), " acts"),
     scales::percent(contamination_rate, accuracy = 0.01),
@@ -571,7 +575,7 @@ verification_results %>%
 
 The chunk tier system provides a validated foundation for C1 (Measure ID) codebook evaluation. Key findings:
 
-- **Positive identification** achieved for `r sum(coverage$has_any)` / 44 acts through verbatim passage matches (Tier 1) and act name matching (Tier 2)
+- **Positive identification** achieved for `r sum(coverage$has_any)` / `r nrow(aligned_data)` acts through verbatim passage matches (Tier 1) and act name matching (Tier 2)
 - **Matching mechanisms** show redundancy across full name, year-only, and co-occurrence strategies, improving recall
 - **Temporal consistency** varies by act, with `r scales::percent(mean(temporal_summary$pct_within_2 >= 0.5, na.rm = TRUE), accuracy = 1)` of acts showing ≥50% matches within ±2 years of signing
 - **Negative pool** spans `r scales::comma(nrow(c1_chunk_data$negatives))` chunks with continuous key density distribution, enabling stratified hard-negative sampling
