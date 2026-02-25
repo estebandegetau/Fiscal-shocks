@@ -148,21 +148,13 @@ identify_tier1_chunks <- function(aligned_data, chunks) {
     passages <- stringr::str_trim(passages)
     passages <- passages[nchar(passages) > 50]
 
-    act_year <- act$year
-
-    # Narrow chunk search to same year +/- 1 (passages may appear in adjacent years)
-    candidate_chunks <- chunks |>
-      dplyr::filter(
-        is.na(year) | (year >= act_year - 1 & year <= act_year + 1)
-      )
-
     for (j in seq_along(passages)) {
       # Extract first 100 chars as search substring
       passage <- passages[j]
       search_str <- substr(stringr::str_squish(passage), 1, 100)
 
-      # Try exact substring match
-      matches <- candidate_chunks |>
+      # Try exact substring match (no year filter — maximize recall)
+      matches <- chunks |>
         dplyr::filter(
           stringr::str_detect(text, stringr::fixed(search_str))
         )
@@ -170,7 +162,7 @@ identify_tier1_chunks <- function(aligned_data, chunks) {
       if (nrow(matches) == 0) {
         # Fall back to shorter substring (first 60 chars)
         search_str <- substr(stringr::str_squish(passage), 1, 60)
-        matches <- candidate_chunks |>
+        matches <- chunks |>
           dplyr::filter(
             stringr::str_detect(text, stringr::fixed(search_str))
           )
