@@ -1,0 +1,590 @@
+---
+title: "Pre-Flight API Input Verification"
+subtitle: "Systematic validation of data integrity before S2 LOOCV"
+execute:
+  cache: false
+---
+
+## Overview
+
+Before running expensive S2 LOOCV API calls, this notebook runs 12 systematic checks on the data pipeline outputs. Each test produces a PASS/WARN/FAIL result. All tests must pass (or have documented exceptions) before proceeding.
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, gt, here, jsonlite)
+
+here::i_am("notebooks/verify_api_inputs.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
+source(here("R/identify_chunk_tiers.R"))
+source(here("R/codebook_stage_0.R"))
+source(here("R/generate_c1_examples.R"))
+set_theme(theme_minimal())
+```
+
+```{r}
+#| label: load-data
+
+us_body      <- tar_read(us_body)
+chunks       <- tar_read(chunks)
+aligned_data <- tar_read(aligned_data)
+c1_chunk_data <- tar_read(c1_chunk_data)
+c1_codebook  <- tar_read(c1_codebook)
+```
+
+```{r}
+#| label: init-results
+
+# Accumulator for test results
+test_results <- tibble(
+  test_id = integer(),
+  test_name = character(),
+  result = character(),
+  status = character()
+)
+
+add_result <- function(id, name, result, status) {
+  test_results <<- bind_rows(
+    test_results,
+    tibble(test_id = id, test_name = name, result = result, status = status)
+  )
+}
+```
+
+## Test 1: Chunking Completeness
+
+Every document in the corpus should be fully chunked: the first chunk starts at page 1 and the last chunk ends at or beyond the document's page count.
+
+```{r}
+#| label: test-1-chunking-completeness
+
+# Get total pages per document from us_body (aggregated by package_id)
+id_col <- if ("package_id" %in% names(us_body)) "package_id" else "doc_id"
+
+doc_pages <- us_body |>
+  group_by(across(all_of(id_col))) |>
+  summarize(
+    n_pages_doc = sum(map_int(text, length)),
+    .groups = "drop"
+  ) |>
+  rename(doc_id = all_of(id_col))
+
+# Get chunk coverage per document
+chunk_coverage <- chunks |>
+  group_by(doc_id) |>
+  summarize(
+    min_start = min(start_page),
+    max_end = max(end_page),
+    n_chunks = n(),
+    .groups = "drop"
+  )
+
+# Join and check
+coverage_check <- doc_pages |>
+  filter(n_pages_doc > 0) |>
+  inner_join(chunk_coverage, by = "doc_id") |>
+  mutate(
+    starts_at_1 = min_start == 1,
+    covers_end = max_end >= n_pages_doc,
+    ok = starts_at_1 & covers_end
+  )
+
+n_fail_start <- sum(!coverage_check$starts_at_1)
+n_fail_end <- sum(!coverage_check$covers_end)
+n_docs_checked <- nrow(coverage_check)
+all_ok <- all(coverage_check$ok)
+```
+
+```{r}
+#| label: test-1-details
+
+if (!all_ok) {
+  coverage_check |>
+    filter(!ok) |>
+    select(doc_id, n_pages_doc, min_start, max_end) |>
+    slice_head(n = 10) |>
+    gt() |>
+    cols_label(
+      doc_id = "Document",
+      n_pages_doc = "Total Pages",
+      min_start = "First Chunk Start",
+      max_end = "Last Chunk End"
+    ) |>
+    gt_theme_report()
+}
+
+add_result(
+  1, "Chunking completeness",
+  sprintf("%d/%d docs fully chunked", sum(coverage_check$ok), n_docs_checked),
+  if (all_ok) "PASS" else "FAIL"
+)
+```
+
+```{r}
+#| label: free-us-body
+
+# Free us_body to reduce memory pressure (only needed for Test 1)
+rm(us_body)
+gc()
+```
+
+**Test 1**: `r if(all_ok) "PASS" else paste0("FAIL - ", n_fail_start, " start gaps, ", n_fail_end, " end gaps")`
+
+## Test 2: No Empty Chunks
+
+All chunks should contain substantive text. Chunks with 100 or fewer characters indicate extraction failures.
+
+```{r}
+#| label: test-2-empty-chunks
+
+chunk_lengths <- nchar(chunks$text)
+n_short <- sum(chunk_lengths <= 100)
+shortest <- if (n_short > 0) {
+  chunks |>
+    filter(nchar(text) <= 100) |>
+    select(doc_id, chunk_id, n_pages, approx_tokens) |>
+    slice_head(n = 5)
+} else {
+  NULL
+}
+
+add_result(
+  2, "No empty chunks",
+  sprintf("%d chunks with <=100 chars (of %d total)", n_short, nrow(chunks)),
+  if (n_short == 0) "PASS" else "FAIL"
+)
+```
+
+```{r}
+#| label: test-2-details
+
+if (!is.null(shortest)) {
+  shortest |>
+    gt() |>
+    cols_label(doc_id = "Doc", chunk_id = "Chunk", n_pages = "Pages",
+               approx_tokens = "Tokens") |>
+    gt_theme_report()
+}
+```
+
+**Test 2**: `r if(n_short == 0) "PASS" else paste0("FAIL - ", n_short, " short chunks")`
+
+## Test 3: No Text-Less Tier Rows
+
+Every Tier 1 and Tier 2 row must have non-empty text after the join from `assemble_c1_chunk_data()`.
+
+```{r}
+#| label: test-3-textless
+
+tier1_missing <- c1_chunk_data$tier1 |>
+  filter(is.na(text) | nchar(text) == 0) |>
+  nrow()
+
+tier2_missing <- c1_chunk_data$tier2 |>
+  filter(is.na(text) | nchar(text) == 0) |>
+  nrow()
+
+n_textless <- tier1_missing + tier2_missing
+
+add_result(
+  3, "No text-less tier rows",
+  sprintf("Tier 1: %d missing, Tier 2: %d missing", tier1_missing, tier2_missing),
+  if (n_textless == 0) "PASS" else "FAIL"
+)
+```
+
+**Test 3**: `r if(n_textless == 0) "PASS" else paste0("FAIL - ", n_textless, " rows without text")`
+
+## Test 4: Act Name Alignment
+
+The act names in `aligned_data` should match exactly with the act names in the tier data (both directions).
+
+```{r}
+#| label: test-4-act-alignment
+
+aligned_acts <- sort(unique(aligned_data$act_name))
+tier_acts <- sort(unique(c(
+  c1_chunk_data$tier1$act_name,
+  c1_chunk_data$tier2$act_name
+)))
+
+in_aligned_not_tiers <- setdiff(aligned_acts, tier_acts)
+in_tiers_not_aligned <- setdiff(tier_acts, aligned_acts)
+
+alignment_ok <- length(in_aligned_not_tiers) == 0 && length(in_tiers_not_aligned) == 0
+
+add_result(
+  4, "Act name alignment",
+  sprintf("Aligned→Tiers: %d missing, Tiers→Aligned: %d extra",
+          length(in_aligned_not_tiers), length(in_tiers_not_aligned)),
+  if (alignment_ok) "PASS" else "FAIL"
+)
+```
+
+```{r}
+#| label: test-4-details
+#| results: asis
+
+if (length(in_aligned_not_tiers) > 0) {
+  cat("\n\n**Acts in aligned_data but not in tiers:**\n\n")
+  for (act in in_aligned_not_tiers) cat(sprintf("- %s\n", act))
+}
+if (length(in_tiers_not_aligned) > 0) {
+  cat("\n\n**Acts in tiers but not in aligned_data:**\n\n")
+  for (act in in_tiers_not_aligned) cat(sprintf("- %s\n", act))
+}
+```
+
+**Test 4**: `r if(alignment_ok) "PASS" else "FAIL"`
+
+## Test 5: Passage Delimiter Integrity
+
+For acts with multiple passages (`n_passages > 1`), splitting on `\n\n` should produce multiple non-empty elements.
+
+```{r}
+#| label: test-5-delimiter
+
+multi_passage <- aligned_data |>
+  filter(n_passages > 1)
+
+if (nrow(multi_passage) > 0) {
+  split_check <- multi_passage |>
+    mutate(
+      split_parts = map(passages_text, ~ str_split(.x, "\n\n")[[1]]),
+      n_nonempty = map_int(split_parts, ~ sum(nchar(str_trim(.x)) > 0))
+    )
+
+  delimiter_failures <- split_check |>
+    filter(n_nonempty <= 1)
+
+  n_delim_fail <- nrow(delimiter_failures)
+} else {
+  n_delim_fail <- 0
+}
+
+add_result(
+  5, "Passage delimiter integrity",
+  sprintf("%d/%d multi-passage acts split correctly",
+          nrow(multi_passage) - n_delim_fail, nrow(multi_passage)),
+  if (n_delim_fail == 0) "PASS" else "FAIL"
+)
+```
+
+**Test 5**: `r if(n_delim_fail == 0) "PASS" else paste0("FAIL - ", n_delim_fail, " acts with split failure")`
+
+## Test 6: Usable Passages Per Act
+
+After splitting on `\n\n` and filtering to passages with more than 50 characters, every act should have at least one usable passage.
+
+```{r}
+#| label: test-6-usable-passages
+
+passage_counts <- aligned_data |>
+  mutate(
+    passages = map(passages_text, ~ {
+      parts <- str_split(.x, "\n\n")[[1]]
+      parts <- str_trim(parts)
+      parts[nchar(parts) > 50]
+    }),
+    n_usable = map_int(passages, length)
+  )
+
+n_no_passages <- sum(passage_counts$n_usable == 0)
+
+add_result(
+  6, "Usable passages per act",
+  sprintf("%d/%d acts have >=1 usable passage",
+          sum(passage_counts$n_usable > 0), nrow(aligned_data)),
+  if (n_no_passages == 0) "PASS" else "FAIL"
+)
+```
+
+```{r}
+#| label: test-6-details
+
+if (n_no_passages > 0) {
+  passage_counts |>
+    filter(n_usable == 0) |>
+    select(act_name, n_passages, n_usable) |>
+    gt() |>
+    cols_label(
+      act_name = "Act", n_passages = "Declared Passages", n_usable = "Usable"
+    ) |>
+    gt_theme_report()
+}
+```
+
+**Test 6**: `r if(n_no_passages == 0) "PASS" else paste0("FAIL - ", n_no_passages, " acts without usable passages")`
+
+## Test 7: No Within-Tier Duplicates
+
+Tier 1 should have no duplicate `(doc_id, chunk_id, act_name, passage_idx)` combinations. Tier 2 should have no duplicate `(doc_id, chunk_id, act_name)` combinations. Multiple passages matching the same chunk are expected for Tier 1 and flagged as WARN.
+
+```{r}
+#| label: test-7-duplicates
+
+# Tier 1: true duplicates (same chunk, act, passage)
+tier1_n_before <- nrow(c1_chunk_data$tier1)
+tier1_n_distinct <- c1_chunk_data$tier1 |>
+  distinct(doc_id, chunk_id, act_name, passage_idx) |>
+  nrow()
+tier1_dupes <- tier1_n_before - tier1_n_distinct
+
+# Tier 1: multi-passage matches (same chunk, different passages)
+tier1_multi <- c1_chunk_data$tier1 |>
+  count(doc_id, chunk_id, act_name) |>
+  filter(n > 1) |>
+  nrow()
+
+# Tier 2: true duplicates
+tier2_n_before <- nrow(c1_chunk_data$tier2)
+tier2_n_distinct <- c1_chunk_data$tier2 |>
+  distinct(doc_id, chunk_id, act_name) |>
+  nrow()
+tier2_dupes <- tier2_n_before - tier2_n_distinct
+
+total_dupes <- tier1_dupes + tier2_dupes
+
+add_result(
+  7, "No within-tier duplicates",
+  sprintf("T1: %d true dupes, %d multi-passage chunks; T2: %d dupes",
+          tier1_dupes, tier1_multi, tier2_dupes),
+  if (total_dupes == 0 && tier1_multi == 0) "PASS"
+  else if (total_dupes == 0 && tier1_multi > 0) "WARN"
+  else "FAIL"
+)
+```
+
+**Test 7**: `r if(total_dupes == 0) "PASS" else paste0("FAIL - ", total_dupes, " true duplicates")``r if(tier1_multi > 0) paste0(" (WARN: ", tier1_multi, " multi-passage chunks in Tier 1)") else ""`
+
+## Test 8: Token Budget Fit
+
+All chunks plus overhead (codebook prompt + few-shot examples + system prompt + output buffer) must fit within the 200K context window.
+
+```{r}
+#| label: test-8-token-budget
+
+# Compute actual codebook prompt tokens
+codebook_prompt <- construct_codebook_prompt(c1_codebook)
+codebook_tokens <- nchar(codebook_prompt) / 4
+
+# Overhead components
+few_shot_tokens <- 3100   # estimated from generate_c1_loocv_fold_examples()
+system_tokens <- 125      # system prompt
+output_tokens <- 2000     # output buffer
+overhead <- codebook_tokens + few_shot_tokens + system_tokens + output_tokens
+
+context_limit <- 200000
+
+# Get max tokens across all tiers
+max_tier1_tokens <- if (nrow(c1_chunk_data$tier1) > 0) max(c1_chunk_data$tier1$approx_tokens, na.rm = TRUE) else 0
+max_tier2_tokens <- if (nrow(c1_chunk_data$tier2) > 0) max(c1_chunk_data$tier2$approx_tokens, na.rm = TRUE) else 0
+max_neg_tokens <- if (nrow(c1_chunk_data$negatives) > 0) max(c1_chunk_data$negatives$approx_tokens, na.rm = TRUE) else 0
+max_chunk_tokens <- max(max_tier1_tokens, max_tier2_tokens, max_neg_tokens)
+
+total_max <- max_chunk_tokens + overhead
+fits <- total_max < context_limit
+
+budget_tbl <- tibble(
+  component = c("Codebook prompt", "Few-shot examples", "System prompt",
+                "Output buffer", "Max chunk", "Total"),
+  tokens = c(round(codebook_tokens), few_shot_tokens, system_tokens,
+             output_tokens, max_chunk_tokens, round(total_max))
+)
+
+budget_tbl |>
+  gt() |>
+  cols_label(component = "Component", tokens = "Tokens (est.)") |>
+  fmt_number(columns = tokens, decimals = 0) |>
+  tab_style(
+    style = cell_fill(color = if (fits) "#ccffcc" else "#ffcccc"),
+    locations = cells_body(rows = component == "Total")
+  ) |>
+  gt_theme_report()
+
+add_result(
+  8, "Token budget fit",
+  sprintf("Max total: %s / %s", scales::comma(round(total_max)), scales::comma(context_limit)),
+  if (fits) "PASS" else "FAIL"
+)
+```
+
+**Test 8**: `r if(fits) "PASS" else "FAIL"` (max `r scales::comma(round(total_max))` tokens vs. `r scales::comma(context_limit)` limit)
+
+## Test 9: Text Encoding Safety
+
+Sample chunks from each tier and check for null bytes and control characters that could corrupt API calls.
+
+```{r}
+#| label: test-9-encoding
+
+# Control character pattern (excludes \x00 which R can't store, and \t \n \r which are safe)
+control_pattern <- "[\x01-\x08\x0b\x0c\x0e-\x1f]"
+
+check_encoding <- function(texts, label) {
+  n <- min(100, length(texts))
+  if (n == 0) return(tibble(tier = label, n_checked = 0, n_unsafe = 0))
+  sample_texts <- texts[sample(length(texts), n)]
+  n_unsafe <- sum(str_detect(sample_texts, control_pattern))
+  tibble(tier = label, n_checked = n, n_unsafe = n_unsafe)
+}
+
+set.seed(44)
+encoding_results <- bind_rows(
+  check_encoding(c1_chunk_data$tier1$text, "Tier 1"),
+  check_encoding(c1_chunk_data$tier2$text, "Tier 2"),
+  check_encoding(c1_chunk_data$negatives$text, "Negative")
+)
+
+total_unsafe <- sum(encoding_results$n_unsafe)
+
+encoding_results |>
+  gt() |>
+  cols_label(tier = "Tier", n_checked = "Sampled", n_unsafe = "Unsafe") |>
+  gt_theme_report()
+
+add_result(
+  9, "Text encoding safety",
+  sprintf("%d unsafe chars in %d sampled chunks",
+          total_unsafe, sum(encoding_results$n_checked)),
+  if (total_unsafe == 0) "PASS" else "WARN"
+)
+```
+
+**Test 9**: `r if(total_unsafe == 0) "PASS" else paste0("WARN - ", total_unsafe, " chunks with control characters")`
+
+## Test 10: Year Filter Consistency
+
+The tier data should respect the `max_doc_year = 2007` parameter. No chunk in Tier 1 or Tier 2 should come from a document published after 2007.
+
+```{r}
+#| label: test-10-year-filter
+
+max_doc_year <- 2007L
+
+tier1_max_year <- if (nrow(c1_chunk_data$tier1) > 0) max(c1_chunk_data$tier1$year, na.rm = TRUE) else NA
+tier2_max_year <- if (nrow(c1_chunk_data$tier2) > 0) max(c1_chunk_data$tier2$year, na.rm = TRUE) else NA
+
+year_ok <- (is.na(tier1_max_year) || tier1_max_year <= max_doc_year) &&
+           (is.na(tier2_max_year) || tier2_max_year <= max_doc_year)
+
+add_result(
+  10, "Year filter consistency",
+  sprintf("Tier 1 max year: %s, Tier 2 max year: %s (limit: %d)",
+          as.character(tier1_max_year), as.character(tier2_max_year), max_doc_year),
+  if (year_ok) "PASS" else "FAIL"
+)
+```
+
+**Test 10**: `r if(year_ok) "PASS" else "FAIL"`
+
+## Test 11: Few-Shot Example Preview
+
+Generate examples for one LOOCV fold (first act held out) and verify they render correctly. This confirms that `generate_c1_loocv_fold_examples()` produces usable training data.
+
+```{r}
+#| label: test-11-fewshot-setup
+
+# Hold out the first act
+held_out_act <- aligned_data$act_name[1]
+train_data <- aligned_data |> filter(act_name != held_out_act)
+
+examples <- generate_c1_loocv_fold_examples(
+  train_data,
+  c1_chunk_data$negatives,
+  n_per_class = 5,
+  codebook = c1_codebook,
+  seed = 20251206
+)
+
+n_examples <- length(examples)
+n_positive <- sum(map_chr(examples, ~ .x$output$label) == "FISCAL_MEASURE")
+n_negative <- n_examples - n_positive
+
+add_result(
+  11, "Few-shot example preview",
+  sprintf("%d examples (%d pos, %d neg) for fold '%s'",
+          n_examples, n_positive, n_negative,
+          str_trunc(held_out_act, 30)),
+  if (n_examples >= 2) "PASS" else "FAIL"
+)
+```
+
+```{r}
+#| label: test-11-render
+#| results: asis
+
+cat(sprintf("\n\n**Held-out act:** %s\n\n", held_out_act))
+cat(sprintf("**Examples generated:** %d (%d positive, %d negative)\n\n",
+            n_examples, n_positive, n_negative))
+
+for (i in seq_along(examples)) {
+  ex <- examples[[i]]
+  label <- ex$output$label
+  act_name <- ex$output$measure_name
+  reasoning <- ex$output$reasoning
+  input_trunc <- str_trunc(ex$input, 400)
+
+  cat(sprintf("\n\n#### Example %d: %s\n\n", i, label))
+  if (!is.null(act_name)) cat(sprintf("**Act:** %s\n\n", act_name))
+  cat(sprintf("**Reasoning:** %s\n\n", reasoning))
+  cat(sprintf("**Input (truncated):**\n\n> %s\n\n",
+              str_replace_all(input_trunc, "\n", "\n> ")))
+}
+```
+
+## Test 12: Summary Dashboard
+
+```{r}
+#| label: test-12-dashboard
+#| tbl-cap: "Pre-flight verification dashboard"
+
+add_result(
+  12, "Summary dashboard",
+  sprintf("%d tests completed", nrow(test_results)),
+  "INFO"
+)
+
+# Build final dashboard (exclude self-referential Test 12)
+dashboard <- test_results |>
+  filter(test_id < 12) |>
+  mutate(
+    test_label = sprintf("T%d: %s", test_id, test_name)
+  ) |>
+  select(test_label, result, status)
+
+n_pass <- sum(dashboard$status == "PASS")
+n_warn <- sum(dashboard$status == "WARN")
+n_fail <- sum(dashboard$status == "FAIL")
+
+dashboard |>
+  gt() |>
+  cols_label(
+    test_label = "Test",
+    result = "Result",
+    status = "Status"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#ccffcc"),
+    locations = cells_body(columns = status, rows = status == "PASS")
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#ffffcc"),
+    locations = cells_body(columns = status, rows = status == "WARN")
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#ffcccc"),
+    locations = cells_body(columns = status, rows = status == "FAIL")
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e0e0e0"),
+    locations = cells_body(columns = status, rows = status == "INFO")
+  ) |>
+  gt_theme_report()
+```
+
+**Overall**: `r n_pass` PASS, `r n_warn` WARN, `r n_fail` FAIL out of `r nrow(dashboard)` tests.
+
+`r if(n_fail > 0) "**ACTION REQUIRED:** Fix all FAIL tests before running S2 LOOCV." else if(n_warn > 0) "**Proceed with caution:** All critical tests pass but warnings should be reviewed." else "**All clear:** Data pipeline is validated for S2 LOOCV."`

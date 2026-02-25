@@ -94,6 +94,26 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - **Negative quality check:** Contamination rate (act names in negatives) and source type distribution.
 - **Summary dashboard:** PASS/FAIL/WARN status for all checks.
 
+### `verify_api_inputs.qmd` -- Pre-Flight API Input Verification
+
+**Purpose:** Systematic validation of data integrity before running S2 LOOCV API calls. Runs 12 pass/fail tests on pipeline outputs to catch data issues before spending API budget.
+
+**Key tests and decisions:**
+
+- **T1 (Chunking completeness):** Verifies every document is fully chunked (first chunk starts at page 1, last chunk covers final page).
+- **T2 (No empty chunks):** All chunks have >100 characters of text.
+- **T3 (No text-less tier rows):** Tier 1/2 rows have non-empty text after join.
+- **T4 (Act name alignment):** Symmetric match between `aligned_data` and tier act names.
+- **T5 (Passage delimiter integrity):** Multi-passage acts split correctly on `\n\n`.
+- **T6 (Usable passages per act):** Every act has at least one passage >50 chars.
+- **T7 (No within-tier duplicates):** No true duplicate rows; multi-passage matches flagged as WARN.
+- **T8 (Token budget fit):** Max chunk + overhead fits within 200K context window.
+- **T9 (Text encoding safety):** No null bytes or control characters in sampled chunks.
+- **T10 (Year filter consistency):** Tier data respects `max_doc_year = 2007`.
+- **T11 (Few-shot example preview):** Renders one fold's examples for visual inspection.
+- **T12 (Summary dashboard):** Aggregates all results into PASS/WARN/FAIL dashboard.
+- **Decision:** All tests must pass before proceeding to S2 LOOCV.
+
 ### `c1_measure_id.qmd` -- C1 Codebook Evaluation (S0-S3)
 
 **Purpose:** Full H&K evaluation notebook for the C1 (Measure Identification) codebook. Reports S0 design, S1 behavioral tests, S2 LOOCV metrics, and S3 error analysis.
@@ -126,7 +146,8 @@ Located in `notebooks/unused/` unless noted otherwise. These are from earlier ex
 3. `data_overview.qmd` -- Understand the full transformation pipeline
 4. `identifying_known_acts.qmd` -- Understand chunk-act matching design decisions
 5. `verify_chunk_tiers.qmd` -- Verify the implemented tier system
-6. `c1_measure_id.qmd` -- See the C1 evaluation framework (template for C2-C4)
+6. `verify_api_inputs.qmd` -- Pre-flight validation before S2 LOOCV
+7. `c1_measure_id.qmd` -- See the C1 evaluation framework (template for C2-C4)
 
 ## Conventions
 
