@@ -132,12 +132,12 @@ gc()
 
 **Test 1**: `r if(all_ok) "PASS" else paste0("FAIL - ", n_fail_start, " start gaps, ", n_fail_end, " end gaps")`
 
-## Test 2: No Empty Chunks
+## Test 2: No Short Chunks (min_chars Filter)
 
-All chunks should contain substantive text. Chunks with 100 or fewer characters indicate extraction failures.
+`make_chunks()` drops chunks with 100 or fewer characters as extraction artifacts (`min_chars = 100L`). This test verifies the filter is active.
 
 ```{r}
-#| label: test-2-empty-chunks
+#| label: test-2-short-chunks
 
 chunk_lengths <- nchar(chunks$text)
 n_short <- sum(chunk_lengths <= 100)
@@ -151,7 +151,7 @@ shortest <- if (n_short > 0) {
 }
 
 add_result(
-  2, "No empty chunks",
+  2, "No short chunks (min_chars filter)",
   sprintf("%d chunks with <=100 chars (of %d total)", n_short, nrow(chunks)),
   if (n_short == 0) "PASS" else "FAIL"
 )
@@ -169,7 +169,7 @@ if (!is.null(shortest)) {
 }
 ```
 
-**Test 2**: `r if(n_short == 0) "PASS" else paste0("FAIL - ", n_short, " short chunks")`
+**Test 2**: `r if(n_short == 0) "PASS (min_chars filter active)" else paste0("FAIL - ", n_short, " short chunks leaked through filter")`
 
 ## Test 3: No Text-Less Tier Rows
 

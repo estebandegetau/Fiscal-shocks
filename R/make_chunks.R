@@ -10,6 +10,9 @@
 #' @param overlap Number of overlapping pages between consecutive chunks (default: 10)
 #' @param max_tokens Maximum estimated tokens per chunk (default: 40000)
 #' @param chars_per_token Assumed characters per token for estimation (default: 4)
+#' @param min_chars Minimum character count for a chunk to be retained (default: 100L).
+#'   Chunks with `nchar(text) <= min_chars` are dropped as extraction artifacts.
+#'   Set to `0L` to disable filtering.
 #'
 #' @return Data frame with columns:
 #'   - doc_id: Document identifier
@@ -31,7 +34,8 @@ make_chunks <- function(pages_df,
                         window_size = 50,
                         overlap = 10,
                         max_tokens = 40000,
-                        chars_per_token = 4) {
+                        chars_per_token = 4,
+                        min_chars = 100L) {
 
   if (!is.data.frame(pages_df)) {
     stop("pages_df must be a data frame")
@@ -146,6 +150,19 @@ make_chunks <- function(pages_df,
     }
   }
 
+  # Drop short chunks (extraction artifacts)
+  if (min_chars > 0L) {
+    short_mask <- nchar(chunks$text) <= min_chars
+    n_short <- sum(short_mask)
+    if (n_short > 0) {
+      message(sprintf(
+        "Dropped %d chunks with <= %d characters (extraction artifacts)",
+        n_short, min_chars
+      ))
+      chunks <- chunks[!short_mask, ]
+    }
+  }
+
   chunks
 }
 
@@ -154,15 +171,20 @@ make_chunks <- function(pages_df,
 #'
 #' @param chunks Data frame from make_chunks()
 #' @param max_tokens Maximum allowed tokens (default: 40000 for Claude with buffer)
+#' @param min_chars Minimum character count threshold (default: 100L).
+#'   Flags chunks with `nchar(text) <= min_chars` as validation failures.
 #'
-#' @return Logical indicating if all chunks fit
+#' @return Logical indicating if all chunks pass validation
 #'
 #' @export
-validate_chunks <- function(chunks, max_tokens = 40000) {
+validate_chunks <- function(chunks, max_tokens = 40000, min_chars = 100L) {
   if (!"approx_tokens" %in% names(chunks)) {
     stop("chunks must have 'approx_tokens' column")
   }
 
+  valid <- TRUE
+
+  # Check token limit
   over_limit <- chunks$approx_tokens > max_tokens
   n_over <- sum(over_limit)
 
@@ -182,11 +204,28 @@ validate_chunks <- function(chunks, max_tokens = 40000) {
     message("Largest chunks:")
     print(worst)
 
-    return(FALSE)
+    valid <- FALSE
   }
 
-  message(sprintf("All %d chunks fit within %d token limit", nrow(chunks), max_tokens))
-  TRUE
+  # Check minimum character length
+  if (min_chars > 0L) {
+    short_mask <- nchar(chunks$text) <= min_chars
+    n_short <- sum(short_mask)
+    if (n_short > 0) {
+      message(sprintf(
+        "WARNING: %d/%d chunks (%.1f%%) have <= %d characters",
+        n_short, nrow(chunks), 100 * n_short / nrow(chunks), min_chars
+      ))
+      valid <- FALSE
+    }
+  }
+
+  if (valid) {
+    message(sprintf("All %d chunks pass validation (token limit: %d, min chars: %d)",
+                    nrow(chunks), max_tokens, min_chars))
+  }
+
+  valid
 }
 
 
