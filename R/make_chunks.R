@@ -112,6 +112,9 @@ make_chunks <- function(pages_df,
       # Combine pages with clear separators
       chunk_text <- paste(chunk_pages, collapse = "\n\n--- PAGE BREAK ---\n\n")
 
+      # Remove control characters from PDF extraction artifacts
+      chunk_text <- gsub("[\x01-\x08\x0b\x0c\x0e-\x1f]", "", chunk_text)
+
       # Estimate token count
       approx_tokens <- nchar(chunk_text) / chars_per_token
 
