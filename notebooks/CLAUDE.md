@@ -101,7 +101,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 **Key tests and decisions:**
 
 - **T1 (Chunking completeness):** Verifies every document is fully chunked (first chunk starts at page 1, last chunk covers final page).
-- **T2 (No empty chunks):** All chunks have >100 characters of text.
+- **T2 (No short chunks):** Verifies `make_chunks()` `min_chars` filter is active (no chunks with <=100 characters).
 - **T3 (No text-less tier rows):** Tier 1/2 rows have non-empty text after join.
 - **T4 (Act name alignment):** Symmetric match between `aligned_data` and tier act names.
 - **T5 (Passage delimiter integrity):** Multi-passage acts split correctly on `\n\n`.

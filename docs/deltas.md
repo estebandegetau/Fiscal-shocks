@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-02-26: make_chunks() now filters short chunks via min_chars parameter
+
+**Type:** new-constraint
+**Affects:** `docs/strategy.md` > C1 Implementation Blueprint > Chunk Tier System
+**Detail:** `make_chunks()` gained a `min_chars = 100L` parameter (commit `144e13a`). Chunks with 100 or fewer characters are dropped as extraction artifacts (page-break markers, whitespace). The `chunks` target in `_targets.R` passes `min_chars = 100L` explicitly. Pre-flight notebook Test 2 reframed as a regression check verifying the filter is active. `validate_chunks()` also gained a corresponding `min_chars` check. This drops ~23 artifact chunks from the corpus.
+**Suggested edit:** If strategy.md documents chunk parameters, add a note that `min_chars = 100` filters extraction artifacts.
+
 ## 2026-02-25: Chunk window reduced from 50 to 10 pages
 
 **Type:** correction
