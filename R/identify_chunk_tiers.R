@@ -29,6 +29,15 @@ BROAD_EXCLUSIONS <- c(
   "tax reduction", "job creation", "tax equity"
 )
 
+# Private: normalize text for substring matching only.
+# Order: tolower -> dehyphenate line breaks -> squish whitespace.
+# NOT for LLM input (LLMs receive raw text from the chunks target).
+squish_for_matching <- function(x) {
+  x <- tolower(x)
+  x <- stringr::str_replace_all(x, "(\\w)-\\s+(\\w)", "\\1\\2")
+  stringr::str_squish(x)
+}
+
 #' Generate searchable subcomponents from a (possibly compound) act name
 #'
 #' Decomposes act names into searchable terms using five strategies:
@@ -264,7 +273,7 @@ identify_tier2_chunks <- function(aligned_data, chunks, tier1_chunks,
 
   # Pre-compute whitespace-normalized text once (handles OCR line breaks)
   if (is.null(chunks_squished)) {
-    chunks_squished <- stringr::str_squish(tolower(chunks$text))
+    chunks_squished <- squish_for_matching(chunks$text)
   }
 
   # Build logical Tier 1 mask via ID matching
@@ -491,7 +500,7 @@ compute_c1_chunk_tiers <- function(aligned_data, chunks, relevance_keys,
   batch_size <- 2000L
   for (b in seq(1L, n, by = batch_size)) {
     end <- min(b + batch_size - 1L, n)
-    raw_text[b:end] <- stringr::str_squish(tolower(raw_text[b:end]))
+    raw_text[b:end] <- squish_for_matching(raw_text[b:end])
   }
   gc()
   message("  Squished text in-place (batch)")
@@ -786,9 +795,7 @@ prepare_chunk_tier_diagnostics <- function(aligned_data, chunks,
   batch_size <- 2000L
   for (b in seq(1L, n, by = batch_size)) {
     end <- min(b + batch_size - 1L, n)
-    chunks_squished[b:end] <- stringr::str_squish(
-      tolower(chunks_squished[b:end])
-    )
+    chunks_squished[b:end] <- squish_for_matching(chunks_squished[b:end])
   }
   gc()
   message("  Freed chunks tibble, batch-squished text in-place")
