@@ -522,7 +522,7 @@ Low contamination rates (<1%) are acceptable, as these chunks likely discuss act
 
 ## Rendered Tier 1 Examples
 
-Visual inspection of Tier 1 matches confirms that verbatim passage text appears within the matched chunk. For each sample, we recover the passage from `aligned_data`, locate it in the chunk text, and highlight the match with surrounding context.
+Visual inspection of Tier 1 matches confirms that verbatim passage text appears within the matched chunk. For each sample, we recover the passage from `aligned_data`, locate it in the chunk text, and highlight the match with surrounding context. Note that, we display text not as is in the source, but transformed for matching purposes.
 
 ```{r}
 #| label: rendered-tier1-examples
@@ -548,8 +548,8 @@ for (act in sampled_acts_t1) {
   if (is.na(p_idx) || p_idx > length(passages)) p_idx <- 1
   passage <- passages[p_idx]
 
-  search_str <- substr(str_squish(tolower(passage)), 1, 100)
-  chunk_text_sq <- str_squish(tolower(chunk_row$text))
+  search_str <- substr(squish_for_matching(passage), 1, 100)
+  chunk_text_sq <- squish_for_matching(chunk_row$text)
   loc <- str_locate(chunk_text_sq, fixed(search_str))
 
   cat(sprintf("\n\n### %s\n\n", act))
@@ -589,7 +589,7 @@ for (act in sampled_acts_t2) {
     filter(act_name == act) |>
     slice(1)
 
-  chunk_text_sq <- str_squish(tolower(chunk_row$text))
+  chunk_text_sq <- squish_for_matching(chunk_row$text)
 
   # Get search terms for this act
   if (act %in% names(COOCCURRENCE_RULES)) {
@@ -598,7 +598,7 @@ for (act in sampled_acts_t2) {
   } else {
     subs <- generate_subcomponents(act)
     # Find the first matching term
-    terms <- str_squish(tolower(subs$term))
+    terms <- squish_for_matching(subs$term)
     mechanism_label <- subs$mechanism
   }
 

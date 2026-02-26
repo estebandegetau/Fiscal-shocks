@@ -28,6 +28,7 @@ website:
         contents:
           - notebooks/identifying_known_acts.qmd
           - notebooks/verify_chunk_tiers.qmd
+          - notebooks/verify_api_inputs.qmd
       - section: "Codebook Evaluation"
         contents:
           - notebooks/c1_measure_id.qmd
