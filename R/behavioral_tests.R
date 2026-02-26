@@ -334,59 +334,114 @@ test_order_invariance <- function(codebook,
 # S3 Behavioral Tests (Error Analysis)
 # =============================================================================
 
-#' Test V: Exclusion Criteria
+#' Test V: Exclusion Criteria Consistency (H&K 4-combo design)
 #'
-#' Removes each negative clarification one at a time and measures whether
-#' errors increase for the corresponding confusion pattern. Tests whether
-#' each exclusion criterion contributes independently.
+#' Tests whether the model correctly follows exclusion criteria using four
+#' conditions: (normal/modified document) x (normal/modified codebook).
+#'
+#' A monetary policy distractor paragraph is appended to each test document.
+#' A corresponding exclusion rule is added to the codebook. The model should
+#' only apply the exclusion when BOTH the trigger (distractor) and the rule
+#' are present (combo 4).
+#'
+#' Combo 1: Normal doc + Normal codebook -> true_labels (baseline)
+#' Combo 2: Modified doc + Normal codebook -> true_labels (distractor irrelevant)
+#' Combo 3: Normal doc + Modified codebook -> true_labels (rule irrelevant)
+#' Combo 4: Modified doc + Modified codebook -> all NOT_FISCAL_MEASURE
+#'          (positive texts flip because trigger present AND rule active)
 #'
 #' @param codebook A validated codebook object
 #' @param test_texts Character vector of test passages
 #' @param true_labels Character vector of true labels
 #' @param model Character model ID
-#' @return List with results per excluded component
+#' @param distractor_text Character monetary policy paragraph to inject
+#' @param exclusion_criterion Character exclusion rule to add to codebook
+#' @return List with per-combo accuracy and overall consistency
 #' @export
-test_exclusion_criteria <- function(codebook,
-                                    test_texts,
-                                    true_labels,
-                                    model = "claude-haiku-4-5-20251001") {
-  # Get baseline accuracy
-  baseline <- classify_batch_for_test(
-    codebook, test_texts, model, system_prompt = NULL
+test_exclusion_criteria <- function(
+    codebook,
+    test_texts,
+    true_labels,
+    model = "claude-haiku-4-5-20251001",
+    distractor_text = paste(
+      "The Federal Reserve's Open Market Committee voted unanimously to raise",
+      "the federal funds rate by 75 basis points to a target range of 3.00 to",
+      "3.25 percent, citing persistent inflationary pressures and a tight labor",
+      "market. This marks the third consecutive rate increase of this magnitude."
+    ),
+    exclusion_criterion = paste(
+      "Passages that discuss Federal Reserve monetary policy actions",
+      "(interest rate changes, open market operations, reserve requirements)",
+      "are NOT fiscal measures, even if they appear alongside fiscal content.",
+      "Classify any such passage as NOT_FISCAL_MEASURE."
+    )
+) {
+  valid_labels <- get_valid_labels(codebook)
+  negative_label <- valid_labels[length(valid_labels)]
+
+  # --- Build modified inputs ---
+
+  # Modified documents: append distractor paragraph to each text
+  modified_texts <- paste(test_texts, distractor_text, sep = "\n\n")
+
+  # Modified codebook: deep copy + add exclusion rule as negative_clarification
+  modified_codebook <- codebook
+  modified_codebook$classes <- lapply(codebook$classes, function(cls) cls)
+  # Add exclusion rule to the positive class (first class)
+  pos_idx <- 1
+  modified_codebook$classes[[pos_idx]] <- as.list(
+    modified_codebook$classes[[pos_idx]]
   )
-  baseline_acc <- mean(baseline == true_labels, na.rm = TRUE)
+  modified_codebook$classes[[pos_idx]]$negative_clarification <- c(
+    modified_codebook$classes[[pos_idx]]$negative_clarification,
+    exclusion_criterion
+  )
 
-  # Test removing each negative clarification from each class
-  results <- list()
-  for (cls in codebook$classes) {
-    for (j in seq_along(cls$negative_clarification)) {
-      exclude <- stats::setNames(
-        list(paste0("negative_clarification_", j)),
-        cls$label
-      )
-      ablated_prompt <- construct_codebook_prompt(
-        codebook, exclude_components = exclude
-      )
-      ablated_preds <- classify_batch_for_test(
-        codebook, test_texts, model, system_prompt = ablated_prompt
-      )
-      ablated_acc <- mean(ablated_preds == true_labels, na.rm = TRUE)
+  # --- Expected labels per combo ---
+  # Combos 1-3: original true_labels (distractor or rule alone shouldn't flip)
+  # Combo 4: ALL texts become negative (positive texts flip due to trigger + rule;
+  #          negative texts stay negative)
+  combo4_expected <- rep(negative_label, length(true_labels))
 
-      results[[length(results) + 1]] <- tibble::tibble(
-        class = cls$label,
-        component = paste0("negative_clarification_", j),
-        component_text = cls$negative_clarification[[j]],
-        baseline_accuracy = baseline_acc,
-        ablated_accuracy = ablated_acc,
-        accuracy_drop = baseline_acc - ablated_acc
-      )
-    }
-  }
+  # --- Run four combos ---
+  combos <- list(
+    list(name = "normal_doc_normal_cb",    texts = test_texts,     cb = codebook,          expected = true_labels),
+    list(name = "modified_doc_normal_cb",  texts = modified_texts, cb = codebook,          expected = true_labels),
+    list(name = "normal_doc_modified_cb",  texts = test_texts,     cb = modified_codebook, expected = true_labels),
+    list(name = "modified_doc_modified_cb", texts = modified_texts, cb = modified_codebook, expected = combo4_expected)
+  )
+
+  # Classify once per combo, build summary and details together
+  all_details <- purrr::map(combos, function(combo) {
+    preds <- classify_batch_for_test(combo$cb, combo$texts, model)
+    tibble::tibble(
+      combo = combo$name,
+      text_id = seq_along(combo$texts),
+      true_label = true_labels,
+      expected = combo$expected,
+      predicted = preds,
+      correct = preds == combo$expected
+    )
+  }) |> dplyr::bind_rows()
+
+  combos_tbl <- all_details |>
+    dplyr::group_by(combo) |>
+    dplyr::summarise(
+      n_correct = sum(correct, na.rm = TRUE),
+      n_total = dplyr::n(),
+      accuracy = n_correct / n_total,
+      .groups = "drop"
+    )
+
+  overall <- sum(combos_tbl$n_correct) / sum(combos_tbl$n_total)
 
   list(
     test = "V_exclusion_criteria",
-    results = dplyr::bind_rows(results),
-    baseline_accuracy = baseline_acc
+    combos = combos_tbl,
+    overall_consistency = overall,
+    distractor_text = distractor_text,
+    exclusion_criterion = exclusion_criterion,
+    details = all_details
   )
 }
 

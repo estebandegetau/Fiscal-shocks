@@ -9,6 +9,20 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-02-26: S2 LOOCV changed from few-shot (n=5) to zero-shot (n=0)
+
+**Type:** correction
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S2 Zero-Shot Eval
+**Detail:** `_targets.R` target `c1_s2_results` changed from `n_few_shot = 5` to `n_few_shot = 0`. Strategy.md describes S2 as "Zero-Shot Eval" testing codebook sufficiency, but the implementation was passing 5 passage-level few-shot examples per LOOCV fold. The codebook YAML's built-in positive/negative examples (part of S0 specification) remain in the system prompt via `construct_codebook_prompt()` — these are always sent regardless of `n_few_shot` and are not "few-shot" in the H&K sense. Target `c1_s2_results` will need re-running.
+**Suggested edit:** If strategy.md mentions few-shot examples in S2 context, clarify that S2 is zero-shot (codebook-only) and few-shot evaluation is reserved for S3 ablation or future stages.
+
+## 2026-02-26: Test V redesigned to match H&K 4-combo specification
+
+**Type:** correction
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > S3 Error Analysis > Behavioral Tests
+**Detail:** `test_exclusion_criteria()` in `R/behavioral_tests.R` was an ablation study (removing negative_clarifications one at a time), which duplicated `run_ablation_study()` in `R/codebook_stage_3.R`. Replaced with the H&K 4-combo design: (normal/modified document) x (normal/modified codebook). Injects a monetary policy distractor paragraph and a corresponding exclusion rule, then verifies the model only applies the exclusion when both trigger and rule are present. Return structure changed from `$results` tibble (per-component accuracy drops) to `$combos` tibble (per-combo accuracy) + `$overall_consistency`. Logging in `run_error_analysis()` and notebook `c1_measure_id.qmd` updated accordingly. Target `c1_s3_results` will need re-running.
+**Suggested edit:** If strategy.md describes Test V, update to reference the 4-combo (document x codebook) design rather than component ablation.
+
 ## 2026-02-26: make_chunks() now filters short chunks via min_chars parameter
 
 **Type:** new-constraint

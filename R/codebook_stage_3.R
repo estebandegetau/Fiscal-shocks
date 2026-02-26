@@ -47,20 +47,18 @@ run_error_analysis <- function(codebook,
     rep(valid_labels[length(valid_labels)], nrow(neg_texts))
   )
 
-  # Test V: Exclusion Criteria
-  message("  Test V: Exclusion Criteria...")
+  # Test V: Exclusion Criteria Consistency (H&K 4-combo design)
+  message("  Test V: Exclusion Criteria Consistency...")
   test_v <- test_exclusion_criteria(
     codebook, ablation_texts, ablation_labels, model
   )
-  message(sprintf("    Baseline accuracy: %.1f%%", test_v$baseline_accuracy * 100))
-  for (i in seq_len(nrow(test_v$results))) {
-    r <- test_v$results[i, ]
-    message(sprintf("    Remove %s.%s: %.1f%% -> %.1f%% (drop: %.1f%%)",
-                    r$class, r$component,
-                    r$baseline_accuracy * 100,
-                    r$ablated_accuracy * 100,
-                    r$accuracy_drop * 100))
+  for (i in seq_len(nrow(test_v$combos))) {
+    r <- test_v$combos[i, ]
+    message(sprintf("    %s: %d/%d (%.1f%%)",
+                    r$combo, r$n_correct, r$n_total, r$accuracy * 100))
   }
+  message(sprintf("    Overall consistency: %.1f%%",
+                  test_v$overall_consistency * 100))
 
   # Test VI: Generic Labels
   message("  Test VI: Generic Labels...")

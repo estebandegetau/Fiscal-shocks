@@ -263,6 +263,26 @@ s3$error_categories |>
   gt_theme_report()
 ```
 
+### Test V: Exclusion Criteria Consistency
+
+H&K Test V injects a monetary policy distractor into documents and adds a
+corresponding exclusion rule to the codebook, then tests all four combinations
+of (normal/modified) x (document/codebook). The model should only apply the
+exclusion when both the trigger and the rule are present (combo 4).
+
+```{r}
+#| label: s3-test-v
+#| eval: false
+
+s3$test_v$combos |>
+  mutate(accuracy_pct = accuracy * 100) |>
+  gt() |>
+  cols_label(combo = "Condition", n_correct = "Correct",
+             n_total = "Total", accuracy_pct = "Accuracy %") |>
+  fmt_number(columns = accuracy_pct, decimals = 1) |>
+  gt_theme_report()
+```
+
 ### Ablation Study
 
 Components ranked by accuracy drop when removed. Larger drops indicate more important components.
@@ -324,7 +344,7 @@ tibble(
   gt_theme_report()
 ```
 
-<!-- `r s3$test_vii$interpretation` -->
+<!-- Interpretation: s3$test_vii$interpretation (available after S3 pipeline run) -->
 
 ## Iteration Notes
 

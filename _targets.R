@@ -252,7 +252,9 @@ list(
     deployment = "main"
   ),
 
-  # S2: LOOCV evaluation on chunks with tier-stratified metrics
+  # S2: Zero-shot LOOCV evaluation on chunks with tier-stratified metrics
+  # n_few_shot = 0: codebook-only classification (H&K S2 tests codebook sufficiency)
+  # Codebook YAML built-in examples remain in system prompt via construct_codebook_prompt()
   tar_target(
     c1_s2_results,
     run_loocv(
@@ -261,7 +263,7 @@ list(
       c1_chunk_data,
       codebook_type = "C1",
       model = "claude-haiku-4-5-20251001",
-      n_few_shot = 5,
+      n_few_shot = 0,
       seed = 20251206
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
