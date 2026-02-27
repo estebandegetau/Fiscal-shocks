@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-02-27: Docling/Lambda infrastructure removed, PyMuPDF is sole extraction method
+
+**Type:** status-change
+**Affects:** `docs/phase_1/malaysia_strategy.md` > Phase 2A Deployment Checklist (line 264)
+**Detail:** Commit `f250afc` removed all Docling and Lambda infrastructure: `python/docling_extract.py`, `python/lambda_handler.py`, `R/pull_text_lambda.R`, `pull_text_docling()` function, DOCLING_* env vars, and docling/sentence-transformers/torch from requirements.txt. The sole active extraction method is `pull_text_local()` using PyMuPDF+OCR. Line 264 of malaysia_strategy.md reads "Run PDF extraction (Docling or pdftools)" and should be updated.
+**Suggested edit:** Change "Run PDF extraction (Docling or pdftools)" to "Run PDF extraction (PyMuPDF or pdftools)".
+
 ## 2026-02-27: Test IV enhanced to 3 orderings + Fleiss's kappa (all codebooks)
 
 **Type:** correction

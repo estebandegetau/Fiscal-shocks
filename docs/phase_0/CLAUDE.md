@@ -162,9 +162,6 @@ tar_visnetwork()
 Create `.env` file (gitignored):
 ```
 ANTHROPIC_API_KEY=sk-ant-api03-xxx...
-AWS_ACCESS_KEY_ID=AKIA...          # If using Lambda
-AWS_SECRET_ACCESS_KEY=xxx...       # If using Lambda
-AWS_DEFAULT_REGION=us-east-1       # If using Lambda
 ```
 
 Load in R: `dotenv::load_dot_env()` at start of `_targets.R`
@@ -182,27 +179,15 @@ Load in R: `dotenv::load_dot_env()` at start of `_targets.R`
 - Implemented with `Sys.sleep(1.2)` between calls
 - Retry logic with exponential backoff
 
-## PDF Extraction Options
+## PDF Extraction
 
-### Option 1: AWS Lambda (Cloud)
+**Active method**: `pull_text_local()` in `R/pull_text_local.R` using PyMuPDF + OCR.
 
-**Pros**: Fast (5-10 min for 350 PDFs), parallel, no local resources
-**Cons**: AWS setup required, ~$6 cost
-**See**: [DEPLOYMENT_OPTIONS.md](DEPLOYMENT_OPTIONS.md), [lambda_deployment_guide.md](lambda_deployment_guide.md)
+- Parallel extraction with configurable workers
+- Automatic OCR detection for scanned PDFs
+- JSON caching in `data/extracted/`
 
-### Option 2: Local Docling (Python)
-
-**Pros**: Free, no AWS dependencies, good for small batches
-**Cons**: Slow (12+ hours for 350 PDFs), sequential processing
-**Command**: `python python/docling_extract.py --input <pdf> --output <json>`
-
-### Option 3: pdftools (R, fallback)
-
-**Pros**: Fast, built-in to R, no Python
-**Cons**: Poor table extraction, misses structured data
-**Function**: `pull_text_pdftools()` in `R/pull_functions.R`
-
-**Recommendation**: Use Lambda for full dataset, local Docling for testing/debugging.
+**Fallback**: `pull_text()` in `R/pull_functions.R` using pdftools (text-based PDFs only, no OCR).
 
 ## Per-Codebook Implementation Steps
 
