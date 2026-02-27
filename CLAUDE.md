@@ -45,7 +45,7 @@ The contribution is **methodological**, not just dataset scale:
 ### Current Status
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
-  - **C1 (Measure ID)**: S0 codebook under revision (v0.1.0 restructured: description merged into instructions, examples removed); S1 needs re-run after S0 finalizes; S2-S3 not yet run
+  - **C1 (Measure ID)**: S0 codebook under revision (v0.2.0: aligned with RR criteria, country-agnostic language, examples removed); S1 needs re-run after S0 finalizes; S2-S3 not yet run
   - **C2 (Motivation)**: Not started
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started

@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-02-27: C1 codebook aligned with RR criteria, country-agnostic (v0.2.0)
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation
+**Detail:** C1 codebook (`prompts/c1_measure_id.yml`) updated to v0.2.0 with five changes: (1) dropped "spending authorizations" to match RR's tax-only scope, (2) broadened executive action language for non-US contexts (ministerial decrees, regulatory changes, official policy directives), (3) added "significance = discussion depth, not revenue size" clarification from RR, (4) added "lists" exclusion for summary tables and measure enumerations per RR, (5) tightened retrospective references with concrete examples. S1 behavioral tests will need re-running on v0.2.0.
+**Suggested edit:** If strategy.md specifies codebook scope as including spending measures, update to reflect tax-only scope per RR.
+
 ## 2026-02-27: C1 codebook restructured — description merged, examples removed
 
 **Type:** status-change
