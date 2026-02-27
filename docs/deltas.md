@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-02-27: C1 codebook restructured — description merged, examples removed
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation
+**Detail:** C1 codebook (`prompts/c1_measure_id.yml`) restructured: `description` field merged into `instructions` (following H&K's single "Instructions" pattern), all positive/negative examples removed (minimal start — add only if needed after S2), and clarifications tightened. Validation pipeline (`R/codebook_stage_0.R`) updated: `description` and `positive_examples`/`negative_examples` no longer required fields. S1 runner (`R/codebook_stage_1.R`) now skips Test III when no examples exist. Codebook YAML spec (`.claude/skills/codebook-yaml/SKILL.md`) updated accordingly. S1 behavioral tests from iteration 3 were run on the old codebook and will need re-running after S0 review completes.
+**Suggested edit:** If strategy.md specifies `description` or examples as required codebook fields, update to reflect they are now optional.
+
 ## 2026-02-26: S2 LOOCV changed from few-shot (n=5) to zero-shot (n=0)
 
 **Type:** correction
