@@ -25,7 +25,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     libxml2-dev \
     zlib1g-dev \
-    libv8-dev \
     # Additional R package dependencies (igraph, clipr, etc.)
     libglpk-dev \
     libx11-dev \
@@ -38,8 +37,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfontconfig1-dev \
     libharfbuzz-dev \
     libfribidi-dev \
-    # Libertinus fonts for academic-typst template and gt tables
-    fonts-libertinus \
+    # Unzip for font installation
+    unzip \
     # Image libraries
     libjpeg-dev \
     libpng-dev \
@@ -64,8 +63,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Note: libnode-dev is NOT installed here due to nodejs version conflicts
-# in Ubuntu Noble. This may affect the V8 R package if used.
+# Install Libertinus fonts from GitHub (not available as apt package on Noble)
+ARG LIBERTINUS_VERSION=7.040
+RUN wget -q https://github.com/alerque/libertinus/releases/download/v${LIBERTINUS_VERSION}/Libertinus-${LIBERTINUS_VERSION}.zip \
+    && unzip -q Libertinus-${LIBERTINUS_VERSION}.zip -d /tmp/libertinus \
+    && mkdir -p /usr/share/fonts/opentype/libertinus \
+    && find /tmp/libertinus -name '*.otf' -exec cp {} /usr/share/fonts/opentype/libertinus/ \; \
+    && fc-cache -f \
+    && rm -rf /tmp/libertinus Libertinus-${LIBERTINUS_VERSION}.zip
+
+# Note: libv8-dev and libnode-dev are NOT installed due to Ubuntu Noble
+# compatibility issues (libv8-dev doesn't exist, libnode-dev conflicts with
+# NodeSource). This may affect the R V8 package if used.
 # Node.js is installed separately from NodeSource below for Claude Code CLI.
 
 # Install Node.js (required for Claude Code)

@@ -22,16 +22,22 @@ __pycache__/
 *.pyc
 *.pyo
 
-# IDE
+# IDE and dev tools
 .vscode/
+.claude/
+.devcontainer/
 *.code-workspace
 
 # OS files
 .DS_Store
 Thumbs.db
 
+# Quarto session files
+.quarto/
+
 # Documentation build outputs
 _freeze/
+*_cache/
 docs/_site/
 *.html
 
