@@ -105,7 +105,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
    - Budget speeches and documents
    - Treasury/Finance Ministry annual reports
    - Economic reports
-2. Extract PDFs (use Docling or pdftools)
+2. Extract PDFs (use PyMuPDF or pdftools)
 3. Run codebooks C1-C4 with US-validated definitions (no modification initially)
 4. Generate candidate fiscal shock dataset
 
@@ -266,7 +266,7 @@ If C1 misses 2+ of these, **something is wrong** with the transfer.
 # Malaysia document acquisition
 tar_target(malaysia_urls, fetch_malaysia_document_urls())
 tar_target(malaysia_pdfs, download_pdfs(malaysia_urls))
-tar_target(malaysia_text, extract_text_docling(malaysia_pdfs))
+tar_target(malaysia_text, pull_text_local(malaysia_pdfs))
 
 # Document processing
 tar_target(malaysia_documents, structure_documents(malaysia_text))

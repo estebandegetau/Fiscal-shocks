@@ -51,7 +51,7 @@ Or verify manually:
 ```bash
 # Verify Python environment
 python --version          # Should show Python 3.12.x
-pip list | grep -E "(docling|sentence-transformers|torch)"
+pip list | grep pymupdf
 
 # Verify R environment
 R -e "renv::status()"
@@ -63,7 +63,7 @@ quarto --version
 
 Expected output:
 - Python 3.12.3 at `/opt/venv/bin/python`
-- docling, sentence-transformers, and torch installed
+- pymupdf installed
 - All key R packages: targets, crew, tidyverse, pdftools, quanteda, tidytext, rvest, googledrive
 - Quarto 1.6.40 or later
 
@@ -106,17 +106,6 @@ renv::snapshot()              # Update renv.lock
 ### Python (PDF Extraction)
 
 ```bash
-# Extract text from PDF using Docling
-python python/docling_extract.py \
-  --input data/raw/document.pdf \
-  --output data/processed/document.json
-
-# Optional: Skip table structure parsing for faster extraction
-python python/docling_extract.py \
-  --input data/raw/document.pdf \
-  --output data/processed/document.json \
-  --no-table-structure
-
 # Install additional Python packages
 pip install <package_name>
 pip freeze > requirements.txt  # Update requirements if needed
@@ -145,8 +134,7 @@ quarto preview
 │   ├── functions_stage02.R # Text extraction
 │   └── functions_stage03.R # Processing & filtering
 ├── python/                 # Python utilities
-│   ├── docling_extract.py  # PDF extraction with Docling
-│   └── embeddings.py       # Text embeddings
+│   └── pymupdf_extract.py  # PDF extraction with PyMuPDF
 ├── notebooks/              # Quarto analysis notebooks
 │   ├── extract.qmd
 │   ├── clean.qmd
@@ -182,9 +170,7 @@ quarto preview
 - **Environment:** renv (package management)
 
 ### Python Packages
-- **PDF:** docling (advanced PDF extraction)
-- **NLP:** sentence-transformers (embeddings)
-- **ML:** torch (deep learning backend)
+- **PDF:** pymupdf (PDF extraction with OCR support)
 
 ### Tools
 - **Documentation:** Quarto (with Typst and HTML output)
@@ -235,15 +221,6 @@ which python  # Should be /opt/venv/bin/python
 pip install -r requirements.txt
 ```
 
-**Problem:** Docling extraction fails
-```bash
-# Check if input file exists and is a valid PDF
-file <input.pdf>
-
-# Try with --no-table-structure flag for faster extraction
-python python/docling_extract.py --input <pdf> --output <json> --no-table-structure
-```
-
 ### Container Issues
 
 **Problem:** Container runs out of memory
@@ -266,7 +243,6 @@ docker build --no-cache -t fiscal-shocks .
 ### Known Limitations
 
 - **libnode-dev:** Cannot be installed due to nodejs version conflicts in Ubuntu Noble. This affects the V8 R package. If you need V8 functionality, you may need to adjust the Dockerfile base image or install nodejs differently.
-- **Large PDFs:** Very large PDF files (>100MB) may require significant memory and processing time with Docling.
 
 ## Environment Variables
 
@@ -275,8 +251,6 @@ The container sets these environment variables automatically:
 ```bash
 TZ=UTC                                    # Timezone
 RENV_PATHS_CACHE=/renv/cache             # R package cache
-DOCLING_PYTHON=/opt/venv/bin/python      # Python interpreter for R→Python calls
-DOCLING_SCRIPT=/workspaces/Fiscal-shocks/python/docling_extract.py  # Docling script path
 ```
 
 ## Updating Dependencies
@@ -331,8 +305,6 @@ docker build --no-cache -t fiscal-shocks .
 
 - **CLAUDE.md:** Detailed guidance for Claude Code AI assistant
 - **Targets pipeline guide:** https://books.ropensci.org/targets/
-- **Docling documentation:** https://github.com/DS4SD/docling
-
 ## License
 
 [Add your license here]

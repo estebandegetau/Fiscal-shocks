@@ -56,9 +56,7 @@ fi
 echo ""
 
 echo "--- Python Packages ---"
-check_python_package "docling"
-check_python_package "sentence-transformers"
-check_python_package "torch"
+check_python_package "pymupdf"
 echo ""
 
 echo "--- R Environment ---"
@@ -105,8 +103,6 @@ fi
 echo ""
 
 echo "--- Environment Variables ---"
-echo "DOCLING_PYTHON=${DOCLING_PYTHON:-not set}"
-echo "DOCLING_SCRIPT=${DOCLING_SCRIPT:-not set}"
 echo "RENV_PATHS_CACHE=${RENV_PATHS_CACHE:-not set}"
 echo ""
 
@@ -119,4 +115,4 @@ echo "If any checks failed with ✗, refer to readme.md troubleshooting section.
 echo ""
 echo "Quick start:"
 echo "  R -e 'targets::tar_make()'     # Run the pipeline"
-echo "  python python/docling_extract.py --help  # PDF extraction help"
+echo "  python python/pymupdf_extract.py --help  # PDF extraction help"

@@ -110,13 +110,7 @@ tar_visnetwork()              # Visualize pipeline dependencies
 **Inside the Dev Container:**
 Python is pre-configured with a virtual environment at `/opt/venv`. No setup needed - just use Python directly:
 ```bash
-python python/docling_extract.py --input <pdf_path> --output <json_output>
 pip install <package>  # If you need additional packages
-
-
-### Docling PDF Extraction (Python subprocess)
-```bash
-python python/docling_extract.py --input <pdf_path> --output <json_output> [--no-table-structure]
 ```
 
 ### Quarto Documentation
@@ -137,7 +131,7 @@ source("tests/test_pull.r")
 The project uses `{targets}` for reproducible data pipelines with `crew` for parallel execution:
 
 1. **Data Acquisition**: URL lists for ERP, Budget, and Treasury reports → PDF downloads
-2. **Text Extraction**: `pdftools` (R) or Docling (Python) for PDF → text
+2. **Text Extraction**: PyMuPDF (Python) + pdftools (R) for PDF → text
 3. **Processing**: Text cleaning → Document structuring → Paragraph extraction
 4. **Filtering**: Keyword-based relevance filtering using `relevance_keys`
 
@@ -147,13 +141,12 @@ Additional production pipeline targets will be added for codebook evaluation and
 
 ### Multi-Language Integration
 - R calls Python scripts via `system2()` with JSON file interchange
-- Environment variables `DOCLING_PYTHON` and `DOCLING_SCRIPT` configure Python paths
 - `reticulate` available for inline Python in notebooks
 
 ### Key Directories
 
 - `R/` - Utility functions (PDF extraction, URL fetching, codebook implementations)
-- `python/` - Python utilities (Docling extraction, embeddings)
+- `python/` - Python utilities (PyMuPDF extraction, data parsing)
 - `notebooks/` - Quarto analysis notebooks (extract, clean, embed, identify)
 - `docs/` - Documentation and proposals
 - `docs/strategy.md` - Authoritative methodology document (C1-C4 + H&K framework)
@@ -183,7 +176,7 @@ The project includes 10 specialized agents in `.claude/agents/` organized by fun
 
 **Infrastructure:**
 - **pipeline-manager**: Targets pipeline definitions, `tar_make()`, debugging
-- **document-extractor**: PDF extraction using Docling or pdftools
+- **document-extractor**: PDF extraction using PyMuPDF or pdftools
 
 **Documentation:**
 - **doc-writer**: Quarto notebooks and documentation
@@ -223,7 +216,7 @@ US Government Documents (1946-present):
 ## Technology Stack
 
 - **R**: targets, crew, tidyverse, pdftools, quanteda, tidytext, rvest, googledrive, gt (for tables in .qmd files)
-- **Python**: docling (PDF extraction), sentence-transformers (embeddings), torch
+- **Python**: pymupdf (PDF extraction)
 - **Documentation**: Quarto with Typst and HTML output, Chicago Author-Date citations
 
 ### Quarto Style Guide

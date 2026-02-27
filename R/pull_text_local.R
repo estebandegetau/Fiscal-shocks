@@ -29,7 +29,7 @@
 #' 3. Detects if OCR is needed (scanned vs text-based PDF)
 #' 4. Extracts text with parallel OCR if needed
 #' 5. Saves results as JSON for caching
-#' 6. Returns tibble compatible with pull_text_lambda() output
+#' 6. Returns tibble with text, n_pages, and extracted_at columns
 #'
 #' @examples
 #' \dontrun{
@@ -172,7 +172,7 @@ if (missing(pdf_url) || is.null(pdf_url) || length(pdf_url) == 0) {
   message(sprintf("Completed %d PDF(s) in %.1f seconds", length(pdf_url), elapsed))
 
   # Convert results to tibble
-  # Match format of pull_text_lambda() for compatibility
+  # Build output tibble
   output <- tibble::tibble(
     text = purrr::map(results, function(r) {
       # Return pages as list of character strings

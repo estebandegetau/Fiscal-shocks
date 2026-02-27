@@ -1,5 +1,5 @@
 # Dockerfile for Fiscal-shocks project
-# R 4.5.2 + Python environment for PDF extraction and text analysis
+# R 4.5.0 + Python environment for PDF extraction and text analysis
 
 FROM rocker/r-ver:4.5.0
 
@@ -10,8 +10,6 @@ LABEL description="Research pipeline for fiscal shock identification from histor
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 ENV RENV_PATHS_CACHE=/renv/cache
-ENV DOCLING_PYTHON=/usr/bin/python3
-ENV DOCLING_SCRIPT=/app/python/docling_extract.py
 
 # Install system dependencies for R packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -91,8 +89,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Install Python dependencies
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /tmp/requirements.txt \
-    && pip install --no-cache-dir docling
+    && pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Create renv cache directory
 RUN mkdir -p /renv/cache

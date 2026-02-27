@@ -50,9 +50,6 @@ tar_source()
 max_year <- 2022
 min_year <- 1946
 
-# Extraction method: TRUE = local PyMuPDF+OCR, FALSE = AWS Lambda+Docling
-use_local_extraction <- TRUE
-
 # LLM configuration: change these 4 variables to swap providers
 # Supported providers: "anthropic", "ollama", "openai", "groq"
 # NOTE: H&K S1-S3 validation results reported in the paper must use a
@@ -129,23 +126,12 @@ list(
   ),
   tar_target(
     us_text,
-    if (use_local_extraction) {
-      pull_text_local(
-        pdf_url = us_urls_vector,
-        output_dir = here::here("data/extracted"),
-        workers = 6,
-        ocr_dpi = 200
-      )
-    } else {
-      pull_text_lambda(
-        pdf_url = us_urls_vector,
-        bucket = Sys.getenv("AWS_S3_BUCKET", "fiscal-shocks-pdfs"),
-        lambda_function = Sys.getenv("LAMBDA_FUNCTION_NAME"),
-        poll_interval = 30,
-        max_wait_time = 600,
-        do_table_structure = TRUE
-      )
-    }
+    pull_text_local(
+      pdf_url = us_urls_vector,
+      output_dir = here::here("data/extracted"),
+      workers = 6,
+      ocr_dpi = 200
+    )
   ),
   tar_target(
     us_body,
