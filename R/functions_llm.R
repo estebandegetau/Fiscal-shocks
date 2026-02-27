@@ -183,6 +183,15 @@ call_openai_api <- function(messages,
           httr2::req_headers(Authorization = paste("Bearer", api_key))
       }
 
+      # Add OpenRouter-required headers
+      if (grepl("openrouter\\.ai", url)) {
+        req <- req |>
+          httr2::req_headers(
+            `HTTP-Referer` = "https://github.com/estebandegetau/Fiscal-shocks",
+            `X-Title` = "Fiscal-Shocks"
+          )
+      }
+
       response <- httr2::req_perform(req)
       result <- httr2::resp_body_json(response)
 
@@ -253,7 +262,7 @@ call_openai_api <- function(messages,
 #' @param temperature Numeric 0-1 for sampling temperature
 #' @param max_retries Integer for number of retry attempts
 #' @param system Optional system prompt string
-#' @param provider Character: "anthropic", "ollama", "openai", or "groq"
+#' @param provider Character: "anthropic", "ollama", "openai", "groq", or "openrouter"
 #' @param base_url Character base URL override (NULL = per-provider default)
 #' @param api_key Character API key override (NULL = per-provider default from env)
 #'
@@ -281,12 +290,14 @@ call_llm_api <- function(messages,
     openai = list(base_url = "https://api.openai.com/v1",
                   api_key = Sys.getenv("OPENAI_API_KEY")),
     groq   = list(base_url = "https://api.groq.com/openai/v1",
-                  api_key = Sys.getenv("GROQ_API_KEY"))
+                  api_key = Sys.getenv("GROQ_API_KEY")),
+    openrouter = list(base_url = "https://openrouter.ai/api/v1",
+                      api_key = Sys.getenv("OPENROUTER_API_KEY"))
   )
 
   if (!provider %in% names(defaults)) {
     stop("Unknown LLM provider: '", provider,
-         "'. Supported: anthropic, ollama, openai, groq")
+         "'. Supported: anthropic, ollama, openai, groq, openrouter")
   }
 
   base_url <- base_url %||% defaults[[provider]]$base_url
@@ -407,6 +418,10 @@ get_model_pricing <- function(model) {
     "claude-sonnet-4-5-20250514" = list(
       input = 0.003, output = 0.015,
       cache_write = 0.00375, cache_read = 0.0003
+    ),
+    "qwen/qwen-2.5-72b-instruct" = list(
+      input = 0.00004, output = 0.0001,
+      cache_write = 0, cache_read = 0
     )
   )
 

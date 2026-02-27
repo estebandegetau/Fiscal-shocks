@@ -51,12 +51,12 @@ max_year <- 2022
 min_year <- 1946
 
 # LLM configuration: change these 4 variables to swap providers
-# Supported providers: "anthropic", "ollama", "openai", "groq"
+# Supported providers: "anthropic", "ollama", "openai", "groq", "openrouter"
 # NOTE: H&K S1-S3 validation results reported in the paper must use a
 # consistent Anthropic model. Non-Anthropic providers are for cost/feasibility
 # exploration only. Mixing providers invalidates stage comparability.
-llm_provider <- "anthropic"
-llm_model    <- "claude-haiku-4-5-20251001"
+llm_provider <- "openrouter"
+llm_model    <- "qwen/qwen-2.5-72b-instruct"
 llm_base_url <- NULL   # NULL = per-provider default
 llm_api_key  <- NULL   # NULL = per-provider default from env var
 
