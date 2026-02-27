@@ -4,6 +4,7 @@
 _*/
 .*/
 !.claude/
+!.devcontainer/
 Lib/
 renv/
 *.pdf
@@ -11,6 +12,7 @@ renv/
 data/
 *_cache/
 *.json
+!.devcontainer/devcontainer.json
 *.png
 R_R/
 *.exe
