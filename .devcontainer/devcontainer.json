@@ -1,0 +1,22 @@
+{
+  "name": "Fiscal Shocks",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/user/Fiscal-shocks,type=bind,consistency=cached",
+  "workspaceFolder": "/home/user/Fiscal-shocks",
+  "remoteEnv": {
+    "RENV_PATHS_CACHE": "/renv/cache"
+  },
+  "postStartCommand": "R -e \"renv::restore(prompt = FALSE)\"",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "quarto-dev.quarto",
+        "REditorSupport.r",
+        "ms-python.python"
+      ]
+    }
+  }
+}
