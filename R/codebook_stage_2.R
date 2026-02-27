@@ -40,7 +40,10 @@ run_loocv <- function(codebook,
                       use_self_consistency = FALSE,
                       show_progress = TRUE,
                       max_retries = 10,
-                      use_cache = TRUE) {
+                      use_cache = TRUE,
+                      provider = "anthropic",
+                      base_url = NULL,
+                      api_key = NULL) {
 
   n_acts <- nrow(aligned_data)
   message(sprintf("Running %s chunk-based LOOCV on %d acts...",
@@ -107,7 +110,10 @@ run_loocv <- function(codebook,
       use_self_consistency = use_self_consistency,
       system_prompt = system_prompt,
       max_retries = max_retries,
-      use_cache = use_cache
+      use_cache = use_cache,
+      provider = provider,
+      base_url = base_url,
+      api_key = api_key
     )
 
     # Classify Tier 2 chunks
@@ -125,7 +131,10 @@ run_loocv <- function(codebook,
       use_self_consistency = use_self_consistency,
       system_prompt = system_prompt,
       max_retries = max_retries,
-      use_cache = use_cache
+      use_cache = use_cache,
+      provider = provider,
+      base_url = base_url,
+      api_key = api_key
     )
 
     # Classify negative chunk sample
@@ -146,13 +155,17 @@ run_loocv <- function(codebook,
       use_self_consistency = use_self_consistency,
       system_prompt = system_prompt,
       max_retries = max_retries,
-      use_cache = use_cache
+      use_cache = use_cache,
+      provider = provider,
+      base_url = base_url,
+      api_key = api_key
     )
 
     dplyr::bind_rows(tier1_results, tier2_results, neg_results)
   })
 
-  all_results <- dplyr::bind_rows(results)
+  all_results <- dplyr::bind_rows(results) |>
+    dplyr::mutate(model = model, provider = provider)
 
   # Summary
   pos_results <- all_results |> dplyr::filter(text_type == "positive")
@@ -196,7 +209,10 @@ classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
                                      fold_examples, model,
                                      use_self_consistency, system_prompt,
                                      max_retries = 10,
-                                     use_cache = FALSE) {
+                                     use_cache = FALSE,
+                                     provider = "anthropic",
+                                     base_url = NULL,
+                                     api_key = NULL) {
   positive_label <- get_valid_labels(codebook)[1]
 
   if (nrow(chunks) == 0) {
@@ -220,7 +236,10 @@ classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
         use_self_consistency = use_self_consistency,
         system_prompt = system_prompt,
         max_retries = max_retries,
-        use_cache = use_cache
+        use_cache = use_cache,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
       )
     }, error = function(e) {
       list(label = NA_character_, reasoning = e$message, confidence = NA_real_)

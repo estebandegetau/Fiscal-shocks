@@ -22,7 +22,10 @@ run_behavioral_tests_s1 <- function(codebook,
                                      c1_chunk_data,
                                      model = "claude-haiku-4-5-20251001",
                                      n_test = 20,
-                                     seed = 20251206) {
+                                     seed = 20251206,
+                                     provider = "anthropic",
+                                     base_url = NULL,
+                                     api_key = NULL) {
   set.seed(seed)
 
   n_pos <- floor(n_test / 2)
@@ -58,13 +61,17 @@ run_behavioral_tests_s1 <- function(codebook,
 
   # Test I: Legal Outputs
   message("  Test I: Legal Outputs...")
-  test_i <- test_legal_outputs(codebook, test_texts, model)
+  test_i <- test_legal_outputs(codebook, test_texts, model,
+                               provider = provider, base_url = base_url,
+                               api_key = api_key)
   message(sprintf("    %s (%.0f%% valid)",
                   if (test_i$pass) "PASS" else "FAIL", test_i$rate * 100))
 
   # Test II: Definition Recovery (tests codebook, not input format)
   message("  Test II: Definition Recovery...")
-  test_ii <- test_definition_recovery(codebook, model)
+  test_ii <- test_definition_recovery(codebook, model,
+                                      provider = provider, base_url = base_url,
+                                      api_key = api_key)
   message(sprintf("    %s (%d/%d correct)",
                   if (test_ii$pass) "PASS" else "FAIL",
                   test_ii$n_correct, test_ii$n_total))
@@ -76,7 +83,9 @@ run_behavioral_tests_s1 <- function(codebook,
 
   if (has_examples) {
     message("  Test III: Example Recovery...")
-    test_iii <- test_example_recovery(codebook, model)
+    test_iii <- test_example_recovery(codebook, model,
+                                      provider = provider, base_url = base_url,
+                                      api_key = api_key)
     message(sprintf("    %s (%d/%d correct)",
                     if (test_iii$pass) "PASS" else "FAIL",
                     test_iii$n_correct, test_iii$n_total))
@@ -101,7 +110,9 @@ run_behavioral_tests_s1 <- function(codebook,
   n_order_test <- min(10, length(test_texts))
   order_texts <- test_texts[seq_len(n_order_test)]
   message(sprintf("  Test IV: Order Invariance (n=%d)...", n_order_test))
-  test_iv <- test_order_invariance(codebook, order_texts, model)
+  test_iv <- test_order_invariance(codebook, order_texts, model,
+                                   provider = provider, base_url = base_url,
+                                   api_key = api_key)
   message(sprintf(
     "    %s (max change rate: %.1f%% [rev=%.1f%%, shuf=%.1f%%], kappa=%.3f %s)",
     if (test_iv$pass) "PASS" else "FAIL",

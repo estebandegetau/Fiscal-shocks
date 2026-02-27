@@ -22,7 +22,10 @@
 test_legal_outputs <- function(codebook,
                                test_texts,
                                model = "claude-haiku-4-5-20251001",
-                               max_tokens = 500) {
+                               max_tokens = 500,
+                               provider = "anthropic",
+                               base_url = NULL,
+                               api_key = NULL) {
   valid_labels <- get_valid_labels(codebook)
   system_prompt <- construct_codebook_prompt(codebook)
   n <- length(test_texts)
@@ -35,7 +38,10 @@ test_legal_outputs <- function(codebook,
         model = model,
         temperature = 0,
         system_prompt = system_prompt,
-        max_tokens = max_tokens
+        max_tokens = max_tokens,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
       )
     }, error = function(e) {
       list(label = NA_character_, reasoning = e$message)
@@ -76,7 +82,10 @@ test_legal_outputs <- function(codebook,
 #' @return List with pass (logical), n_correct, n_total, details
 #' @export
 test_definition_recovery <- function(codebook,
-                                     model = "claude-haiku-4-5-20251001") {
+                                     model = "claude-haiku-4-5-20251001",
+                                     provider = "anthropic",
+                                     base_url = NULL,
+                                     api_key = NULL) {
   system_prompt <- construct_codebook_prompt(codebook)
   valid_labels <- get_valid_labels(codebook)
 
@@ -91,12 +100,15 @@ test_definition_recovery <- function(codebook,
     )
 
     response <- tryCatch({
-      raw <- call_claude_api(
+      raw <- call_llm_api(
         messages = list(list(role = "user", content = user_message)),
         model = model,
         max_tokens = 300,
         temperature = 0,
-        system = system_prompt
+        system = system_prompt,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
       )
       parsed <- parse_json_response(
         raw$content[[1]]$text,
@@ -147,7 +159,10 @@ test_definition_recovery <- function(codebook,
 #' @return List with pass, n_correct, n_total, details
 #' @export
 test_example_recovery <- function(codebook,
-                                  model = "claude-haiku-4-5-20251001") {
+                                  model = "claude-haiku-4-5-20251001",
+                                  provider = "anthropic",
+                                  base_url = NULL,
+                                  api_key = NULL) {
   system_prompt <- construct_codebook_prompt(codebook)
   valid_labels <- get_valid_labels(codebook)
   results <- list()
@@ -167,12 +182,15 @@ test_example_recovery <- function(codebook,
       )
 
       response <- tryCatch({
-        raw <- call_claude_api(
+        raw <- call_llm_api(
           messages = list(list(role = "user", content = user_message)),
           model = model,
           max_tokens = 300,
           temperature = 0,
-          system = system_prompt
+          system = system_prompt,
+          provider = provider,
+          base_url = base_url,
+          api_key = api_key
         )
         parsed <- parse_json_response(
           raw$content[[1]]$text,
@@ -214,12 +232,15 @@ test_example_recovery <- function(codebook,
       )
 
       response <- tryCatch({
-        raw <- call_claude_api(
+        raw <- call_llm_api(
           messages = list(list(role = "user", content = user_message)),
           model = model,
           max_tokens = 300,
           temperature = 0,
-          system = system_prompt
+          system = system_prompt,
+          provider = provider,
+          base_url = base_url,
+          api_key = api_key
         )
         parsed <- parse_json_response(
           raw$content[[1]]$text,
@@ -339,7 +360,10 @@ fleiss_kappa <- function(ratings) {
 test_order_invariance <- function(codebook,
                                   test_texts,
                                   model = "claude-haiku-4-5-20251001",
-                                  seed = 42) {
+                                  seed = 42,
+                                  provider = "anthropic",
+                                  base_url = NULL,
+                                  api_key = NULL) {
   n_classes <- length(codebook$classes)
   original_order <- seq_len(n_classes)
   reversed_order <- rev(original_order)
@@ -374,7 +398,10 @@ test_order_invariance <- function(codebook,
           codebook = codebook,
           model = model,
           temperature = 0,
-          system_prompt = prompt
+          system_prompt = prompt,
+          provider = provider,
+          base_url = base_url,
+          api_key = api_key
         )$label
       }, error = function(e) NA_character_)
     }
@@ -462,6 +489,9 @@ test_exclusion_criteria <- function(
     test_texts,
     true_labels,
     model = "claude-haiku-4-5-20251001",
+    provider = "anthropic",
+    base_url = NULL,
+    api_key = NULL,
     distractor_text = paste(
       "The Federal Reserve's Open Market Committee voted unanimously to raise",
       "the federal funds rate by 75 basis points to a target range of 3.00 to",
@@ -512,7 +542,9 @@ test_exclusion_criteria <- function(
 
   # Classify once per combo, build summary and details together
   all_details <- purrr::map(combos, function(combo) {
-    preds <- classify_batch_for_test(combo$cb, combo$texts, model)
+    preds <- classify_batch_for_test(combo$cb, combo$texts, model,
+                                        provider = provider, base_url = base_url,
+                                        api_key = api_key)
     tibble::tibble(
       combo = combo$name,
       text_id = seq_along(combo$texts),
@@ -560,7 +592,10 @@ test_exclusion_criteria <- function(
 test_generic_labels <- function(codebook,
                                 test_texts,
                                 true_labels,
-                                model = "claude-haiku-4-5-20251001") {
+                                model = "claude-haiku-4-5-20251001",
+                                provider = "anthropic",
+                                base_url = NULL,
+                                api_key = NULL) {
   # Create a modified codebook with generic labels
   generic_codebook <- codebook
   label_map <- list()  # original -> generic
@@ -581,10 +616,14 @@ test_generic_labels <- function(codebook,
   }
 
   # Classify with original labels
-  original_preds <- classify_batch_for_test(codebook, test_texts, model)
+  original_preds <- classify_batch_for_test(codebook, test_texts, model,
+                                            provider = provider, base_url = base_url,
+                                            api_key = api_key)
 
   # Classify with generic labels
-  generic_preds <- classify_batch_for_test(generic_codebook, test_texts, model)
+  generic_preds <- classify_batch_for_test(generic_codebook, test_texts, model,
+                                           provider = provider, base_url = base_url,
+                                           api_key = api_key)
 
   # Map generic predictions back to original labels for comparison
   reverse_map <- stats::setNames(names(label_map), unlist(label_map))
@@ -628,7 +667,10 @@ test_generic_labels <- function(codebook,
 test_swapped_labels <- function(codebook,
                                 test_texts,
                                 true_labels,
-                                model = "claude-haiku-4-5-20251001") {
+                                model = "claude-haiku-4-5-20251001",
+                                provider = "anthropic",
+                                base_url = NULL,
+                                api_key = NULL) {
   n_classes <- length(codebook$classes)
   if (n_classes < 2) {
     stop("Need at least 2 classes for swapped label test")
@@ -648,10 +690,14 @@ test_swapped_labels <- function(codebook,
   }
 
   # Classify with original
-  original_preds <- classify_batch_for_test(codebook, test_texts, model)
+  original_preds <- classify_batch_for_test(codebook, test_texts, model,
+                                            provider = provider, base_url = base_url,
+                                            api_key = api_key)
 
   # Classify with swapped definitions
-  swapped_preds <- classify_batch_for_test(swapped_codebook, test_texts, model)
+  swapped_preds <- classify_batch_for_test(swapped_codebook, test_texts, model,
+                                           provider = provider, base_url = base_url,
+                                           api_key = api_key)
 
   # If model follows definitions: predictions should rotate
   # If model follows names: predictions should stay the same
@@ -700,7 +746,10 @@ test_swapped_labels <- function(codebook,
 #' @return Character vector of predicted labels
 #' @keywords internal
 classify_batch_for_test <- function(codebook, texts, model,
-                                    system_prompt = NULL) {
+                                    system_prompt = NULL,
+                                    provider = "anthropic",
+                                    base_url = NULL,
+                                    api_key = NULL) {
   if (is.null(system_prompt)) {
     system_prompt <- construct_codebook_prompt(codebook)
   }
@@ -712,7 +761,10 @@ classify_batch_for_test <- function(codebook, texts, model,
         codebook = codebook,
         model = model,
         temperature = 0,
-        system_prompt = system_prompt
+        system_prompt = system_prompt,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
       )
       result$label %||% NA_character_
     }, error = function(e) {

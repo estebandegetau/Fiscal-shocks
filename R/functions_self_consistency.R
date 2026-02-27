@@ -25,14 +25,17 @@
 #'   - confidence: Calibrated confidence (agreement_rate)
 #' @export
 call_with_self_consistency <- function(messages,
-                                       model = "claude-sonnet-4-20250514",
+                                       model = "claude-sonnet-4-5-20250514",
                                        n_samples = 5,
                                        temperature = 0.7,
                                        max_tokens = 1000,
                                        parse_fn,
                                        extract_class_fn,
                                        max_retries = 3,
-                                       system = NULL) {
+                                       system = NULL,
+                                       provider = "anthropic",
+                                       base_url = NULL,
+                                       api_key = NULL) {
 
   # Collect all samples
   all_results <- vector("list", n_samples)
@@ -40,13 +43,16 @@ call_with_self_consistency <- function(messages,
 
   for (i in seq_len(n_samples)) {
     # Call API with temperature > 0 for diversity
-    response <- call_claude_api(
+    response <- call_llm_api(
       messages = messages,
       model = model,
       max_tokens = max_tokens,
       temperature = temperature,
       max_retries = max_retries,
-      system = system
+      system = system,
+      provider = provider,
+      base_url = base_url,
+      api_key = api_key
     )
 
     # Parse response
@@ -109,7 +115,7 @@ call_with_self_consistency <- function(messages,
 #' @return List with prediction, agreement_rate, and detailed results
 #' @export
 model_a_with_self_consistency <- function(text,
-                                          model = "claude-sonnet-4-20250514",
+                                          model = "claude-sonnet-4-5-20250514",
                                           n_samples = 5,
                                           temperature = 0.7,
                                           examples = NULL,
@@ -204,7 +210,7 @@ model_a_with_self_consistency <- function(text,
 model_b_with_self_consistency <- function(act_name,
                                           passages_text,
                                           year,
-                                          model = "claude-sonnet-4-20250514",
+                                          model = "claude-sonnet-4-5-20250514",
                                           n_samples = 5,
                                           temperature = 0.7,
                                           examples = NULL,
@@ -329,7 +335,7 @@ model_c_with_self_consistency <- function(act_name,
                                           passages_text,
                                           date_signed,
                                           tables = NULL,
-                                          model = "claude-sonnet-4-20250514",
+                                          model = "claude-sonnet-4-5-20250514",
                                           n_samples = 5,
                                           temperature = 0.7,
                                           examples = NULL,

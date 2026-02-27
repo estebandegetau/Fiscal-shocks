@@ -53,6 +53,16 @@ min_year <- 1946
 # Extraction method: TRUE = local PyMuPDF+OCR, FALSE = AWS Lambda+Docling
 use_local_extraction <- TRUE
 
+# LLM configuration: change these 4 variables to swap providers
+# Supported providers: "anthropic", "ollama", "openai", "groq"
+# NOTE: H&K S1-S3 validation results reported in the paper must use a
+# consistent Anthropic model. Non-Anthropic providers are for cost/feasibility
+# exploration only. Mixing providers invalidates stage comparability.
+llm_provider <- "anthropic"
+llm_model    <- "claude-haiku-4-5-20251001"
+llm_base_url <- NULL   # NULL = per-provider default
+llm_api_key  <- NULL   # NULL = per-provider default from env var
+
 list(
   tar_target(
     name = relevance_keys,
@@ -246,7 +256,10 @@ list(
       c1_codebook,
       aligned_data,
       c1_chunk_data,
-      model = "claude-haiku-4-5-20251001"
+      model = llm_model,
+      provider = llm_provider,
+      base_url = llm_base_url,
+      api_key = llm_api_key
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
@@ -262,9 +275,12 @@ list(
       aligned_data,
       c1_chunk_data,
       codebook_type = "C1",
-      model = "claude-haiku-4-5-20251001",
+      model = llm_model,
       n_few_shot = 0,
-      seed = 20251206
+      seed = 20251206,
+      provider = llm_provider,
+      base_url = llm_base_url,
+      api_key = llm_api_key
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
@@ -283,7 +299,10 @@ list(
       c1_s2_results,
       aligned_data,
       c1_chunk_data,
-      model = "claude-haiku-4-5-20251001"
+      model = llm_model,
+      provider = llm_provider,
+      base_url = llm_base_url,
+      api_key = llm_api_key
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"

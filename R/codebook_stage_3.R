@@ -24,7 +24,10 @@ run_error_analysis <- function(codebook,
                                c1_chunk_data,
                                model = "claude-haiku-4-5-20251001",
                                n_ablation_texts = 40,
-                               seed = 20251206) {
+                               seed = 20251206,
+                               provider = "anthropic",
+                               base_url = NULL,
+                               api_key = NULL) {
   set.seed(seed)
 
   message("Running S3 error analysis...")
@@ -50,7 +53,8 @@ run_error_analysis <- function(codebook,
   # Test V: Exclusion Criteria Consistency (H&K 4-combo design)
   message("  Test V: Exclusion Criteria Consistency...")
   test_v <- test_exclusion_criteria(
-    codebook, ablation_texts, ablation_labels, model
+    codebook, ablation_texts, ablation_labels, model,
+    provider = provider, base_url = base_url, api_key = api_key
   )
   for (i in seq_len(nrow(test_v$combos))) {
     r <- test_v$combos[i, ]
@@ -63,7 +67,8 @@ run_error_analysis <- function(codebook,
   # Test VI: Generic Labels
   message("  Test VI: Generic Labels...")
   test_vi <- test_generic_labels(
-    codebook, ablation_texts, ablation_labels, model
+    codebook, ablation_texts, ablation_labels, model,
+    provider = provider, base_url = base_url, api_key = api_key
   )
   message(sprintf("    Original accuracy: %.1f%%, Generic accuracy: %.1f%%",
                   test_vi$original_accuracy * 100,
@@ -73,7 +78,8 @@ run_error_analysis <- function(codebook,
   # Test VII: Swapped Labels
   message("  Test VII: Swapped Labels...")
   test_vii <- test_swapped_labels(
-    codebook, ablation_texts, ablation_labels, model
+    codebook, ablation_texts, ablation_labels, model,
+    provider = provider, base_url = base_url, api_key = api_key
   )
   message(sprintf("    Follows definitions: %.1f%%, Follows names: %.1f%%",
                   test_vii$follows_definitions_rate * 100,
@@ -83,7 +89,8 @@ run_error_analysis <- function(codebook,
   # Ablation Study
   message("  Running ablation study...")
   ablation <- run_ablation_study(
-    codebook, ablation_texts, ablation_labels, model
+    codebook, ablation_texts, ablation_labels, model,
+    provider = provider, base_url = base_url, api_key = api_key
   )
 
   # Error Categorization (H&K taxonomy)
@@ -120,9 +127,15 @@ run_error_analysis <- function(codebook,
 run_ablation_study <- function(codebook,
                                test_texts,
                                true_labels,
-                               model = "claude-haiku-4-5-20251001") {
+                               model = "claude-haiku-4-5-20251001",
+                               provider = "anthropic",
+                               base_url = NULL,
+                               api_key = NULL) {
   # Baseline
-  baseline_preds <- classify_batch_for_test(codebook, test_texts, model)
+  baseline_preds <- classify_batch_for_test(codebook, test_texts, model,
+                                            provider = provider,
+                                            base_url = base_url,
+                                            api_key = api_key)
   baseline_acc <- mean(baseline_preds == true_labels, na.rm = TRUE)
 
   results <- list()
@@ -138,7 +151,8 @@ run_ablation_study <- function(codebook,
         codebook, exclude_components = exclude
       )
       ablated_preds <- classify_batch_for_test(
-        codebook, test_texts, model, system_prompt = ablated_prompt
+        codebook, test_texts, model, system_prompt = ablated_prompt,
+        provider = provider, base_url = base_url, api_key = api_key
       )
       ablated_acc <- mean(ablated_preds == true_labels, na.rm = TRUE)
 
@@ -163,7 +177,8 @@ run_ablation_study <- function(codebook,
         codebook, exclude_components = exclude
       )
       ablated_preds <- classify_batch_for_test(
-        codebook, test_texts, model, system_prompt = ablated_prompt
+        codebook, test_texts, model, system_prompt = ablated_prompt,
+        provider = provider, base_url = base_url, api_key = api_key
       )
       ablated_acc <- mean(ablated_preds == true_labels, na.rm = TRUE)
 

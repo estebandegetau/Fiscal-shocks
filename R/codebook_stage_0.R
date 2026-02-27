@@ -226,10 +226,20 @@ classify_with_codebook <- function(text,
                                    system_prompt = NULL,
                                    max_tokens = 500,
                                    max_retries = 10,
-                                   use_cache = FALSE) {
+                                   use_cache = FALSE,
+                                   provider = "anthropic",
+                                   base_url = NULL,
+                                   api_key = NULL) {
   # Build system prompt from codebook if not overridden
   if (is.null(system_prompt)) {
     system_prompt <- construct_codebook_prompt(codebook)
+  }
+
+  # Prompt caching is Anthropic-only; disable for other providers
+  if (use_cache && provider != "anthropic") {
+    message("Note: prompt caching disabled for provider '", provider,
+            "' (Anthropic-only feature)")
+    use_cache <- FALSE
   }
 
   # Build few-shot examples text
@@ -307,7 +317,10 @@ classify_with_codebook <- function(text,
       max_retries = max_retries,
       parse_fn = parse_fn,
       extract_class_fn = extract_class_fn,
-      system = system_for_api
+      system = system_for_api,
+      provider = provider,
+      base_url = base_url,
+      api_key = api_key
     )
 
     # Extract additional fields from the majority result
@@ -329,13 +342,16 @@ classify_with_codebook <- function(text,
     )
   } else {
     # Single deterministic call
-    response <- call_claude_api(
+    response <- call_llm_api(
       messages = list(list(role = "user", content = user_content)),
       model = model,
       max_tokens = max_tokens,
       temperature = temperature,
       max_retries = max_retries,
-      system = system_for_api
+      system = system_for_api,
+      provider = provider,
+      base_url = base_url,
+      api_key = api_key
     )
 
     parsed <- parse_fn(response$content[[1]]$text)
