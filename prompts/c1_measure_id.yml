@@ -1,6 +1,6 @@
 codebook:
-  name: "C1: Measure Identification"
-  version: "0.1.0"
+  name: "C1: Fiscal Measure Identification"
+  version: "0.2.0"
   instructions: >
     You are an expert in fiscal policy analysis classifying chunks from official government
     economic and budget documents. Your task is to determine whether each chunk contains a
@@ -15,10 +15,11 @@ codebook:
         that changes fiscal liabilities or obligations.
 
       clarification:
-        - "The passage describes a legislated change in fiscal liabilities from taxes of any type — income taxes, payroll and social insurance taxes, consumption and excise taxes, investment incentives, spending authorizations, and so on"
-        - "The action was enacted into law or implemented by executive order, not merely proposed, debated, or recommended by officials or advisory bodies"
-        - "Retrospective references that name a specific act and provide substantive detail about its provisions should be classified as FISCAL_MEASURE"
+        - "The passage describes a legislated change in fiscal liabilities from taxes of any type — income taxes, payroll and social insurance taxes, consumption and excise taxes, investment incentives, and so on"
+        - "The action was enacted into law or implemented by executive or administrative action (such as executive orders, ministerial decrees, regulatory changes, or official policy directives), not merely proposed, debated, or recommended by officials or advisory bodies"
+        - "Retrospective references that name a specific act and provide substantive detail about its provisions — such as rate changes, affected populations, or revenue effects — should be classified as FISCAL_MEASURE, even if the passage was written years after enactment"
         - "The passage provides substantive detail about what the measure does, such as specific rate changes, affected populations, program descriptions, revenue estimates, or effective dates, rather than merely naming or listing the measure"
+        - "The significance of a measure is determined by how substantively the passage discusses it, not by its revenue impact; even small fiscal changes qualify if described in detail"
         - "Executive or administrative actions that change fiscal liabilities count as fiscal measures even when not legislated"
 
       negative_clarification:
@@ -26,6 +27,7 @@ codebook:
         - "Simple extensions or renewals of existing provisions that do not alter rates, coverage, or scope are excluded from classification as fiscal measures"
         - "Changes to withholding schedules, payment timing, or tax collection procedures that do not alter the underlying liabilities owed by taxpayers or recipients are excluded"
         - "Automatic adjustments such as inflation indexing that occur mechanically without new legislative action are excluded"
+        - "Passages that merely list multiple fiscal actions with brief or aggregate descriptions — such as tables of revenue effects or summaries of all measures enacted in a given year — are excluded unless the passage provides substantive detail about a specific measure's provisions"
 
     - label: "NOT_FISCAL_MEASURE"
       label_definition: >
