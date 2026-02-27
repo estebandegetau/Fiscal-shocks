@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-02-27: Test IV enhanced to 3 orderings + Fleiss's kappa (all codebooks)
+
+**Type:** correction
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S1 Behavioral Tests
+**Detail:** `test_order_invariance()` in `R/behavioral_tests.R` now uses three class orderings (original, reversed, shuffled) and reports Fleiss's kappa as a diagnostic, matching the full H&K Table 3 specification. The C1 section of strategy.md (line 281) only mentioned "reverse class order" while C2's section (line 295) already specified "original, reversed, and shuffled orderings." The implementation is now consistent across all codebooks. Pass criterion unchanged (<5% max pairwise change rate). Binary codebooks (C1) have a degenerate shuffled = reversed case since only 2 permutations exist. Added `fleiss_kappa()` internal helper (Fleiss 1971, Landis & Koch 1977 interpretation). S1 results will need re-running for C1 (codebook is v0.2.0 and S1 was last run on v0.1.0).
+**Suggested edit:** Update C1's S1 description from "Test IV: reverse class order on chunk-length inputs" to "Test IV: original, reversed, and shuffled class orderings on chunk-length inputs" to match the C2 description.
+
 ## 2026-02-27: C1 codebook aligned with RR criteria, country-agnostic (v0.2.0)
 
 **Type:** status-change
