@@ -40,6 +40,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfontconfig1-dev \
     libharfbuzz-dev \
     libfribidi-dev \
+    # Libertinus fonts for academic-typst template and gt tables
+    fonts-libertinus \
     # Image libraries
     libjpeg-dev \
     libpng-dev \

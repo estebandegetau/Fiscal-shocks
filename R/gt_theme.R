@@ -8,6 +8,7 @@
 gt_theme_report <- function(gt_tbl) {
   gt_tbl %>%
     gt::opt_table_lines(extent = "none") %>%
+    gt::opt_table_font(font = "Libertinus Serif") %>%
     gt::tab_options(
       table.align = "center",
       column_labels.border.top.style = "solid",
