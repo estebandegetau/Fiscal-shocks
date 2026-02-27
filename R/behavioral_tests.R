@@ -263,68 +263,167 @@ test_example_recovery <- function(codebook,
 }
 
 
+#' Fleiss's Kappa for Inter-Rater Agreement
+#'
+#' Computes Fleiss (1971) kappa for n subjects rated by r raters into k
+#' categories. Used as a diagnostic in Test IV to measure agreement across
+#' three class orderings treated as "raters."
+#'
+#' @param ratings Character matrix (n_subjects x n_raters). Each cell is a
+#'   category label. Rows with any NA are dropped before computation.
+#' @return List with kappa (numeric) and interpretation (character) per
+#'   Landis & Koch (1977)
+#' @keywords internal
+fleiss_kappa <- function(ratings) {
+  # Drop rows with any NA
+  complete <- complete.cases(ratings)
+  ratings <- ratings[complete, , drop = FALSE]
+
+  n <- nrow(ratings)
+  r <- ncol(ratings)
+  if (n == 0 || r < 2) {
+    return(list(kappa = NA_real_, interpretation = "insufficient data"))
+  }
+
+  categories <- sort(unique(as.vector(ratings)))
+  k <- length(categories)
+
+  # Build n x k count matrix: how many raters assigned each category per subject
+  counts <- matrix(0L, nrow = n, ncol = k)
+  for (j in seq_len(k)) {
+    counts[, j] <- rowSums(ratings == categories[j])
+  }
+
+  # P_i = proportion of agreeing rater pairs for subject i
+  P_i <- (rowSums(counts^2) - r) / (r * (r - 1))
+  P_bar <- mean(P_i)
+
+  # p_j = proportion of all assignments in category j
+  p_j <- colSums(counts) / (n * r)
+  P_e <- sum(p_j^2)
+
+  if (P_e == 1) {
+    # All raters always pick the same category — perfect agreement by default
+    kappa_val <- 1.0
+  } else {
+    kappa_val <- (P_bar - P_e) / (1 - P_e)
+  }
+
+  interpretation <- dplyr::case_when(
+    kappa_val > 0.80 ~ "Near-perfect agreement",
+    kappa_val > 0.60 ~ "Substantial agreement",
+    kappa_val > 0.40 ~ "Moderate agreement",
+    kappa_val > 0.20 ~ "Fair agreement",
+    TRUE ~ "Poor agreement"
+  )
+
+  list(kappa = kappa_val, interpretation = interpretation)
+}
+
+
 #' Test IV: Order Invariance
 #'
-#' Classifies test texts with original class order and reversed order.
-#' Measures label change rate — should be <5%.
+#' Classifies test texts under three class orderings (original, reversed,
+#' shuffled) per H&K Table 3. Reports pairwise change rates and Fleiss's
+#' kappa across the three orderings treated as raters.
+#'
+#' Pass criterion: max(change_rate_reversed, change_rate_shuffled) < 5%.
 #'
 #' @param codebook A validated codebook object
 #' @param test_texts Character vector of test passages
 #' @param model Character model ID
-#' @return List with pass, change_rate, threshold, details
+#' @param seed Integer seed for reproducible shuffled order (default: 42)
+#' @return List with pass, change_rate (= max), per-ordering rates,
+#'   fleiss_kappa, details tibble
 #' @export
 test_order_invariance <- function(codebook,
                                   test_texts,
-                                  model = "claude-haiku-4-5-20251001") {
+                                  model = "claude-haiku-4-5-20251001",
+                                  seed = 42) {
   n_classes <- length(codebook$classes)
   original_order <- seq_len(n_classes)
   reversed_order <- rev(original_order)
 
-  # Classify with original order
+  # Generate shuffled order (must differ from original and reversed)
+  if (n_classes <= 2) {
+    # Binary codebook: only 2 permutations exist; shuffled = reversed
+    shuffled_order <- reversed_order
+  } else {
+    set.seed(seed)
+    shuffled_order <- sample(original_order)
+    # Guard: reshuffle if identical to original or reversed
+    attempts <- 0
+    while ((identical(shuffled_order, original_order) ||
+            identical(shuffled_order, reversed_order)) && attempts < 100) {
+      shuffled_order <- sample(original_order)
+      attempts <- attempts + 1
+    }
+  }
+
+  # Build prompts for each ordering
   prompt_original <- construct_codebook_prompt(codebook, class_order = original_order)
-  # Classify with reversed order
   prompt_reversed <- construct_codebook_prompt(codebook, class_order = reversed_order)
+  prompt_shuffled <- construct_codebook_prompt(codebook, class_order = shuffled_order)
 
+  # Classify each text under all three orderings
   results <- purrr::map(seq_along(test_texts), function(i) {
-    pred_original <- tryCatch({
-      classify_with_codebook(
-        text = test_texts[i],
-        codebook = codebook,
-        model = model,
-        temperature = 0,
-        system_prompt = prompt_original
-      )$label
-    }, error = function(e) NA_character_)
+    classify_one <- function(prompt) {
+      tryCatch({
+        classify_with_codebook(
+          text = test_texts[i],
+          codebook = codebook,
+          model = model,
+          temperature = 0,
+          system_prompt = prompt
+        )$label
+      }, error = function(e) NA_character_)
+    }
 
-    pred_reversed <- tryCatch({
-      classify_with_codebook(
-        text = test_texts[i],
-        codebook = codebook,
-        model = model,
-        temperature = 0,
-        system_prompt = prompt_reversed
-      )$label
-    }, error = function(e) NA_character_)
+    pred_original <- classify_one(prompt_original)
+    pred_reversed <- classify_one(prompt_reversed)
+    pred_shuffled <- classify_one(prompt_shuffled)
 
     tibble::tibble(
       text_id = i,
       label_original = pred_original %||% NA_character_,
       label_reversed = pred_reversed %||% NA_character_,
-      changed = !identical(pred_original, pred_reversed)
+      label_shuffled = pred_shuffled %||% NA_character_,
+      changed_reversed = !identical(pred_original, pred_reversed),
+      changed_shuffled = !identical(pred_original, pred_shuffled)
     )
   })
 
   details <- dplyr::bind_rows(results)
-  n_changed <- sum(details$changed, na.rm = TRUE)
-  change_rate <- n_changed / nrow(details)
+
+  # Pairwise change rates
+  n_changed_reversed <- sum(details$changed_reversed, na.rm = TRUE)
+  n_changed_shuffled <- sum(details$changed_shuffled, na.rm = TRUE)
+  n_total <- nrow(details)
+  change_rate_reversed <- n_changed_reversed / n_total
+  change_rate_shuffled <- n_changed_shuffled / n_total
+  change_rate_max <- max(change_rate_reversed, change_rate_shuffled)
+
+  # Fleiss's kappa across the three orderings (treated as raters)
+  ratings_matrix <- cbind(
+    details$label_original,
+    details$label_reversed,
+    details$label_shuffled
+  )
+  fk <- fleiss_kappa(ratings_matrix)
 
   list(
     test = "IV_order_invariance",
-    pass = change_rate < 0.05,
-    change_rate = change_rate,
-    n_changed = n_changed,
-    n_total = nrow(details),
+    pass = change_rate_max < 0.05,
+    change_rate = change_rate_max,
+    change_rate_reversed = change_rate_reversed,
+    change_rate_shuffled = change_rate_shuffled,
+    n_changed_reversed = n_changed_reversed,
+    n_changed_shuffled = n_changed_shuffled,
+    n_total = n_total,
     threshold = 0.05,
+    fleiss_kappa = fk$kappa,
+    kappa_interpretation = fk$interpretation,
+    shuffled_order = shuffled_order,
     details = details
   )
 }

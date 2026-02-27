@@ -102,8 +102,15 @@ run_behavioral_tests_s1 <- function(codebook,
   order_texts <- test_texts[seq_len(n_order_test)]
   message(sprintf("  Test IV: Order Invariance (n=%d)...", n_order_test))
   test_iv <- test_order_invariance(codebook, order_texts, model)
-  message(sprintf("    %s (%.1f%% change rate, threshold <5%%)",
-                  if (test_iv$pass) "PASS" else "FAIL", test_iv$change_rate * 100))
+  message(sprintf(
+    "    %s (max change rate: %.1f%% [rev=%.1f%%, shuf=%.1f%%], kappa=%.3f %s)",
+    if (test_iv$pass) "PASS" else "FAIL",
+    test_iv$change_rate * 100,
+    test_iv$change_rate_reversed * 100,
+    test_iv$change_rate_shuffled * 100,
+    test_iv$fleiss_kappa,
+    test_iv$kappa_interpretation
+  ))
 
   overall_pass <- test_i$pass && test_ii$pass && test_iii$pass && test_iv$pass
 

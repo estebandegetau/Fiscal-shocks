@@ -103,7 +103,7 @@ results:
       pass: true
 ```
 
-Note: For Test IV (order invariance), the comparison is `<` (lower is better). For all others, the comparison is `>=` (higher is better).
+Note: For Test IV (order invariance), the comparison is `<` (lower is better). For all others, the comparison is `>=` (higher is better). The raw `test_iv` result also contains diagnostic fields not in the summary tibble: `change_rate_reversed`, `change_rate_shuffled`, `fleiss_kappa`, and `kappa_interpretation`. Include these in the iteration log when available.
 
 #### S2 metrics (from `<codebook>_s2_eval`)
 

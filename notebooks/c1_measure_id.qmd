@@ -132,19 +132,30 @@ s1$summary |>
 
 ### Test IV: Order Invariance Details
 
+Three class orderings (original, reversed, shuffled) are compared per H&K. Pass criterion: max pairwise change rate < 5%.
+
 ```{r}
 #| label: s1-order-invariance
 
-if (!s1$test_iv$pass) {
-  cat("Order invariance test FAILED. Changed predictions:\n")
-  s1$test_iv$details |>
-    filter(changed) |>
-    select(text_id, label_original, label_reversed) |>
+iv <- s1$test_iv
+
+cat(sprintf("Reversed change rate: %.1f%% (%d/%d)\n",
+            iv$change_rate_reversed * 100, iv$n_changed_reversed, iv$n_total))
+cat(sprintf("Shuffled change rate: %.1f%% (%d/%d)\n",
+            iv$change_rate_shuffled * 100, iv$n_changed_shuffled, iv$n_total))
+cat(sprintf("Fleiss's kappa: %.3f (%s)\n", iv$fleiss_kappa, iv$kappa_interpretation))
+
+if (!iv$pass) {
+  cat("\nOrder invariance test FAILED. Changed predictions:\n\n")
+  iv$details |>
+    filter(changed_reversed | changed_shuffled) |>
+    select(text_id, label_original, label_reversed, label_shuffled,
+           changed_reversed, changed_shuffled) |>
     gt() |>
     gt_theme_report()
 } else {
-  cat(sprintf("Order invariance passed with %.1f%% change rate (threshold: <5%%).\n",
-              s1$test_iv$change_rate * 100))
+  cat(sprintf("\nOrder invariance PASSED (max change rate: %.1f%%, threshold: <5%%).\n",
+              iv$change_rate * 100))
 }
 ```
 
