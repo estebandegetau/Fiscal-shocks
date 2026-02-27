@@ -35,8 +35,9 @@ prompts/
 codebook:
   name: "C1: Measure Identification"
   version: "0.1.0"
-  description: >
-    One-paragraph task description explaining what the LLM must do.
+
+  # description is optional — a human-facing summary, not sent to the LLM.
+  # If present, it is ignored by the prompt assembly pipeline.
 
   instructions: >
     Overall task instructions provided to the LLM before the class definitions.
@@ -97,8 +98,8 @@ Every class MUST include all of the following fields. This follows H&K Figure 1.
 - **label_definition**: Exactly one sentence. No bullet points or sub-items.
 - **clarification**: List of 2-5 items. Each item must be specific enough to remove individually for ablation testing (H&K Table 4).
 - **negative_clarification**: List of 2-5 items. Must address the most common confusion cases between this class and its nearest neighbors.
-- **positive_examples**: At least 1, ideally 2-3. Each must have both `text` and `reasoning`.
-- **negative_examples**: At least 1, ideally 2-3. Each must have both `text` and `reasoning`. Should be near-misses, not obviously wrong examples.
+- **positive_examples**: Optional (0 or more). When present, each must have both `text` and `reasoning`. Ideally 2-3 when included.
+- **negative_examples**: Optional (0 or more). When present, each must have both `text` and `reasoning`. Should be near-misses, not obviously wrong examples. Ideally 2-3 when included.
 - **output_instructions**: Must enumerate every valid label explicitly.
 
 ### Example Quality

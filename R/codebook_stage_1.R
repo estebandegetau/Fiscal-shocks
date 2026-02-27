@@ -69,12 +69,33 @@ run_behavioral_tests_s1 <- function(codebook,
                   if (test_ii$pass) "PASS" else "FAIL",
                   test_ii$n_correct, test_ii$n_total))
 
-  # Test III: Example Recovery (tests codebook examples, not input format)
-  message("  Test III: Example Recovery...")
-  test_iii <- test_example_recovery(codebook, model)
-  message(sprintf("    %s (%d/%d correct)",
-                  if (test_iii$pass) "PASS" else "FAIL",
-                  test_iii$n_correct, test_iii$n_total))
+  # Test III: Example Recovery (skip if no examples in codebook)
+  has_examples <- any(vapply(codebook$classes, function(cls) {
+    length(cls$positive_examples) > 0 || length(cls$negative_examples) > 0
+  }, logical(1)))
+
+  if (has_examples) {
+    message("  Test III: Example Recovery...")
+    test_iii <- test_example_recovery(codebook, model)
+    message(sprintf("    %s (%d/%d correct)",
+                    if (test_iii$pass) "PASS" else "FAIL",
+                    test_iii$n_correct, test_iii$n_total))
+  } else {
+    message("  Test III: Example Recovery... SKIPPED (no examples in codebook)")
+    test_iii <- list(
+      test = "III_example_recovery",
+      pass = TRUE,
+      n_correct = 0L,
+      n_total = 0L,
+      rate = 1.0,
+      threshold = 1.0,
+      details = tibble::tibble(
+        class = character(), example_type = character(), example_idx = integer(),
+        true_label = character(), pred_label = character(), correct = logical()
+      ),
+      skipped = TRUE
+    )
+  }
 
   # Test IV: Order Invariance (use chunk-level texts)
   n_order_test <- min(10, length(test_texts))

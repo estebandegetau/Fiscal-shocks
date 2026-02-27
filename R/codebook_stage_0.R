@@ -26,7 +26,7 @@ load_validate_codebook <- function(path) {
   cb <- raw$codebook
 
   # Validate top-level fields
-  required_top <- c("name", "version", "description", "instructions",
+  required_top <- c("name", "version", "instructions",
                      "classes", "output_instructions")
   missing_top <- setdiff(required_top, names(cb))
   if (length(missing_top) > 0) {
@@ -36,8 +36,7 @@ load_validate_codebook <- function(path) {
 
   # Validate each class
   required_class <- c("label", "label_definition", "clarification",
-                       "negative_clarification", "positive_examples",
-                       "negative_examples")
+                       "negative_clarification")
 
   for (i in seq_along(cb$classes)) {
     cls <- cb$classes[[i]]
@@ -108,7 +107,7 @@ construct_codebook_prompt <- function(codebook,
   parts <- character()
 
   # Task description and instructions
-  parts <- c(parts, codebook$description, "\n\n", codebook$instructions, "\n\n")
+  parts <- c(parts, codebook$instructions, "\n\n")
 
   # Class definitions
   classes <- codebook$classes
