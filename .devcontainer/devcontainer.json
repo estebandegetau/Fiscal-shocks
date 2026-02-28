@@ -4,7 +4,6 @@
     "dockerfile": "../Dockerfile",
     "context": ".."
   },
-  "initializeCommand": "rm -rf .quarto/",
   "workspaceMount": "source=${localWorkspaceFolder},target=/home/user/Fiscal-shocks,type=bind,consistency=cached",
   "workspaceFolder": "/home/user/Fiscal-shocks",
   "remoteEnv": {
