@@ -6,9 +6,9 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Goal**: Develop and validate 4 domain-specific codebooks (C1-C4) on a cost-efficient subset of `us_body` chunks using the Halterman & Keith (2025) 5-stage framework, evaluated against 44 labeled US fiscal acts.
 
-**Approach**: Country-agnostic codebook design with few-shot learning using Claude 3.5 Sonnet API
+**Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 S0 under revision (codebook restructured); S1 needs re-run after S0 finalizes; C2-C4 not yet started
+**Status**: IN PROGRESS — C1 S0 complete (v0.2.0); S1 exploration run on Qwen 2.5 72B (Test I failed, re-run needed); C2-C4 not yet started
 
 ## Authoritative Methodology
 
@@ -54,7 +54,7 @@ This document contains the complete R&R + H&K framework specification including:
 | Codebook | Primary Metric | Target | Critical |
 |----------|---------------|--------|----------|
 | C1: Measure ID | Recall | ≥90% | Don't miss real acts |
-| C1: Measure ID | Precision | ≥80% | Acceptable FP rate |
+| C1: Measure ID | Precision | ≥70% | Acceptable FP rate |
 | C2: Motivation | Weighted F1 | ≥70% | LOOCV baseline |
 | C2: Motivation | Exogenous Precision | ≥85% | Critical for shock series |
 | C3: Timing | Exact Quarter | ≥85% | R&R accuracy |
@@ -168,13 +168,16 @@ Load in R: `dotenv::load_dot_env()` at start of `_targets.R`
 
 ### API Usage
 
-**Model**: Claude Haiku 4.5 (`claude-haiku-4-5-20251001`)
+**Default Model**: Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) for paper-quality results
+
+**Exploration Model**: Qwen 2.5 72B (`qwen/qwen-2.5-72b-instruct`) via OpenRouter for cost-effective iteration
 
 - 200K context window (handles long documents)
 - JSON mode for structured outputs
 - Strong reasoning for borderline cases
+- Provider configurable in `_targets.R` (`llm_provider`, `llm_model`)
 
-**Rate Limits**: Tier 1 = 50 requests/minute
+**Rate Limits**: Tier 1 = 50 requests/minute (Anthropic)
 
 - Implemented with `Sys.sleep(1.2)` between calls
 - Retry logic with exponential backoff

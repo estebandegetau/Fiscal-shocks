@@ -131,3 +131,52 @@ iterations:
       that made the model order-sensitive on the Budget Enforcement Act passage.
     decision: >
       Proceed to S2 (LOOCV evaluation).
+
+  - iteration: 4
+    codebook_version: "0.2.0"
+    date: "2026-02-28"
+    git_commit: "f869bcb"
+    model: "qwen/qwen-2.5-72b-instruct"
+    provider: "openrouter"
+    stage: "s1"
+    changes: >
+      Major changes to pipeline and codebook. Codebook updated from v0.1.0 to
+      v0.2.0: examples removed, country-agnostic language, aligned with RR
+      criteria. Added OpenRouter provider support and switched to Qwen 2.5 72B
+      for cost-effective exploration runs. This run was a proof-of-concept that
+      the new API calling functions to OpenRouter work.
+    results:
+      overall_pass: false
+      metrics:
+        - test: "I_legal_outputs"
+          value: 0.9000
+          threshold: 1.0000
+          pass: false
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+          change_rate_reversed: 0.0000
+          change_rate_shuffled: 0.0000
+          fleiss_kappa: 1.0000
+          kappa_interpretation: "Near-perfect agreement"
+    interpretation: >
+      Proof-of-concept run validating OpenRouter integration with Qwen 2.5 72B.
+      The new API calling functions work. Test I failed on 2/20 chunks
+      (text_id 13 and 17) which returned invalid JSON, but raw model output was
+      not captured so we cannot diagnose what went wrong. This revealed that
+      classify_with_codebook() was discarding raw LLM responses on parse
+      failure. Fixed in commit f869bcb by preserving raw_response through all
+      classification paths (single-call, self-consistency, S1, S2).
+    decision: >
+      Re-run S1 on Qwen with raw_response capture to diagnose the 2 JSON
+      failures before proceeding.

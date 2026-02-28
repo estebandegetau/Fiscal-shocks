@@ -9,6 +9,20 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-02-28: raw_response preservation added to classify_with_codebook()
+
+**Type:** new-constraint
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > All codebooks
+**Detail:** `classify_with_codebook()` now returns `raw_response` (the raw LLM output text) alongside parsed fields. This flows through S1 behavioral tests (`behavioral_tests.R`), S2 LOOCV (`codebook_stage_2.R`), and the self-consistency path (`functions_self_consistency.R`). Previously, when JSON parsing failed, the raw response was discarded, making diagnosis impossible. Discovered during C1 S1 iteration 4 where 2/20 chunks returned invalid JSON with no way to inspect what the model said.
+**Suggested edit:** None needed (implementation detail, not strategy-level).
+
+## 2026-02-28: C1 S1 iteration 4 — exploration run on Qwen 2.5 72B via OpenRouter
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation
+**Detail:** C1 S1 run on `qwen/qwen-2.5-72b-instruct` via OpenRouter (iteration 4, codebook v0.2.0). Test I failed at 90% (2/20 invalid JSON), Tests II-IV all pass. This was a proof-of-concept validating OpenRouter integration for cost-effective exploration. Per `_targets.R` comment: "Non-Anthropic providers are for cost/feasibility exploration only. Mixing providers invalidates stage comparability." Decision: re-run S1 on Qwen with raw_response capture to diagnose failures.
+**Suggested edit:** None needed (exploration run, not a stage gate).
+
 ## 2026-02-27: Docling/Lambda infrastructure removed, PyMuPDF is sole extraction method
 
 **Type:** status-change
