@@ -8,6 +8,20 @@ project:
     - index.qmd
     - "!*unused/"
     - "!notebooks/c1*.qmd"
+    - "!notebooks/identifying_known_acts.qmd"
+
+author: 
+  - name: "Esteban Degetau"
+    email: "estebandegetau@gmail.com"
+    affiliation: "World Bank"
+  - name: "Agustín Samano"
+    email: "asamanopenaloza@worldbank.org"
+    affiliation: "World Bank"
+  
+keywords:
+  - Quarto
+  - Typst
+  - format
 
 website: 
   sidebar: 

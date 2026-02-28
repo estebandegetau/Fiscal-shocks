@@ -6,11 +6,13 @@ format:
     code-fold: true
     code-summary: "Show code"
     self-contained: true
+    execute:
+      echo: true
 
 execute:
-  echo: true
   warning: false
   message: false
+  freeze: true
 
 date: today
 date-format: long

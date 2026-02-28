@@ -4,10 +4,8 @@ format:
     toc-depth: 3
     self-contained: true
     title-block-banner: false
-
-  typst:
-    include-in-header:
-      - text: "#show figure: set block(breakable: false)"
+  academic-typst:
+    section-numbering: "1.1.1"
 
 execute:
   warning: false
