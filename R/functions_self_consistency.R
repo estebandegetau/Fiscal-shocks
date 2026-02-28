@@ -56,12 +56,14 @@ call_with_self_consistency <- function(messages,
     )
 
     # Parse response
+    raw_text <- response$content[[1]]$text
     parsed <- tryCatch({
-      parse_fn(response$content[[1]]$text)
+      parse_fn(raw_text)
     }, error = function(e) {
       warning("Sample ", i, " parse failed: ", e$message)
       list(error = e$message)
     })
+    parsed$raw_response <- raw_text
 
     all_results[[i]] <- parsed
 

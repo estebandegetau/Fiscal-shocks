@@ -336,6 +336,7 @@ classify_with_codebook <- function(text,
       label = result$prediction,
       measure_name = majority_result$measure_name %||% NA_character_,
       reasoning = majority_result$reasoning %||% NA_character_,
+      raw_response = majority_result$raw_response %||% NA_character_,
       confidence = result$confidence,
       agreement_rate = result$agreement_rate,
       all_predictions = result$all_predictions
@@ -354,13 +355,15 @@ classify_with_codebook <- function(text,
       api_key = api_key
     )
 
-    parsed <- parse_fn(response$content[[1]]$text)
+    raw_text <- response$content[[1]]$text
+    parsed <- parse_fn(raw_text)
     label <- extract_class_fn(parsed)
 
     list(
       label = label,
       measure_name = parsed$measure_name %||% NA_character_,
       reasoning = parsed$reasoning %||% NA_character_,
+      raw_response = raw_text,
       confidence = if (!is.na(label)) 1.0 else 0.0,
       agreement_rate = 1.0,
       all_predictions = label
