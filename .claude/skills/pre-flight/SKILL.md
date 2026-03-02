@@ -69,26 +69,28 @@ Rscript -e 'source("R/behavioral_tests.R"); load_validate_codebook("prompts/<cod
 - **Pass**: No errors
 - **Fail**: Show validation error. Codebook YAML is malformed.
 
-#### Check 5: Model ID is valid
+#### Check 5: Model & API key
 
-Read `_targets.R` and search for the model parameter used by the target. Verify it matches a known valid ID:
+Read `_targets.R` and identify `llm_provider` and `llm_model`. Report both in the checklist.
 
-- `claude-haiku-4-5-20251001`
-- `claude-sonnet-4-5-20250514`
+Then verify the corresponding API key is present. The project uses `dotenv` to load environment variables from `.env`. Check the key that matches the configured provider:
 
-- **Pass**: Model ID is current
-- **Fail**: Flag the stale or unknown model ID
-
-#### Check 6: API key present
-
-This project uses `dotenv` to load environment variables from `.env`. Check the key after loading `.env`:
+| Provider | Env var |
+|----------|---------|
+| `anthropic` | `ANTHROPIC_API_KEY` |
+| `openrouter` | `OPENROUTER_API_KEY` |
+| `openai` | `OPENAI_API_KEY` |
+| `groq` | `GROQ_API_KEY` |
+| `ollama` | (none needed) |
 
 ```bash
-Rscript -e 'dotenv::load_dot_env(); cat(nchar(Sys.getenv("ANTHROPIC_API_KEY")) > 0)'
+Rscript -e 'dotenv::load_dot_env(); cat(nchar(Sys.getenv("<ENV_VAR>")) > 0)'
 ```
 
-- **Pass**: `TRUE`
-- **Fail**: API key not set. Verify `.env` file exists at the project root and contains `ANTHROPIC_API_KEY=sk-ant-...`
+- **Pass**: `TRUE` (key present for the configured provider)
+- **Fail**: API key not set. Verify `.env` file exists and contains the correct key.
+
+If the provider is not `anthropic`, add an **INFO** note (not a failure): "Non-Anthropic model — results are for exploration only and cannot be reported as H&K validation in the paper."
 
 #### Check 7: Cost estimate
 
@@ -98,14 +100,16 @@ Count expected API calls for the target:
 - **S2 targets**: 44 LOOCV folds (44 API calls)
 - **S3 targets**: Count ablation components + Test V/VI/VII inputs
 
-Estimate cost at the model's pricing:
+Estimate cost at the model's pricing. For known models:
 
 | Model | Input (per 1M tokens) | Output (per 1M tokens) |
 |-------|----------------------|------------------------|
 | claude-haiku-4-5-20251001 | $1.00 | $5.00 |
 | claude-sonnet-4-5-20250514 | $3.00 | $15.00 |
 
-Present as: "Estimated ~N API calls at ~$X.XX (model: Y)"
+For non-Anthropic models, look up current pricing or note "check provider pricing".
+
+Present as: "Estimated ~N API calls (model: provider/model-id)"
 
 ### Step 3: Present checklist
 
@@ -120,9 +124,8 @@ Format as a clear pass/fail summary:
 | 2 | Target exists | PASS |
 | 3 | Dependencies current | PASS |
 | 4 | Codebook validates | PASS |
-| 5 | Model ID valid | PASS |
-| 6 | API key present | PASS |
-| 7 | Cost estimate | ~44 calls, ~$0.15 (haiku) |
+| 5 | Model & API key | PASS — openrouter/qwen-2.5-72b-instruct |
+| 6 | Cost estimate | ~52 calls (model: openrouter/qwen-2.5-72b) |
 
 Ready to run: `tar_make(<target_name>)`
 ```
