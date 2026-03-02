@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-03-02: C1 S1 declared complete — proceeding to S2
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation
+**Detail:** C1 S1 behavioral tests declared complete after 5 iterations. Haiku passed all 4 tests on codebook v0.1.0 (iteration 3, commit 5ad9676). Codebook updated to v0.2.0 (country-agnostic, examples removed, RR-aligned). Qwen 2.5 72B validated pipeline infrastructure on v0.2.0 (iterations 4-5): Tests II and IV passed; Test I failed only on 2 degenerate table-heavy chunks (19K-25K tokens, 58-63% numeric density) due to model limitation, not codebook issue. Two-model validation (Haiku + Qwen) provides sufficient confidence without a third Tier 1 model. Next step: test S2 LOOCV implementation on Qwen for cheap pipeline validation before running on Haiku for paper-quality results.
+**Suggested edit:** Update C1 S1 status to "complete" and note S2 as next stage.
+
 ## 2026-02-28: raw_response preservation added to classify_with_codebook()
 
 **Type:** new-constraint

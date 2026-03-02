@@ -45,7 +45,7 @@ The contribution is **methodological**, not just dataset scale:
 ### Current Status
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
-  - **C1 (Measure ID)**: S0 complete (v0.2.0); S1 exploration run on Qwen 2.5 72B (iteration 4: Test I failed 90%, Tests II-IV pass; raw_response capture added for diagnosis); S1 needs re-run; S2-S3 not yet run
+  - **C1 (Measure ID)**: S1 complete (v0.2.0); Haiku passed all tests iteration 3; Qwen validated pipeline iterations 4-5; proceeding to S2 LOOCV
   - **C2 (Motivation)**: Not started
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started

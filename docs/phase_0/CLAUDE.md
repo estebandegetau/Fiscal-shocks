@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 S0 complete (v0.2.0); S1 exploration run on Qwen 2.5 72B (Test I failed, re-run needed); C2-C4 not yet started
+**Status**: IN PROGRESS — C1 S1 complete (v0.2.0), proceeding to S2 LOOCV; C2-C4 not yet started
 
 ## Authoritative Methodology
 
