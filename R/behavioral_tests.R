@@ -45,7 +45,7 @@ test_legal_outputs <- function(codebook,
       )
     }, error = function(e) {
       list(label = NA_character_, reasoning = e$message,
-           raw_response = NA_character_)
+           raw_response = NA_character_, stop_reason = NA_character_)
     })
 
     tibble::tibble(
@@ -54,7 +54,8 @@ test_legal_outputs <- function(codebook,
       valid_json = !is.na(response$label),
       valid_label = response$label %in% valid_labels,
       reasoning = response$reasoning %||% NA_character_,
-      raw_response = response$raw_response %||% NA_character_
+      raw_response = response$raw_response %||% NA_character_,
+      stop_reason = response$stop_reason %||% NA_character_
     )
   })
 

@@ -243,7 +243,8 @@ classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
       )
     }, error = function(e) {
       list(label = NA_character_, reasoning = e$message,
-           confidence = NA_real_, raw_response = NA_character_)
+           confidence = NA_real_, raw_response = NA_character_,
+           stop_reason = NA_character_)
     })
 
     # Handle vector vs scalar year
@@ -262,6 +263,7 @@ classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
       confidence = pred$confidence %||% NA_real_,
       reasoning = pred$reasoning %||% NA_character_,
       raw_response = pred$raw_response %||% NA_character_,
+      stop_reason = pred$stop_reason %||% NA_character_,
       correct = identical(pred$label, true_label)
     )
   })

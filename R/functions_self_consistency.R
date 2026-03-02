@@ -64,6 +64,7 @@ call_with_self_consistency <- function(messages,
       list(error = e$message)
     })
     parsed$raw_response <- raw_text
+    parsed$stop_reason <- response$stop_reason %||% NA_character_
 
     all_results[[i]] <- parsed
 
