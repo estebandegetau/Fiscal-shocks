@@ -9,7 +9,7 @@
   "remoteEnv": {
     "RENV_PATHS_CACHE": "/renv/cache"
   },
-  "postStartCommand": "R -e \"renv::restore(prompt = FALSE)\"",
+  // "postStartCommand": "R -e \"renv::restore(prompt = FALSE)\"",
   "customizations": {
     "vscode": {
       "extensions": [
