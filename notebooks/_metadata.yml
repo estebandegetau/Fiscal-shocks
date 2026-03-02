@@ -8,6 +8,9 @@ format:
     self-contained: true
     execute:
       echo: true
+  typst:
+    execute:
+      echo: false
 
 execute:
   warning: false
