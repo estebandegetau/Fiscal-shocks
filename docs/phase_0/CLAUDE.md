@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 S1 complete (v0.2.0), proceeding to S2 LOOCV; C2-C4 not yet started
+**Status**: IN PROGRESS — C1 S1 complete (v0.2.0), S2 refactored to single-pass zero-shot, proceeding to S2; C2-C4 not yet started
 
 ## Authoritative Methodology
 
@@ -43,7 +43,7 @@ This document contains the complete R&R + H&K framework specification including:
 |-------|---------|---------------|
 | **S0: Codebook Prep** | Machine-readable YAML definitions | Domain expert approval |
 | **S1: Behavioral Tests** | Model sanity checks | Legal outputs (100%), memorization (100%), order sensitivity (<5%) |
-| **S2: Zero-Shot Eval** | Performance measurement | LOOCV on 44 US acts, meet primary metrics |
+| **S2: Zero-Shot Eval** | Performance measurement | Single-pass zero-shot on 44 US acts, meet primary metrics |
 | **S3: Error Analysis** | Failure mode identification | Documented patterns, ablation studies |
 | **S4: Fine-Tuning** | Last resort improvement | Only if S3 shows unacceptable patterns AND codebook improvements exhausted |
 
@@ -102,7 +102,7 @@ This document contains the complete R&R + H&K framework specification including:
 
 - ✅ `codebook_stage_0.R` — Created (codebook loading/validation)
 - ✅ `codebook_stage_1.R` — Created (behavioral tests runner)
-- ✅ `codebook_stage_2.R` — Created (zero-shot LOOCV evaluation)
+- ✅ `codebook_stage_2.R` — Created (zero-shot evaluation + LOOCV for few-shot)
 - ✅ `codebook_stage_3.R` — Created (error analysis)
 - ✅ `behavioral_tests.R` — Created (H&K test suite implementation)
 - ✅ `generate_c1_examples.R` — Created (C1 few-shot example generation)
@@ -132,7 +132,8 @@ tar_target(c4_codebook, load_validate_codebook("prompts/c4_magnitude.yml"))
 
 # Per-codebook S1-S3 pipeline (C1 shown; repeat for C2, C3, C4)
 tar_target(c1_s1_results, run_behavioral_tests_s1(c1_codebook, aligned_data))
-tar_target(c1_s2_results, run_loocv(c1_codebook, aligned_data, type = "C1"))
+tar_target(c1_s2_test_set, assemble_zero_shot_test_set(aligned_data, c1_chunk_data))
+tar_target(c1_s2_results, run_zero_shot(c1_codebook, c1_s2_test_set, type = "C1"))
 tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s2_results, aligned_data))
 
 # Final LLM-generated shock dataset
@@ -147,7 +148,7 @@ tar_target(shocks_llm, aggregate_outputs(c1_s2_results, c2_s2_results,
 tar_make()
 
 # Read specific outputs
-tar_read(c1_s2_results)     # C1 LOOCV metrics
+tar_read(c1_s2_results)     # C1 zero-shot classification results
 tar_read(c2_s3_analysis)    # C2 error analysis
 tar_read(shocks_llm)        # Final LLM shock dataset
 

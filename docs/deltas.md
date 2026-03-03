@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-03-03: C1 S2 refactored from LOOCV to single-pass zero-shot
+
+**Type:** correction
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S2 Zero-Shot Eval
+**Detail:** S2 implementation replaced `run_loocv()` (which redundantly reclassified negatives 44 times with identical zero-shot prompts) with two new functions: `assemble_zero_shot_test_set()` (pure chunk sampling) and `run_zero_shot()` (single-pass API classification). Pipeline targets split from 2 to 3 for better cacheability: `c1_s2_test_set` → `c1_s2_results` → `c1_s2_eval`. `evaluate_loocv()` is reused unchanged (does not depend on fold structure). `run_loocv()` preserved for future `n_few_shot > 0` work. Output schema unchanged (`fold = 1L` for backward compatibility).
+**Suggested edit:** If strategy.md references LOOCV for zero-shot S2, update to "single-pass zero-shot evaluation" and note LOOCV is reserved for few-shot ablation in S3.
+
 ## 2026-03-02: C1 S1 declared complete — proceeding to S2
 
 **Type:** status-change

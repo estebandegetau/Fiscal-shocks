@@ -96,7 +96,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 
 ### `verify_api_inputs.qmd` -- Pre-Flight API Input Verification
 
-**Purpose:** Systematic validation of data integrity before running S2 LOOCV API calls. Runs 12 pass/fail tests on pipeline outputs to catch data issues before spending API budget.
+**Purpose:** Systematic validation of data integrity before running S2 zero-shot API calls. Runs 12 pass/fail tests on pipeline outputs to catch data issues before spending API budget.
 
 **Key tests and decisions:**
 
@@ -112,7 +112,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - **T10 (Year filter consistency):** Tier data respects `max_doc_year = 2007`.
 - **T11 (Few-shot example preview):** Renders one fold's examples for visual inspection.
 - **T12 (Summary dashboard):** Aggregates all results into PASS/WARN/FAIL dashboard.
-- **Decision:** All tests must pass before proceeding to S2 LOOCV.
+- **Decision:** All tests must pass before proceeding to S2 zero-shot evaluation.
 
 ### `c1_measure_id.qmd` -- C1 Codebook Evaluation (S0-S3)
 
@@ -122,7 +122,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 
 - **S0:** Binary classification (FISCAL_MEASURE vs. NOT_FISCAL_MEASURE). Codebook structure summary, negative example stratification, evaluation data counts.
 - **S1:** Behavioral test results (legal outputs, memorization, order invariance). Pass/fail dashboard.
-- **S2:** LOOCV metrics with 95% bootstrap CIs (Recall, Precision, F1, Accuracy, Specificity). Confusion matrix. Per-act recall breakdown. Error details.
+- **S2:** Zero-shot evaluation metrics with 95% bootstrap CIs (Recall, Precision, F1, Accuracy, Specificity). Confusion matrix. Per-act recall breakdown. Error details.
 - **S3:** Error category distribution, ablation study (component importance ranking), Test VI (generic labels), Test VII (swapped labels to check definition vs. name following).
 - **Status:** Reads from pipeline targets (`c1_s1_results`, `c1_s2_results`, `c1_s2_eval`, `c1_s3_results`). Notebook structure is complete; results depend on pipeline execution.
 
@@ -146,7 +146,7 @@ Located in `notebooks/unused/` unless noted otherwise. These are from earlier ex
 3. `data_overview.qmd` -- Understand the full transformation pipeline
 4. `identifying_known_acts.qmd` -- Understand chunk-act matching design decisions
 5. `verify_chunk_tiers.qmd` -- Verify the implemented tier system
-6. `verify_api_inputs.qmd` -- Pre-flight validation before S2 LOOCV
+6. `verify_api_inputs.qmd` -- Pre-flight validation before S2 zero-shot evaluation
 7. `c1_measure_id.qmd` -- See the C1 evaluation framework (template for C2-C4)
 
 ## Conventions
