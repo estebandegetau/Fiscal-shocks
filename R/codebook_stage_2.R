@@ -439,6 +439,7 @@ compute_binary_metrics <- function(results, labels) {
 #' of Tier 2 chunks per act, and a single sample of negative chunks. Returns
 #' a unified tibble ready for classification.
 #'
+#' @param codebook Parsed codebook list (from read_codebook())
 #' @param aligned_data Tibble with aligned labels (act-level)
 #' @param c1_chunk_data List from assemble_c1_chunk_data() with tier1, tier2, negatives
 #' @param n_negatives Integer number of negative chunks to sample (default 100)
@@ -446,15 +447,16 @@ compute_binary_metrics <- function(results, labels) {
 #' @param seed Integer random seed (default 20251206)
 #' @return Tibble with columns: chunk_id, doc_id, text, tier, act_name, year, true_label, text_type
 #' @export
-assemble_zero_shot_test_set <- function(aligned_data,
+assemble_zero_shot_test_set <- function(codebook,
+                                        aligned_data,
                                         c1_chunk_data,
                                         n_negatives = 100,
                                         n_tier2_per_act = 20,
                                         seed = 20251206) {
 
-  valid_labels <- c("CONTAINS_MEASURE", "NO_MEASURE")
+  valid_labels <- get_valid_labels(codebook)
   positive_label <- valid_labels[1]
-  negative_label <- valid_labels[2]
+  negative_label <- valid_labels[length(valid_labels)]
 
   tier1_chunks <- c1_chunk_data$tier1
   tier2_chunks <- c1_chunk_data$tier2

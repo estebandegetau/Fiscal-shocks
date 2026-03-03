@@ -256,6 +256,7 @@ list(
   tar_target(
     c1_s2_test_set,
     assemble_zero_shot_test_set(
+      c1_codebook,
       aligned_data,
       c1_chunk_data,
       n_negatives = 100,
