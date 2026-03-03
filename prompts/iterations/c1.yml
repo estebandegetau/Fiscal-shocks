@@ -384,3 +384,50 @@ iterations:
       Claude Haiku handles better (confirmed in S1 iterations 1-3 where
       Haiku achieved 100% JSON compliance). Update llm_provider and
       llm_model in _targets.R before running.
+
+  - iteration: 8
+    codebook_version: "0.2.0"
+    date: "2026-03-03"
+    git_commit: "632c361"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      No codebook changes. Switched from meta-llama/llama-3.3-70b-instruct
+      back to claude-haiku-4-5-20251001 for formal S1 validation on
+      codebook v0.2.0. This is the first Haiku run on the country-agnostic
+      v0.2.0 codebook (examples removed, language generalized).
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+          change_rate_reversed: 0.0000
+          change_rate_shuffled: 0.0000
+          fleiss_kappa: 1.0000
+          kappa_interpretation: "Near-perfect agreement"
+    interpretation: >
+      C1 S1 passes all behavioral tests with Haiku on codebook v0.2.0.
+      Tests I (100% valid JSON on 20 chunk-level texts), II (100%
+      definition recovery for both classes), and IV (0% order sensitivity,
+      Fleiss kappa = 1.0) all pass cleanly. Test III skipped (no examples
+      in v0.2.0). This is the first Haiku run on the country-agnostic
+      v0.2.0 codebook, confirming the S1 gate for formal S2 evaluation.
+    decision: >
+      Proceed to S2 zero-shot evaluation with Haiku. No codebook changes
+      needed. Verify _targets.R has llm_provider = "anthropic" and
+      llm_model = "claude-haiku-4-5-20251001" before running.
