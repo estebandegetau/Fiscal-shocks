@@ -9,26 +9,17 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
-## 2026-03-03: C1 v0.4.0 reframe removes enacted filter — contradicts strategy.md line 279
+## ~~2026-03-03: C1 v0.4.0 reframe removes enacted filter — contradicts strategy.md line 279~~ RESOLVED
 
-**Type:** correction
-**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S0 Codebook Design (line ~279)
-**Detail:** C1 v0.4.0 reframes C1 as a recall-optimized relevance filter that captures enacted, proposed, and under-consideration fiscal measures. The enacted-status determination moves downstream to C2. Strategy.md line 279 lists "proposals that did not become law" as a C1 S0 exclusion criterion, which directly contradicts v0.4.0. Additionally, the note "retrospective exclusion is handled by C2" should expand to include enacted-status filtering. The C2 blueprint should note that C2 must also determine enacted status when it is drafted.
-**Suggested edit:** (1) Line 279: remove "proposals that did not become law" from exclusion criteria and add note that enacted-status filtering is deferred to C2. (2) Update the retrospective exclusion note to cover enacted-status filtering. (3) Add a note to the C2 blueprint that C2 handles enacted-status determination.
+**Resolved:** Removed "proposals that did not become law" from C1 exclusion criteria, updated note to cover enacted-status filtering deferred to C2, added enacted-status determination note to C2 blueprint.
 
-## 2026-03-03: C1 S2 refactored from LOOCV to single-pass zero-shot
+## ~~2026-03-03: C1 S2 refactored from LOOCV to single-pass zero-shot~~ RESOLVED
 
-**Type:** correction
-**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S2 Zero-Shot Eval
-**Detail:** S2 implementation replaced `run_loocv()` (which redundantly reclassified negatives 44 times with identical zero-shot prompts) with two new functions: `assemble_zero_shot_test_set()` (pure chunk sampling) and `run_zero_shot()` (single-pass API classification). Pipeline targets split from 2 to 3 for better cacheability: `c1_s2_test_set` → `c1_s2_results` → `c1_s2_eval`. `evaluate_loocv()` is reused unchanged (does not depend on fold structure). `run_loocv()` preserved for future `n_few_shot > 0` work. Output schema unchanged (`fold = 1L` for backward compatibility).
-**Suggested edit:** If strategy.md references LOOCV for zero-shot S2, update to "single-pass zero-shot evaluation" and note LOOCV is reserved for few-shot ablation in S3.
+**Resolved:** Updated C1 S2 description to "Zero-Shot Eval" with single-pass classification, 3-target pipeline, and note that LOOCV is reserved for S3 few-shot ablation. Updated targets code block accordingly.
 
-## 2026-03-02: C1 S1 declared complete — proceeding to S2
+## ~~2026-03-02: C1 S1 declared complete — proceeding to S2~~ RESOLVED
 
-**Type:** status-change
-**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation
-**Detail:** C1 S1 behavioral tests declared complete after 5 iterations. Haiku passed all 4 tests on codebook v0.1.0 (iteration 3, commit 5ad9676). Codebook updated to v0.2.0 (country-agnostic, examples removed, RR-aligned). Qwen 2.5 72B validated pipeline infrastructure on v0.2.0 (iterations 4-5): Tests II and IV passed; Test I failed only on 2 degenerate table-heavy chunks (19K-25K tokens, 58-63% numeric density) due to model limitation, not codebook issue. Two-model validation (Haiku + Qwen) provides sufficient confidence without a third Tier 1 model. Next step: test S2 LOOCV implementation on Qwen for cheap pipeline validation before running on Haiku for paper-quality results.
-**Suggested edit:** Update C1 S1 status to "complete" and note S2 as next stage.
+**Resolved:** Status update acknowledged. No strategy.md edit needed (status tracked in CLAUDE.md).
 
 ## 2026-02-28: raw_response preservation added to classify_with_codebook()
 
@@ -51,12 +42,9 @@ source documents. Delete entries after they have been addressed.
 **Detail:** Commit `f250afc` removed all Docling and Lambda infrastructure: `python/docling_extract.py`, `python/lambda_handler.py`, `R/pull_text_lambda.R`, `pull_text_docling()` function, DOCLING_* env vars, and docling/sentence-transformers/torch from requirements.txt. The sole active extraction method is `pull_text_local()` using PyMuPDF+OCR. Line 264 of malaysia_strategy.md reads "Run PDF extraction (Docling or pdftools)" and should be updated.
 **Suggested edit:** Change "Run PDF extraction (Docling or pdftools)" to "Run PDF extraction (PyMuPDF or pdftools)".
 
-## 2026-02-27: Test IV enhanced to 3 orderings + Fleiss's kappa (all codebooks)
+## ~~2026-02-27: Test IV enhanced to 3 orderings + Fleiss's kappa (all codebooks)~~ RESOLVED
 
-**Type:** correction
-**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S1 Behavioral Tests
-**Detail:** `test_order_invariance()` in `R/behavioral_tests.R` now uses three class orderings (original, reversed, shuffled) and reports Fleiss's kappa as a diagnostic, matching the full H&K Table 3 specification. The C1 section of strategy.md (line 281) only mentioned "reverse class order" while C2's section (line 295) already specified "original, reversed, and shuffled orderings." The implementation is now consistent across all codebooks. Pass criterion unchanged (<5% max pairwise change rate). Binary codebooks (C1) have a degenerate shuffled = reversed case since only 2 permutations exist. Added `fleiss_kappa()` internal helper (Fleiss 1971, Landis & Koch 1977 interpretation). S1 results will need re-running for C1 (codebook is v0.2.0 and S1 was last run on v0.1.0).
-**Suggested edit:** Update C1's S1 description from "Test IV: reverse class order on chunk-length inputs" to "Test IV: original, reversed, and shuffled class orderings on chunk-length inputs" to match the C2 description.
+**Resolved:** Updated C1 Test IV description to "original, reversed, and shuffled class orderings" with degenerate binary case note, matching C2 description.
 
 ## 2026-02-27: C1 codebook aligned with RR criteria, country-agnostic (v0.2.0)
 
@@ -65,47 +53,29 @@ source documents. Delete entries after they have been addressed.
 **Detail:** C1 codebook (`prompts/c1_measure_id.yml`) updated to v0.2.0 with five changes: (1) dropped "spending authorizations" to match RR's tax-only scope, (2) broadened executive action language for non-US contexts (ministerial decrees, regulatory changes, official policy directives), (3) added "significance = discussion depth, not revenue size" clarification from RR, (4) added "lists" exclusion for summary tables and measure enumerations per RR, (5) tightened retrospective references with concrete examples. S1 behavioral tests will need re-running on v0.2.0.
 **Suggested edit:** If strategy.md specifies codebook scope as including spending measures, update to reflect tax-only scope per RR.
 
-## 2026-02-27: C1 codebook restructured — description merged, examples removed
+## ~~2026-02-27: C1 codebook restructured — description merged, examples removed~~ RESOLVED
 
-**Type:** status-change
-**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation
-**Detail:** C1 codebook (`prompts/c1_measure_id.yml`) restructured: `description` field merged into `instructions` (following H&K's single "Instructions" pattern), all positive/negative examples removed (minimal start — add only if needed after S2), and clarifications tightened. Validation pipeline (`R/codebook_stage_0.R`) updated: `description` and `positive_examples`/`negative_examples` no longer required fields. S1 runner (`R/codebook_stage_1.R`) now skips Test III when no examples exist. Codebook YAML spec (`.claude/skills/codebook-yaml/SKILL.md`) updated accordingly. S1 behavioral tests from iteration 3 were run on the old codebook and will need re-running after S0 review completes.
-**Suggested edit:** If strategy.md specifies `description` or examples as required codebook fields, update to reflect they are now optional.
+**Resolved:** Updated `codebook_stage_0.R` description to list `description`, `positive_examples`, `negative_examples` as optional fields.
 
-## 2026-02-26: S2 LOOCV changed from few-shot (n=5) to zero-shot (n=0)
+## ~~2026-02-26: S2 LOOCV changed from few-shot (n=5) to zero-shot (n=0)~~ RESOLVED
 
-**Type:** correction
-**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S2 Zero-Shot Eval
-**Detail:** `_targets.R` target `c1_s2_results` changed from `n_few_shot = 5` to `n_few_shot = 0`. Strategy.md describes S2 as "Zero-Shot Eval" testing codebook sufficiency, but the implementation was passing 5 passage-level few-shot examples per LOOCV fold. The codebook YAML's built-in positive/negative examples (part of S0 specification) remain in the system prompt via `construct_codebook_prompt()` — these are always sent regardless of `n_few_shot` and are not "few-shot" in the H&K sense. Target `c1_s2_results` will need re-running.
-**Suggested edit:** If strategy.md mentions few-shot examples in S2 context, clarify that S2 is zero-shot (codebook-only) and few-shot evaluation is reserved for S3 ablation or future stages.
+**Resolved:** C1 S2 description updated to explicitly state "no few-shot examples" and note LOOCV reserved for S3 few-shot ablation.
 
-## 2026-02-26: Test V redesigned to match H&K 4-combo specification
+## ~~2026-02-26: Test V redesigned to match H&K 4-combo specification~~ RESOLVED
 
-**Type:** correction
-**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > S3 Error Analysis > Behavioral Tests
-**Detail:** `test_exclusion_criteria()` in `R/behavioral_tests.R` was an ablation study (removing negative_clarifications one at a time), which duplicated `run_ablation_study()` in `R/codebook_stage_3.R`. Replaced with the H&K 4-combo design: (normal/modified document) x (normal/modified codebook). Injects a monetary policy distractor paragraph and a corresponding exclusion rule, then verifies the model only applies the exclusion when both trigger and rule are present. Return structure changed from `$results` tibble (per-component accuracy drops) to `$combos` tibble (per-combo accuracy) + `$overall_consistency`. Logging in `run_error_analysis()` and notebook `c1_measure_id.qmd` updated accordingly. Target `c1_s3_results` will need re-running.
-**Suggested edit:** If strategy.md describes Test V, update to reference the 4-combo (document x codebook) design rather than component ablation.
+**Resolved:** Updated C1 Test V description to H&K 4-combo design (normal/modified document × normal/modified codebook).
 
-## 2026-02-26: make_chunks() now filters short chunks via min_chars parameter
+## ~~2026-02-26: make_chunks() now filters short chunks via min_chars parameter~~ RESOLVED
 
-**Type:** new-constraint
-**Affects:** `docs/strategy.md` > C1 Implementation Blueprint > Chunk Tier System
-**Detail:** `make_chunks()` gained a `min_chars = 100L` parameter (commit `144e13a`). Chunks with 100 or fewer characters are dropped as extraction artifacts (page-break markers, whitespace). The `chunks` target in `_targets.R` passes `min_chars = 100L` explicitly. Pre-flight notebook Test 2 reframed as a regression check verifying the filter is active. `validate_chunks()` also gained a corresponding `min_chars` check. This drops ~23 artifact chunks from the corpus.
-**Suggested edit:** If strategy.md documents chunk parameters, add a note that `min_chars = 100` filters extraction artifacts.
+**Resolved:** Added "Chunk parameters" paragraph to C1 blueprint noting 10-page window, 3-page overlap, and `min_chars = 100` filter.
 
-## 2026-02-25: Chunk window reduced from 50 to 10 pages
+## ~~2026-02-25: Chunk window reduced from 50 to 10 pages~~ RESOLVED
 
-**Type:** correction
-**Affects:** `docs/strategy.md` > C1 Implementation Blueprint > Chunk Tier System
-**Detail:** Chunk sliding window parameters changed from 50-page window / 10-page overlap to 10-page window / 3-page overlap (commit `c87283a`). This reduces LOOCV cost by ~75% while keeping all chunks within the 40K token advisory limit. The `data_overview.qmd` notebook documents the new parameters. If `docs/strategy.md` specifies chunk window size, it should be updated.
-**Suggested edit:** Update any chunk window references from "50-page window, 10-page overlap" to "10-page window, 3-page overlap".
+**Resolved:** Added "Chunk parameters" paragraph to C1 blueprint noting 10-page window and 3-page overlap.
 
-## 2026-02-25: Internal Revenue Code of 1954 excluded from evaluation data
+## ~~2026-02-25: Internal Revenue Code of 1954 excluded from evaluation data~~ RESOLVED
 
-**Type:** new-constraint
-**Affects:** `docs/strategy.md` > Data Constraints; `docs/strategy.md` > C1 Implementation Blueprint
-**Detail:** The Internal Revenue Code of 1954 is excluded from `aligned_data` via `exclude_acts` parameter (commit `ff9c8c9`). This act is a comprehensive codification rather than a discrete fiscal shock, making it unsuitable for C1 evaluation. Effective evaluation set is now 43 acts, not 44.
-**Suggested edit:** Update "44 labeled acts" references to "43 labeled acts (44 minus Internal Revenue Code of 1954 exclusion)" where evaluation-specific, or add a footnote noting the exclusion.
+**Resolved:** Updated Phase 0 table (44 → 43 after exclusion note), S2 table (44 → 43), and C1 S2 description (43 acts). Kept "44" where it refers to the full label set.
 
 ## 2026-02-25: Legacy test_training_data.qmd removed from active notebooks
 
