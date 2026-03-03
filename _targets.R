@@ -286,7 +286,7 @@ list(
   # S2: Evaluation metrics (no API calls)
   tar_target(
     c1_s2_eval,
-    evaluate_loocv(c1_s2_results, codebook_type = "C1", n_bootstrap = 1000),
+    evaluate_classification(c1_s2_results, codebook_type = "C1", n_bootstrap = 1000),
     packages = "tidyverse"
   ),
 

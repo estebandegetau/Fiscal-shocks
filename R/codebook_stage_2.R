@@ -270,26 +270,26 @@ classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
 }
 
 
-#' Evaluate LOOCV results with tier-stratified metrics
+#' Evaluate classification results with tier-stratified metrics
 #'
 #' Computes combined recall (Tier 1+2), Tier 1 recall, Tier 2 recall,
 #' precision, F1, and accuracy with bootstrap CIs.
 #'
-#' @param loocv_results Tibble from run_loocv()
+#' @param results Tibble from run_zero_shot() or run_loocv()
 #' @param codebook_type Character codebook identifier ("C1", "C2", etc.)
 #' @param n_bootstrap Integer bootstrap resamples (default 1000)
 #' @param ci_level Numeric confidence level (default 0.95)
 #' @return List with tier-stratified metrics, CIs, confusion matrix, and errors
 #' @export
-evaluate_loocv <- function(loocv_results,
-                           codebook_type = "C1",
-                           n_bootstrap = 1000,
-                           ci_level = 0.95) {
+evaluate_classification <- function(results,
+                                    codebook_type = "C1",
+                                    n_bootstrap = 1000,
+                                    ci_level = 0.95) {
 
-  valid_results <- loocv_results |>
+  valid_results <- results |>
     dplyr::filter(!is.na(pred_label))
 
-  n_total <- nrow(loocv_results)
+  n_total <- nrow(results)
   n_valid <- nrow(valid_results)
 
   if (n_valid < n_total) {
@@ -522,7 +522,7 @@ assemble_zero_shot_test_set <- function(codebook,
 #' @param provider Character API provider (default "anthropic")
 #' @param base_url Character optional base URL override
 #' @param api_key Character optional API key override
-#' @return Tibble with classification results matching run_loocv() output schema
+#' @return Tibble with classification results matching evaluate_classification() input schema
 #' @export
 run_zero_shot <- function(codebook,
                           test_set,

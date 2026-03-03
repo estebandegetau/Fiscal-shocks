@@ -10,7 +10,7 @@
 #' Requires S2 LOOCV results as input.
 #'
 #' @param codebook A validated codebook object
-#' @param s2_results Tibble from run_loocv() (S2 results)
+#' @param s2_results Tibble from run_zero_shot() (S2 results)
 #' @param aligned_data Tibble with aligned labels
 #' @param c1_chunk_data List from prepare_c1_chunk_data() with tier1, tier2, negatives
 #' @param model Character model ID (default: "claude-haiku-4-5-20251001")
@@ -217,7 +217,7 @@ run_ablation_study <- function(codebook,
 #'
 #' Uses heuristics for automatic categorization; manual review recommended.
 #'
-#' @param s2_results Tibble from run_loocv()
+#' @param s2_results Tibble from run_zero_shot()
 #' @return Tibble with error categorization
 #' @export
 categorize_errors_hk <- function(s2_results) {
