@@ -159,7 +159,7 @@ if (!iv$pass) {
 }
 ```
 
-## S2: LOOCV Evaluation
+## S2: Zero-shot Evaluation
 
 ```{r}
 #| label: s2-load
