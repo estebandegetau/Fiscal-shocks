@@ -45,7 +45,7 @@ The contribution is **methodological**, not just dataset scale:
 ### Current Status
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
-  - **C1 (Measure ID)**: S1 complete (v0.2.0); Haiku passed all tests iteration 3; Qwen validated pipeline iterations 4-5; S2 refactored from LOOCV to single-pass zero-shot; proceeding to S2
+  - **C1 (Measure ID)**: S1 complete (v0.3.0); S2 ran on v0.3.0 (iteration 11: 81.1% recall, target ≥90%); codebook revised to v0.4.0 (relevance filter reframe — enacted filter removed, C1 now captures proposals); S1+S2 pending on v0.4.0
   - **C2 (Motivation)**: Not started
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started

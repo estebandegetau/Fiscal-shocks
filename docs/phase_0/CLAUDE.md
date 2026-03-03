@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 S1 complete (v0.2.0), S2 refactored to single-pass zero-shot, proceeding to S2; C2-C4 not yet started
+**Status**: IN PROGRESS — C1 S1 complete (v0.3.0), S2 ran on v0.3.0 (81.1% recall), codebook revised to v0.4.0 (relevance filter reframe), S1+S2 pending on v0.4.0; C2-C4 not yet started
 
 ## Authoritative Methodology
 

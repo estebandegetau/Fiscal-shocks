@@ -599,3 +599,95 @@ iterations:
       recall — the softened detail bar could increase false positives.
       Verify _targets.R has llm_provider = "anthropic" and
       llm_model = "claude-haiku-4-5-20251001" before running.
+
+  - iteration: 11
+    codebook_version: "0.3.0"
+    date: "2026-03-03"
+    git_commit: "62495fb"
+    model: "claude-haiku-4-5-20251001"
+    provider: "anthropic"
+    stage: "s2"
+    changes: >
+      No codebook changes. First S2 zero-shot evaluation with Haiku on
+      codebook v0.3.0 (detection reframe + softened detail bar). This is
+      the follow-up to iteration 10 (S1 pass on v0.3.0).
+    results:
+      overall_pass: false
+      metrics:
+        - metric: "combined_recall"
+          value: 0.8113
+          ci_lower: 0.7811
+          ci_upper: 0.8373
+          target: 0.9000
+          pass: false
+        - metric: "tier1_recall"
+          value: 0.8286
+          ci_lower: 0.7344
+          ci_upper: 0.9118
+          target: 0.9500
+          pass: false
+        - metric: "tier2_recall"
+          value: 0.8095
+          ci_lower: 0.7784
+          ci_upper: 0.8363
+        - metric: "precision"
+          value: 0.9508
+          ci_lower: 0.9339
+          ci_upper: 0.9667
+          target: 0.7000
+          pass: true
+        - metric: "f1"
+          value: 0.8755
+          ci_lower: 0.8561
+          ci_upper: 0.8912
+        - metric: "accuracy"
+          value: 0.7961
+          ci_lower: 0.7683
+          ci_upper: 0.8192
+        - metric: "specificity"
+          value: 0.6800
+          ci_lower: 0.5853
+          ci_upper: 0.7700
+      test_set:
+        n_total: 863
+        n_valid: 863
+        n_parse_failures: 0
+        n_tier1: 70
+        n_tier2: 693
+        n_negatives: 100
+      confusion_matrix:
+        tp: 619
+        fn: 144
+        fp: 32
+        tn: 68
+    interpretation: >
+      v0.3.0 detection reframe massively improved recall (+52 pp combined,
+      +40 pp Tier 1) vs v0.2.0 (iteration 9) while keeping precision high
+      (95.1%). The dominant-topic heuristic that caused catastrophic recall
+      in v0.2.0 is largely resolved. Remaining 144 FN are dominated by
+      "not enacted/proposed" reasoning (87% of FN cite this) — the model
+      over-applies the negative clarification about unenacted proposals to
+      chunks where enacted acts are discussed in forward-looking or
+      conditional tense. 32 FP are largely H&K Error Category F (ambiguous
+      ground truth): genuine fiscal measures not in the 44-act label set,
+      meaning reported precision is a conservative lower bound. 19
+      zero-recall act-year rows are all Tier 2-only single-chunk distant
+      references. Tier 1 and Tier 2 miss rates are similar (~17-19%),
+      suggesting the problem is the model's enacted-status threshold, not
+      reference vagueness. 0 parse failures (100% valid JSON from Haiku).
+    decision: >
+      Revise codebook to v0.4.0 with a strategic reframe based on
+      discussion of results. Three changes: (1) Remove the enacted/proposed
+      filter from C1 entirely — C1 becomes a recall-optimized relevance
+      filter for fiscal policy discussion; enacted status determination
+      moves downstream to a future filter or C2. If we ex post find more
+      acts than R&R, we add an enacted filter downstream. (2) Further
+      soften the substantive detail bar to push Tier 1 recall toward 95%+;
+      Tier 1 recall is the top priority because these chunks carry the
+      richest information for C2-C4 classification. (3) Accept that
+      reported precision is conservative due to Category F FPs in the
+      negative test set. Precision cost is bearable because downstream
+      codebooks (C2-C4) will filter irrelevant chunks. Additionally,
+      improve the act identification pipeline to search for acronym
+      mentions of known acts (e.g., ERTA, OBRA, TRA), improving label
+      coverage for evaluation.

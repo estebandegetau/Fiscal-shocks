@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-03-03: C1 v0.4.0 reframe removes enacted filter — contradicts strategy.md line 279
+
+**Type:** correction
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S0 Codebook Design (line ~279)
+**Detail:** C1 v0.4.0 reframes C1 as a recall-optimized relevance filter that captures enacted, proposed, and under-consideration fiscal measures. The enacted-status determination moves downstream to C2. Strategy.md line 279 lists "proposals that did not become law" as a C1 S0 exclusion criterion, which directly contradicts v0.4.0. Additionally, the note "retrospective exclusion is handled by C2" should expand to include enacted-status filtering. The C2 blueprint should note that C2 must also determine enacted status when it is drafted.
+**Suggested edit:** (1) Line 279: remove "proposals that did not become law" from exclusion criteria and add note that enacted-status filtering is deferred to C2. (2) Update the retrospective exclusion note to cover enacted-status filtering. (3) Add a note to the C2 blueprint that C2 handles enacted-status determination.
+
 ## 2026-03-03: C1 S2 refactored from LOOCV to single-pass zero-shot
 
 **Type:** correction
