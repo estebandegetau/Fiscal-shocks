@@ -530,3 +530,72 @@ iterations:
       Tier 2 chunks (which name the act and describe it generally) pass
       without collapsing the bar to mere mentions. Run S3 only if v0.3.0
       S2 results are in the right ballpark but need refinement.
+
+  - iteration: 10
+    codebook_version: "0.3.0"
+    date: "2026-03-03"
+    git_commit: "ef9db43"
+    model: "claude-haiku-4-5-20251001"
+    provider: "anthropic"
+    stage: "s1"
+    changes: >
+      Codebook revised from v0.2.0 to v0.3.0 with two targeted changes
+      based on iteration 9 S2 diagnosis. (1) Detection reframe: instructions
+      now explicitly say "scan the entire chunk and determine whether any
+      portion substantively describes an enacted fiscal measure," replacing
+      topic-classification framing that caused the model to dismiss chunks
+      where fiscal measures were a minority of content. (2) Softened detail
+      bar: FISCAL_MEASURE clarification broadened from requiring "specific
+      rate changes, affected populations, revenue estimates" to accepting
+      "enough context to understand what fiscal liabilities it changed —
+      this could include rate changes, affected populations, revenue
+      estimates, effective dates, program descriptions, or even a general
+      description of the measure's purpose and scope."
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+          change_rate_reversed: 0.0000
+          change_rate_shuffled: 0.0000
+          fleiss_kappa: 1.0000
+          kappa_interpretation: "Near-perfect agreement"
+    interpretation: >
+      C1 S1 passes all behavioral tests with Haiku on codebook v0.3.0.
+      No regressions from v0.2.0 (iteration 8). Tests I (100% valid JSON
+      on 20 chunk-level texts), II (100% definition recovery for both
+      classes), and IV (0% order sensitivity, Fleiss kappa = 1.0) all pass
+      cleanly. Test III skipped (no examples in v0.3.0). The detection
+      reframe is visible in model reasoning: positive chunks now cite
+      "contains substantive descriptions of" rather than summarizing the
+      chunk's dominant topic. Two borderline classifications worth
+      monitoring in S2: (1) Reorganization Plan No. 1 of 1952 classified
+      as FISCAL_MEASURE despite being administrative restructuring, not a
+      liability change; (2) Navy Department appropriations line items
+      classified as FISCAL_MEASURE — tests whether the codebook draws the
+      line between enacted appropriations and narrative descriptions. These
+      are qualitative observations from behavioral test inputs, not accuracy
+      failures (S1 does not evaluate against ground truth).
+    decision: >
+      Proceed to S2 zero-shot evaluation with Haiku on v0.3.0. This is
+      the critical test: v0.2.0 S2 showed catastrophic recall (29.1%) due
+      to the dominant-topic heuristic. The v0.3.0 detection reframe
+      directly targets this failure mode. Monitor precision alongside
+      recall — the softened detail bar could increase false positives.
+      Verify _targets.R has llm_provider = "anthropic" and
+      llm_model = "claude-haiku-4-5-20251001" before running.
