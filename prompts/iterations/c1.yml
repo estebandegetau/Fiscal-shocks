@@ -251,3 +251,44 @@ iterations:
       OpenRouter/Qwen infrastructure is validated and available for future
       cost-effective exploration. Table-heavy chunk quality is a known upstream
       issue to revisit during Phase 1 text extraction improvements.
+
+  - iteration: 6
+    codebook_version: "0.2.0"
+    date: "2026-03-03"
+    git_commit: "dc31b4e"
+    model: "qwen/qwen-2.5-72b-instruct"
+    provider: "openrouter"
+    stage: "s2"
+    changes: >
+      No codebook changes. First attempted S2 LOOCV run. Added error body
+      extraction to call_openai_api() (req_error with tryCatch fallback)
+      to surface OpenRouter error details instead of generic "HTTP 400".
+    results:
+      overall_pass: false
+      pipeline_error: true
+      error_message: >
+        HTTP 400 Bad Request — This endpoint's maximum context length is
+        32768 tokens. However, you requested about 32882 tokens (32382 of
+        text input, 500 in the output). Please reduce the length of either
+        one, or use the "middle-out" transform to compress your prompt
+        automatically.
+      metrics: []
+    interpretation: >
+      Pipeline failed before producing any S2 results. The OpenRouter
+      Qwen 2.5 72B endpoint enforces a 32K token context limit, well
+      below the ~50K worst-case token budget (chunk + codebook prompt +
+      few-shot examples + overhead) validated in verify_api_inputs.qmd
+      for Haiku's 200K window. The error was initially opaque ("HTTP 400
+      Bad Request") until we added req_error body extraction to
+      call_openai_api(), mirroring the pattern already in
+      call_claude_api(). The surfaced detail confirmed a context window
+      mismatch, not a codebook or data issue. Restructuring chunks to
+      fit 32K would compromise evaluation quality and invalidate all
+      downstream targets.
+    decision: >
+      Switch to meta-llama/llama-3.3-70b-instruct on OpenRouter (128K
+      context) for a pipeline smoke test to validate S2 mechanics
+      (fold logic, JSON parsing, result aggregation, evaluation metrics)
+      before committing to Claude Haiku at production rates. Model ID
+      already updated in _targets.R. After successful Llama run, switch
+      to claude-haiku-4-5-20251001 for the real S2 evaluation.

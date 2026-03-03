@@ -56,7 +56,7 @@ min_year <- 1946
 # consistent Anthropic model. Non-Anthropic providers are for cost/feasibility
 # exploration only. Mixing providers invalidates stage comparability.
 llm_provider <- "openrouter"
-llm_model    <- "qwen/qwen-2.5-72b-instruct"
+llm_model    <- "meta-llama/llama-3.3-70b-instruct"
 llm_base_url <- NULL   # NULL = per-provider default
 llm_api_key  <- NULL   # NULL = per-provider default from env var
 

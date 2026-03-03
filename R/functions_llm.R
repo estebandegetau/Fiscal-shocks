@@ -175,6 +175,14 @@ call_openai_api <- function(messages,
       req <- httr2::request(url) |>
         httr2::req_headers(`content-type` = "application/json") |>
         httr2::req_body_json(body) |>
+        httr2::req_error(body = function(resp) {
+          tryCatch({
+            error_body <- httr2::resp_body_json(resp)
+            error_body$error$message %||% paste("HTTP", httr2::resp_status(resp))
+          }, error = function(e2) {
+            httr2::resp_body_string(resp)
+          })
+        }) |>
         httr2::req_retry(max_tries = 1)
 
       # Add auth header if API key is provided
@@ -231,8 +239,9 @@ call_openai_api <- function(messages,
 
     }, error = function(e) {
       if (attempt == max_retries) {
-        log_api_error(model = model, error = e$message, timestamp = Sys.time())
-        stop("API call failed after ", max_retries, " attempts: ", e$message)
+        detail <- if (!is.null(e$body)) paste0(e$message, " \u2014 ", e$body) else e$message
+        log_api_error(model = model, error = detail, timestamp = Sys.time())
+        stop("API call failed after ", max_retries, " attempts: ", detail)
       }
 
       if (grepl("429|Too Many Requests", e$message)) {
@@ -245,6 +254,7 @@ call_openai_api <- function(messages,
                 "), retrying in ", wait_time, "s...")
       }
       message("Error: ", e$message)
+      if (!is.null(e$body)) message("Detail: ", e$body)
       Sys.sleep(wait_time)
     })
   }
