@@ -251,19 +251,29 @@ list(
     deployment = "main"
   ),
 
-  # S2: Zero-shot LOOCV evaluation on chunks with tier-stratified metrics
-  # n_few_shot = 0: codebook-only classification (H&K S2 tests codebook sufficiency)
-  # Codebook YAML built-in examples remain in system prompt via construct_codebook_prompt()
+  # S2: Zero-shot evaluation — assemble test set (no API calls)
+  # All Tier 1 + capped Tier 2 + sampled negatives in one pass
   tar_target(
-    c1_s2_results,
-    run_loocv(
-      c1_codebook,
+    c1_s2_test_set,
+    assemble_zero_shot_test_set(
       aligned_data,
       c1_chunk_data,
+      n_negatives = 100,
+      n_tier2_per_act = 20,
+      seed = 20251206
+    ),
+    packages = "tidyverse"
+  ),
+
+  # S2: Zero-shot evaluation — classify test set (API calls)
+  # Each chunk classified exactly once with codebook prompt, no few-shot
+  tar_target(
+    c1_s2_results,
+    run_zero_shot(
+      c1_codebook,
+      c1_s2_test_set,
       codebook_type = "C1",
       model = llm_model,
-      n_few_shot = 0,
-      seed = 20251206,
       provider = llm_provider,
       base_url = llm_base_url,
       api_key = llm_api_key
@@ -271,6 +281,8 @@ list(
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
   ),
+
+  # S2: Evaluation metrics (no API calls)
   tar_target(
     c1_s2_eval,
     evaluate_loocv(c1_s2_results, codebook_type = "C1", n_bootstrap = 1000),

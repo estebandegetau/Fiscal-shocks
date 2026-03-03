@@ -433,6 +433,183 @@ compute_binary_metrics <- function(results, labels) {
 }
 
 
+#' Assemble a zero-shot test set for codebook evaluation
+#'
+#' Pure function (no API calls). Collects all Tier 1 chunks, a capped sample
+#' of Tier 2 chunks per act, and a single sample of negative chunks. Returns
+#' a unified tibble ready for classification.
+#'
+#' @param aligned_data Tibble with aligned labels (act-level)
+#' @param c1_chunk_data List from assemble_c1_chunk_data() with tier1, tier2, negatives
+#' @param n_negatives Integer number of negative chunks to sample (default 100)
+#' @param n_tier2_per_act Integer max Tier 2 chunks per act (default 20). NULL for no cap.
+#' @param seed Integer random seed (default 20251206)
+#' @return Tibble with columns: chunk_id, doc_id, text, tier, act_name, year, true_label, text_type
+#' @export
+assemble_zero_shot_test_set <- function(aligned_data,
+                                        c1_chunk_data,
+                                        n_negatives = 100,
+                                        n_tier2_per_act = 20,
+                                        seed = 20251206) {
+
+  valid_labels <- c("CONTAINS_MEASURE", "NO_MEASURE")
+  positive_label <- valid_labels[1]
+  negative_label <- valid_labels[2]
+
+  tier1_chunks <- c1_chunk_data$tier1
+  tier2_chunks <- c1_chunk_data$tier2
+  negative_chunks <- c1_chunk_data$negatives
+
+  # All Tier 1 chunks (gold standard, no sampling)
+  tier1_set <- tier1_chunks |>
+    dplyr::select(chunk_id, doc_id, text, act_name, year) |>
+    dplyr::mutate(tier = 1L, true_label = positive_label, text_type = "positive")
+
+  # Tier 2 chunks, capped per act
+  set.seed(seed)
+  if (!is.null(n_tier2_per_act)) {
+    tier2_set <- tier2_chunks |>
+      dplyr::group_by(act_name) |>
+      dplyr::slice_sample(n = n_tier2_per_act, replace = FALSE) |>
+      dplyr::ungroup()
+  } else {
+    tier2_set <- tier2_chunks
+  }
+  tier2_set <- tier2_set |>
+    dplyr::select(chunk_id, doc_id, text, act_name, year) |>
+    dplyr::mutate(tier = 2L, true_label = positive_label, text_type = "positive")
+
+  # Sample negatives (once)
+  set.seed(seed)
+  neg_n <- min(n_negatives, nrow(negative_chunks))
+  neg_set <- negative_chunks |>
+    dplyr::slice_sample(n = neg_n) |>
+    dplyr::select(chunk_id, doc_id, text, year) |>
+    dplyr::mutate(
+      act_name = NA_character_,
+      tier = NA_integer_,
+      true_label = negative_label,
+      text_type = "negative"
+    )
+
+  test_set <- dplyr::bind_rows(tier1_set, tier2_set, neg_set) |>
+    dplyr::select(chunk_id, doc_id, text, tier, act_name, year,
+                  true_label, text_type)
+
+  message(sprintf(
+    "Zero-shot test set assembled: %d Tier 1, %d Tier 2, %d negative (%d total)",
+    nrow(tier1_set), nrow(tier2_set), nrow(neg_set), nrow(test_set)
+  ))
+
+  test_set
+}
+
+
+#' Run zero-shot classification on a test set
+#'
+#' API-calling function. Classifies each chunk in the test set exactly once
+#' using the codebook prompt with no few-shot examples.
+#'
+#' @param codebook A validated codebook object
+#' @param test_set Tibble from assemble_zero_shot_test_set()
+#' @param codebook_type Character codebook identifier ("C1", "C2", etc.)
+#' @param model Character model ID (default: "claude-haiku-4-5-20251001")
+#' @param show_progress Logical show progress bar (default TRUE)
+#' @param max_retries Integer retry attempts (default 10)
+#' @param use_cache Logical enable prompt caching (default TRUE)
+#' @param provider Character API provider (default "anthropic")
+#' @param base_url Character optional base URL override
+#' @param api_key Character optional API key override
+#' @return Tibble with classification results matching run_loocv() output schema
+#' @export
+run_zero_shot <- function(codebook,
+                          test_set,
+                          codebook_type = "C1",
+                          model = "claude-haiku-4-5-20251001",
+                          show_progress = TRUE,
+                          max_retries = 10,
+                          use_cache = TRUE,
+                          provider = "anthropic",
+                          base_url = NULL,
+                          api_key = NULL) {
+
+  n_chunks <- nrow(test_set)
+  message(sprintf("Running %s zero-shot classification on %d chunks...",
+                  codebook_type, n_chunks))
+
+  system_prompt <- construct_codebook_prompt(codebook)
+
+  if (show_progress) {
+    pb <- progress::progress_bar$new(
+      format = "  Zero-shot [:bar] :current/:total (:percent) eta: :eta",
+      total = n_chunks,
+      clear = FALSE
+    )
+  }
+
+  results <- purrr::map_dfr(seq_len(n_chunks), function(j) {
+    if (show_progress) pb$tick()
+
+    pred <- tryCatch({
+      classify_with_codebook(
+        text = test_set$text[j],
+        codebook = codebook,
+        few_shot_examples = list(),
+        model = model,
+        temperature = 0,
+        use_self_consistency = FALSE,
+        system_prompt = system_prompt,
+        max_retries = max_retries,
+        use_cache = use_cache,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
+      )
+    }, error = function(e) {
+      list(label = NA_character_, reasoning = e$message,
+           confidence = NA_real_, raw_response = NA_character_,
+           stop_reason = NA_character_)
+    })
+
+    tibble::tibble(
+      fold = 1L,
+      act_name = test_set$act_name[j],
+      year = test_set$year[j],
+      chunk_id = test_set$chunk_id[j],
+      doc_id = test_set$doc_id[j],
+      tier = test_set$tier[j],
+      text_type = test_set$text_type[j],
+      true_label = test_set$true_label[j],
+      pred_label = pred$label %||% NA_character_,
+      confidence = pred$confidence %||% NA_real_,
+      reasoning = pred$reasoning %||% NA_character_,
+      raw_response = pred$raw_response %||% NA_character_,
+      stop_reason = pred$stop_reason %||% NA_character_,
+      correct = identical(pred$label, test_set$true_label[j])
+    )
+  })
+
+  results <- results |>
+    dplyr::mutate(model = model, provider = provider)
+
+  # Summary
+  pos_results <- results |> dplyr::filter(text_type == "positive")
+  neg_results <- results |> dplyr::filter(text_type == "negative")
+
+  message(sprintf("\nZero-shot classification complete:"))
+  message(sprintf("  Positive chunks: %d (%.1f%% correct) [Tier1: %d, Tier2: %d]",
+                  nrow(pos_results),
+                  mean(pos_results$correct, na.rm = TRUE) * 100,
+                  sum(pos_results$tier == 1, na.rm = TRUE),
+                  sum(pos_results$tier == 2, na.rm = TRUE)))
+  message(sprintf("  Negative chunks: %d (%.1f%% correct)",
+                  nrow(neg_results),
+                  mean(neg_results$correct, na.rm = TRUE) * 100))
+
+  results
+}
+
+
 # Null coalescing operator
 if (!exists("%||%", mode = "function", envir = environment())) {
   `%||%` <- function(x, y) if (is.null(x)) y else x
