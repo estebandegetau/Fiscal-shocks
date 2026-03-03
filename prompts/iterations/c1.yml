@@ -431,3 +431,102 @@ iterations:
       Proceed to S2 zero-shot evaluation with Haiku. No codebook changes
       needed. Verify _targets.R has llm_provider = "anthropic" and
       llm_model = "claude-haiku-4-5-20251001" before running.
+
+  - iteration: 9
+    codebook_version: "0.2.0"
+    date: "2026-03-03"
+    git_commit: "b2b502c"
+    model: "claude-haiku-4-5-20251001"
+    provider: "anthropic"
+    stage: "s2"
+    changes: >
+      No codebook changes. First formal S2 zero-shot evaluation with
+      Haiku on codebook v0.2.0. This is the first Haiku S2 run after
+      S1 validation passed in iteration 8.
+    results:
+      overall_pass: false
+      metrics:
+        - metric: "combined_recall"
+          value: 0.2910
+          ci_lower: 0.2600
+          ci_upper: 0.3210
+          target: 0.9000
+          pass: false
+        - metric: "tier1_recall"
+          value: 0.4290
+          ci_lower: 0.3060
+          ci_upper: 0.5410
+          target: 0.9500
+          pass: false
+        - metric: "tier2_recall"
+          value: 0.2770
+          ci_lower: 0.2440
+          ci_upper: 0.3100
+        - metric: "precision"
+          value: 0.9910
+          ci_lower: 0.9770
+          ci_upper: 1.0000
+          target: 0.7000
+          pass: true
+        - metric: "f1"
+          value: 0.4500
+          ci_lower: 0.4120
+          ci_upper: 0.4850
+        - metric: "accuracy"
+          value: 0.3710
+          ci_lower: 0.3370
+          ci_upper: 0.4020
+        - metric: "specificity"
+          value: 0.9800
+          ci_lower: 0.9500
+          ci_upper: 1.0000
+      test_set:
+        n_total: 863
+        n_valid: 863
+        n_parse_failures: 0
+        n_tier1: 70
+        n_tier2: 693
+        n_negatives: 100
+      confusion_matrix:
+        tp: 222
+        fn: 541
+        fp: 2
+        tn: 98
+    interpretation: >
+      First formal S2 zero-shot evaluation with Haiku on codebook v0.2.0.
+      Precision is near-perfect (99.1%) but recall is catastrophically low
+      (29.1%, target >=90%). The model applies a "dominant topic" heuristic
+      rather than scanning for fiscal measures within chunks. 541/543 errors
+      are false negatives with consistent reasoning patterns: "economic
+      analysis" (27%), "general economic" (23%), "does not describe" (21%),
+      "projections" (18%). Even Tier 1 chunks (verbatim passage matches)
+      achieve only 42.9% recall -- the model acknowledges fiscal measures
+      exist in the text but dismisses them because the chunk's overall
+      character is economic analysis. 120/238 act-year rows have 0% recall
+      (114 are Tier 2 only). The 2 false positives appear to be mislabeled
+      negatives (Treasury Annual Reports containing genuine fiscal measures).
+      Root cause: H&K Error Category B (prompt construction) -- the
+      codebook's "substantive detail" requirement and negative clarifications
+      give the model license to dismiss chunks where the fiscal measure is a
+      minority of the content. Formal S3 skipped for this iteration because
+      the failure mode is unambiguous and ablation would rank components of a
+      codebook being retired.
+    decision: >
+      Revise codebook to v0.3.0 with two targeted changes, then re-run
+      S1 and S2. (1) Reframe instructions from topic classification to
+      detection. Change the instructions to explicitly say: "Scan the
+      entire chunk for any portion that substantively describes an enacted
+      fiscal measure. A chunk should be classified as FISCAL_MEASURE even
+      if the majority of the text discusses other economic topics -- one
+      substantive description anywhere in the chunk is sufficient."
+      (2) Soften the "substantive detail" bar but keep it meaningful.
+      Instead of requiring "specific rate changes, affected populations,
+      revenue estimates" (which the model interprets as a very high bar),
+      say something like: "The passage names a specific enacted act or
+      executive action and provides enough context to understand what
+      fiscal liabilities it changed -- this could include rate changes,
+      affected populations, revenue estimates, effective dates, or even a
+      general description of the measure's purpose and scope." This lets
+      Tier 2 chunks (which name the act and describe it generally) pass
+      without collapsing the bar to mere mentions. Run S3 only if v0.3.0
+      S2 results are in the right ballpark but need refinement.

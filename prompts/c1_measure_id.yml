@@ -1,24 +1,27 @@
 codebook:
   name: "C1: Fiscal Measure Identification"
-  version: "0.2.0"
+  version: "0.3.0"
   instructions: >
     You are an expert in fiscal policy analysis classifying chunks from official government
-    economic and budget documents. Your task is to determine whether each chunk contains a
-    substantive description of an enacted fiscal measure that changes fiscal liabilities or
-    obligations. Read the class definitions carefully and classify the chunk using only the
-    provided labels.
+    economic and budget documents. Your task is to scan the entire chunk and determine whether
+    **any portion** of it substantively describes an enacted fiscal measure that changes fiscal
+    liabilities or obligations. Chunks from government documents typically contain extended
+    economic analysis, forecasts, and policy discussion — a chunk should be classified as
+    FISCAL_MEASURE if it contains even one substantive description of an enacted fiscal measure,
+    regardless of what the rest of the chunk discusses. Read the class definitions carefully and
+    classify the chunk using only the provided labels.
 
   classes:
     - label: "FISCAL_MEASURE"
       label_definition: >
-        A passage that substantively describes a specific enacted legislative or executive action
-        that changes fiscal liabilities or obligations.
+        A chunk that contains, in any portion of its text, a substantive description of a specific
+        enacted legislative or executive action that changes fiscal liabilities or obligations.
 
       clarification:
         - "The passage describes a legislated change in fiscal liabilities from taxes of any type — income taxes, payroll and social insurance taxes, consumption and excise taxes, investment incentives, and so on"
         - "The action was enacted into law or implemented by executive or administrative action (such as executive orders, ministerial decrees, regulatory changes, or official policy directives), not merely proposed, debated, or recommended by officials or advisory bodies"
         - "Retrospective references that name a specific act and provide substantive detail about its provisions — such as rate changes, affected populations, or revenue effects — should be classified as FISCAL_MEASURE, even if the passage was written years after enactment"
-        - "The passage provides substantive detail about what the measure does, such as specific rate changes, affected populations, program descriptions, revenue estimates, or effective dates, rather than merely naming or listing the measure"
+        - "The passage names a specific enacted act or executive action and provides enough context to understand what fiscal liabilities it changed — this could include rate changes, affected populations, revenue estimates, effective dates, program descriptions, or even a general description of the measure's purpose and scope — rather than merely naming the measure or describing only its political history without indicating what it changed"
         - "The significance of a measure is determined by how substantively the passage discusses it, not by its revenue impact; even small fiscal changes qualify if described in detail"
         - "Executive or administrative actions that change fiscal liabilities count as fiscal measures even when not legislated"
 
@@ -27,15 +30,15 @@ codebook:
         - "Simple extensions or renewals of existing provisions that do not alter rates, coverage, or scope are excluded from classification as fiscal measures"
         - "Changes to withholding schedules, payment timing, or tax collection procedures that do not alter the underlying liabilities owed by taxpayers or recipients are excluded"
         - "Automatic adjustments such as inflation indexing that occur mechanically without new legislative action are excluded"
-        - "Passages that merely list multiple fiscal actions with brief or aggregate descriptions — such as tables of revenue effects or summaries of all measures enacted in a given year — are excluded unless the passage provides substantive detail about a specific measure's provisions"
+        - "Passages that consist entirely of tabular data listing multiple fiscal actions with only brief numerical entries — such as tables of revenue effects with no accompanying narrative — are excluded; however, if any part of the passage provides a narrative description of what a specific measure changed, the chunk qualifies as FISCAL_MEASURE"
 
     - label: "NOT_FISCAL_MEASURE"
       label_definition: >
-        A passage that does not describe any specific enacted fiscal measure meeting the criteria
-        for substantive contemporaneous description of liability-changing actions.
+        A chunk in which no portion of the text substantively describes a specific enacted fiscal
+        measure that changes fiscal liabilities or obligations.
 
       clarification:
-        - "General economic analysis, forecasts, or trend discussion without reference to a specific enacted fiscal action"
+        - "General economic analysis, forecasts, or trend discussion that does not, anywhere in the chunk, reference a specific enacted fiscal action with enough detail to understand what it changed"
         - "Discussion of fiscal aggregates such as total revenue, total spending, or deficit levels without identifying the specific legislative or executive measure causing the change"
         - "Administrative guidance, regulatory procedures, tax collection processes, or compliance reporting requirements that do not alter underlying fiscal liabilities"
         - "Passages that merely name past legislation without providing substantive detail about what the measure changed (e.g., 'following the reforms of the 1980s') are not fiscal measures"
