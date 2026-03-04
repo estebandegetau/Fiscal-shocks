@@ -199,6 +199,12 @@ Review whether any recent implementation work contradicts, extends, or validates
 
 Add entries to `docs/deltas.md` following the format above. Do not modify existing entries.
 
+### Step 5b: Check for strategy reconciliation trigger
+
+Count unresolved entries in `docs/deltas.md` (headings that do NOT contain `~~` strikethrough).
+
+If the count is **3 or more**, set an internal flag to include a nudge in Step 6. Do not take any other action.
+
 ### Step 6: Report
 
 Summarize to the user:
@@ -206,6 +212,7 @@ Summarize to the user:
 - Which Tier 1 files were updated (and what changed)
 - Which deltas were logged (and what they recommend)
 - Any Tier 3 errors spotted (if applicable)
+- **If 3+ unresolved deltas:** "N unresolved deltas in `docs/deltas.md`. Consider running `/strategy-sync` to reconcile them with strategy docs."
 
 ## Creating docs/deltas.md
 

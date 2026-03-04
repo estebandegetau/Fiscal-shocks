@@ -197,6 +197,7 @@ These rules govern how Claude Code operates in this project. They prevent recurr
 7. **One change at a time.** When iterating on a codebook, change one component per iteration. This makes the iteration log interpretable and supports ablation-style reasoning.
 8. **Pipeline data validation.** After `tar_make()` completes, verify result shape with `tar_read(<target>) |> str()` before proceeding.
 9. **Quarto render safety.** Always render specific files (`quarto render notebooks/c1_measure_id.qmd`), never the full project.
+10. **Strategy reconciliation.** After a stage gate crossing (S1/S2/S3 pass) or when 3+ unresolved entries accumulate in `docs/deltas.md`, run `/strategy-sync` to reconcile implementation deltas with strategy docs. This is a human-driven reflection exercise: Claude challenges the user's reasoning, the user justifies decisions, and the rationale is recorded as an audit trail.
 
 ### Multi-Agent Workflow Patterns
 
@@ -231,6 +232,10 @@ See `.claude/skills/quarto-style/SKILL.md` for complete Quarto conventions (tabl
 ### Iteration Logging
 
 Use `/log-iteration` after running a pipeline stage (S1/S2/S3) to record what changed, what the metrics show, and what to do next. Creates YAML entries in `prompts/iterations/<codebook>.yml` with auto-gathered metrics and git commit hashes. See `.claude/skills/log-iteration/SKILL.md`.
+
+### Strategy Reconciliation
+
+Use `/strategy-sync` when unresolved deltas accumulate in `docs/deltas.md` (doc-sync will nudge you at 3+). The skill groups related deltas, challenges their implications against the full strategy, and records your justifications. See `.claude/skills/strategy-sync/SKILL.md`.
 
 ## {targets} Pipeline Conventions
 
