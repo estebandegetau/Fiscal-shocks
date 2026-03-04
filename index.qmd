@@ -2,6 +2,7 @@
 title: "Scaling Narrative Fiscal Shock Identification with LLMs"
 date: last-modified
 date-format: long
+abstract: Abstract goes here.
 format:
   html:
     toc: true
@@ -9,7 +10,7 @@ format:
       hypothesis: true
   docx: default
   jats: default
-  # academic-typst: default
+  academic-typst: default
 section-numbering: "1.1.1"
 ---
 

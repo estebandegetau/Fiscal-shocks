@@ -1,0 +1,395 @@
+---
+title: "Scaling Fiscal Shock Identification with LLMs"
+subtitle: "Progress Report: Codebook Development and Infrastructure"
+date: "2026-03-04"
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+library(targets)
+library(tidyverse)
+library(gt)
+library(here)
+library(scales)
+
+here::i_am("reports/20260304.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
+
+us_body       <- tar_read(us_body)
+c1_chunk_data <- tar_read(c1_chunk_data)
+c1_s2_eval    <- tar_read(c1_s2_eval)
+aligned_data  <- tar_read(aligned_data)
+
+# Hardcoded to avoid loading the 470 MB chunks object
+n_chunks <- 15061L
+
+# v0.2.0 S2 metrics (iteration 9, targets overwritten by v0.3.0 run)
+v020_metrics <- tibble(
+  version       = "v0.2.0",
+  key_change    = "Country-agnostic language, examples removed",
+  combined_recall = 0.291,
+  tier1_recall    = 0.429,
+  precision       = 0.991,
+  f1              = 0.450
+)
+```
+
+## Executive Summary
+
+Our [February 4 report](20260204-new-methods.qmd) introduced the methodology: a four-codebook architecture integrating the @romer2010 narrative approach with the @halterman2025 LLM evaluation framework. This report covers one month of intensive development work on the first codebook, C1 (Measure Identification).
+
+The month produced two major investments. First, an **unplanned but essential infrastructure build**: a system that locates the passages @romer2010 used to justify their motivation classifications within our US corpus of ~97,000 pages of government documents. These passages---which we call *chunks*, multi-page segments that the documents are split into for processing---form the answer key we need to score the LLM against. Second, **11 iterations of C1 codebook development** (v0.1.0 through v0.4.0), systematically diagnosing and resolving failure modes through the @halterman2025 behavioral testing (S1) and evaluation (S2) pipeline.
+
+The headline result: **C1 recall improved from 29% to 81% through codebook revision alone**, with precision holding above 95%. The residual gap has a clear diagnosis: 87% of remaining false negatives (cases where the model missed a real fiscal act) trace to a single codebook instruction that we have since revised, and v0.4.0 addresses it directly. Behavioral tests (S1) and evaluation (S2) on v0.4.0 are pending.
+
+What we lost in timeline we gained in clarity. The known-act identification infrastructure is **fully reusable** for evaluation of the remaining codebooks---C2 (motivation classification), C3 (timing extraction), and C4 (magnitude estimation)---and transfers directly to Malaysia. The codebook iteration process validated the @halterman2025 framework as an effective diagnostic tool, with each iteration producing an actionable diagnosis that guided the next revision. The revised timeline shifts approximately 4--6 weeks, with a revised budget anchored to actual API costs from development.
+
+
+## Known Act Identification: An Unplanned Prerequisite
+
+@romer2010 labeled 44 fiscal acts at the act level---for example, "the Tax Reform Act of 1986 is exogenous." But the LLM classifies individual chunks (passages), not whole acts. To evaluate whether the model finds each act, we first need to know *which passages in our 15,000 document chunks discuss each act*. Building this mapping turned out to be a substantial problem in its own right.
+
+We built a three-tier matching system that identifies chunks containing references to known fiscal acts with varying degrees of confidence (@tbl-tier-system).
+
+```{r}
+#| label: tbl-tier-system
+#| tbl-cap: "Chunk-Level Ground Truth: Tier System"
+
+n_tier1 <- nrow(c1_chunk_data$tier1)
+n_tier2 <- nrow(c1_chunk_data$tier2)
+n_neg   <- nrow(c1_chunk_data$negatives)
+
+tibble(
+  Tier = c("Tier 1", "Tier 2", "Negative"),
+  Definition = c(
+    "Passage contains verbatim text that @romer2010 quoted when discussing this act",
+    "Passage mentions the act by name (e.g., 'Tax Reform Act of 1986')",
+    "Passage from the same documents but with no reference to any known act"
+  ),
+  Count = c(n_tier1, n_tier2, n_neg),
+  Role = c(
+    "Highest-confidence match",
+    "Name-based match",
+    "No match (used to test for false alarms)"
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = "Mapping 44 labeled acts to individual document chunks"
+  ) %>%
+  fmt_number(columns = Count, use_seps = TRUE, decimals = 0) %>%
+  tab_style(
+    style = cell_fill(color = "#E8F5E9"),
+    locations = cells_body(rows = 1)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#E3F2FD"),
+    locations = cells_body(rows = 2)
+  ) %>%
+  tab_footnote(
+    footnote = sprintf(
+      "Counts drawn from the evaluation corpus (%s chunks from documents published through 2007). The full corpus contains %s chunks.",
+      comma(n_tier1 + n_tier2 + n_neg), comma(n_chunks)
+    ),
+    locations = cells_column_labels(columns = Count)
+  ) %>%
+  gt_theme_report()
+```
+
+This infrastructure is not C1-specific. The same tier assignments serve as ground truth for C2 (motivation classification), C3 (timing extraction), and C4 (magnitude estimation). When we deploy to Malaysia, the matching system generalizes to any set of known fiscal acts: the only input required is a table of act names and descriptive passages.
+
+
+## C1 Codebook Development
+
+C1 (Measure Identification) is the first codebook in the pipeline. Its task is binary classification: does a given document chunk contain a substantive description of a fiscal measure? Getting C1 right is critical because it determines what enters the downstream pipeline. False negatives here are permanently lost.
+
+### Behavioral Tests (S1)
+
+The @halterman2025 framework prescribes four behavioral tests before formal evaluation. These tests verify that the model produces well-formed outputs, correctly understands the codebook definitions, recalls training examples, and gives consistent answers regardless of input ordering. All four passed at every Haiku-tested codebook version (v0.1.0 through v0.3.0). This was not true for open-source alternatives: Qwen 2.5 72B could not process some budget documents and returned empty responses, and Llama 3.3 70B returned outputs in a format our pipeline could not process (16% failure rate). Haiku's consistent compliance across all iterations confirmed it as the reliable backbone for formal evaluation.
+
+### Evaluation (S2)
+
+The S2 evaluation asks the model to classify each of the `r comma(n_tier1 + n_tier2 + n_neg)` labeled passages---with no training examples provided (what the ML literature calls "zero-shot")---and compares predictions to ground truth.
+
+We track recall at two levels. *Tier 1 recall* covers only passages containing verbatim text from @romer2010's narrative---the highest-confidence matches where we are most certain a fiscal act is present. *Combined recall* covers all labeled passages, including those where the act is only mentioned by name. Two formal evaluation runs have been completed on Haiku (@tbl-s2-versions).
+
+```{r}
+#| label: tbl-s2-versions
+#| tbl-cap: "C1 S2 Performance: Version Comparison"
+
+v030_metrics <- tibble(
+  version         = "v0.3.0",
+  key_change      = "Detection reframe + softened detail bar",
+  combined_recall = c1_s2_eval$combined_recall,
+  tier1_recall    = c1_s2_eval$tier1_recall,
+  precision       = c1_s2_eval$precision,
+  f1              = c1_s2_eval$f1
+)
+
+bind_rows(v020_metrics, v030_metrics) %>%
+  mutate(across(combined_recall:f1, ~ percent(.x, accuracy = 0.1))) %>%
+  rename(
+    Version           = version,
+    `Key Change`      = key_change,
+    `Combined Recall` = combined_recall,
+    `Tier 1 Recall (verbatim passages)` = tier1_recall,
+    Precision         = precision,
+    F1                = f1
+  ) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = "No training examples provided; evaluated on labeled passages (Haiku)"
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#E8F5E9"),
+    locations = cells_body(rows = 2)
+  ) %>%
+  tab_footnote(
+    footnote = "v0.2.0 metrics preserved from earlier run; v0.3.0 metrics from current pipeline.",
+    locations = cells_column_labels(columns = Version)
+  ) %>%
+  tab_footnote(
+    footnote = "Targets: Combined Recall ≥90%, Tier 1 Recall ≥95%, Precision ≥70%.",
+    locations = cells_column_labels(columns = `Combined Recall`)
+  ) %>%
+  gt_theme_report()
+```
+
+The confusion matrix for v0.3.0 (@tbl-confusion) shows the error structure. Each passage gets a prediction (fiscal measure present or not) and has a known true label. The table cross-tabulates these: the top-left cell is passages the model correctly identified as containing a fiscal measure; the bottom-left is real fiscal measures the model missed.
+
+```{r}
+#| label: tbl-confusion
+#| tbl-cap: "C1 v0.3.0 Confusion Matrix"
+
+cm <- c1_s2_eval$confusion_matrix
+
+tibble(
+  ` ` = c("Classified: fiscal measure", "Classified: not a fiscal measure"),
+  `Contains fiscal measure` = c(
+    cm["FISCAL_MEASURE", "FISCAL_MEASURE"],
+    cm["NOT_FISCAL_MEASURE", "FISCAL_MEASURE"]
+  ),
+  `Does not` = c(
+    cm["FISCAL_MEASURE", "NOT_FISCAL_MEASURE"],
+    cm["NOT_FISCAL_MEASURE", "NOT_FISCAL_MEASURE"]
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = sprintf("%s chunks classified", comma(sum(cm)))
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = ` `)
+  ) %>%
+  tab_footnote(
+    footnote = "The 32 false positives are largely genuine fiscal measures absent from the 44-act label set (ambiguous ground truth), meaning reported precision is a conservative lower bound.",
+    locations = cells_body(
+      columns = `Actually does not`,
+      rows = 1
+    )
+  ) %>%
+  gt_theme_report()
+```
+
+### Root Cause Diagnosis
+
+The progression from v0.2.0 to v0.4.0 illustrates the H&K iterative refinement process working as designed.
+
+**v0.2.0 (29% recall):** The codebook framed the task as topic classification: "determine whether the chunk primarily discusses a fiscal measure." The model applied a "dominant topic" heuristic, dismissing chunks where fiscal measures appeared alongside economic analysis. Even Tier 1 chunks (verbatim passage matches) achieved only 43% recall, because the model acknowledged the fiscal measure but concluded the chunk's overall topic was economic analysis. Diagnosis: the instructions themselves were causing the error---a known issue type in the @halterman2025 framework.
+
+**v0.3.0 (81% recall):** Two targeted changes (reframing instructions from topic classification to detection, and softening the substantive detail bar) resolved the dominant-topic failure. But a new pattern emerged: 87% of the remaining 144 false negatives cited "not enacted" or "proposed only" as their reason for classification as NOT_FISCAL_MEASURE. The model was correctly detecting fiscal measures but then filtering them out based on the codebook's enacted-status requirement, even when the measures were in fact enacted but described in forward-looking or conditional tense.
+
+**v0.4.0 (pending):** The enacted/proposed filter has been removed entirely from C1. C1 becomes a filter designed to catch as many fiscal measures as possible, even at the cost of also flagging some irrelevant passages: "does this chunk contain a substantive description of a fiscal policy measure?" The enacted-status determination moves downstream to C2, where the model has richer context (the full set of chunks flagged by C1, not just the individual chunk in isolation). This change accepts higher false positives at C1 in exchange for much higher recall, with downstream codebooks handling the filtering.
+
+### What's Next for C1
+
+S1 and S2 evaluation on v0.4.0 is the immediate next step. The v0.4.0 reframe directly targets the dominant remaining failure mode, so we expect substantial recall improvement. @tbl-act-recall shows the act-level recall distribution from v0.3.0, illustrating where the model succeeds and struggles.
+
+```{r}
+#| label: tbl-act-recall
+#| tbl-cap: "C1 v0.3.0 Act-Level Recall (Top and Bottom 5)"
+
+act_summary <- c1_s2_eval$act_recall %>%
+  group_by(act_name) %>%
+  summarize(recall = mean(recall), .groups = "drop")
+
+top5 <- act_summary %>% slice_max(recall, n = 5, with_ties = FALSE)
+bot5 <- act_summary %>% slice_min(recall, n = 5, with_ties = FALSE)
+
+bind_rows(
+  top5 %>% mutate(group = "Highest recall"),
+  bot5 %>% mutate(group = "Lowest recall")
+) %>%
+  mutate(recall = percent(recall, accuracy = 0.1)) %>%
+  rename(Act = act_name, Recall = recall) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = sprintf("Across %d unique acts in the evaluation set", nrow(act_summary))
+  ) %>%
+  tab_row_group(label = "Lowest recall", rows = which(.$`_data`$group == "Lowest recall")) %>%
+  tab_row_group(label = "Highest recall", rows = which(.$`_data`$group == "Highest recall")) %>%
+  cols_hide(group) %>%
+  tab_footnote(
+    footnote = "Zero-recall acts are only mentioned briefly by name in a single passage, without detailed fiscal discussion.",
+    locations = cells_row_groups(groups = "Lowest recall")
+  ) %>%
+  gt_theme_report()
+```
+
+
+## Multi-Model Exploration
+
+We enabled the pipeline to work with multiple LLM providers so that we can (i) run cheaper initial tests during development, and (ii) find the model best suited for this task. Alongside C1 codebook development, we tested two open-source alternatives to Claude Haiku via OpenRouter.
+
+**Qwen 2.5 72B** failed behavioral tests (S1). Some budget documents are mostly numerical tables rather than narrative text; Qwen could not process these and returned empty responses. Since over half of the passages in our corpus contain substantial numerical content, filtering these inputs is not viable.
+
+**Llama 3.3 70B** passed most behavioral tests but failed in formal evaluation (S2): Llama returned outputs in a format our pipeline could not process (16% failure rate). Among usable responses, recall reached 62%, better than Haiku's v0.2.0 (29%) but far below v0.3.0 (81%), likely because the codebook revision rather than the model switch was the operative improvement.
+
+**Conclusion:** Claude Haiku is confirmed as the production model. It follows codebook instructions precisely, handles all document types including table-heavy passages, and responds to codebook revisions predictably. The open-source exploration was not wasted: the OpenRouter integration is validated and available if future cost pressures warrant revisiting alternative models.
+
+
+## Revised Timeline
+
+The original timeline (February 4 report) assumed codebook development would begin immediately. Two unplanned infrastructure investments (the known-act identification system and multi-model exploration) added approximately 4--6 weeks. Both are complete and non-recurring: the act identification system serves all four codebooks, and the model selection is settled (@tbl-timeline).
+
+```{r}
+#| label: tbl-timeline
+#| tbl-cap: "Revised Implementation Timeline"
+
+tibble(
+  Phase = c(
+    "Infrastructure", "Infrastructure",
+    "Phase 0", "Phase 0",
+    "Phase 1", "Phase 2", "Phase 3"
+  ),
+  Task = c(
+    "Known act identification system",
+    "Multi-model exploration",
+    "C1 validated (S0–S3 complete)",
+    "C2–C4 validated",
+    "US full production run",
+    "Malaysia pilot deployment",
+    "Regional scaling (SEA)"
+  ),
+  Original = c(
+    "—", "—",
+    "Early March 2026",
+    "Early March 2026",
+    "Late March 2026",
+    "April 2026",
+    "May–June 2026"
+  ),
+  Revised = c(
+    "Complete", "Complete",
+    "Mid-March 2026",
+    "April 2026",
+    "May 2026",
+    "June 2026",
+    "August 2026"
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = "~4–6 week shift attributable to unplanned infrastructure, now complete"
+  ) %>%
+  tab_row_group(label = "Phase 3: Regional Scaling", rows = 7) %>%
+  tab_row_group(label = "Phase 2: Malaysia Pilot", rows = 6) %>%
+  tab_row_group(label = "Phase 1: US Production", rows = 5) %>%
+  tab_row_group(label = "Phase 0: Codebook Development", rows = 3:4) %>%
+  tab_row_group(label = "Infrastructure (unplanned)", rows = 1:2) %>%
+  cols_hide(Phase) %>%
+  tab_style(
+    style = cell_fill(color = "#E8F5E9"),
+    locations = cells_body(rows = Revised == "Complete")
+  ) %>%
+  tab_footnote(
+    footnote = "Original dates from February 4 report. The infrastructure items were not anticipated but are now complete and non-recurring.",
+    locations = cells_column_labels(columns = Original)
+  ) %>%
+  gt_theme_report()
+```
+
+
+## Revised Budget
+
+We can now anchor budget estimates to actual costs. Each evaluation run (classifying ~860 labeled passages on Haiku) costs approximately \$10, or \$0.012 per passage. This provides a reliable basis for projecting remaining costs (@tbl-budget).
+
+```{r}
+#| label: tbl-budget
+#| tbl-cap: "Revised API Cost Estimates"
+
+tibble(
+  Phase = c(
+    "Development", "Development", "Development",
+    "Production", "Production", "Production"
+  ),
+  Activity = c(
+    "C1 remaining iterations (evaluation + error analysis, v0.4.0+)",
+    "C2–C4 codebook development (full validation cycle each)",
+    "Development subtotal",
+    "US full corpus: C1 on all chunks",
+    "US full corpus: C2–C4 on C1-positive chunks",
+    "Production subtotal"
+  ),
+  Basis = c(
+    "~3–5 evaluation runs × $10 + behavioral tests (~$1 each)",
+    "3 codebooks × ~$20–50 each (behavioral tests + evaluation iterations)",
+    "",
+    sprintf("%s chunks × $0.012/chunk", comma(n_chunks)),
+    "~3,000–4,500 chunks × $0.012/chunk × 3 codebooks",
+    ""
+  ),
+  `Estimated Cost` = c(
+    "$30–55",
+    "$60–150",
+    "$90–205",
+    "$180",
+    "$110–160",
+    "$290–340"
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = "Anchored to actual C1 evaluation cost: $10 per 863-passage run ($0.012/passage, Haiku)"
+  ) %>%
+  tab_row_group(
+    label = md("**Production** (contingent on Phase 0 results)"),
+    rows = 4:6
+  ) %>%
+  tab_row_group(
+    label = md("**Development** (remaining Phase 0 work)"),
+    rows = 1:3
+  ) %>%
+  cols_hide(Phase) %>%
+  tab_style(
+    style = list(cell_fill(color = "#E3F2FD"), cell_text(weight = "bold")),
+    locations = cells_body(rows = c(3, 6))
+  ) %>%
+  tab_footnote(
+    footnote = "C2–C4 production estimate uses 3,000–4,500 chunks (projected C1-positives in full corpus). The evaluation subset yields ~2,056 positives from documents through 2007; the full corpus covers 1946–present.",
+    locations = cells_body(columns = Basis, rows = 5)
+  ) %>%
+  tab_footnote(
+    footnote = "Malaysia deployment and expert review costs (~25–38 hours, see February 4 report) are additional and contingent on US results.",
+    locations = cells_row_groups(
+      groups = md("**Production** (contingent on Phase 0 results)")
+    )
+  ) %>%
+  gt_theme_report()
+```
+
+
+## References {.unnumbered}
+
+::: {#refs}
+:::

@@ -4,8 +4,7 @@ format:
     toc-depth: 3
     self-contained: true
     title-block-banner: false
-  academic-typst:
-    section-numbering: "1.1.1"
+  typst: default
 
 execute:
   warning: false

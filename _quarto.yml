@@ -4,7 +4,9 @@ project:
   render:
     - docs/*.qmd
     - notebooks/*.qmd
-    # - reports/*.qmd
+    - reports/*.qmd
+    - "!reports/20260121-model-a.qmd"
+    - "!reports/20260117.qmd"
     - index.qmd
     - "!*unused/"
     - "!notebooks/c1*.qmd"
@@ -19,9 +21,8 @@ author:
     affiliation: "World Bank"
   
 keywords:
-  - Quarto
-  - Typst
-  - format
+  - Fiscal policy
+  - AI for social science
 
 website: 
   sidebar: 
@@ -46,6 +47,8 @@ website:
       - section: "Codebook Evaluation"
         contents:
           - notebooks/c1_measure_id.qmd
+      - section: "Progress Reports"
+        contents: reports/
 
 
 title-block-banner: true
