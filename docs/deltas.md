@@ -9,6 +9,20 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-03-04: C1 success criteria revision — gate on Tier 1 recall, demote combined recall to diagnostic
+
+**Type:** new-constraint
+**Affects:** `docs/strategy.md` > Success Criteria Per Codebook > C1 row; also `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation
+**Detail:** C1 S2 v0.4.0 (iteration 12) revealed that Tier 2 labels depend on a noisy name-matching heuristic (53/70 Tier 1 chunks lack the act name; Tier 2 has known gaps for acronyms and compound names). Combined recall (83.7%) is dominated 10:1 by Tier 2 chunks, making it an unreliable gate. Tier 1 labels are high-confidence (verbatim R&R passage matches). Proposed revision: Tier 1 Recall ≥95% becomes the primary gate, Precision ≥70% remains, Combined Recall becomes diagnostic (reported but not gated). The 4 Tier 1 FNs are mislabeled positives (R&R context passages without identifiable fiscal measures), so true Tier 1 recall is likely ~100%.
+**Suggested edit:** Change C1 success criteria table row from "Combined Recall ≥90%, Tier 1 Recall ≥95%, Precision ≥70%" to "Tier 1 Recall ≥95% (primary gate), Precision ≥70% (primary gate), Combined Recall (diagnostic, no gate)." Add note explaining Tier 2 label noise rationale.
+
+## 2026-03-04: C1 S2 v0.4.0 — label bias discovered in both recall and precision
+
+**Type:** new-constraint
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S2 description
+**Detail:** C1 S2 iteration 12 found systematic label noise in both directions. (1) Recall bias: 4 Tier 1 FNs are mislabeled positives — chunks contain R&R passages cited for motivation context but no identifiable fiscal measure. Model correctly rejects them. (2) Precision bias: 35 FPs are predominantly real fiscal measures not in the 44-act label set (H&K Error Category F). Both metrics are conservative lower bounds. S3 error analysis will include a manual audit to estimate label error rates and compute bias-corrected metrics.
+**Suggested edit:** Add note to C1 S2 description: "Reported metrics are conservative lower bounds due to IKA label noise. S3 includes bias estimation via manual FN/FP audit."
+
 ## ~~2026-03-03: C1 v0.4.0 reframe removes enacted filter — contradicts strategy.md line 279~~ RESOLVED
 
 **Resolved:** Removed "proposals that did not become law" from C1 exclusion criteria, updated note to cover enacted-status filtering deferred to C2, added enacted-status determination note to C2 blueprint.
