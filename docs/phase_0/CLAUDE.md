@@ -102,7 +102,7 @@ This document contains the complete R&R + H&K framework specification including:
 
 - ✅ `codebook_stage_0.R` — Created (codebook loading/validation)
 - ✅ `codebook_stage_1.R` — Created (behavioral tests runner)
-- ✅ `codebook_stage_2.R` — Created (zero-shot evaluation + LOOCV for few-shot)
+- ✅ `codebook_stage_2.R` — Created (zero-shot evaluation; LOOCV reserved for S3 few-shot ablation)
 - ✅ `codebook_stage_3.R` — Created (error analysis)
 - ✅ `behavioral_tests.R` — Created (H&K test suite implementation)
 - ✅ `generate_c1_examples.R` — Created (C1 few-shot example generation)
@@ -199,7 +199,7 @@ For each codebook (C1-C4):
 
 1. **S0**: Draft codebook YAML based on R&R methodology
 2. **S1**: Run behavioral tests, iterate on codebook until pass
-3. **S2**: Run LOOCV evaluation, document baseline metrics
+3. **S2**: Run zero-shot evaluation on chunk test set, document baseline metrics
 4. **S3**: Conduct error analysis, identify failure patterns
 5. **Decision**: If metrics acceptable → proceed; if not → improve S0 or (last resort) S4
 6. **Document**: Produce Quarto notebook with results

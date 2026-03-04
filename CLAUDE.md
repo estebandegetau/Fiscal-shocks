@@ -38,7 +38,7 @@ The pipeline implements 4 domain-specific codebooks (C1-C4), each processed thro
 The contribution is **methodological**, not just dataset scale:
 - Novel synthesis: First application of H&K validation framework to economic history/fiscal policy domain
 - Shows LLMs can transfer across countries without retraining using country-agnostic codebooks
-- Quantifies performance via H&K behavioral tests, LOOCV evaluation, and expert agreement rates
+- Quantifies performance via H&K behavioral tests, zero-shot evaluation, and expert agreement rates
 - Identifies where codebooks succeed and struggle
 - Methodology replicable beyond Southeast Asia
 
@@ -60,7 +60,7 @@ The contribution is **methodological**, not just dataset scale:
 
 - **S0 (Codebook Prep)**: Machine-readable definitions with domain expert approval
 - **S1 (Behavioral Tests)**: Legal outputs (100%), memorization (100%), order sensitivity (<5%)
-- **S2 (Zero-Shot Eval)**: LOOCV on 44 US acts with primary metrics per codebook
+- **S2 (Zero-Shot Eval)**: Single-pass zero-shot classification on chunk test set with primary metrics per codebook
 - **S3 (Error Analysis)**: Documented failure patterns and ablation studies
 - **S4 (Fine-Tuning)**: Last resort if S3 shows unacceptable patterns AND codebook improvements exhausted
 
@@ -135,9 +135,9 @@ The project uses `{targets}` for reproducible data pipelines with `crew` for par
 3. **Processing**: Text cleaning → Document structuring → Paragraph extraction
 4. **Filtering**: Keyword-based relevance filtering using `relevance_keys`
 
-Key targets: `erp_urls`, `budget_urls`, `annual_report_urls`, `us_text`, `documents`, `paragraphs`, `relevant_paragraphs`
+Key targets: `us_urls`, `us_text`, `us_body`, `aligned_data`, `chunks`, `c1_chunk_data`, `c1_s2_test_set`, `c1_s2_results`, `c1_s2_eval`
 
-Additional production pipeline targets will be added for codebook evaluation and robustness testing. See `_targets.R` for the complete list.
+See `_targets.R` for the complete list.
 
 ### Multi-Language Integration
 - R calls Python scripts via `system2()` with JSON file interchange

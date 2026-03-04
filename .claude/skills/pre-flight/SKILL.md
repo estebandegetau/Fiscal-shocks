@@ -97,7 +97,7 @@ If the provider is not `anthropic`, add an **INFO** note (not a failure): "Non-A
 Count expected API calls for the target:
 
 - **S1 targets**: Count behavioral test cases (Test I: N chunks, Test II: N classes, Test III: N examples, Test IV: N orderings x N chunks)
-- **S2 targets**: 44 LOOCV folds (44 API calls)
+- **S2 targets**: One API call per chunk in test set. Check `tar_read(c1_s2_test_set) |> nrow()` (or estimate from cached value if test set is outdated)
 - **S3 targets**: Count ablation components + Test V/VI/VII inputs
 
 Estimate cost at the model's pricing. For known models:

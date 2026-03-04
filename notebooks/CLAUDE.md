@@ -5,7 +5,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 ## Configuration
 
 - `_metadata.yml` -- Shared Quarto defaults for all notebooks (HTML output, `echo: true`, `code-fold`, `lightbox`, `self-contained`).
-- `_targets.yaml` -- Points the targets store to `/workspaces/Fiscal-shocks/_targets` so notebooks resolve `tar_read()` correctly.
+- `_targets.yaml` -- Points the targets store to `/home/user/Fiscal-shocks/_targets` so notebooks resolve `tar_read()` correctly.
 
 ## Active Notebooks
 
@@ -122,7 +122,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 
 - **S0:** Binary classification (FISCAL_MEASURE vs. NOT_FISCAL_MEASURE). Codebook structure summary, negative example stratification, evaluation data counts.
 - **S1:** Behavioral test results (legal outputs, memorization, order invariance). Pass/fail dashboard.
-- **S2:** Zero-shot evaluation metrics with 95% bootstrap CIs (Recall, Precision, F1, Accuracy, Specificity). Confusion matrix. Per-act recall breakdown. Error details.
+- **S2:** Zero-shot chunk classification metrics with 95% bootstrap CIs (Recall, Precision, F1, Accuracy, Specificity). Confusion matrix. Per-act recall breakdown. Error details.
 - **S3:** Error category distribution, ablation study (component importance ranking), Test VI (generic labels), Test VII (swapped labels to check definition vs. name following).
 - **Status:** Reads from pipeline targets (`c1_s1_results`, `c1_s2_results`, `c1_s2_eval`, `c1_s3_results`). Notebook structure is complete; results depend on pipeline execution.
 
