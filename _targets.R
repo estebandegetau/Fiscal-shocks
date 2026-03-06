@@ -290,14 +290,20 @@ list(
     packages = "tidyverse"
   ),
 
-  # S3: Error analysis (Tests V-VII + ablation)
+  # S3: Error analysis — assemble test set (no API calls)
+  tar_target(
+    c1_s3_test_set,
+    assemble_s3_test_set(c1_chunk_data, n_tier1 = 10, n_tier2 = 10, n_negatives = 20),
+    packages = c("tidyverse")
+  ),
+
+  # S3: Error analysis — Tests V-VII + ablation (API calls)
   tar_target(
     c1_s3_results,
     run_error_analysis(
       c1_codebook,
       c1_s2_results,
-      aligned_data,
-      c1_chunk_data,
+      c1_s3_test_set,
       model = llm_model,
       provider = llm_provider,
       base_url = llm_base_url,

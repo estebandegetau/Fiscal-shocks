@@ -4,56 +4,97 @@
 # Runs H&K Tests V-VII, ablation studies, and error categorization
 # using the H&K taxonomy (A-F).
 
+#' Assemble S3 test set for error analysis
+#'
+#' Samples chunks for S3 behavioral tests (V-VII) and ablation study.
+#' Follows the same pattern as assemble_zero_shot_test_set() for S2.
+#'
+#' @param c1_chunk_data List from assemble_c1_chunk_data() with tier1, tier2, negatives
+#' @param n_tier1 Integer Tier 1 chunks to sample (default 10)
+#' @param n_tier2 Integer Tier 2 chunks to sample (default 10)
+#' @param n_negatives Integer negative chunks to sample (default 20)
+#' @param seed Integer random seed (default 20251206)
+#' @return Tibble with columns chunk_id, doc_id, text, tier, act_name, year,
+#'   true_label, text_type — same schema as c1_s2_test_set
+#' @export
+assemble_s3_test_set <- function(c1_chunk_data,
+                                 n_tier1 = 10,
+                                 n_tier2 = 10,
+                                 n_negatives = 20,
+                                 seed = 20251206) {
+  positive_label <- "FISCAL_MEASURE"
+  negative_label <- "NOT_FISCAL_MEASURE"
+
+  set.seed(seed)
+
+  # Sample Tier 1
+  tier1_n <- min(n_tier1, nrow(c1_chunk_data$tier1))
+  tier1_set <- c1_chunk_data$tier1 |>
+    dplyr::slice_sample(n = tier1_n) |>
+    dplyr::select(chunk_id, doc_id, text, act_name, year) |>
+    dplyr::mutate(tier = 1L, true_label = positive_label, text_type = "positive")
+
+  # Sample Tier 2
+  tier2_n <- min(n_tier2, nrow(c1_chunk_data$tier2))
+  tier2_set <- c1_chunk_data$tier2 |>
+    dplyr::slice_sample(n = tier2_n) |>
+    dplyr::select(chunk_id, doc_id, text, act_name, year) |>
+    dplyr::mutate(tier = 2L, true_label = positive_label, text_type = "positive")
+
+  # Sample negatives
+  neg_n <- min(n_negatives, nrow(c1_chunk_data$negatives))
+  neg_set <- c1_chunk_data$negatives |>
+    dplyr::slice_sample(n = neg_n) |>
+    dplyr::select(chunk_id, doc_id, text, year) |>
+    dplyr::mutate(
+      act_name = NA_character_,
+      tier = NA_integer_,
+      true_label = negative_label,
+      text_type = "negative"
+    )
+
+  test_set <- dplyr::bind_rows(tier1_set, tier2_set, neg_set) |>
+    dplyr::select(chunk_id, doc_id, text, tier, act_name, year,
+                  true_label, text_type)
+
+  message(sprintf(
+    "S3 test set assembled: %d Tier 1, %d Tier 2, %d negative (%d total)",
+    nrow(tier1_set), nrow(tier2_set), nrow(neg_set), nrow(test_set)
+  ))
+
+  test_set
+}
+
+
 #' Run S3 error analysis for a codebook
 #'
 #' Orchestrates Tests V-VII, ablation study, and error categorization.
-#' Requires S2 LOOCV results as input.
+#' Requires S2 results and a pre-assembled S3 test set as input.
 #'
 #' @param codebook A validated codebook object
 #' @param s2_results Tibble from run_zero_shot() (S2 results)
-#' @param aligned_data Tibble with aligned labels
-#' @param c1_chunk_data List from prepare_c1_chunk_data() with tier1, tier2, negatives
+#' @param s3_test_set Tibble from assemble_s3_test_set()
 #' @param model Character model ID (default: "claude-haiku-4-5-20251001")
-#' @param n_ablation_texts Integer texts for ablation study (default 40)
-#' @param seed Integer random seed (default 20251206)
 #' @return List with test results, ablation, and error categorization
 #' @export
 run_error_analysis <- function(codebook,
                                s2_results,
-                               aligned_data,
-                               c1_chunk_data,
+                               s3_test_set,
                                model = "claude-haiku-4-5-20251001",
-                               n_ablation_texts = 40,
-                               seed = 20251206,
                                provider = "anthropic",
                                base_url = NULL,
                                api_key = NULL) {
-  set.seed(seed)
 
   message("Running S3 error analysis...")
 
-  # Build balanced test set from chunk tier data
-  # Use Tier 1+2 chunks as positives, negative chunks as negatives
-  pos_pool <- dplyr::bind_rows(c1_chunk_data$tier1, c1_chunk_data$tier2)
-  neg_pool <- c1_chunk_data$negatives
-
-  pos_texts <- pos_pool |>
-    dplyr::slice_sample(n = min(n_ablation_texts / 2, nrow(pos_pool)))
-
-  neg_texts <- neg_pool |>
-    dplyr::slice_sample(n = min(n_ablation_texts / 2, nrow(neg_pool)))
-
-  ablation_texts <- c(pos_texts$text, neg_texts$text)
-  valid_labels <- get_valid_labels(codebook)
-  ablation_labels <- c(
-    rep(valid_labels[1], nrow(pos_texts)),
-    rep(valid_labels[length(valid_labels)], nrow(neg_texts))
-  )
+  # Extract texts and labels from pre-assembled test set
+  test_texts <- s3_test_set$text
+  true_labels <- s3_test_set$true_label
 
   # Test V: Exclusion Criteria Consistency (H&K 4-combo design)
   message("  Test V: Exclusion Criteria Consistency...")
   test_v <- test_exclusion_criteria(
-    codebook, ablation_texts, ablation_labels, model,
+    codebook, test_texts, true_labels, model,
     provider = provider, base_url = base_url, api_key = api_key
   )
   for (i in seq_len(nrow(test_v$combos))) {
@@ -67,7 +108,7 @@ run_error_analysis <- function(codebook,
   # Test VI: Generic Labels
   message("  Test VI: Generic Labels...")
   test_vi <- test_generic_labels(
-    codebook, ablation_texts, ablation_labels, model,
+    codebook, test_texts, true_labels, model,
     provider = provider, base_url = base_url, api_key = api_key
   )
   message(sprintf("    Original accuracy: %.1f%%, Generic accuracy: %.1f%%",
@@ -78,7 +119,7 @@ run_error_analysis <- function(codebook,
   # Test VII: Swapped Labels
   message("  Test VII: Swapped Labels...")
   test_vii <- test_swapped_labels(
-    codebook, ablation_texts, ablation_labels, model,
+    codebook, test_texts, true_labels, model,
     provider = provider, base_url = base_url, api_key = api_key
   )
   message(sprintf("    Follows definitions: %.1f%%, Follows names: %.1f%%",
@@ -89,7 +130,7 @@ run_error_analysis <- function(codebook,
   # Ablation Study
   message("  Running ablation study...")
   ablation <- run_ablation_study(
-    codebook, ablation_texts, ablation_labels, model,
+    codebook, test_texts, true_labels, model,
     provider = provider, base_url = base_url, api_key = api_key
   )
 
@@ -106,8 +147,7 @@ run_error_analysis <- function(codebook,
     ablation = ablation,
     error_categories = error_categories,
     model = model,
-    n_ablation_texts = length(ablation_texts),
-    seed = seed,
+    n_test_texts = length(test_texts),
     timestamp = Sys.time()
   )
 }

@@ -468,10 +468,10 @@ test_order_invariance <- function(codebook,
 #' Tests whether the model correctly follows exclusion criteria using four
 #' conditions: (normal/modified document) x (normal/modified codebook).
 #'
-#' A monetary policy distractor paragraph is appended to each test document.
-#' A corresponding exclusion rule is added to the codebook. The model should
-#' only apply the exclusion when BOTH the trigger (distractor) and the rule
-#' are present (combo 4).
+#' A semantically irrelevant distractor sentence (per H&K: "elephant") is
+#' appended to each test document. A corresponding exclusion rule is added
+#' to the codebook. The model should only apply the exclusion when BOTH the
+#' trigger (distractor) and the rule are present (combo 4).
 #'
 #' Combo 1: Normal doc + Normal codebook -> true_labels (baseline)
 #' Combo 2: Modified doc + Normal codebook -> true_labels (distractor irrelevant)
@@ -483,7 +483,7 @@ test_order_invariance <- function(codebook,
 #' @param test_texts Character vector of test passages
 #' @param true_labels Character vector of true labels
 #' @param model Character model ID
-#' @param distractor_text Character monetary policy paragraph to inject
+#' @param distractor_text Character semantically irrelevant sentence to inject
 #' @param exclusion_criterion Character exclusion rule to add to codebook
 #' @return List with per-combo accuracy and overall consistency
 #' @export
@@ -495,17 +495,10 @@ test_exclusion_criteria <- function(
     provider = "anthropic",
     base_url = NULL,
     api_key = NULL,
-    distractor_text = paste(
-      "The Federal Reserve's Open Market Committee voted unanimously to raise",
-      "the federal funds rate by 75 basis points to a target range of 3.00 to",
-      "3.25 percent, citing persistent inflationary pressures and a tight labor",
-      "market. This marks the third consecutive rate increase of this magnitude."
-    ),
+    distractor_text = "And we also support elephants.",
     exclusion_criterion = paste(
-      "Passages that discuss Federal Reserve monetary policy actions",
-      "(interest rate changes, open market operations, reserve requirements)",
-      "are NOT fiscal measures, even if they appear alongside fiscal content.",
-      "Classify any such passage as NOT_FISCAL_MEASURE."
+      "IMPORTANT NOTE: This category does not apply if the document",
+      "discusses an elephant."
     )
 ) {
   valid_labels <- get_valid_labels(codebook)
