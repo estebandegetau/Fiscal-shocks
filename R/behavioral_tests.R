@@ -495,6 +495,7 @@ test_exclusion_criteria <- function(
     provider = "anthropic",
     base_url = NULL,
     api_key = NULL,
+    baseline_preds = NULL,
     distractor_text = "And we also support elephants.",
     exclusion_criterion = paste(
       "IMPORTANT NOTE: This category does not apply if the document",
@@ -538,9 +539,14 @@ test_exclusion_criteria <- function(
 
   # Classify once per combo, build summary and details together
   all_details <- purrr::map(combos, function(combo) {
-    preds <- classify_batch_for_test(combo$cb, combo$texts, model,
-                                        provider = provider, base_url = base_url,
-                                        api_key = api_key)
+    # Reuse cached baseline for combo 1 (normal_doc_normal_cb)
+    if (!is.null(baseline_preds) && combo$name == "normal_doc_normal_cb") {
+      preds <- baseline_preds
+    } else {
+      preds <- classify_batch_for_test(combo$cb, combo$texts, model,
+                                          provider = provider, base_url = base_url,
+                                          api_key = api_key)
+    }
     tibble::tibble(
       combo = combo$name,
       text_id = seq_along(combo$texts),
@@ -591,7 +597,8 @@ test_generic_labels <- function(codebook,
                                 model = "claude-haiku-4-5-20251001",
                                 provider = "anthropic",
                                 base_url = NULL,
-                                api_key = NULL) {
+                                api_key = NULL,
+                                baseline_preds = NULL) {
   # Create a modified codebook with generic labels
   generic_codebook <- codebook
   label_map <- list()  # original -> generic
@@ -611,10 +618,14 @@ test_generic_labels <- function(codebook,
     )
   }
 
-  # Classify with original labels
-  original_preds <- classify_batch_for_test(codebook, test_texts, model,
-                                            provider = provider, base_url = base_url,
-                                            api_key = api_key)
+  # Classify with original labels (reuse cached baseline if available)
+  original_preds <- if (!is.null(baseline_preds)) {
+    baseline_preds
+  } else {
+    classify_batch_for_test(codebook, test_texts, model,
+                            provider = provider, base_url = base_url,
+                            api_key = api_key)
+  }
 
   # Classify with generic labels
   generic_preds <- classify_batch_for_test(generic_codebook, test_texts, model,
@@ -666,7 +677,8 @@ test_swapped_labels <- function(codebook,
                                 model = "claude-haiku-4-5-20251001",
                                 provider = "anthropic",
                                 base_url = NULL,
-                                api_key = NULL) {
+                                api_key = NULL,
+                                baseline_preds = NULL) {
   n_classes <- length(codebook$classes)
   if (n_classes < 2) {
     stop("Need at least 2 classes for swapped label test")
@@ -685,10 +697,14 @@ test_swapped_labels <- function(codebook,
       codebook$classes[[source_idx]]$negative_clarification
   }
 
-  # Classify with original
-  original_preds <- classify_batch_for_test(codebook, test_texts, model,
-                                            provider = provider, base_url = base_url,
-                                            api_key = api_key)
+  # Classify with original (reuse cached baseline if available)
+  original_preds <- if (!is.null(baseline_preds)) {
+    baseline_preds
+  } else {
+    classify_batch_for_test(codebook, test_texts, model,
+                            provider = provider, base_url = base_url,
+                            api_key = api_key)
+  }
 
   # Classify with swapped definitions
   swapped_preds <- classify_batch_for_test(swapped_codebook, test_texts, model,

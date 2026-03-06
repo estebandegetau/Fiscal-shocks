@@ -99,11 +99,16 @@ get_valid_labels <- function(codebook) {
 #' @param exclude_components Named list of components to exclude. Keys are class
 #'   labels, values are character vectors of component names to exclude
 #'   (e.g., list(FISCAL_MEASURE = c("clarification_3", "negative_clarification_2")))
+#' @param exclude_sections Character vector of section types to omit globally
+#'   across all classes. Valid values: "label_definition", "clarifications",
+#'   "negative_clarifications", "positive_examples", "negative_examples",
+#'   "output_instructions". Used for H&K-style component-type ablation.
 #' @return Character string with the assembled system prompt
 #' @export
 construct_codebook_prompt <- function(codebook,
                                       class_order = NULL,
-                                      exclude_components = NULL) {
+                                      exclude_components = NULL,
+                                      exclude_sections = NULL) {
   parts <- character()
 
   # Task description and instructions
@@ -119,45 +124,53 @@ construct_codebook_prompt <- function(codebook,
 
   for (cls in classes) {
     parts <- c(parts, sprintf("## %s\n\n", cls$label))
-    parts <- c(parts, sprintf("**Definition:** %s\n\n", cls$label_definition))
+    if (!"label_definition" %in% exclude_sections) {
+      parts <- c(parts, sprintf("**Definition:** %s\n\n", cls$label_definition))
+    }
+
+    # Per-class component exclusion list (used by clarifications and negative_clarifications)
+    excl <- exclude_components[[cls$label]]
 
     # Clarifications (with optional exclusion)
-    excl <- exclude_components[[cls$label]]
-    clar_items <- cls$clarification
-    if (!is.null(excl)) {
-      excl_idx <- grep("^clarification_", excl)
-      if (length(excl_idx) > 0) {
-        excl_nums <- as.integer(sub("clarification_", "", excl[excl_idx]))
-        clar_items <- clar_items[-excl_nums[excl_nums <= length(clar_items)]]
+    if (!"clarifications" %in% exclude_sections) {
+      clar_items <- cls$clarification
+      if (!is.null(excl)) {
+        excl_idx <- grep("^clarification_", excl)
+        if (length(excl_idx) > 0) {
+          excl_nums <- as.integer(sub("clarification_", "", excl[excl_idx]))
+          clar_items <- clar_items[-excl_nums[excl_nums <= length(clar_items)]]
+        }
       }
-    }
-    if (length(clar_items) > 0) {
-      parts <- c(parts, "**Inclusion criteria:**\n")
-      for (item in clar_items) {
-        parts <- c(parts, sprintf("- %s\n", item))
+      if (length(clar_items) > 0) {
+        parts <- c(parts, "**Inclusion criteria:**\n")
+        for (item in clar_items) {
+          parts <- c(parts, sprintf("- %s\n", item))
+        }
+        parts <- c(parts, "\n")
       }
-      parts <- c(parts, "\n")
     }
 
     # Negative clarifications (with optional exclusion)
-    neg_clar_items <- cls$negative_clarification
-    if (!is.null(excl)) {
-      excl_idx <- grep("^negative_clarification_", excl)
-      if (length(excl_idx) > 0) {
-        excl_nums <- as.integer(sub("negative_clarification_", "", excl[excl_idx]))
-        neg_clar_items <- neg_clar_items[-excl_nums[excl_nums <= length(neg_clar_items)]]
+    if (!"negative_clarifications" %in% exclude_sections) {
+      neg_clar_items <- cls$negative_clarification
+      if (!is.null(excl)) {
+        excl_idx <- grep("^negative_clarification_", excl)
+        if (length(excl_idx) > 0) {
+          excl_nums <- as.integer(sub("negative_clarification_", "", excl[excl_idx]))
+          neg_clar_items <- neg_clar_items[-excl_nums[excl_nums <= length(neg_clar_items)]]
+        }
       }
-    }
-    if (length(neg_clar_items) > 0) {
-      parts <- c(parts, "**Exclusion criteria:**\n")
-      for (item in neg_clar_items) {
-        parts <- c(parts, sprintf("- %s\n", item))
+      if (length(neg_clar_items) > 0) {
+        parts <- c(parts, "**Exclusion criteria:**\n")
+        for (item in neg_clar_items) {
+          parts <- c(parts, sprintf("- %s\n", item))
+        }
+        parts <- c(parts, "\n")
       }
-      parts <- c(parts, "\n")
     }
 
     # Positive examples with expected JSON output
-    if (length(cls$positive_examples) > 0) {
+    if (!"positive_examples" %in% exclude_sections && length(cls$positive_examples) > 0) {
       parts <- c(parts, sprintf("**Positive examples for %s:**\n\n", cls$label))
       for (j in seq_along(cls$positive_examples)) {
         ex <- cls$positive_examples[[j]]
@@ -176,7 +189,7 @@ construct_codebook_prompt <- function(codebook,
     }
 
     # Negative examples with reasoning (no JSON block)
-    if (length(cls$negative_examples) > 0) {
+    if (!"negative_examples" %in% exclude_sections && length(cls$negative_examples) > 0) {
       parts <- c(parts, sprintf("**Negative examples (not %s):**\n\n", cls$label))
       for (j in seq_along(cls$negative_examples)) {
         ex <- cls$negative_examples[[j]]
@@ -188,7 +201,9 @@ construct_codebook_prompt <- function(codebook,
   }
 
   # Output instructions
-  parts <- c(parts, "# Output Instructions\n\n", codebook$output_instructions, "\n")
+  if (!"output_instructions" %in% exclude_sections) {
+    parts <- c(parts, "# Output Instructions\n\n", codebook$output_instructions, "\n")
+  }
 
   paste(parts, collapse = "")
 }

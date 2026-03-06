@@ -91,11 +91,19 @@ run_error_analysis <- function(codebook,
   test_texts <- s3_test_set$text
   true_labels <- s3_test_set$true_label
 
+  # Compute baseline predictions once, share across all tests
+  message("  Computing baseline predictions...")
+  baseline_preds <- classify_batch_for_test(
+    codebook, test_texts, model,
+    provider = provider, base_url = base_url, api_key = api_key
+  )
+
   # Test V: Exclusion Criteria Consistency (H&K 4-combo design)
   message("  Test V: Exclusion Criteria Consistency...")
   test_v <- test_exclusion_criteria(
     codebook, test_texts, true_labels, model,
-    provider = provider, base_url = base_url, api_key = api_key
+    provider = provider, base_url = base_url, api_key = api_key,
+    baseline_preds = baseline_preds
   )
   for (i in seq_len(nrow(test_v$combos))) {
     r <- test_v$combos[i, ]
@@ -109,7 +117,8 @@ run_error_analysis <- function(codebook,
   message("  Test VI: Generic Labels...")
   test_vi <- test_generic_labels(
     codebook, test_texts, true_labels, model,
-    provider = provider, base_url = base_url, api_key = api_key
+    provider = provider, base_url = base_url, api_key = api_key,
+    baseline_preds = baseline_preds
   )
   message(sprintf("    Original accuracy: %.1f%%, Generic accuracy: %.1f%%",
                   test_vi$original_accuracy * 100,
@@ -120,18 +129,20 @@ run_error_analysis <- function(codebook,
   message("  Test VII: Swapped Labels...")
   test_vii <- test_swapped_labels(
     codebook, test_texts, true_labels, model,
-    provider = provider, base_url = base_url, api_key = api_key
+    provider = provider, base_url = base_url, api_key = api_key,
+    baseline_preds = baseline_preds
   )
   message(sprintf("    Follows definitions: %.1f%%, Follows names: %.1f%%",
                   test_vii$follows_definitions_rate * 100,
                   test_vii$follows_names_rate * 100))
   message(sprintf("    %s", test_vii$interpretation))
 
-  # Ablation Study
+  # Ablation Study (H&K Table 4 design)
   message("  Running ablation study...")
   ablation <- run_ablation_study(
     codebook, test_texts, true_labels, tiers = s3_test_set$tier,
-    model = model, provider = provider, base_url = base_url, api_key = api_key
+    model = model, provider = provider, base_url = base_url, api_key = api_key,
+    baseline_preds = baseline_preds
   )
 
   # Error Categorization (H&K taxonomy)
@@ -153,11 +164,11 @@ run_error_analysis <- function(codebook,
 }
 
 
-#' Run ablation study on codebook components
+#' Run ablation study on codebook components (H&K Table 4 design)
 #'
-#' Removes each clarification and negative_clarification one at a time,
-#' re-classifies test texts, and measures the change in precision, recall,
-#' F1, accuracy, and tier-level recall.
+#' Tests 6 ablation conditions matching Halterman & Keith (2025) Table 4:
+#' progressively removing component types (label definitions, examples,
+#' clarifications, output instructions) and measuring metric degradation.
 #'
 #' @param codebook A validated codebook object
 #' @param test_texts Character vector of test passages
@@ -168,9 +179,10 @@ run_error_analysis <- function(codebook,
 #' @param provider Character API provider
 #' @param base_url Optional base URL for API
 #' @param api_key Optional API key
-#' @return Tibble with per-component baseline and ablated metrics:
-#'   accuracy, precision, recall, f1, tier1_recall, tier2_recall,
-#'   and the corresponding drop columns. Sorted by recall_drop descending.
+#' @param baseline_preds Optional character vector of pre-computed baseline
+#'   predictions. If NULL, computes baseline internally.
+#' @return Tibble with per-condition metrics and drops. One row per ablation
+#'   condition, sorted by f1_drop descending.
 #' @export
 run_ablation_study <- function(codebook,
                                test_texts,
@@ -179,12 +191,12 @@ run_ablation_study <- function(codebook,
                                model = "claude-haiku-4-5-20251001",
                                provider = "anthropic",
                                base_url = NULL,
-                               api_key = NULL) {
+                               api_key = NULL,
+                               baseline_preds = NULL) {
 
   labels <- unique(true_labels)
 
   # Local helper: compute full metrics from prediction vectors
-
   calc_metrics <- function(preds, true_labels, tiers) {
     results_tbl <- tibble::tibble(true_label = true_labels, pred_label = preds)
     m <- compute_binary_metrics(results_tbl, labels)
@@ -205,107 +217,89 @@ run_ablation_study <- function(codebook,
          f1 = m$f1, tier1_recall = t1r, tier2_recall = t2r)
   }
 
-  # Baseline
-  baseline_preds <- classify_batch_for_test(codebook, test_texts, model,
-                                            provider = provider,
-                                            base_url = base_url,
-                                            api_key = api_key)
+  # Baseline (reuse cached predictions if available)
+  if (is.null(baseline_preds)) {
+    baseline_preds <- classify_batch_for_test(codebook, test_texts, model,
+                                              provider = provider,
+                                              base_url = base_url,
+                                              api_key = api_key)
+  }
   baseline_m <- calc_metrics(baseline_preds, true_labels, tiers)
 
-  results <- list()
+  # H&K Table 4 ablation conditions
+  conditions <- list(
+    list(
+      condition = "full",
+      sections_removed = character(0)
+    ),
+    list(
+      condition = "no_label_def",
+      sections_removed = "label_definition"
+    ),
+    list(
+      condition = "no_examples",
+      sections_removed = c("positive_examples", "negative_examples")
+    ),
+    list(
+      condition = "no_examples_no_clarifications",
+      sections_removed = c("positive_examples", "negative_examples",
+                           "clarifications", "negative_clarifications")
+    ),
+    list(
+      condition = "no_output_no_examples_no_neg_clar",
+      sections_removed = c("output_instructions", "positive_examples",
+                           "negative_examples", "negative_clarifications")
+    ),
+    list(
+      condition = "all_removed",
+      sections_removed = c("label_definition", "output_instructions",
+                           "positive_examples", "negative_examples",
+                           "clarifications", "negative_clarifications")
+    )
+  )
 
-  for (cls in codebook$classes) {
-    # Ablate each clarification
-    for (j in seq_along(cls$clarification)) {
-      exclude <- stats::setNames(
-        list(paste0("clarification_", j)),
-        cls$label
-      )
+  results <- purrr::map(conditions, function(cond) {
+    if (length(cond$sections_removed) == 0) {
+      # Full baseline — reuse cached predictions
+      abl_m <- baseline_m
+    } else {
       ablated_prompt <- construct_codebook_prompt(
-        codebook, exclude_components = exclude
+        codebook, exclude_sections = cond$sections_removed
       )
       ablated_preds <- classify_batch_for_test(
         codebook, test_texts, model, system_prompt = ablated_prompt,
         provider = provider, base_url = base_url, api_key = api_key
       )
       abl_m <- calc_metrics(ablated_preds, true_labels, tiers)
-
-      results[[length(results) + 1]] <- tibble::tibble(
-        class = cls$label,
-        component_type = "clarification",
-        component_idx = j,
-        component_text = cls$clarification[[j]],
-        baseline_accuracy = baseline_m$accuracy,
-        baseline_precision = baseline_m$precision,
-        baseline_recall = baseline_m$recall,
-        baseline_f1 = baseline_m$f1,
-        baseline_tier1_recall = baseline_m$tier1_recall,
-        baseline_tier2_recall = baseline_m$tier2_recall,
-        ablated_accuracy = abl_m$accuracy,
-        ablated_precision = abl_m$precision,
-        ablated_recall = abl_m$recall,
-        ablated_f1 = abl_m$f1,
-        ablated_tier1_recall = abl_m$tier1_recall,
-        ablated_tier2_recall = abl_m$tier2_recall,
-        accuracy_drop = baseline_m$accuracy - abl_m$accuracy,
-        precision_drop = baseline_m$precision - abl_m$precision,
-        recall_drop = baseline_m$recall - abl_m$recall,
-        f1_drop = baseline_m$f1 - abl_m$f1,
-        tier1_recall_drop = baseline_m$tier1_recall - abl_m$tier1_recall,
-        tier2_recall_drop = baseline_m$tier2_recall - abl_m$tier2_recall
-      )
     }
 
-    # Ablate each negative_clarification
-    for (j in seq_along(cls$negative_clarification)) {
-      exclude <- stats::setNames(
-        list(paste0("negative_clarification_", j)),
-        cls$label
-      )
-      ablated_prompt <- construct_codebook_prompt(
-        codebook, exclude_components = exclude
-      )
-      ablated_preds <- classify_batch_for_test(
-        codebook, test_texts, model, system_prompt = ablated_prompt,
-        provider = provider, base_url = base_url, api_key = api_key
-      )
-      abl_m <- calc_metrics(ablated_preds, true_labels, tiers)
+    tibble::tibble(
+      condition = cond$condition,
+      sections_removed = paste(cond$sections_removed, collapse = ", "),
+      accuracy = abl_m$accuracy,
+      precision = abl_m$precision,
+      recall = abl_m$recall,
+      f1 = abl_m$f1,
+      tier1_recall = abl_m$tier1_recall,
+      tier2_recall = abl_m$tier2_recall,
+      accuracy_drop = baseline_m$accuracy - abl_m$accuracy,
+      precision_drop = baseline_m$precision - abl_m$precision,
+      recall_drop = baseline_m$recall - abl_m$recall,
+      f1_drop = baseline_m$f1 - abl_m$f1,
+      tier1_recall_drop = baseline_m$tier1_recall - abl_m$tier1_recall,
+      tier2_recall_drop = baseline_m$tier2_recall - abl_m$tier2_recall
+    )
+  })
 
-      results[[length(results) + 1]] <- tibble::tibble(
-        class = cls$label,
-        component_type = "negative_clarification",
-        component_idx = j,
-        component_text = cls$negative_clarification[[j]],
-        baseline_accuracy = baseline_m$accuracy,
-        baseline_precision = baseline_m$precision,
-        baseline_recall = baseline_m$recall,
-        baseline_f1 = baseline_m$f1,
-        baseline_tier1_recall = baseline_m$tier1_recall,
-        baseline_tier2_recall = baseline_m$tier2_recall,
-        ablated_accuracy = abl_m$accuracy,
-        ablated_precision = abl_m$precision,
-        ablated_recall = abl_m$recall,
-        ablated_f1 = abl_m$f1,
-        ablated_tier1_recall = abl_m$tier1_recall,
-        ablated_tier2_recall = abl_m$tier2_recall,
-        accuracy_drop = baseline_m$accuracy - abl_m$accuracy,
-        precision_drop = baseline_m$precision - abl_m$precision,
-        recall_drop = baseline_m$recall - abl_m$recall,
-        f1_drop = baseline_m$f1 - abl_m$f1,
-        tier1_recall_drop = baseline_m$tier1_recall - abl_m$tier1_recall,
-        tier2_recall_drop = baseline_m$tier2_recall - abl_m$tier2_recall
-      )
-    }
-  }
+  ablation_results <- dplyr::bind_rows(results)
 
-  ablation_results <- dplyr::bind_rows(results) |>
-    dplyr::arrange(dplyr::desc(recall_drop))
-
+  # Log summary (skip baseline row for max drop)
+  ablated_rows <- ablation_results |> dplyr::filter(condition != "full")
   message(sprintf(
-    "  Ablation: %d components tested. Max recall drop: %.1f%%, Max precision drop: %.1f%%",
-    nrow(ablation_results),
-    max(ablation_results$recall_drop, na.rm = TRUE) * 100,
-    max(ablation_results$precision_drop, na.rm = TRUE) * 100
+    "  Ablation: %d conditions tested. Max F1 drop: %.1f%%, Max recall drop: %.1f%%",
+    nrow(ablated_rows),
+    max(ablated_rows$f1_drop, na.rm = TRUE) * 100,
+    max(ablated_rows$recall_drop, na.rm = TRUE) * 100
   ))
 
   ablation_results
