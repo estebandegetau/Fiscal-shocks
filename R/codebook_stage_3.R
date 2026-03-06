@@ -69,16 +69,16 @@ assemble_s3_test_set <- function(c1_chunk_data,
 #' Run S3 error analysis for a codebook
 #'
 #' Orchestrates Tests V-VII, ablation study, and error categorization.
-#' Requires S2 results and a pre-assembled S3 test set as input.
+#' Requires pre-computed error categories and a pre-assembled S3 test set.
 #'
 #' @param codebook A validated codebook object
-#' @param s2_results Tibble from run_zero_shot() (S2 results)
+#' @param error_categories Tibble from categorize_errors_hk() (pre-computed)
 #' @param s3_test_set Tibble from assemble_s3_test_set()
 #' @param model Character model ID (default: "claude-haiku-4-5-20251001")
 #' @return List with test results, ablation, and error categorization
 #' @export
 run_error_analysis <- function(codebook,
-                               s2_results,
+                               error_categories,
                                s3_test_set,
                                model = "claude-haiku-4-5-20251001",
                                provider = "anthropic",
@@ -144,10 +144,6 @@ run_error_analysis <- function(codebook,
     model = model, provider = provider, base_url = base_url, api_key = api_key,
     baseline_preds = baseline_preds
   )
-
-  # Error Categorization (H&K taxonomy)
-  message("  Categorizing errors...")
-  error_categories <- categorize_errors_hk(s2_results)
 
   message("\nS3 error analysis complete.")
 
