@@ -42,9 +42,9 @@ This document contains the complete R&R + H&K framework specification including:
 | Stage | Purpose | Pass Criteria |
 |-------|---------|---------------|
 | **S0: Codebook Prep** | Machine-readable YAML definitions | Domain expert approval |
-| **S1: Behavioral Tests** | Model sanity checks | Legal outputs (100%), memorization (100%), order sensitivity (<5%) |
+| **S1: Behavioral Tests (I-IV)** | Model sanity checks | Legal outputs (100%), memorization (100%), order sensitivity (<5%) |
 | **S2: Zero-Shot Eval** | Performance measurement | Single-pass zero-shot on 44 US acts, meet primary metrics |
-| **S3: Error Analysis** | Failure mode identification | Documented patterns, ablation studies |
+| **S3: Error Analysis** | Tests V-VII, ablation, error categorization | Tests V-VII pass consistency thresholds, H&K Table 4 ablation, error categories documented |
 | **S4: Fine-Tuning** | Last resort improvement | Only if S3 shows unacceptable patterns AND codebook improvements exhausted |
 
 **Critical Note**: Fine-tuning is avoided to preserve country-agnostic transferability.
