@@ -135,7 +135,7 @@ The project uses `{targets}` for reproducible data pipelines with `crew` for par
 3. **Processing**: Text cleaning → Document structuring → Paragraph extraction
 4. **Filtering**: Keyword-based relevance filtering using `relevance_keys`
 
-Key targets: `us_urls`, `us_text`, `us_body`, `aligned_data`, `chunks`, `c1_chunk_data`, `c1_s2_test_set`, `c1_s2_results`, `c1_s2_eval`
+Key targets: `us_urls`, `us_text`, `us_body`, `aligned_data`, `chunks`, `c1_chunk_data`, `c1_s2_test_set`, `c1_s2_results`, `c1_s2_eval`, `c1_s3_test_set`, `c1_s3_results`
 
 See `_targets.R` for the complete list.
 

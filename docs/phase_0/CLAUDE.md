@@ -134,7 +134,8 @@ tar_target(c4_codebook, load_validate_codebook("prompts/c4_magnitude.yml"))
 tar_target(c1_s1_results, run_behavioral_tests_s1(c1_codebook, aligned_data))
 tar_target(c1_s2_test_set, assemble_zero_shot_test_set(aligned_data, c1_chunk_data))
 tar_target(c1_s2_results, run_zero_shot(c1_codebook, c1_s2_test_set, type = "C1"))
-tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s2_results, aligned_data))
+tar_target(c1_s3_test_set, assemble_s3_test_set(c1_chunk_data))
+tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s2_results, c1_s3_test_set))
 
 # Final LLM-generated shock dataset
 tar_target(shocks_llm, aggregate_outputs(c1_s2_results, c2_s2_results,
