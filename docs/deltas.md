@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-03-07: Automated H&K error categorization removed, S3 decoupled from S2
+
+**Type:** correction
+**Affects:** `docs/strategy.md` > Files to Create > `codebook_stage_3.R` description (line 353); also `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 S3 Error Analysis Plan (line 289); C3 S3 Error Analysis Plan (line 317); C4 S3 Error Analysis Plan (line 331); S3 general description (line 194)
+**Detail:** Removed `categorize_errors_hk()` from `R/codebook_stage_3.R` and the `s2_results` parameter from `run_error_analysis()`. The automated categorization binned almost everything into category E and could not distinguish mislabeled ground truth (B) from genuine model confusion (E) — a poor substitute for what H&K intended as manual expert review. Removing it decouples `c1_s3_results` from `c1_s2_results`, so behavioral tests and ablation can run independently of zero-shot evaluation. The H&K taxonomy (A-F) remains a valid *framework* for manual error review; only the automated heuristic implementation was removed.
+**Suggested edit:** Update line 353 from "Run Tests V-VII, ablation studies, and error categorization using H&K 6-category taxonomy (A-F)" to "Run Tests V-VII and ablation studies." Update line 194 and per-codebook S3 plans to note that error categorization is manual, not automated. Per-codebook "Error categories" lists (lines 289, 317, 331) are domain-specific failure modes and remain valid as manual review checklists.
+
 ## 2026-03-04: C1 success criteria revision — gate on Tier 1 recall, demote combined recall to diagnostic
 
 **Type:** new-constraint

@@ -123,7 +123,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - **S0:** Binary classification (FISCAL_MEASURE vs. NOT_FISCAL_MEASURE). Codebook structure summary, negative example stratification, evaluation data counts.
 - **S1:** Behavioral test results (legal outputs, memorization, order invariance). Pass/fail dashboard.
 - **S2:** Zero-shot chunk classification metrics with 95% bootstrap CIs (Recall, Precision, F1, Accuracy, Specificity). Confusion matrix. Per-act recall breakdown. Error details.
-- **S3:** Error category distribution, Test V (exclusion criteria consistency), Test VI (generic labels), Test VII (swapped labels), and ablation study (H&K Table 4 component-type ablation).
+- **S3:** Test V (exclusion criteria consistency), Test VI (generic labels), Test VII (swapped labels), and ablation study (H&K Table 4 component-type ablation).
 - **Status:** Reads from pipeline targets (`c1_s1_results`, `c1_s2_results`, `c1_s2_eval`, `c1_s3_results`). Notebook structure is complete; results depend on pipeline execution.
 
 ## Archived Notebooks

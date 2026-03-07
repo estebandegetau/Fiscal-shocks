@@ -302,7 +302,6 @@ list(
     c1_s3_results,
     run_error_analysis(
       c1_codebook,
-      c1_s2_results,
       c1_s3_test_set,
       model = llm_model,
       provider = llm_provider,

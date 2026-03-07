@@ -259,21 +259,6 @@ if (nrow(s2_eval$error_analysis) > 0) {
 s3 <- tar_read(c1_s3_results)
 ```
 
-### Error Category Distribution
-
-```{r}
-#| label: s3-error-categories
-#| eval: false
-
-s3$error_categories |>
-  count(error_category) |>
-  mutate(pct = n / sum(n) * 100) |>
-  gt() |>
-  cols_label(error_category = "Category", n = "Count", pct = "%") |>
-  fmt_number(columns = pct, decimals = 1) |>
-  gt_theme_report()
-```
-
 ### Test V: Exclusion Criteria Consistency
 
 H&K Test V injects a monetary policy distractor into documents and adds a

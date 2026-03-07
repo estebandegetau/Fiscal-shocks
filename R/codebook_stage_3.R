@@ -1,8 +1,7 @@
 # Codebook Stage 3: Error Analysis
 # Generic functions reusable for C1-C4
 #
-# Runs H&K Tests V-VII, ablation studies, and error categorization
-# using the H&K taxonomy (A-F).
+# Runs H&K Tests V-VII and ablation studies.
 
 #' Assemble S3 test set for error analysis
 #'
@@ -68,17 +67,14 @@ assemble_s3_test_set <- function(c1_chunk_data,
 
 #' Run S3 error analysis for a codebook
 #'
-#' Orchestrates Tests V-VII, ablation study, and error categorization.
-#' Requires S2 results and a pre-assembled S3 test set as input.
+#' Orchestrates Tests V-VII and ablation study.
 #'
 #' @param codebook A validated codebook object
-#' @param s2_results Tibble from run_zero_shot() (S2 results)
 #' @param s3_test_set Tibble from assemble_s3_test_set()
 #' @param model Character model ID (default: "claude-haiku-4-5-20251001")
 #' @return List with test results, ablation, and error categorization
 #' @export
 run_error_analysis <- function(codebook,
-                               s2_results,
                                s3_test_set,
                                model = "claude-haiku-4-5-20251001",
                                provider = "anthropic",
@@ -145,10 +141,6 @@ run_error_analysis <- function(codebook,
     baseline_preds = baseline_preds
   )
 
-  # Error Categorization (H&K taxonomy)
-  message("  Categorizing errors...")
-  error_categories <- categorize_errors_hk(s2_results)
-
   message("\nS3 error analysis complete.")
 
   list(
@@ -156,7 +148,6 @@ run_error_analysis <- function(codebook,
     test_vi = test_vi,
     test_vii = test_vii,
     ablation = ablation,
-    error_categories = error_categories,
     model = model,
     n_test_texts = length(test_texts),
     timestamp = Sys.time()
@@ -306,80 +297,3 @@ run_ablation_study <- function(codebook,
 }
 
 
-#' Categorize errors using H&K taxonomy
-#'
-#' Classifies each error from S2 LOOCV into H&K error categories:
-#' - A: Correct (agreement)
-#' - B: Incorrect ground truth (label error in training data)
-#' - C: Document error (extraction/OCR artifact)
-#' - D: Non-compliance (invalid output format)
-#' - E: Semantics/reasoning error (model misunderstanding)
-#' - F: Ambiguous (genuinely debatable case)
-#'
-#' Uses heuristics for automatic categorization; manual review recommended.
-#'
-#' @param s2_results Tibble from run_zero_shot()
-#' @return Tibble with error categorization
-#' @export
-categorize_errors_hk <- function(s2_results) {
-  errors <- s2_results |>
-    dplyr::filter(!correct)
-
-  if (nrow(errors) == 0) {
-    message("No errors to categorize.")
-    return(tibble::tibble(
-      fold = integer(), act_name = character(), text_type = character(),
-      true_label = character(), pred_label = character(),
-      error_category = character(), category_reasoning = character()
-    ))
-  }
-
-  categorized <- errors |>
-    dplyr::mutate(
-      error_category = dplyr::case_when(
-        # D: Non-compliance — NA predictions (parsing failures)
-        is.na(pred_label) ~ "D_non_compliance",
-
-        # C: Document error — NA reasoning or very short with no confidence
-        is.na(reasoning) | (nchar(reasoning) < 10 & is.na(confidence)) ~ "C_document_error",
-
-        # E: Semantics/reasoning — model returned valid but wrong label
-        # This is the default for well-formed but incorrect predictions
-        !is.na(pred_label) & pred_label != true_label ~ "E_semantics_reasoning",
-
-        # Fallback
-        TRUE ~ "F_ambiguous"
-      ),
-      category_reasoning = dplyr::case_when(
-        error_category == "D_non_compliance" ~
-          "Model failed to return valid JSON or valid label",
-        error_category == "C_document_error" ~
-          "Possible extraction artifact or insufficient text",
-        error_category == "E_semantics_reasoning" ~
-          "Model returned valid label but misclassified the passage",
-        error_category == "F_ambiguous" ~
-          "Requires manual review to determine error source",
-        TRUE ~ NA_character_
-      )
-    )
-
-  # Summary
-  cat_summary <- categorized |>
-    dplyr::count(error_category) |>
-    dplyr::mutate(pct = round(n / sum(n) * 100, 1))
-
-  message("Error category distribution:")
-  for (i in seq_len(nrow(cat_summary))) {
-    message(sprintf("  %s: %d (%.1f%%)",
-                    cat_summary$error_category[i],
-                    cat_summary$n[i],
-                    cat_summary$pct[i]))
-  }
-
-  categorized |>
-    dplyr::select(
-      fold, act_name, year, text_type,
-      true_label, pred_label, confidence, reasoning,
-      error_category, category_reasoning
-    )
-}
