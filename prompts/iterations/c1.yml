@@ -789,3 +789,86 @@ iterations:
       reproducible appendix for the paper. This reframes C1 evaluation from
       "model underperforms" to "measurement instrument is noisy, and the
       model likely passes once label noise is accounted for."
+
+  - iteration: 13
+    codebook_version: "0.4.0"
+    date: "2026-03-09"
+    git_commit: "b99dbe8"
+    model: "meta-llama/llama-3.3-70b-instruct"
+    provider: "openrouter"
+    stage: "s3"
+    changes: >
+      Pipeline test run with Llama to validate C1 S3 implementation. Two
+      pipeline changes committed during the run: (1) bceb65e — Added H&K
+      Figure 4 metrics to S3 behavioral tests (V, VI, VII): all_combos_correct_rate
+      for Test V, original_f1/generic_f1/f1_difference for Test VI,
+      swapped_f1/swapped_accuracy for Test VII. (2) b99dbe8 — Simplified S3
+      ablation from 6 to 4 conditions: dropped no_examples (redundant with full
+      when codebook has no examples) and no_output_no_examples_no_neg_clar
+      (ablating output_instructions tests format compliance, not task
+      understanding); added no_clarifications to test combined impact; fixed
+      all_removed to preserve output_instructions as infrastructure.
+    results:
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            modified_doc_modified_cb: 0.3750
+            modified_doc_normal_cb: 0.6250
+            normal_doc_modified_cb: 0.5750
+            normal_doc_normal_cb: 0.6250
+          overall_consistency: 0.5500
+        - test: "VI_generic_labels"
+          original_accuracy: 0.8065
+          generic_accuracy: 0.7368
+          change_rate: 0.0667
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.5714
+          follows_names_rate: 0.4286
+          interpretation: "Model appears to follow definitions rather than label names"
+      ablation:
+        - condition: "full"
+          accuracy: 0.8065
+          f1: 0.8125
+          tier1_recall: 1.0000
+          tier2_recall: 0.5000
+        - condition: "no_label_def"
+          accuracy: 0.7500
+          accuracy_drop: 0.0565
+          f1: 0.7778
+          tier1_recall: 1.0000
+          tier2_recall: 0.6250
+        - condition: "no_examples"
+          accuracy: 0.8000
+          accuracy_drop: 0.0065
+          f1: 0.8205
+          tier1_recall: 1.0000
+          tier2_recall: 0.7500
+        - condition: "no_examples_no_clarifications"
+          accuracy: 0.6216
+          accuracy_drop: 0.1848
+          f1: 0.7200
+          tier1_recall: 1.0000
+          tier2_recall: 0.8889
+        - condition: "no_output_no_examples_no_neg_clar"
+          note: "No data — condition ran but produced no metrics (pipeline error)"
+        - condition: "all_removed"
+          note: "No data — condition ran but produced no metrics (pipeline error)"
+      error_categories: null
+    interpretation: >
+      Pipeline test run with Llama revealed two design obstacles: (i) H&K
+      Figure 4 metrics (all_combos_correct_rate, F1-based comparisons for
+      Tests VI/VII) were missing from the pipeline, preventing compatible
+      measurement with the H&K framework. These were added in bceb65e.
+      (ii) Two ablation conditions (no_output_no_examples_no_neg_clar and
+      all_removed) are incompatible with our design because we require
+      structured JSON output, while H&K only require the label output.
+      Removing output_instructions breaks JSON parsing, so these conditions
+      test format compliance rather than task understanding. Simplified to
+      4 meaningful conditions in b99dbe8, keeping output_instructions as
+      non-ablatable infrastructure. Two conditions still produced no data,
+      indicating further pipeline fixes are needed before a clean run.
+    decision: >
+      Update pipeline to fix the remaining data gaps in the two failed
+      ablation conditions, then re-run C1 S3 on Llama to verify the
+      implemented changes are coded correctly before switching to Haiku
+      for the formal S3 evaluation.
