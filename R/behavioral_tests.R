@@ -790,10 +790,15 @@ test_swapped_labels <- function(codebook,
 #' @param texts Character vector of texts
 #' @param model Model ID
 #' @param system_prompt Optional override system prompt
-#' @return Character vector of predicted labels
+#' @param return_details If TRUE, return a tibble with full model output
+#'   (label, reasoning, raw_response, measure_name, stop_reason) instead of
+#'   a character vector of labels
+#' @return Character vector of predicted labels (default), or tibble if
+#'   return_details = TRUE
 #' @keywords internal
 classify_batch_for_test <- function(codebook, texts, model,
                                     system_prompt = NULL,
+                                    return_details = FALSE,
                                     provider = "anthropic",
                                     base_url = NULL,
                                     api_key = NULL) {
@@ -801,9 +806,9 @@ classify_batch_for_test <- function(codebook, texts, model,
     system_prompt <- construct_codebook_prompt(codebook)
   }
 
-  purrr::map_chr(texts, function(txt) {
+  results <- purrr::map(texts, function(txt) {
     tryCatch({
-      result <- classify_with_codebook(
+      classify_with_codebook(
         text = txt,
         codebook = codebook,
         model = model,
@@ -813,11 +818,26 @@ classify_batch_for_test <- function(codebook, texts, model,
         base_url = base_url,
         api_key = api_key
       )
-      result$label %||% NA_character_
     }, error = function(e) {
-      NA_character_
+      list(label = NA_character_, reasoning = NA_character_,
+           raw_response = NA_character_, measure_name = NA_character_,
+           stop_reason = NA_character_, confidence = 0.0,
+           agreement_rate = NA_real_)
     })
   })
+
+  if (return_details) {
+    tibble::tibble(
+      text_id = seq_along(texts),
+      label = purrr::map_chr(results, ~ .x$label %||% NA_character_),
+      reasoning = purrr::map_chr(results, ~ .x$reasoning %||% NA_character_),
+      raw_response = purrr::map_chr(results, ~ .x$raw_response %||% NA_character_),
+      measure_name = purrr::map_chr(results, ~ .x$measure_name %||% NA_character_),
+      stop_reason = purrr::map_chr(results, ~ .x$stop_reason %||% NA_character_)
+    )
+  } else {
+    purrr::map_chr(results, ~ .x$label %||% NA_character_)
+  }
 }
 
 

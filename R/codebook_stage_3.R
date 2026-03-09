@@ -89,10 +89,12 @@ run_error_analysis <- function(codebook,
 
   # Compute baseline predictions once, share across all tests
   message("  Computing baseline predictions...")
-  baseline_preds <- classify_batch_for_test(
+  baseline_details <- classify_batch_for_test(
     codebook, test_texts, model,
+    return_details = TRUE,
     provider = provider, base_url = base_url, api_key = api_key
   )
+  baseline_preds <- baseline_details$label
 
   # Test V: Exclusion Criteria Consistency (H&K 4-combo design)
   message("  Test V: Exclusion Criteria Consistency...")
@@ -153,6 +155,7 @@ run_error_analysis <- function(codebook,
     test_vi = test_vi,
     test_vii = test_vii,
     ablation = ablation,
+    baseline_details = baseline_details,
     model = model,
     n_test_texts = length(test_texts),
     timestamp = Sys.time()
