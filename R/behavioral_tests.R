@@ -570,10 +570,17 @@ test_exclusion_criteria <- function(
 
   overall <- sum(combos_tbl$n_correct) / sum(combos_tbl$n_total)
 
+  # Per-text: fraction where ALL 4 combos are correct (H&K Figure 4)
+  all_correct <- all_details |>
+    dplyr::group_by(text_id) |>
+    dplyr::summarise(all_correct = all(correct), .groups = "drop")
+  all_combos_correct_rate <- mean(all_correct$all_correct)
+
   list(
     test = "V_exclusion_criteria",
     combos = combos_tbl,
     overall_consistency = overall,
+    all_combos_correct_rate = all_combos_correct_rate,
     distractor_text = distractor_text,
     exclusion_criterion = exclusion_criterion,
     details = all_details
@@ -643,12 +650,28 @@ test_generic_labels <- function(codebook,
   generic_acc <- mean(generic_preds_mapped == true_labels, na.rm = TRUE)
   change_rate <- mean(original_preds != generic_preds_mapped, na.rm = TRUE)
 
+  # F1 scores for H&K Figure 4
+  labels <- vapply(codebook$classes, function(c) c$label, character(1))
+  original_metrics <- compute_binary_metrics(
+    tibble::tibble(true_label = true_labels, pred_label = original_preds),
+    labels
+  )
+  generic_metrics <- compute_binary_metrics(
+    tibble::tibble(true_label = true_labels, pred_label = generic_preds_mapped),
+    labels
+  )
+
   list(
     test = "VI_generic_labels",
     original_accuracy = original_acc,
     generic_accuracy = generic_acc,
     accuracy_difference = original_acc - generic_acc,
     change_rate = change_rate,
+    original_f1 = original_metrics$f1,
+    generic_f1 = generic_metrics$f1,
+    f1_difference = original_metrics$f1 - generic_metrics$f1,
+    original_metrics = original_metrics,
+    generic_metrics = generic_metrics,
     label_map = label_map,
     details = tibble::tibble(
       text_id = seq_along(test_texts),
@@ -728,10 +751,20 @@ test_swapped_labels <- function(codebook,
   )
   follows_names <- mean(swapped_preds == original_preds, na.rm = TRUE)
 
+  # F1/accuracy of swapped predictions vs ground truth (H&K Figure 4)
+  labels <- vapply(codebook$classes, function(c) c$label, character(1))
+  swapped_metrics <- compute_binary_metrics(
+    tibble::tibble(true_label = true_labels, pred_label = swapped_preds),
+    labels
+  )
+
   list(
     test = "VII_swapped_labels",
     follows_definitions_rate = follows_definitions,
     follows_names_rate = follows_names,
+    swapped_f1 = swapped_metrics$f1,
+    swapped_accuracy = swapped_metrics$accuracy,
+    swapped_metrics = swapped_metrics,
     interpretation = if (follows_names > follows_definitions) {
       "WARNING: Model appears to rely on label names rather than definitions"
     } else {

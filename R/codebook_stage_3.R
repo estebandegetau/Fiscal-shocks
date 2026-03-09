@@ -108,6 +108,8 @@ run_error_analysis <- function(codebook,
   }
   message(sprintf("    Overall consistency: %.1f%%",
                   test_v$overall_consistency * 100))
+  message(sprintf("    All combos correct: %.1f%%",
+                  test_v$all_combos_correct_rate * 100))
 
   # Test VI: Generic Labels
   message("  Test VI: Generic Labels...")
@@ -120,6 +122,8 @@ run_error_analysis <- function(codebook,
                   test_vi$original_accuracy * 100,
                   test_vi$generic_accuracy * 100))
   message(sprintf("    Change rate: %.1f%%", test_vi$change_rate * 100))
+  message(sprintf("    Original F1: %.3f, Generic F1: %.3f",
+                  test_vi$original_f1, test_vi$generic_f1))
 
   # Test VII: Swapped Labels
   message("  Test VII: Swapped Labels...")
@@ -132,6 +136,7 @@ run_error_analysis <- function(codebook,
                   test_vii$follows_definitions_rate * 100,
                   test_vii$follows_names_rate * 100))
   message(sprintf("    %s", test_vii$interpretation))
+  message(sprintf("    Swapped F1: %.3f", test_vii$swapped_f1))
 
   # Ablation Study (H&K Table 4 design)
   message("  Running ablation study...")
