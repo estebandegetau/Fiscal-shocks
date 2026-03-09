@@ -66,7 +66,7 @@ The contribution is **methodological**, not just dataset scale:
 
 **Target metrics per codebook:**
 
-- C1 (Measure ID): Combined Recall ≥90%, Tier 1 Recall ≥95%, Precision ≥70%
+- C1 (Measure ID): Tier 1 Recall ≥95%, Combined Recall ≥90%, Precision ≥70% (all diagnostic benchmarks, not hard gates — S3 manual audit is the actual gate)
 - C2 (Motivation): Weighted F1 ≥70%, Exogenous Precision ≥85%
 - C3 (Timing): Exact Quarter ≥85%, ±1 Quarter ≥95%
 - C4 (Magnitude): MAPE <30%, Sign Accuracy ≥95%

@@ -261,7 +261,7 @@ This is a **stronger** research contribution than just "we labeled more acts."
 ### Phase 1A: Deployment (Weeks 1-4)
 
 - [ ] Download Malaysia government documents (1980-2022)
-- [ ] Run PDF extraction (Docling or pdftools)
+- [ ] Run PDF extraction (PyMuPDF or pdftools)
 - [ ] Deploy codebooks C1-C4 with US-validated definitions
 - [ ] Generate candidate measure dataset
 - [ ] Document any extraction failures

@@ -31,7 +31,7 @@ The project progresses through four phases. Each phase builds on the previous on
 | **Phase 2** | Malaysia Pilot | Deploy codebooks to Malaysia documents (1980-2022) with expert validation | Expert-validated Malaysia fiscal shock dataset |
 | **Phase 3** | Regional Scaling | Extend to Indonesia, Thailand, Philippines, Vietnam | Multi-country fiscal shock panel |
 
-**Phase 0 vs. Phase 1 distinction:** Phase 0 validates codebook accuracy using LOOCV on a cost-efficient subset of chunks (relevant + irrelevant text around the 44 labeled acts). Phase 1 tests whether the validated codebooks can recover `us_shocks.csv` when run on the full document corpus, which is far more expensive but validates production readiness.
+**Phase 0 vs. Phase 1 distinction:** Phase 0 validates codebook accuracy using zero-shot evaluation on a cost-efficient subset of chunks (relevant + irrelevant text around the 44 labeled acts). Phase 1 tests whether the validated codebooks can recover `us_shocks.csv` when run on the full document corpus, which is far more expensive but validates production readiness.
 
 ---
 
@@ -115,7 +115,7 @@ Known act recall (expanded year window) is **84.8%** (39/46 acts). The 7 missing
 | **S0: Codebook Prep** | Machine-readable definitions | Label, definition, clarifications, +/- examples, output instructions |
 | **S1: Behavioral Tests** | Model sanity checks | Legal output (100%), memorization (100%), order sensitivity (<5%) |
 | **S2: Zero-Shot Eval** | Performance measurement | Evaluation on 43 US acts, compute primary metrics |
-| **S3: Error Analysis** | Failure mode identification | Ablation studies, swapped label tests, lexical heuristic detection |
+| **S3: Error Analysis** | Failure mode identification | Ablation studies (4 conditions), behavioral Tests V-VII, manual error review |
 | **S4: Fine-Tuning** | Last resort improvement | LoRA if S3 shows unacceptable performance (see note below) |
 
 **Critical Note on S4 (Fine-Tuning):**
@@ -165,15 +165,17 @@ C2 (Motivation)
 
 | Codebook | Primary Metric | Target | Critical |
 |----------|---------------|--------|----------|
-| C1: Measure ID | Combined Recall (Tier 1+2) | ≥90% | Don't miss real acts |
-| C1: Measure ID | Tier 1 Recall | ≥95% | Gold standard passages |
-| C1: Measure ID | Precision | ≥70% | FPs filtered by C2-C4 |
-| C2: Motivation | Weighted F1 | ≥70% | LOOCV baseline |
+| C1: Measure ID | Tier 1 Recall | ≥95% | Diagnostic benchmark (label noise limits hard gating) |
+| C1: Measure ID | Combined Recall (Tier 1+2) | ≥90% | Diagnostic benchmark (Tier 2 labels are noisy) |
+| C1: Measure ID | Precision | ≥70% | Diagnostic benchmark (FPs include unlabeled real acts) |
+| C2: Motivation | Weighted F1 | ≥70% | Zero-shot baseline |
 | C2: Motivation | Exogenous Precision | ≥85% | Critical for shock series |
 | C3: Timing | Exact Quarter | ≥85% | R&R accuracy |
 | C3: Timing | ±1 Quarter | ≥95% | Acceptable tolerance |
 | C4: Magnitude | MAPE | <30% | R&R accuracy |
 | C4: Magnitude | Sign Accuracy | ≥95% | Critical (tax increase vs cut) |
+
+**Note on C1 metrics.** C1 metrics are diagnostic benchmarks, not hard gates. The ground truth label set (44 acts identified in chunks via name matching) is noisy: Tier 2 matching misses acronyms and compound names, and FPs include real fiscal measures absent from the 44-act set (H&K Error Category F). S3 manual error audit is the actual stage gate for C1.
 
 ### Per H&K Stage (All Codebooks)
 
@@ -191,7 +193,7 @@ C2 (Motivation)
 
 When a codebook fails to meet its success criteria after S2 evaluation:
 
-1. **Review S3 error analysis.** Identify the dominant error category using H&K taxonomy (A: format, B: scope, C: omission, D: non-compliance, E: semantics/reasoning, F: ambiguous ground truth).
+1. **Review S3 error analysis.** Identify the dominant error pattern using H&K taxonomy (A-F) via manual review of misclassified cases. Automated categorization is not used — H&K intended this as expert judgment, not heuristic binning.
 2. **If Category D (non-compliance):** Improve output instructions (format, valid labels reminder).
 3. **If Category E (semantics/reasoning):** Improve clarifications and add worked examples targeting the identified confusion pattern.
 4. **Run ablation** to find the weakest codebook component. Strengthen it with additional clarifications or examples.
@@ -255,7 +257,7 @@ Each R&R step is implemented and validated independently before proceeding to th
 | Step | Description | Deliverable |
 |------|-------------|-------------|
 | 1 | ✅ Source compilation complete (360 docs, 104K pages, 4 sources) | `notebooks/verify_body.qmd` updated |
-| 2 | Implement C1 (Measure ID) through H&K S0-S3 | `notebooks/c1_measure_id.qmd` |
+| 2 | 🔄 C1 (Measure ID): code implemented, S1 complete, S2 evaluated, S3 in progress | `notebooks/c1_measure_id.qmd` |
 | 3 | Implement C2 (Motivation) through H&K S0-S3 | `notebooks/c2_motivation.qmd` |
 | 4 | Implement C3 (Timing) through H&K S0-S3 | `notebooks/c3_timing.qmd` |
 | 5 | Implement C4 (Magnitude) through H&K S0-S3 | `notebooks/c4_magnitude.qmd` |
@@ -280,13 +282,13 @@ Chunks with relevance keys but no Tier 1/2 match are excluded from evaluation (a
 
 **Chunk parameters.** 10-page sliding window with 3-page overlap. Chunks shorter than 100 characters are filtered as extraction artifacts (`min_chars = 100`).
 
-**S0 Codebook Design.** Operationalize the "significant mention" rule from `docs/literature_review.md` Section 1.2. Two classes: `FISCAL_MEASURE`, `NOT_FISCAL_MEASURE`. Inclusion criteria: legislated liability changes, executive depreciation orders, any action receiving more than incidental reference in primary sources, retrospective references with substantive detail about provisions. Exclusion criteria: extensions of existing provisions without rate changes, withholding-only adjustments, automatic renewals. Note: enacted-status filtering and retrospective exclusion are handled by C2 (motivation classification), not C1. C1 is a recall-optimized relevance filter that captures enacted, proposed, and under-consideration measures.
+**S0 Codebook Design.** Operationalize the "significant mention" rule from `docs/literature_review.md` Section 1.2. Scope: enacted changes in tax liabilities only, not spending changes (per R&R). Two classes: `FISCAL_MEASURE`, `NOT_FISCAL_MEASURE`. Inclusion criteria: legislated liability changes, executive actions affecting tax liabilities (depreciation orders, ministerial decrees, regulatory changes, official policy directives), any action receiving more than incidental reference in primary sources, retrospective references with substantive detail about provisions. Exclusion criteria: extensions of existing provisions without rate changes, withholding-only adjustments, automatic renewals, summary lists or tables enumerating measures without substantive discussion. Country-agnostic language in definitions and clarifications enables transfer learning; US-specific terms appear only in examples. Note: enacted-status filtering and retrospective exclusion are handled by C2 (motivation classification), not C1. C1 is a recall-optimized relevance filter that captures enacted, proposed, and under-consideration measures.
 
-**S1 Behavioral Tests.** Test I: valid JSON on chunk-length inputs (~20 chunks: 10 Tier 1+2, 10 negative). Test II: feed codebook definitions back as input, verify correct label recovery. Test III: feed positive/negative examples, verify correct label. Test IV: original, reversed, and shuffled class orderings on chunk-length inputs (binary codebooks have a degenerate shuffled = reversed case). Pass criteria: 100% legal outputs, 100% memorization, <5% order sensitivity.
+**S1 Behavioral Tests (complete).** Test I: valid JSON on chunk-length inputs (~20 chunks: 10 Tier 1+2, 10 negative). Test II: feed codebook definitions back as input, verify correct label recovery. Test III: feed positive/negative examples, verify correct label. Test IV: original, reversed, and shuffled class orderings on chunk-length inputs (binary codebooks have a degenerate shuffled = reversed case). Pass criteria: 100% legal outputs, 100% memorization, <5% order sensitivity.
 
-**S2 Zero-Shot Eval.** Ground truth: `aligned_data` (43 acts, see note below) with chunk-level evaluation via `c1_chunk_data`. Single-pass zero-shot classification of all evaluation chunks (no LOOCV, no few-shot examples). LOOCV is reserved for few-shot ablation in S3. Pipeline targets: `c1_s2_test_set` (chunk sampling) → `c1_s2_results` (API classification) → `c1_s2_eval` (metrics). Primary metrics: Combined Recall (Tier 1+2) ≥90%, Tier 1 Recall ≥95%, Precision ≥70%. Bootstrap 1000 resamples for 95% CIs. Per-act recall reported for error analysis.
+**S2 Zero-Shot Eval.** Ground truth: `aligned_data` (43 acts, see note below) with chunk-level evaluation via `c1_chunk_data`. Single-pass zero-shot classification of all evaluation chunks (no LOOCV, no few-shot examples). LOOCV is reserved for few-shot ablation in S3. Pipeline targets: `c1_s2_test_set` (chunk sampling) → `c1_s2_results` (API classification) → `c1_s2_eval` (metrics). Primary metrics (diagnostic benchmarks, not hard gates): Tier 1 Recall ≥95%, Combined Recall (Tier 1+2) ≥90%, Precision ≥70%. All metrics are conservative bounds due to label noise; S3 manual audit is the actual stage gate. Bootstrap 1000 resamples for 95% CIs. Per-act recall reported for error analysis.
 
-**S3 Error Analysis Plan.** Primary risk: context dilution (measure buried in 40K tokens of surrounding text) and false positive inflation (chunks with fiscal vocabulary but no specific act). Test V: H&K 4-combo design — (normal/modified document) × (normal/modified codebook). Injects a distractor paragraph and corresponding exclusion rule, verifies the model only applies the exclusion when both trigger and rule are present. Ablation on all codebook components. Error categories following H&K taxonomy (A-F).
+**S3 Error Analysis Plan.** Primary risk: context dilution (measure buried in 40K tokens of surrounding text) and false positive inflation (chunks with fiscal vocabulary but no specific act). Test V: H&K 4-combo design — (normal/modified document) × (normal/modified codebook). Injects a distractor paragraph and corresponding exclusion rule, verifies the model only applies the exclusion when both trigger and rule are present. Ablation uses 4 conditions: full, no_label_def, no_examples, no_examples_no_clarifications. Output instructions are non-ablatable infrastructure (ablating them breaks JSON parsing, testing format compliance rather than task understanding; H&K's 5th condition assumes plain-text label output). Error review follows H&K taxonomy (A-F) via manual inspection.
 
 **Migration from Legacy Code.** Reuse `R/functions_llm.R` (`call_claude_api()`), `R/functions_self_consistency.R` (self-consistency sampling), `R/prepare_training_data.R` (`align_labels_shocks()`), `R/make_chunks.R` (`make_chunks()`). New: `R/identify_chunk_tiers.R` for tier identification.
 
@@ -302,7 +304,7 @@ Chunks with relevance keys but no Tier 1/2 match are excluded from evaluation (a
 
 **S3 Error Analysis Plan.** Tests VI/VII are critical for C2: replace labels with generic `LABEL_1`..`LABEL_4` (Test VI), then swap definitions across labels (Test VII) to detect reliance on semantically loaded label names rather than definitions. Primary risk: "deficit" appearing in passage text triggers `DEFICIT_DRIVEN` even when R&R methodology says `SPENDING_DRIVEN` (1-year temporal rule). Ablation on negative clarifications for boundary cases between each class pair.
 
-**Migration from Legacy Code.** Adapt `R/model_b_loocv.R` (162+ lines of LOOCV framework). Reuse `R/generate_few_shot_examples.R` stratification logic for balanced class representation in few-shot prompts.
+**Migration from Legacy Code.** Adapt `R/model_b_loocv.R` (LOOCV framework, reusable for S3 few-shot ablation if zero-shot performance requires examples). Reuse `R/generate_few_shot_examples.R` stratification logic for balanced class representation in few-shot prompts.
 
 **Iteration Strategy.** If F1 <70%: examine confusion matrix for most confused class pair (likely countercyclical/long-run); strengthen distinguishing clarifications. If exogenous precision <85%: examine endogenous acts misclassified as exogenous; add negative examples for the specific confusion pattern.
 
@@ -340,18 +342,18 @@ Chunks with relevance keys but no Tier 1/2 match are excluded from evaluation (a
 
 ### Codebooks (`/prompts/`)
 
-- `c1_measure_id.yml`
+- ✅ `c1_measure_id.yml`
 - `c2_motivation.yml`
 - `c3_timing.yml`
 - `c4_magnitude.yml`
 
 ### H&K Stage Functions (`/R/`)
 
-- `codebook_stage_0.R` — Load YAML codebook, validate required fields (label, label_definition, clarification, negative_clarification, output_instructions) and optional fields (description, positive_examples, negative_examples). Examples are optional to preserve country-agnostic transferability — H&K ablation shows examples are the highest-impact individual component, but US-specific examples would reduce cross-country applicability (see Cross-Country Transfer Strategy). Few-shot evaluation with country-specific examples is available as an S3 ablation to quantify the precision cost. Construct LLM prompt from structured components. Returns a validated codebook object.
-- `codebook_stage_1.R` — Run Tests I-IV on a codebook. Takes codebook object + test documents. Returns tibble of test results with pass/fail per test.
-- `codebook_stage_2.R` — Generalized LOOCV for any codebook type (C1-C4). Extends the pattern from `model_b_loocv.R`. Accepts codebook, aligned data, and codebook type. Returns predictions + metrics with bootstrap CIs.
-- `codebook_stage_3.R` — Run Tests V-VII, ablation studies, and error categorization using H&K 6-category taxonomy (A-F). Returns error analysis report with ablation results.
-- `behavioral_tests.R` — Shared test functions: `test_legal_outputs()` (Test I), `test_definition_recovery()` (Test II), `test_example_recovery()` (Test III), `test_order_invariance()` (Test IV), `test_exclusion_criteria()` (Test V), `test_generic_labels()` (Test VI), `test_swapped_labels()` (Test VII).
+- ✅ `codebook_stage_0.R` — Load YAML codebook, validate required fields (label, label_definition, clarification, negative_clarification, output_instructions) and optional fields (description, positive_examples, negative_examples). Examples are optional to preserve country-agnostic transferability — H&K ablation shows examples are the highest-impact individual component, but US-specific examples would reduce cross-country applicability (see Cross-Country Transfer Strategy). Few-shot evaluation with country-specific examples is available as an S3 ablation to quantify the precision cost. Construct LLM prompt from structured components. Returns a validated codebook object.
+- ✅ `codebook_stage_1.R` — Run Tests I-IV on a codebook. Takes codebook object + test documents. Returns tibble of test results with pass/fail per test.
+- ✅ `codebook_stage_2.R` — Zero-shot classification and optional LOOCV for any codebook type (C1-C4). Zero-shot is the primary S2 evaluation; LOOCV is available for S3 few-shot ablation. Returns predictions + metrics with bootstrap CIs.
+- ✅ `codebook_stage_3.R` — Run Tests V-VII and ablation studies. Returns error analysis report with ablation results. Error categorization (H&K taxonomy A-F) is manual, not automated.
+- ✅ `behavioral_tests.R` — Shared test functions: `test_legal_outputs()` (Test I), `test_definition_recovery()` (Test II), `test_example_recovery()` (Test III), `test_order_invariance()` (Test IV), `test_exclusion_criteria()` (Test V), `test_generic_labels()` (Test VI), `test_swapped_labels()` (Test VII).
 
 ### Notebooks (`/notebooks/`)
 
@@ -362,7 +364,7 @@ Chunks with relevance keys but no Tier 1/2 match are excluded from evaluation (a
 
 **New (create):**
 
-- `c1_measure_id.qmd`
+- ✅ `c1_measure_id.qmd`
 - `c2_motivation.qmd`
 - `c3_timing.qmd`
 - `c4_magnitude.qmd`
@@ -384,23 +386,23 @@ tar_target(c4_codebook, load_validate_codebook("prompts/c4_magnitude.yml"))
 tar_target(c1_s1_results, run_behavioral_tests_s1(c1_codebook, aligned_data))
 tar_target(c1_s2_test_set, assemble_zero_shot_test_set(c1_codebook, aligned_data))
 tar_target(c1_s2_results, run_zero_shot(c1_codebook, c1_s2_test_set))
-tar_target(c1_s2_eval, evaluate_loocv(c1_s2_results, aligned_data))
-tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s2_results, aligned_data))
+tar_target(c1_s2_eval, evaluate_zero_shot(c1_s2_results, aligned_data))
+tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s3_test_set, aligned_data))
 
 # C2: Motivation pipeline
 tar_target(c2_s1_results, run_behavioral_tests_s1(c2_codebook, aligned_data))
-tar_target(c2_s2_results, run_loocv(c2_codebook, aligned_data, type = "C2"))
-tar_target(c2_s3_results, run_error_analysis(c2_codebook, c2_s2_results, aligned_data))
+tar_target(c2_s2_results, run_zero_shot(c2_codebook, c2_s2_test_set))
+tar_target(c2_s3_results, run_error_analysis(c2_codebook, c2_s3_test_set, aligned_data))
 
 # C3: Timing pipeline
 tar_target(c3_s1_results, run_behavioral_tests_s1(c3_codebook, aligned_data))
-tar_target(c3_s2_results, run_loocv(c3_codebook, aligned_data, type = "C3"))
-tar_target(c3_s3_results, run_error_analysis(c3_codebook, c3_s2_results, aligned_data))
+tar_target(c3_s2_results, run_zero_shot(c3_codebook, c3_s2_test_set))
+tar_target(c3_s3_results, run_error_analysis(c3_codebook, c3_s3_test_set, aligned_data))
 
 # C4: Magnitude pipeline
 tar_target(c4_s1_results, run_behavioral_tests_s1(c4_codebook, aligned_data))
-tar_target(c4_s2_results, run_loocv(c4_codebook, aligned_data, type = "C4"))
-tar_target(c4_s3_results, run_error_analysis(c4_codebook, c4_s2_results, aligned_data))
+tar_target(c4_s2_results, run_zero_shot(c4_codebook, c4_s2_test_set))
+tar_target(c4_s3_results, run_error_analysis(c4_codebook, c4_s3_test_set, aligned_data))
 
 # Aggregation
 tar_target(shocks_llm, aggregate_outputs(c1_s2_results, c2_s2_results,
@@ -445,7 +447,7 @@ The entire pipeline is designed for **country-agnostic transfer**. This means:
 
 1. **S0 Complete:** Codebook YAML reviewed by domain expert
 2. **S1 Pass:** All behavioral tests pass thresholds
-3. **S2 Baseline:** LOOCV metrics computed and documented
+3. **S2 Baseline:** Zero-shot metrics computed and documented
 4. **S3 Complete:** Error analysis report with patterns identified
 5. **S4 Decision:** Fine-tuning triggered only if codebook improvements exhausted
 
