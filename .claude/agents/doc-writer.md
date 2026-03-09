@@ -61,7 +61,7 @@ format: html
 
 ## S2: Zero-Shot Evaluation
 
-[LOOCV results with bootstrap CIs, confusion matrix]
+[Zero-shot results with bootstrap CIs, confusion matrix]
 
 ## S3: Error Analysis
 

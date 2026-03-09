@@ -9,6 +9,27 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-03-09: Stale LOOCV references in strategy.md
+
+**Type:** correction
+**Affects:** `docs/strategy.md` > multiple S2-context sections
+**Detail:** S2 was refactored from LOOCV to single-pass zero-shot classification (resolved delta 2026-03-03). Several strategy.md references still say "LOOCV" in S2 context. LOOCV remains valid only for S3 few-shot ablation.
+**Suggested edit:** Replace "LOOCV" with "zero-shot classification" in all S2-context references. Keep LOOCV references that explicitly refer to S3 few-shot ablation.
+
+## 2026-03-09: S3 ablation simplified to 4 conditions — output_instructions non-ablatable
+
+**Type:** correction
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > S3 Error Analysis (general description, line ~194); also any per-codebook S3 ablation descriptions
+**Detail:** H&K's ablation design assumes label-only output, but our pipeline requires structured JSON via `output_instructions`. Ablating `output_instructions` breaks JSON parsing, testing format compliance rather than task understanding. Commit b99dbe8 simplified ablation from 6 to 4 conditions: `full`, `no_label_def`, `no_examples`, `no_examples_no_clarifications`. Dropped `no_output_no_examples_no_neg_clar` and redesigned `all_removed` to preserve `output_instructions` as non-ablatable infrastructure. Also added `no_clarifications` to test combined clarification impact.
+**Suggested edit:** Update S3 ablation description to note that `output_instructions` is infrastructure (not ablated) and list the 4 active conditions. Add rationale: structured output requirement means output format is not a codebook component but a pipeline constraint.
+
+## 2026-03-09: H&K Figure 4 metrics added to S3 behavioral tests
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > S3 Error Analysis (Tests V-VII descriptions)
+**Detail:** Commit bceb65e added metrics needed to reproduce H&K Figure 4: Test V `all_combos_correct_rate` (fraction of texts correct on all 4 combos), Test VI `original_f1`/`generic_f1`/`f1_difference` (F1 with original vs generic labels), Test VII `swapped_f1`/`swapped_accuracy` (performance under swapped definitions). These complement the existing accuracy-based metrics with F1-based comparisons matching H&K's reporting format.
+**Suggested edit:** None needed (implementation detail enriching existing metrics, not changing methodology).
+
 ## 2026-03-07: Automated H&K error categorization removed, S3 decoupled from S2
 
 **Type:** correction

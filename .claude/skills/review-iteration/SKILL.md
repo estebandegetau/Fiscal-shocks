@@ -69,7 +69,7 @@ For each of the 4 tests (I-IV):
    - Test IV: Which chunk+ordering combinations changed? Show the prediction pairs.
 3. **Root cause mapping**: Which codebook component (definition, clarification, example, output_instructions) is likely responsible for each failure?
 
-#### S2 Analysis (LOOCV Evaluation)
+#### S2 Analysis (Zero-Shot Evaluation)
 
 1. **Primary metrics** vs. targets (from `docs/strategy.md`)
 2. **Secondary metrics** for context

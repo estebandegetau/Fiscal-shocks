@@ -253,7 +253,7 @@ Then append the new entry to the `iterations` list.
   interpretation: >
     All S1 behavioral tests pass. Ready to proceed to S2.
   decision: >
-    Proceed to S2 LOOCV evaluation without codebook changes.
+    Proceed to S2 zero-shot evaluation without codebook changes.
 ```
 
 ## Error Handling

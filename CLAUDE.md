@@ -45,7 +45,7 @@ The contribution is **methodological**, not just dataset scale:
 ### Current Status
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
-  - **C1 (Measure ID)**: S1 complete (v0.3.0); S2 ran on v0.4.0 (iteration 12: 94.3% Tier 1 recall, 83.7% combined recall, 94.8% precision); 4 Tier 1 FNs identified as mislabeled positives; proceeding to S3 with label bias audit
+  - **C1 (Measure ID)**: S1 complete (v0.3.0); S2 ran on v0.4.0 (iteration 12: 94.3% Tier 1 recall, 83.7% combined recall, 94.8% precision); S3 pipeline validated (iteration 14: Llama test confirms all 4 ablation conditions + Tests V-VII produce data; ready for formal Haiku S3 run)
   - **C2 (Motivation)**: Not started
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started
@@ -139,6 +139,10 @@ Key targets: `us_urls`, `us_text`, `us_body`, `aligned_data`, `chunks`, `c1_chun
 
 See `_targets.R` for the complete list.
 
+### Stage Independence
+
+Each evaluation stage (S1, S2, S3) has independent targets, model configs, and test sets. Modifying one stage must not invalidate another stage's cached results. For example, `c1_s3_results` depends on `c1_s3_test_set` and `c1_codebook`, not on `c1_s2_results`. This was enforced after S3 was decoupled from S2 (see `docs/deltas.md`, 2026-03-07).
+
 ### Multi-Language Integration
 - R calls Python scripts via `system2()` with JSON file interchange
 - `reticulate` available for inline Python in notebooks
@@ -172,7 +176,7 @@ The project includes 10 specialized agents in `.claude/agents/` organized by fun
 
 **Domain Specialists:**
 - **fiscal-policy-specialist**: R&R methodology, motivation categories, exogeneity criteria
-- **llm-eval-specialist**: H&K framework, behavioral tests, LOOCV, error analysis
+- **llm-eval-specialist**: H&K framework, behavioral tests (S1-S3), ablation studies, error analysis
 
 **Infrastructure:**
 - **pipeline-manager**: Targets pipeline definitions, `tar_make()`, debugging
@@ -183,6 +187,16 @@ The project includes 10 specialized agents in `.claude/agents/` organized by fun
 - **notebook-reviewer**: Verify notebooks evaluate what we intend
 
 Use these agents via the Task tool for specialized work.
+
+## Research Companion Principles
+
+These principles shape Claude's role in this research project. They motivate the workflow conventions that follow. See `docs/onboarding.qmd` for the full treatment.
+
+1. **Human confers meaning.** Claude pattern-matches against codebook definitions but does not understand what exogeneity means for causal identification. Never present classification outputs as research findings; present them as inputs requiring human interpretation.
+2. **Delegate instrumental, own the core.** PDF extraction, pipeline plumbing, and documentation sync are fully delegable. Codebook design, success criteria, and error interpretation are human-owned. When uncertain whether something is core, ask rather than decide.
+3. **Credibility tracks involvement.** The human must have lived through the iteration history to defend decisions at peer review. Claude's role is to make that history legible (iteration logs, structured diagnoses), not to bypass it.
+4. **Commits belong to humans.** Claude can analyze, propose, and challenge. The decision ("we will do this, not that") belongs to the human and is recorded in the iteration log with date, context, and rationale.
+5. **Error recoverability heuristic.** AI owns tasks where errors are recoverable (code, metrics, YAML validation). Humans own tasks where errors compound silently (research design, interpretation, cost authorization).
 
 ## Workflow Conventions
 
@@ -232,6 +246,10 @@ See `.claude/skills/quarto-style/SKILL.md` for complete Quarto conventions (tabl
 ### Iteration Logging
 
 Use `/log-iteration` after running a pipeline stage (S1/S2/S3) to record what changed, what the metrics show, and what to do next. Creates YAML entries in `prompts/iterations/<codebook>.yml` with auto-gathered metrics and git commit hashes. See `.claude/skills/log-iteration/SKILL.md`.
+
+### Iteration Cycle
+
+Use `/iterate` to run the full codebook iteration cycle: pre-flight, pipeline review, and iteration logging with human decision points between each step. Composes `/pre-flight`, `/review-iteration`, and `/log-iteration`. See `.claude/skills/iterate/SKILL.md`.
 
 ### Strategy Reconciliation
 

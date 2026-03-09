@@ -11,7 +11,7 @@ You are a {targets} pipeline specialist for this R project on fiscal shock ident
 
 1. **Define targets** in `_targets.R` following naming conventions:
    - Codebook stages: `c1_s0_codebook`, `c1_s1_results`, `c1_s2_results`, `c1_s3_analysis`
-   - Training data: `aligned_data` (shared labeled data for LOOCV)
+   - Training data: `aligned_data` (shared labeled data for evaluation)
    - Final outputs: `shocks_llm`, `malaysia_shocks`
 
 2. **Create pure functions** in `R/functions_*.R`:
@@ -40,7 +40,7 @@ tar_target(c4_codebook, load_validate_codebook("prompts/c4_magnitude.yml"))
 
 # Per-codebook S1-S3 pipeline (C1 shown; repeat for C2, C3, C4)
 tar_target(c1_s1_results, run_behavioral_tests_s1(c1_codebook, aligned_data))
-tar_target(c1_s2_results, run_loocv(c1_codebook, aligned_data, type = "C1"))
+tar_target(c1_s2_results, run_zero_shot(c1_codebook, c1_s2_test_set, type = "C1"))
 tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s2_results, aligned_data))
 
 # Final aggregation
@@ -52,7 +52,7 @@ tar_target(shocks_llm, aggregate_outputs(c1_s2_results, c2_s2_results,
 
 - `codebook_stage_0.R` — `load_validate_codebook()`: Load YAML, validate required fields, construct LLM prompt
 - `codebook_stage_1.R` — `run_behavioral_tests_s1()`: Tests I-IV
-- `codebook_stage_2.R` — `run_loocv()`: Generalized LOOCV for any codebook type
+- `codebook_stage_2.R` — `run_zero_shot()`: Zero-shot evaluation for any codebook type
 - `codebook_stage_3.R` — `run_error_analysis()`: Tests V-VII, ablation, H&K error taxonomy
 - `behavioral_tests.R` — Shared test functions (Tests I-VII)
 

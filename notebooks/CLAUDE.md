@@ -116,7 +116,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 
 ### `c1_measure_id.qmd` -- C1 Codebook Evaluation (S0-S3)
 
-**Purpose:** Full H&K evaluation notebook for the C1 (Measure Identification) codebook. Reports S0 design, S1 behavioral tests, S2 LOOCV metrics, and S3 error analysis.
+**Purpose:** Full H&K evaluation notebook for the C1 (Measure Identification) codebook. Reports S0 design, S1 behavioral tests, S2 zero-shot metrics, and S3 error analysis.
 
 **Key content:**
 

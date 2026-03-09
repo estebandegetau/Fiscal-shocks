@@ -17,7 +17,7 @@ Write R functions in the `R/` directory that integrate with the {targets} pipeli
 R/
 ├── codebook_stage_0.R    # Codebook loading/validation
 ├── codebook_stage_1.R    # H&K behavioral tests
-├── codebook_stage_2.R    # Zero-shot LOOCV evaluation
+├── codebook_stage_2.R    # Zero-shot evaluation
 ├── codebook_stage_3.R    # Error analysis
 └── behavioral_tests.R    # H&K test suite implementation
 ```

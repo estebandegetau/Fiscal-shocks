@@ -54,7 +54,7 @@ Verify that notebooks evaluate what they're supposed to evaluate, matching the s
 For each codebook notebook:
 - [ ] S0: Codebook YAML shown and explained
 - [ ] S1: Behavioral test results displayed
-- [ ] S2: LOOCV results with bootstrap CIs
+- [ ] S2: Zero-shot results with bootstrap CIs
 - [ ] S3: Error analysis with examples
 
 ### 4. Correct Comparisons

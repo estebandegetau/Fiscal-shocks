@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 S2 complete on v0.4.0 (iteration 12: 94.3% Tier 1 recall, 83.7% combined recall); proceeding to S3 error analysis with label bias audit; C2-C4 not yet started
+**Status**: IN PROGRESS — C1 S3 pipeline validated on v0.4.0 (iteration 14: Llama test confirms all 4 ablation conditions + Tests V-VII produce data; ready for formal Haiku S3 run); S2 complete (iteration 12: 94.3% Tier 1 recall, 83.7% combined recall); C2-C4 not yet started
 
 ## Authoritative Methodology
 
@@ -55,7 +55,7 @@ This document contains the complete R&R + H&K framework specification including:
 |----------|---------------|--------|----------|
 | C1: Measure ID | Recall | ≥90% | Don't miss real acts |
 | C1: Measure ID | Precision | ≥70% | Acceptable FP rate |
-| C2: Motivation | Weighted F1 | ≥70% | LOOCV baseline |
+| C2: Motivation | Weighted F1 | ≥70% | Zero-shot baseline |
 | C2: Motivation | Exogenous Precision | ≥85% | Critical for shock series |
 | C3: Timing | Exact Quarter | ≥85% | R&R accuracy |
 | C3: Timing | ±1 Quarter | ≥95% | Acceptable tolerance |
@@ -135,7 +135,7 @@ tar_target(c1_s1_results, run_behavioral_tests_s1(c1_codebook, aligned_data))
 tar_target(c1_s2_test_set, assemble_zero_shot_test_set(aligned_data, c1_chunk_data))
 tar_target(c1_s2_results, run_zero_shot(c1_codebook, c1_s2_test_set, type = "C1"))
 tar_target(c1_s3_test_set, assemble_s3_test_set(c1_chunk_data))
-tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s2_results, c1_s3_test_set))
+tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s3_test_set))
 
 # Final LLM-generated shock dataset
 tar_target(shocks_llm, aggregate_outputs(c1_s2_results, c2_s2_results,

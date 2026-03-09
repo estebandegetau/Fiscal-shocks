@@ -207,7 +207,7 @@ Use reader-facing language on first mention. Introduce the shorthand in parenthe
 | S2 | formal evaluation (measure accuracy against ground truth) |
 | S3 | error analysis (diagnose failure patterns and identify codebook improvements) |
 | S4 | fine-tuning (adjust model weights; last resort) |
-| LOOCV | leave-one-out cross-validation (each act held out in turn) |
+| LOOCV | leave-one-out cross-validation (reserved for S3 few-shot ablation; S2 uses zero-shot) |
 | combined recall | the share of real fiscal acts the model successfully identifies |
 | tier 1 recall | recall on the highest-confidence ground truth (verbatim passage matches) |
 | precision | the share of model-flagged passages that actually contain a fiscal act |

@@ -55,7 +55,7 @@ These files exist to give Claude Code accurate project state. Update them direct
 - **C1 (Measure ID)**: Not started
 
 <!-- After -->
-- **C1 (Measure ID)**: S1 behavioral tests complete; S2 LOOCV in progress
+- **C1 (Measure ID)**: S1 behavioral tests complete; S2 zero-shot eval in progress
 ```
 
 ### Example: Updating notebooks/CLAUDE.md

@@ -47,7 +47,7 @@ For each component, verify:
 **H&K Stage Implementation:**
 - [ ] S0: Codebook has all required YAML fields (validate against `.claude/skills/codebook-yaml/SKILL.md`)
 - [ ] S1: All 7 behavioral tests implemented (Tests I-IV during S1; Tests V-VII during S3)
-- [ ] S2: LOOCV on 44 US acts with correct metrics
+- [ ] S2: Zero-shot eval on chunk test set with correct metrics
 - [ ] S3: Error taxonomy matches H&K 6-category taxonomy (A-F)
 
 ### Step 3: Consult Domain Specialists
@@ -89,7 +89,7 @@ For each component, verify:
 ### H&K Stages
 - [ ] S0: YAML codebook complete with all fields (per `.claude/skills/codebook-yaml/SKILL.md`)
 - [ ] S1: 4 behavioral tests with pass thresholds (Tests I-IV)
-- [ ] S2: LOOCV evaluation with bootstrap CIs
+- [ ] S2: Zero-shot evaluation with bootstrap CIs
 - [ ] S3: Error taxonomy documented using H&K 6-category taxonomy (A-F) + Tests V-VII
 
 ## Output Format

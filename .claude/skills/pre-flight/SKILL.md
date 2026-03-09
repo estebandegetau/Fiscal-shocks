@@ -21,7 +21,7 @@ Ask which target(s) they plan to run. Common targets:
 | Target | Description |
 |--------|-------------|
 | `c1_s1_results` | C1 S1 behavioral tests |
-| `c1_s2_results` | C1 S2 LOOCV raw results |
+| `c1_s2_results` | C1 S2 zero-shot raw results |
 | `c1_s2_eval` | C1 S2 evaluation metrics |
 | `c1_s3_results` | C1 S3 error analysis |
 | `c2_s1_results` | C2 S1 behavioral tests |

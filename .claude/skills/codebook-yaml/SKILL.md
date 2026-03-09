@@ -164,7 +164,7 @@ Codebook development follows a sequential stage-gate process. Each stage must pa
 
 1. **S0 (Codebook Preparation)**: Draft the YAML codebook following the structure in this SKILL. All required fields must be present. Submit for domain expert approval before proceeding.
 2. **S1 (Behavioral Tests)**: Run Tests I-IV (see below) to verify the codebook produces sane model behavior. All tests must pass thresholds before proceeding to evaluation.
-3. **S2 (Zero-Shot Evaluation)**: Run LOOCV on 44 US acts using `R/codebook_stage_2.R`. Compare results to success criteria in `docs/strategy.md`. If targets are not met, return to S0 for codebook revision.
+3. **S2 (Zero-Shot Evaluation)**: Run zero-shot classification on chunk test set using `R/codebook_stage_2.R`. Compare results to success criteria in `docs/strategy.md`. If targets are not met, return to S0 for codebook revision.
 4. **S3 (Error Analysis)**: Run Tests V-VII plus ablation studies. Categorize errors using H&K taxonomy (A-F). Use findings to inform S0 revisions or, as a last resort, trigger S4.
 
 The stage-gate rule: **do not proceed to S(N+1) until S(N) passes.** Iteration loops back to S0 (codebook revision), not forward to the next stage.
