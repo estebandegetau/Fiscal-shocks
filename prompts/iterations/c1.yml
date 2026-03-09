@@ -963,3 +963,134 @@ iterations:
       11, 12), so the missing prediction issue should not arise. If the
       pipeline is correct, Haiku should produce complete data for all 40
       test texts across all conditions with no NAs.
+
+  - iteration: 15
+    codebook_version: "0.4.0"
+    date: "2026-03-09"
+    git_commit: "d7d7388"
+    model: "claude-haiku-4-5-20251001"
+    provider: "anthropic"
+    stage: "s3"
+    changes: >
+      No codebook changes. First formal S3 evaluation with Haiku on
+      codebook v0.4.0, after pipeline validation with Llama (iterations
+      13-14 confirmed all S3 components produce data).
+    results:
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            normal_doc_normal_cb: 0.8000
+            modified_doc_normal_cb: 0.7500
+            normal_doc_modified_cb: 0.7500
+            modified_doc_modified_cb: 0.5250
+          overall_consistency: 0.7063
+          all_combos_correct_rate: 0.3750
+          filtered_all_combos_correct_rate: 0.4688
+          note: >
+            15/16 baseline-correct positives fail only combo 4: model
+            overrides absurd elephant exclusion criterion when strong
+            fiscal evidence is present ("right despite bad instruction").
+            Evidence of robust domain understanding over shallow
+            instruction-following. Supports transferability to new
+            countries where codebook instructions may not perfectly
+            anticipate local fiscal language.
+        - test: "VI_generic_labels"
+          original_accuracy: 0.8000
+          generic_accuracy: 0.8095
+          accuracy_difference: 0.0095
+          original_f1: 0.8000
+          generic_f1: 0.8947
+          f1_difference: 0.0947
+          change_rate: 0.0952
+          note: >
+            Model relies on definitions, not label names. Generic labels
+            slightly improve F1 (+0.095): two baseline FNs (texts 18, 19)
+            flip to correct, suggesting "NOT_FISCAL_MEASURE" name mildly
+            primes conservative rejection on borderline positives.
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.4750
+          follows_names_rate: 0.5250
+          swapped_accuracy: 0.4750
+          interpretation: >
+            Aggregate is misleading. Per-class decomposition: 16/16 (100%)
+            baseline-correct positives follow definitions; 15/15 (100%)
+            baseline-correct negatives follow names. Negative-text result
+            is uninformative for binary tasks with a residual class —
+            texts are unambiguously non-fiscal regardless of definition
+            assignment. The positive-text rate is the clean signal.
+      ablation:
+        - condition: "full"
+          accuracy: 0.8000
+          f1: 0.8000
+          recall: 0.8000
+          precision: 0.8000
+          tier1_recall: 1.0000
+          tier2_recall: 0.6000
+        - condition: "no_label_def"
+          accuracy: 0.7750
+          accuracy_drop: 0.0250
+          f1: 0.7692
+          recall: 0.7500
+          precision: 0.7895
+          tier1_recall: 1.0000
+          tier2_recall: 0.5000
+        - condition: "no_clarifications"
+          accuracy: 0.6500
+          accuracy_drop: 0.1500
+          f1: 0.7200
+          recall: 0.9000
+          precision: 0.6000
+          tier1_recall: 1.0000
+          tier2_recall: 0.8000
+        - condition: "all_removed"
+          accuracy: 0.6250
+          accuracy_drop: 0.1750
+          f1: 0.6939
+          recall: 0.8500
+          precision: 0.5862
+          tier1_recall: 1.0000
+          tier2_recall: 0.7000
+      ablation_note: >
+        Clarifications are the highest-leverage codebook component,
+        functioning as a precision mechanism (−20pp precision when
+        removed) while suppressing Tier 2 recall (0.600 → 0.800).
+        Tier 1 recall is invariant at 1.000 across all conditions
+        including fully ablated codebook. If Tier 2 recall improvement
+        is needed, clarifications can be softened; but Tier 1 (the
+        metric we trust most given label quality) is at ceiling.
+      n_test_texts: 40
+      test_set_composition:
+        positives: 20
+        negatives: 20
+        tier1: 10
+        tier2: 10
+        tier_na: 20
+      error_categories: null
+    interpretation: >
+      First formal S3 with Haiku. All S3 components produced complete
+      data (0% parse failures, no NAs), confirming Haiku's reliability
+      vs Llama's ~25% missing predictions. Three key findings: (1) Test V
+      shows Haiku overrides the absurd elephant exclusion rule when strong
+      fiscal evidence is present — "right despite bad instruction" —
+      evidence of robust domain understanding that supports cross-country
+      transferability. (2) Tests VI and VII confirm the model classifies
+      based on codebook definitions, not label names: generic labels
+      slightly improve performance, and 100% of baseline-correct positive
+      texts follow definitions under label swap. (3) Ablation reveals
+      clarifications are the dominant codebook component, functioning as
+      a precision gate (−20pp when removed) while suppressing borderline
+      Tier 2 recall. Tier 1 recall is perfect regardless of codebook
+      structure. Collectively, these results are evidence supporting
+      Haiku as the model of choice: it operationalizes its role as a
+      fiscal policy expert, prioritizing domain understanding over
+      surface features or arbitrary instructions.
+    decision: >
+      Proceed to manual verification of S3 results before advancing to
+      C2 development. (1) Inspect the 8 persistent misclassifications
+      (4 FN: texts 11, 17, 18, 19; 4 FP: texts 23, 32, 33, 35) to
+      confirm suspected Category F label errors vs genuine codebook
+      gaps. (2) Cross-reference with S2 error patterns (iteration 12)
+      to check whether the same acts/chunks fail in both stages.
+      (3) If manual review confirms label noise, document bias-corrected
+      metrics as planned in iteration 12 decision. Only after manual
+      verification is complete should C2 codebook development begin.
