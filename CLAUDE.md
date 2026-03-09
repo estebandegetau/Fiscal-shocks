@@ -45,7 +45,7 @@ The contribution is **methodological**, not just dataset scale:
 ### Current Status
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
-  - **C1 (Measure ID)**: S1 complete (v0.3.0); S2 ran on v0.4.0 (iteration 12: 94.3% Tier 1 recall, 83.7% combined recall, 94.8% precision); S3 pipeline validated (iteration 14: Llama test confirms all 4 ablation conditions + Tests V-VII produce data; ready for formal Haiku S3 run)
+  - **C1 (Measure ID)**: S1 complete (v0.3.0); S2 ran on v0.4.0 (iteration 12: 94.3% Tier 1 recall, 83.7% combined recall, 94.8% precision); S3 complete on Haiku (iteration 15: Tests V-VII + ablation confirm definition-based classification, clarifications are highest-leverage component, Tier 1 recall invariant at 1.000 across all conditions); pending manual verification of 8 persistent misclassifications before C2
   - **C2 (Motivation)**: Not started
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started
