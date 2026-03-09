@@ -162,9 +162,10 @@ run_error_analysis <- function(codebook,
 
 #' Run ablation study on codebook components (H&K Table 4 design)
 #'
-#' Tests 6 ablation conditions matching Halterman & Keith (2025) Table 4:
-#' progressively removing component types (label definitions, examples,
-#' clarifications, output instructions) and measuring metric degradation.
+#' Tests 4 ablation conditions inspired by Halterman & Keith (2025) Table 4:
+#' progressively removing semantic codebook components (label definitions,
+#' clarifications) and measuring metric degradation. Output instructions are
+#' kept in all conditions as they are infrastructure, not semantic content.
 #'
 #' @param codebook A validated codebook object
 #' @param test_texts Character vector of test passages
@@ -222,7 +223,7 @@ run_ablation_study <- function(codebook,
   }
   baseline_m <- calc_metrics(baseline_preds, true_labels, tiers)
 
-  # H&K Table 4 ablation conditions
+  # H&K Table 4 ablation conditions (4 conditions, output_instructions always kept)
   conditions <- list(
     list(
       condition = "full",
@@ -233,24 +234,14 @@ run_ablation_study <- function(codebook,
       sections_removed = "label_definition"
     ),
     list(
-      condition = "no_examples",
-      sections_removed = c("positive_examples", "negative_examples")
-    ),
-    list(
-      condition = "no_examples_no_clarifications",
-      sections_removed = c("positive_examples", "negative_examples",
-                           "clarifications", "negative_clarifications")
-    ),
-    list(
-      condition = "no_output_no_examples_no_neg_clar",
-      sections_removed = c("output_instructions", "positive_examples",
-                           "negative_examples", "negative_clarifications")
+      condition = "no_clarifications",
+      sections_removed = c("clarifications", "negative_clarifications")
     ),
     list(
       condition = "all_removed",
-      sections_removed = c("label_definition", "output_instructions",
-                           "positive_examples", "negative_examples",
-                           "clarifications", "negative_clarifications")
+      sections_removed = c("label_definition", "positive_examples",
+                           "negative_examples", "clarifications",
+                           "negative_clarifications")
     )
   )
 
