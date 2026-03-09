@@ -1,0 +1,134 @@
+---
+title: "Claude Code Insights"
+subtitle: "70 sessions total · 50 analyzed · 333 messages · 118h · 32 commits"
+date: 2026-03-09
+date-range: "2026-02-27 to 2026-03-09"
+format: html
+---
+
+## At a Glance
+
+**What's working:** We've built a structured research workflow --- pre-flight, review, diagnose, log, doc-sync, commit --- executed with consistency across the LLM classification pipeline. Investment in custom Claude skills means energy goes to actual research decisions (like identifying label noise vs. model failure) rather than mechanical steps. The living documentation approach keeps strategy docs genuinely aligned with the codebase.
+
+**What's hindering:** On Claude's side, it sometimes makes wrong assumptions about pipeline details (like evaluation methodology or audience expectations) that require correction, and it occasionally jumps into edits before confirming the plan. On our side, the biggest recurring issue is context loss between sessions --- when referencing a plan from a prior conversation that Claude can't see, it leads to wasted sessions. Saving plans as explicit files before ending a session would eliminate this.
+
+**Quick wins:** Try using **hooks** to auto-run doc-sync or pre-flight checks at commit time, since this already happens manually almost every session. Mechanical iteration cycles (log, commit, sync) could also run in **headless mode** from a script, freeing interactive sessions for diagnostic and planning work.
+
+**Ambitious workflows:** The disciplined iteration cycle is positioned for autonomous execution --- an agent running pre-flight through doc-sync overnight across multiple pipeline configurations, only flagging when metrics look unexpected. Ablation work could shift to parallel subagents launching all conditions simultaneously and producing a comparative summary ready for progress reports.
+
+## Project Areas
+
+| Area | Sessions | Description |
+|------|:--------:|-------------|
+| LLM Classification Pipeline Development | 20 | Iterative development of a multi-stage (S1, S2, S3) R targets pipeline for LLM-based text classification. Extensive refactoring (decoupling stages, switching LLM models, caching baselines, fixing variable scoping bugs), running pre-flight checks, reviewing iteration results, diagnosing failures, and logging iterations. Transitioned from LOOCV to zero-shot classification, implemented ablation studies, and added error handling for API calls. |
+| Codebook & Strategy Document Maintenance | 8 | Systematic updating of research strategy and codebook documents to keep them aligned with evolving pipeline implementation. Auditing strategy.md against implementation deltas, applying multi-edit revision plans, implementing specialist reviewer suggestions, and syncing documentation after code changes. |
+| Claude Code Skills & Workflow Automation | 7 | Design and use of custom Claude Code skills for repeatable research workflows including pre-flight checklists, review-iteration, log-iteration, doc-sync, and strategy reconciliation. Brainstorming and implementing new skills, updating existing ones (e.g., adding non-Anthropic model support to pre-flight). |
+| Progress Reporting & Communication | 4 | Planning and drafting Quarto-based progress reports for World Bank management stakeholders. Reviewing recent project state, proposing report sections, drafting content, and revising for readability with iterative refinement. |
+| Project Onboarding & Conventions Documentation | 3 | Distilling project-specific Claude Code conventions, research principles, and workflow patterns into onboarding documentation. Collaboratively refining working principles to help future collaborators (or future Claude sessions) understand project norms. |
+
+: Project areas by session count {.striped}
+
+## Interaction Style
+
+We operate with a **highly structured, workflow-driven approach** to research pipeline management. 50 sessions over 10 days reveal a clear pattern: reusable "skills" (pre-flight checks, review-iteration, log-iteration, doc-sync) are invoked in consistent sequences --- often running pre-flight, reviewing results, diagnosing issues, logging the iteration, syncing docs, and committing, all in a single session. This is a **disciplined research operations loop** where Claude serves as both an execution engine and an analytical partner.
+
+The interaction style is **plan-first, then delegate execution**. Sessions frequently arrive with a pre-formed plan --- sometimes from a previous session or a specialist review --- and ask Claude to implement specific numbered edits across multiple files. The 18 successful multi-file changes and heavy use of Bash (559 calls) and Edit (220 calls) show trust in Claude to execute complex refactoring autonomously once the plan is clear.
+
+When things go wrong, it's typically because **context wasn't carried over** (session where Claude had no memory of a previous plan) or Claude's analysis didn't match domain knowledge (e.g., confusing LOOCV folds with zero-shot chunks, or writing too technically for a World Bank audience). These are caught quickly and course-corrected rather than letting errors compound.
+
+Work is predominantly in **Markdown and YAML** (262 of the language signals), reinforcing that documentation, configuration, and research strategy files are the primary artifacts rather than application code from scratch. The 76% fully-achieved rate with only 1 not-achieved session demonstrates someone who knows exactly what they want before starting.
+
+## Impressive Things We Did
+
+### Structured Pipeline Iteration Cycles
+
+A repeatable workflow of pre-flight checks, result review, diagnosis, iteration logging, doc-sync, and commits executed with impressive consistency. This disciplined cycle lets us systematically improve the NLP pipeline's performance while maintaining a clear audit trail of every iteration and decision.
+
+### Custom Skills as Force Multipliers
+
+Investment in building reusable Claude skills --- pre-flight checklists, review-iteration, log-iteration, doc-sync, and strategy reconciliation --- that encode the research methodology into repeatable commands. Cognitive energy goes to actual research decisions like diagnosing false negatives as label noise, rather than mechanical workflow steps.
+
+### Living Documentation Strategy
+
+Strategy docs, codebooks, and progress reports are consistently synchronized with implementation changes, treating documentation as a first-class artifact rather than an afterthought. The approach of auditing strategy.md against deltas, running specialist reviews, and implementing precise edit plans shows a sophisticated system for keeping the research narrative aligned with the codebase.
+
+## Where Things Go Wrong
+
+### Lost Context Between Sessions
+
+Sometimes plans or decisions from previous sessions are referenced that Claude has no memory of, leading to dead-end sessions.
+
+- Asked Claude to implement a plan from a previous conversation, but no saved artifact existed and the session produced nothing useful
+- Sessions frequently start expecting continuity from prior work, which works when docs are synced but fails when plans live only in conversation history
+
+**Mitigation:** Save plans as explicit artifacts (e.g., a TODO.md or plan file) so Claude can pick them up in a new session.
+
+### Acting Before Verifying Domain Details
+
+Claude sometimes makes assumptions about pipeline specifics --- like evaluation methodology or audience expectations --- that then require correction.
+
+- The pre-flight check incorrectly reported 44 LOOCV folds when the pipeline actually uses zero-shot classification with ~863 chunks
+- Claude's initial progress report draft was too technical for the World Bank management audience
+
+**Mitigation:** Provide brief context upfront or use pre-flight skills more assertively.
+
+### Premature Edits Without Plan Confirmation
+
+Claude occasionally jumps into file edits before the approach is approved, leading to interrupted tool calls and retry loops.
+
+- Interrupted an edit tool call because the plan needed review before changes were made
+- Initial edit attempts had targeting issues requiring multiple retries
+
+**Mitigation:** Prompt Claude to outline changes first.
+
+## Suggestions
+
+### CLAUDE.md Additions to Consider
+
+1. **Doc-sync after changes:** "After completing code changes, always run doc-sync to update documentation before committing. The standard workflow is: implement, doc-sync, commit."
+
+2. **Stage independence:** "This project uses a multi-stage R targets pipeline (S1, S2, S3) with per-stage LLM configs. When modifying one stage, do NOT assume changes affect other stages. Each stage has independent model configuration."
+
+3. **Plan artifact check:** "When asked to implement a plan, always check for plan artifacts in the project (e.g., docs/plans/, strategy.md, deltas.md) before asking the user to re-explain. If no plan is found, say so immediately rather than guessing."
+
+4. **Zero-shot, not LOOCV:** "The pipeline uses zero-shot classification, NOT LOOCV. Do not reference LOOCV folds in pre-flight checks or analysis. The evaluation processes ~863 chunks in a single pass."
+
+5. **Audience awareness:** "When writing reports or documents for this project, the audience is non-technical World Bank management. Use plain English, avoid jargon, and focus on implications rather than technical details unless explicitly asked otherwise."
+
+### Features to Try
+
+**Custom Skills.** Codify the full iteration cycle --- pre-flight, review, log, doc-sync, commit --- as a single `/iterate` skill to reduce manual orchestration across the 5 steps repeated constantly.
+
+**Hooks.** A pre-commit hook could automate doc-sync so it never gets forgotten, catching documentation drift automatically.
+
+**Headless Mode.** Routine commit-and-sync workflows could run from a shell script instead of interactive sessions:
+
+```bash
+claude -p "Run doc-sync, then commit all pending changes with a descriptive message summarizing the diffs" --allowedTools "Edit,Read,Bash,Grep"
+```
+
+### Usage Patterns
+
+**Structured iteration cycle is the core workflow.** Formalize the pre-flight, review, diagnose, log, doc-sync, commit cycle as a documented workflow with checkpoints. At least 10 sessions follow the same pattern. Having Claude follow a checklist would reduce the chance of skipping steps.
+
+**Plan-then-implement sessions need artifact persistence.** Always save plans as files before ending a planning session, so the next session can pick up without context loss. Writing plans to a consistent location (e.g., `docs/plans/`) creates durable context that survives session boundaries.
+
+**Leverage specialist review pattern more broadly.** Use Claude as a devil's advocate reviewer before implementing changes, not just after. Extending this pattern to pre-implementation review of codebook changes and pipeline modifications could catch issues before they reach pre-flight checks.
+
+## On the Horizon
+
+### Autonomous Pipeline Iteration Cycles
+
+The most common workflow is pre-flight, run, review, diagnose, log, commit, doc-sync --- repeated dozens of times. An autonomous agent could execute this entire cycle end-to-end, only surfacing for human review when metrics deviate from expectations or novel failure modes appear. This could compress 118 hours of interactive work into overnight batch runs across multiple pipeline configurations.
+
+### Parallel Ablation Runs with Auto-Analysis
+
+Ablation study work involved manually diagnosing failed conditions, dropping them, and refactoring --- spread across multiple sessions. Parallel agents could launch all ablation conditions simultaneously, each in its own subagent, then a coordinator agent could compare results, flag statistical anomalies, and draft a findings summary ready for progress reports. This turns multi-day ablation cycles into single-session experiments.
+
+### Cross-Session Memory and Plan Persistence
+
+The biggest friction point was Claude losing context between sessions. A structured knowledge persistence system could maintain a living project state file that every session reads on start and updates on close, eliminating the cold-start problem entirely. Combined with the doc-sync pattern, this becomes an always-current project brain that any new agent session can instantly leverage.
+
+## Fun Fact
+
+During a pre-flight check session, rogue R processes were discovered silently making unwanted API calls, burning through API credits behind our backs. They had to be hunted down and killed before proceeding --- a mini horror movie tucked inside a research pipeline workflow.
