@@ -1094,3 +1094,377 @@ iterations:
       (3) If manual review confirms label noise, document bias-corrected
       metrics as planned in iteration 12 decision. Only after manual
       verification is complete should C2 codebook development begin.
+
+  - iteration: 16
+    codebook_version: "0.4.0"
+    date: "2026-03-10"
+    git_commit: "4ba7e66"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3_manual_analysis"
+    changes: >
+      Manual error analysis of S3 baseline predictions using H&K 6-category
+      framework (A-F). Inspected all 40 baseline chunks with human judgment
+      on each classification.
+    results:
+      n_inspected: 40
+      category_distribution:
+        - category: "A_llm_correct"
+          count: 31
+          pct: 77.5
+        - category: "B_incorrect_gold"
+          count: 5
+          pct: 12.5
+        - category: "C_document_error"
+          count: 0
+          pct: 0.0
+        - category: "D_non_compliance"
+          count: 0
+          pct: 0.0
+        - category: "E_semantics_reasoning"
+          count: 3
+          pct: 7.5
+        - category: "F_other"
+          count: 1
+          pct: 2.5
+      chunk_judgments:
+        # --- Tier 1 positives (all correct) ---
+        - text_id: 1
+          chunk_id: "12"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Tax Reform Act of 1976 with specific provisions"
+        - text_id: 2
+          chunk_id: "7"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies EGTRRA + JCWAA"
+        - text_id: 3
+          chunk_id: "2"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; text has TOC headers but reasoning finds H.R. 8363 details in body"
+        - text_id: 4
+          chunk_id: "4"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Economic Stabilization Act extension"
+        - text_id: 5
+          chunk_id: "1"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies 1954 tax cuts despite OCR artifacts at start"
+        - text_id: 6
+          chunk_id: "34"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Social Security Amendments of 1977"
+        - text_id: 7
+          chunk_id: "10"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies 6% income tax surcharge proposal"
+        - text_id: 8
+          chunk_id: "2"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies $25B tax reduction program for 1978"
+        - text_id: 9
+          chunk_id: "8"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Revenue Act of 1945"
+        - text_id: 10
+          chunk_id: "3"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; finds fiscal measures (War Overtime Pay Act) — different act name from gold but binary label correct"
+        # --- Tier 2 positives (5 correct, 5 incorrect gold) ---
+        - text_id: 11
+          chunk_id: "91"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is book index with page references; no fiscal content. IKA noise."
+        - text_id: 12
+          chunk_id: "8"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Tax Reform Act of 1986"
+        - text_id: 13
+          chunk_id: "25"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is CBO appendix listing staff contributors; no fiscal content. IKA noise."
+        - text_id: 14
+          chunk_id: "16"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies EGTRRA + JGTRRA with estate tax details"
+        - text_id: 15
+          chunk_id: "32"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Tax Reduction Act of 1975"
+        - text_id: 16
+          chunk_id: "74"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Revenue Act of 1951 excise tax changes"
+        - text_id: 17
+          chunk_id: "21"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is Treasury admin report on computer equipment; no fiscal content. IKA noise."
+        - text_id: 18
+          chunk_id: "79"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is index with heavy OCR artifacts; no fiscal content. IKA noise."
+        - text_id: 19
+          chunk_id: "2"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is CBO report table of contents; no fiscal content. IKA noise."
+        - text_id: 20
+          chunk_id: "14"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies SS Amendments of 1977 + proposed tax reduction"
+        # --- Negative samples (16 correct, 4 false positives) ---
+        - text_id: 21
+          chunk_id: "31"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; tabular grants data"
+        - text_id: 22
+          chunk_id: "44"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; budget tables for defense materials"
+        - text_id: 23
+          chunk_id: "16"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "F"
+          notes: >
+            Model identified Energy Independence Authority ($100B proposed).
+            EIA is an agency, not a fiscal act — established under DoE Org Act
+            of 1977 which was organizational, not fiscal. R&R codebook ambiguity
+            on organizational acts with fiscal implications.
+        - text_id: 24
+          chunk_id: "81"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; tabular debt/receipts data"
+        - text_id: 25
+          chunk_id: "13"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; receipts table, no narrative"
+        - text_id: 26
+          chunk_id: "35"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; RFC financial statements"
+        - text_id: 27
+          chunk_id: "44"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; Treasury tax/loan account tables + general speeches"
+        - text_id: 28
+          chunk_id: "31"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; GNP statistical tables"
+        - text_id: 29
+          chunk_id: "185"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; budget obligation tables"
+        - text_id: 30
+          chunk_id: "21"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; administrative reports on claims/commissions"
+        - text_id: 31
+          chunk_id: "85"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; international monetary policy speeches"
+        - text_id: 32
+          chunk_id: "19"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "E"
+          notes: >
+            Model identified No Child Left Behind Act ($22.1B education funding).
+            NCLB is an education authorization act — does not change taxpayer
+            liabilities. Model conflated government spending levels with fiscal
+            measures.
+        - text_id: 33
+          chunk_id: "34"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "E"
+          notes: >
+            Model identified General Revenue Sharing Program Termination ($4.6B).
+            Revenue sharing is intergovernmental transfer — does not change
+            taxpayer liabilities. Model conflated government-to-government
+            transfers with taxpayer-facing fiscal changes.
+        - text_id: 34
+          chunk_id: "41"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; NASA/NSF program descriptions"
+        - text_id: 35
+          chunk_id: "9"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "E"
+          notes: >
+            Model identified Treasury Inflation-Indexed Securities (TIPS).
+            TIPS issuance is debt management — changes form of government
+            borrowing, not taxpayer liabilities. Model conflated government
+            financial actions with fiscal measures.
+        - text_id: 36
+          chunk_id: "38"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; balance-of-payments economic analysis"
+        - text_id: 37
+          chunk_id: "31"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; GNP statistical tables"
+        - text_id: 38
+          chunk_id: "90"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; international monetary communiques"
+        - text_id: 39
+          chunk_id: "66"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; budget outlays by function table"
+        - text_id: 40
+          chunk_id: "95"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; public debt securities table"
+      bias_corrected_metrics:
+        excluded_B: 5
+        excluded_C: 0
+        effective_n: 35
+        accuracy: 88.6
+        precision: 78.9
+        recall: 100.0
+        tier_1_recall: 100.0
+      error_patterns:
+        - pattern: "All 5 FN are gold-standard noise (Category B)"
+          detail: >
+            Every case where the model missed a fiscal measure was an index,
+            TOC, or admin report with no substantive fiscal content. The IKA
+            matching in Tier 2 is the sole source of false negatives.
+        - pattern: "All 4 FP share one semantic confusion (3 E + 1 F)"
+          detail: >
+            The model correctly identifies government actions with dollar
+            amounts but fails to distinguish taxpayer-facing fiscal measures
+            (R&R scope) from other government actions: intergovernmental
+            transfers (revenue sharing), education policy (NCLB), debt
+            management (TIPS), and organizational acts (EIA).
+        - pattern: "Taxpayer liability heuristic"
+          detail: >
+            Key insight from manual analysis: the codebook should clarify
+            that fiscal measures must change liabilities to/from taxpayers,
+            not merely involve government financial actions affecting other
+            government entities or debt instruments.
+    interpretation: >
+      There may be room for codebook improvement. The 3 Category E errors
+      share a common pattern: the model conflates government financial
+      actions (intergovernmental transfers, education appropriations, debt
+      management) with taxpayer-liability-changing fiscal measures. The
+      Category F case (EIA) reveals R&R boundary ambiguity on organizational
+      acts with fiscal implications. The 5 Category B errors confirm that
+      all false negatives are gold-standard noise from IKA Tier 2 matching,
+      not codebook or model failures. Bias-corrected recall is 100%.
+    decision: >
+      Consider improving the codebook with a clarification distinguishing
+      changes to taxpayers' liabilities from other government financial
+      actions (intergovernmental transfers, debt management, organizational
+      acts). This is the single highest-leverage codebook improvement
+      identified by manual analysis.
