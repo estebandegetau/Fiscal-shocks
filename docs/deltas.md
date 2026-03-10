@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-03-10: C1 S3 manual error analysis complete — taxpayer-liability heuristic discovered
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S3 Error Analysis
+**Detail:** H&K manual error analysis (iteration 16) inspected all 40 S3 baseline chunks. Distribution: 31 A (correct), 5 B (gold-standard IKA noise in Tier 2), 3 E (semantics/reasoning), 1 F (codebook ambiguity). Bias-corrected recall is 100% after excluding B chunks. The 3 Category E errors share a pattern: the model conflates government financial actions (intergovernmental transfers, education appropriations, debt management instruments) with taxpayer-liability-changing fiscal measures. The 1 Category F error reveals R&R boundary ambiguity on organizational acts with fiscal implications (Energy Independence Authority). Key insight: codebook should clarify that fiscal measures must change liabilities *to or from taxpayers*, not merely involve government financial actions affecting other entities.
+**Suggested edit:** Update C1 S3 status to "manual analysis complete." Consider adding a codebook clarification distinguishing taxpayer-facing fiscal measures from other government financial actions before proceeding to C2.
+
 ## ~~2026-03-09: Stale LOOCV references in strategy.md~~ RESOLVED
 
 **Type:** correction

@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 S3 pipeline validated on v0.4.0 (iteration 14: Llama test confirms all 4 ablation conditions + Tests V-VII produce data; ready for formal Haiku S3 run); S2 complete (iteration 12: 94.3% Tier 1 recall, 83.7% combined recall); C2-C4 not yet started
+**Status**: IN PROGRESS — C1 S3 complete: Haiku behavioral tests + ablation (iteration 15), manual error analysis (iteration 16: 31A/5B/3E/1F, bias-corrected recall 100%); considering codebook clarification (taxpayer-liability heuristic) before C2; C2-C4 not yet started
 
 ## Authoritative Methodology
 
