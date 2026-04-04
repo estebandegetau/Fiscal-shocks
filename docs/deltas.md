@@ -9,12 +9,20 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
-## 2026-03-10: C1 S3 manual error analysis complete — taxpayer-liability heuristic discovered
+## 2026-04-04: C1 S3 gate passed (v0.5.0) — tax-vs-spending gray zone identified
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S3 Error Analysis; also C2 Implementation (new constraint)
+**Detail:** C1 v0.5.0 S3 manual analysis (iteration 20) passed the S3 gate. Distribution: 32A/5B/0E/3F. The v0.5.0 taxpayer-liability clarification eliminated all 3 Category E errors from v0.4.0 (iteration 16). Residual 3 F errors (texts 23, 32, 33) share one root cause: C1's definition of "fiscal measure" is broader than R&R's scope, which is specifically tax/revenue legislation. The model correctly identifies spending-side fiscal policy (EIA, PRWORA, General Revenue Sharing termination) that R&R never intended to capture. A deeper insight: some of these measures live in a gray zone where spending policy is implemented through tax-adjacent mechanisms (credits, rebates), and their exclusion from R&R may be driven by motivation-classification needs in C2 rather than C1 scope alone. With n=3, this is a hypothesis to monitor during C2 development.
+**Suggested edit:** Update C1 S3 status to "gate passed." Add note to C2 implementation plan: monitor how spending-side measures with behavioral/political motivation interact with R&R's 4-bucket classification, as this will inform whether the C1 F-error pattern requires a C1 codebook fix or is better addressed as a C2-level filter.
+
+## ~~2026-03-10: C1 S3 manual error analysis complete — taxpayer-liability heuristic discovered~~ RESOLVED
 
 **Type:** status-change
 **Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S3 Error Analysis
 **Detail:** H&K manual error analysis (iteration 16) inspected all 40 S3 baseline chunks. Distribution: 31 A (correct), 5 B (gold-standard IKA noise in Tier 2), 3 E (semantics/reasoning), 1 F (codebook ambiguity). Bias-corrected recall is 100% after excluding B chunks. The 3 Category E errors share a pattern: the model conflates government financial actions (intergovernmental transfers, education appropriations, debt management instruments) with taxpayer-liability-changing fiscal measures. The 1 Category F error reveals R&R boundary ambiguity on organizational acts with fiscal implications (Energy Independence Authority). Key insight: codebook should clarify that fiscal measures must change liabilities *to or from taxpayers*, not merely involve government financial actions affecting other entities.
 **Suggested edit:** Update C1 S3 status to "manual analysis complete." Consider adding a codebook clarification distinguishing taxpayer-facing fiscal measures from other government financial actions before proceeding to C2.
+**Resolved:** Addressed in v0.5.0 (iteration 17, commit 2a6caa1). Taxpayer-liability negative clarification added to C1 codebook. v0.5.0 S3 manual analysis (iteration 20) confirmed: all 3 Category E errors eliminated. Superseded by 2026-04-04 delta covering v0.5.0 results and remaining F-error pattern.
 
 ## ~~2026-03-09: Stale LOOCV references in strategy.md~~ RESOLVED
 
