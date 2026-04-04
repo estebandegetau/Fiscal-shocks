@@ -1625,3 +1625,118 @@ iterations:
       count stays at 3 or drops, the clarification is a net win regardless
       of raw S2 metrics. If new E errors appear citing the
       taxpayer-liability language, narrow or revert the clarification.
+
+  - iteration: 19
+    codebook_version: "0.5.0"
+    date: "2026-04-04"
+    git_commit: "1f778f0"
+    model: "claude-haiku-4-5-20251001"
+    provider: "anthropic"
+    stage: "s3"
+    changes: >
+      No codebook changes since iteration 18 (S2). Codebook v0.5.0 with
+      taxpayer-liability negative clarification added after iteration 16
+      manual analysis. This is the first S3 run on v0.5.0.
+    results:
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            normal_doc_normal_cb: 0.8000
+            modified_doc_normal_cb: 0.8000
+            normal_doc_modified_cb: 0.8000
+            modified_doc_modified_cb: 0.6000
+          overall_consistency: 0.7500
+          all_combos_correct_rate: 0.4750
+        - test: "VI_generic_labels"
+          original_accuracy: 0.8000
+          generic_accuracy: 0.8421
+          accuracy_difference: 0.0421
+          original_f1: 0.7895
+          generic_f1: 0.9143
+          f1_difference: 0.1248
+          change_rate: 0.0526
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.4500
+          follows_names_rate: 0.5500
+          swapped_accuracy: 0.5000
+          interpretation: >
+            Aggregate misleading for same reason as iteration 15: binary
+            task with residual class. All positives predicted NOT_FISCAL_MEASURE
+            under swap (swapped recall = 0). Regression from v0.4.0 where
+            16/16 baseline-correct positives followed definitions. Requires
+            per-class decomposition to interpret.
+      ablation:
+        - condition: "full"
+          accuracy: 0.8000
+          f1: 0.7895
+          recall: 0.7500
+          precision: 0.8333
+          tier1_recall: 1.0000
+          tier2_recall: 0.5000
+        - condition: "no_label_def"
+          accuracy: 0.7750
+          accuracy_drop: 0.0250
+          f1: 0.7568
+          recall: 0.7000
+          precision: 0.8235
+          tier1_recall: 0.9000
+          tier2_recall: 0.5000
+        - condition: "no_clarifications"
+          accuracy: 0.6500
+          accuracy_drop: 0.1500
+          f1: 0.7200
+          recall: 0.9000
+          precision: 0.6000
+          tier1_recall: 1.0000
+          tier2_recall: 0.8000
+        - condition: "all_removed"
+          accuracy: 0.6250
+          accuracy_drop: 0.1750
+          f1: 0.6939
+          recall: 0.8500
+          precision: 0.5862
+          tier1_recall: 1.0000
+          tier2_recall: 0.7000
+      baseline_misclassifications:
+        false_negatives: [11, 13, 17, 18, 19]
+        false_positives: [23, 32, 33]
+        note: >
+          vs v0.4.0 (iteration 15): text 35 (TIPS, Category E) now correctly
+          classified — taxpayer-liability clarification fixed it. Text 13
+          (JCWAA CBO appendix, Category B noise) newly rejected. Net: 1 real
+          error fixed, 1 noise chunk more appropriately rejected.
+      comparison_vs_v040:
+        baseline_accuracy_delta: 0.0000
+        baseline_f1_delta: -0.0105
+        baseline_precision_delta: +0.0333
+        baseline_recall_delta: -0.0500
+        tier1_recall_delta: 0.0000
+        tier2_recall_delta: -0.1000
+        test_v_consistency_delta: +0.0437
+        test_v_all_combos_delta: +0.1000
+      n_test_texts: 40
+      test_set_composition:
+        positives: 20
+        negatives: 20
+        tier1: 10
+        tier2: 10
+        tier_na: 20
+    interpretation: >
+      Aggregate metrics at these margins tell us little given known noise
+      in gold labels. Overall performance equivalent to v0.4.0 (iteration
+      15). Key change: text 35 (TIPS) now correctly classified — taxpayer-
+      liability clarification fixed 1/3 Category E errors. Text 13 (JCWAA
+      CBO appendix, Category B noise) newly rejected. Net effect: one real
+      semantic error fixed, one noise chunk more appropriately rejected.
+      Raw metrics cannot distinguish these improvements because gold labels
+      are wrong on noise chunks. Test V consistency improved (+4.4pp overall,
+      +10pp all-combos-correct). Test VII aggregate shows apparent regression
+      but requires per-class decomposition (same caveat as iteration 15).
+      Ablation confirms clarifications remain the highest-leverage component.
+      Manual review is the actual gate, not aggregate metrics.
+    decision: >
+      Proceed to manual error analysis on v0.5.0 S3 baseline using same
+      method as iteration 16. Compare category distribution against v0.4.0.
+      Key questions: (1) Do remaining FP (texts 23, 32, 33) now reference
+      taxpayer-liability language in reasoning? (2) Does text 13 confirm as
+      Category B noise? (3) Has the overall A/B/E/F distribution improved?
