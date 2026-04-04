@@ -1519,3 +1519,109 @@ iterations:
       whether the taxpayer-liability negative clarification reduces the
       Category E false positives identified in iteration 16 manual
       analysis (NCLB, revenue sharing, TIPS) without degrading recall.
+
+  - iteration: 18
+    codebook_version: "0.5.0"
+    date: "2026-04-04"
+    git_commit: "287f7d2"
+    model: "claude-haiku-4-5-20251001"
+    provider: "anthropic"
+    stage: "s2"
+    changes: >
+      Codebook updated from v0.4.0 to v0.5.0: added taxpayer-liability
+      negative clarification to FISCAL_MEASURE class based on iteration 16
+      manual analysis findings. This distinguishes taxpayer-facing fiscal
+      measures from other government financial actions (intergovernmental
+      transfers, debt management, organizational acts). No other codebook
+      changes.
+    results:
+      overall_pass: false
+      metrics:
+        - metric: "combined_recall"
+          value: 0.7929
+          ci_lower: 0.7628
+          ci_upper: 0.8192
+          target: 0.9000
+          pass: false
+        - metric: "tier1_recall"
+          value: 0.9429
+          ci_lower: 0.8861
+          ci_upper: 0.9878
+          target: 0.9500
+          pass: false
+        - metric: "tier2_recall"
+          value: 0.7778
+          ci_lower: 0.7460
+          ci_upper: 0.8072
+        - metric: "precision"
+          value: 0.9573
+          ci_lower: 0.9411
+          ci_upper: 0.9717
+          target: 0.7000
+          pass: true
+        - metric: "f1"
+          value: 0.8674
+          ci_lower: 0.8475
+          ci_upper: 0.8841
+        - metric: "accuracy"
+          value: 0.7856
+          ci_lower: 0.7567
+          ci_upper: 0.8111
+        - metric: "specificity"
+          value: 0.7300
+          ci_lower: 0.6336
+          ci_upper: 0.8095
+      test_set:
+        n_total: 863
+        n_valid: 863
+        n_parse_failures: 0
+        n_tier1: 70
+        n_tier2: 693
+        n_negatives: 100
+      confusion_matrix:
+        tp: 605
+        fp: 27
+        fn: 158
+        tn: 73
+      comparison_vs_v040:
+        combined_recall_delta: -0.0444
+        tier1_recall_delta: 0.0000
+        tier2_recall_delta: -0.0490
+        precision_delta: +0.0092
+        specificity_delta: +0.0800
+        fp_delta: -8
+        fn_delta: +34
+      error_analysis:
+        total_errors: 185
+        false_positives: 27
+        false_negatives: 158
+        tier1_fn: 4
+        tier2_fn: 154
+        tier2_fn_mentioning_taxpayer_language: 135
+        tier2_fn_explicit_taxpayer_rejection: 100
+        tier2_fn_content_categories:
+          index_toc: 62
+          statistical_tables: 39
+          administrative: 55
+          potentially_substantive: 28
+        acts_with_zero_recall: 23
+    interpretation: >
+      v0.5.0 taxpayer-liability clarification improved precision (+0.9pp)
+      and specificity (+8pp) as intended, reducing FP from 35 to 27.
+      However, it also increased FN from 124 to 158 (combined recall
+      -4.4pp). Tier 1 recall unchanged at 94.3%. The 34 new FN are
+      overwhelmingly Tier 2 noise chunks (indexes, tables, glossaries,
+      admin text). 135/154 Tier 2 FN invoke taxpayer/liability language
+      in reasoning; 100 explicitly use it as rejection criterion. Raw S2
+      metrics are unreliable at these margins due to gold-standard noise
+      from IKA matching — iteration 16 manual analysis showed
+      bias-corrected recall of 100% on v0.4.0. The apparent recall
+      regression likely reflects increased noise rejection, not genuine
+      fiscal measure misses, but this can only be confirmed through S3
+      manual analysis on v0.5.0.
+    decision: >
+      Run S3 on v0.5.0 and perform manual error analysis to compare
+      category distribution against iteration 16 (v0.4.0). If Category E
+      count stays at 3 or drops, the clarification is a net win regardless
+      of raw S2 metrics. If new E errors appear citing the
+      taxpayer-liability language, narrow or revert the clarification.
