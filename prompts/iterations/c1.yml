@@ -1740,3 +1740,402 @@ iterations:
       Key questions: (1) Do remaining FP (texts 23, 32, 33) now reference
       taxpayer-liability language in reasoning? (2) Does text 13 confirm as
       Category B noise? (3) Has the overall A/B/E/F distribution improved?
+
+  - iteration: 20
+    codebook_version: "0.5.0"
+    date: "2026-04-04"
+    git_commit: "5599a2a"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3_manual_analysis"
+    changes: >
+      Manual error analysis of S3 baseline predictions (v0.5.0) using H&K
+      6-category framework (A-F). Inspected all 40 baseline chunks with
+      human judgment on each classification. Compared against v0.4.0 manual
+      analysis (iteration 16).
+    results:
+      n_inspected: 40
+      category_distribution:
+        - category: "A_llm_correct"
+          count: 32
+          pct: 80.0
+        - category: "B_incorrect_gold"
+          count: 5
+          pct: 12.5
+        - category: "C_document_error"
+          count: 0
+          pct: 0.0
+        - category: "D_non_compliance"
+          count: 0
+          pct: 0.0
+        - category: "E_semantics_reasoning"
+          count: 0
+          pct: 0.0
+        - category: "F_other"
+          count: 3
+          pct: 7.5
+      chunk_judgments:
+        # --- Tier 1 positives (10/10 correct) ---
+        - text_id: 1
+          chunk_id: "12"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Tax Reform Act of 1976 with specific provisions"
+        - text_id: 2
+          chunk_id: "7"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies EGTRRA + JCWAA"
+        - text_id: 3
+          chunk_id: "2"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies H.R. 8363 tax cut"
+        - text_id: 4
+          chunk_id: "4"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Economic Stabilization Act extension"
+        - text_id: 5
+          chunk_id: "1"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies Jan 1954 tax cuts despite OCR noise"
+        - text_id: 6
+          chunk_id: "34"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; Social Security Amendments of 1977"
+        - text_id: 7
+          chunk_id: "10"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; 6% surcharge proposal (RECA 1968)"
+        - text_id: 8
+          chunk_id: "2"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; $25B tax reduction program 1978"
+        - text_id: 9
+          chunk_id: "8"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; Revenue Act of 1945"
+        - text_id: 10
+          chunk_id: "3"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; identifies War Overtime Pay Act (different measure than gold label act but FM classification correct)"
+        # --- Tier 2 positives (5/10 correct; 5 Category B noise) ---
+        - text_id: 11
+          chunk_id: "91"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is budget index with page references only; IKA noise"
+        - text_id: 12
+          chunk_id: "8"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; Tax Reform Act of 1986"
+        - text_id: 13
+          chunk_id: "25"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is CBO glossary + contributor list; IKA noise"
+        - text_id: 14
+          chunk_id: "16"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; EGTRRA/JGTRRA provisions"
+        - text_id: 15
+          chunk_id: "32"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; Tax Reduction Act of 1975"
+        - text_id: 16
+          chunk_id: "74"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; Revenue Act of 1951 excise taxes"
+        - text_id: 17
+          chunk_id: "21"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is Treasury admin report (computer purchases, enforcement ops); IKA noise"
+        - text_id: 18
+          chunk_id: "79"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is Treasury index with heavy OCR artifacts; IKA noise"
+        - text_id: 19
+          chunk_id: "2"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: "Text is CBO TOC + table list; IKA noise"
+        - text_id: 20
+          chunk_id: "14"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; Social Security Amendments + tax reduction proposal"
+        # --- Negatives (17/20 correct; 3 Category F) ---
+        - text_id: 21
+          chunk_id: "31"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; tabular grants data"
+        - text_id: 22
+          chunk_id: "44"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; budget tables"
+        - text_id: 23
+          chunk_id: "16"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "F"
+          notes: >
+            Model identified Energy Independence Authority (proposed, never
+            enacted) with $100B proposed resources. Text also includes
+            homeowner insulation tax credit — a genuine tax measure routed
+            through the tax code. Root cause: C1 does not encode R&R's
+            implicit boundary between tax legislation and spending-side
+            fiscal policy. Gray zone between tax collection and spending
+            through tax credits/rebates. Potential C1 improvement opportunity.
+        - text_id: 24
+          chunk_id: "81"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; budget receipts tables"
+        - text_id: 25
+          chunk_id: "13"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; receipts tables"
+        - text_id: 26
+          chunk_id: "35"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; RFC financial statements"
+        - text_id: 27
+          chunk_id: "44"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; Treasury tax/loan account tables"
+        - text_id: 28
+          chunk_id: "31"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; TOC + statistical tables"
+        - text_id: 29
+          chunk_id: "185"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; budget tables"
+        - text_id: 30
+          chunk_id: "21"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; admin report, no specific measure"
+        - text_id: 31
+          chunk_id: "85"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; international monetary speeches"
+        - text_id: 32
+          chunk_id: "19"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "F"
+          notes: >
+            Model identified PRWORA (1996), an enacted welfare reform act.
+            Spending-side measure with behavioral motivation outside R&R's
+            4-bucket framework. Same root cause as text 23: C1 definition
+            of fiscal measure broader than R&R's tax/revenue scope. Gray
+            zone: welfare reform implemented partly through tax-adjacent
+            mechanisms (work requirements reducing transfer payments).
+        - text_id: 33
+          chunk_id: "34"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "F"
+          notes: >
+            Model identified proposal to terminate General Revenue Sharing.
+            Spending-side intergovernmental transfer, not tax legislation.
+            Same root cause as texts 23 and 32: C1 scope does not clearly
+            distinguish R&R's tax/revenue focus from broader fiscal policy.
+        - text_id: 34
+          chunk_id: "41"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; NASA/NSF budget descriptions"
+        - text_id: 35
+          chunk_id: "9"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; inflation-indexed securities discussion (was Category E in v0.4.0 — fixed by taxpayer-liability clarification)"
+        - text_id: 36
+          chunk_id: "38"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; balance of payments analysis"
+        - text_id: 37
+          chunk_id: "31"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; GNP statistical tables"
+        - text_id: 38
+          chunk_id: "90"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; international monetary reform communique"
+        - text_id: 39
+          chunk_id: "66"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; outlays-by-function tables"
+        - text_id: 40
+          chunk_id: "95"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct; public debt securities tables"
+      bias_corrected_metrics:
+        effective_n: 35
+        accuracy: 0.914
+        precision: 0.833
+        recall: 1.000
+        tier1_recall: 1.000
+        tier2_recall: 1.000
+        specificity: 0.850
+        note: >
+          Excludes 5 Category B chunks (IKA noise in gold standard).
+          All B chunks are Tier 2 FM->NFM where model correctly rejected
+          non-substantive text. 3 F false positives remain in denominator
+          as codebook ambiguity errors.
+      comparison_vs_v040_manual:
+        v040_distribution: "31A / 5B / 0C / 0D / 3E / 1F"
+        v050_distribution: "32A / 5B / 0C / 0D / 0E / 3F"
+        changes: >
+          +1 A (text 35 TIPS fixed by taxpayer-liability clarification),
+          -3 E (eliminated entirely), +2 F (texts 23 and 32 reclassified
+          from E to F after deeper analysis of tax-vs-spending boundary).
+          Net: zero semantic/reasoning errors remain. All residual errors
+          are codebook scope ambiguity (F).
+      diagnostic_pattern:
+        root_cause: >
+          All 3 F errors share one root cause: C1 defines 'fiscal measure'
+          more broadly than R&R's scope, which is specifically tax/revenue
+          legislation. The model correctly identifies spending-side fiscal
+          policy (welfare reform, intergovernmental transfers, proposed
+          energy authority) that R&R never intended to capture.
+        gray_zone_observation: >
+          The boundary between tax legislation and spending policy is not
+          always clean. Some measures in the F category involve tax-adjacent
+          mechanisms (tax credits for insulation, welfare-to-work reducing
+          transfer payments). These measures change fiscal liabilities but
+          through behavioral/political motivation that does not fit R&R's
+          4-bucket motivation framework (deficit-driven, spending-driven,
+          countercyclical, exogenous/long-run). This suggests the exclusion
+          may be driven by R&R's downstream classification needs (C2), not
+          just C1 scope. Potential improvement: either sharpen C1 definition
+          to exclude spending-side policy, or handle downstream in C2 as a
+          filter. Monitor this pattern in C2 development.
+    interpretation: >
+      C1 v0.5.0 achieves zero semantic/reasoning errors (Category E = 0),
+      up from 3 in v0.4.0. The taxpayer-liability clarification added in
+      v0.5.0 fixed text 35 (TIPS). Bias-corrected recall is 100% across
+      both tiers. All residual errors are Category F (codebook scope
+      ambiguity): 3 false positives where the model correctly identified
+      real fiscal content that falls outside R&R's tax/revenue scope.
+      These share a common root cause — C1's definition of 'fiscal measure'
+      does not encode R&R's implicit boundary between tax legislation and
+      spending-side policy. A deeper insight: some of these measures live
+      in a gray zone where spending policy is implemented through
+      tax-adjacent mechanisms (credits, rebates), and their exclusion from
+      R&R may be driven by motivation-classification needs in C2 rather
+      than C1 scope alone. This is a potential source of C1 improvement,
+      either through codebook clarification or pipeline design (downstream
+      C2 filter). With n=3, this is a hypothesis to monitor during C2
+      development, not a confirmed systematic pattern.
+    decision: >
+      C1 S3 gate passed. Proceed to C2 (Motivation) development. During
+      C2 development, monitor the tax-vs-spending gray zone: observe how
+      measures with behavioral/political motivation (energy policy, welfare
+      reform) interact with R&R's 4-bucket classification. This will inform
+      whether the F-error pattern requires a C1 codebook fix or is better
+      addressed as a C2-level filter.
