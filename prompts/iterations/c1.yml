@@ -2416,3 +2416,119 @@ iterations:
       outside the gold standard, Gemini's profile is strictly preferable
       for the pipeline (higher recall at lower cost, with FPs filtered
       downstream).
+
+  - iteration: 25
+    codebook_version: "0.6.0"
+    date: "2026-04-05"
+    git_commit: "e177703"
+    model: "google/gemini-2.5-flash"
+    provider: "openrouter"
+    stage: "s3"
+    changes: >
+      No codebook changes since iteration 24 (S2). First S3 error analysis
+      on Gemini 2.5 Flash (v0.6.0). Purpose: assess whether Gemini's
+      recall-aggressive S2 profile (99.5% recall, 28% specificity) reflects
+      genuine domain understanding or shallow pattern-matching.
+    results:
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            normal_doc_normal_cb: 0.7000
+            modified_doc_normal_cb: 0.6750
+            normal_doc_modified_cb: 0.6500
+            modified_doc_modified_cb: 0.2000
+          overall_consistency: 0.5562
+          all_combos_correct_rate: 0.1500
+        - test: "VI_generic_labels"
+          original_accuracy: 0.7000
+          generic_accuracy: 0.6060
+          accuracy_difference: -0.0940
+          original_f1: 0.7690
+          generic_f1: 0.7550
+          f1_difference: -0.0140
+          change_rate: 0.0300
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.2750
+          follows_names_rate: 0.7250
+          swapped_f1: 0.7320
+          swapped_accuracy: 0.2750
+          interpretation: "Model follows label names, not definitions"
+          per_class_decomposition:
+            positives_follow_definitions: "5/20 (25.0%)"
+            positives_follow_names: "15/20 (75.0%)"
+            negatives_follow_definitions: "6/20 (30.0%)"
+            negatives_follow_names: "14/20 (70.0%)"
+      ablation:
+        - condition: "full"
+          accuracy: 0.7000
+          f1: 0.7690
+          recall: 1.0000
+          precision: 0.6250
+          tier1_recall: 1.0000
+          tier2_recall: 1.0000
+        - condition: "no_label_def"
+          accuracy: 0.6750
+          accuracy_drop: 0.0250
+          f1: 0.7550
+          recall: 1.0000
+          precision: 0.6060
+          tier1_recall: 1.0000
+          tier2_recall: 1.0000
+        - condition: "no_clarifications"
+          accuracy: 0.6750
+          accuracy_drop: 0.0250
+          f1: 0.7550
+          recall: 1.0000
+          precision: 0.6060
+          tier1_recall: 1.0000
+          tier2_recall: 1.0000
+        - condition: "all_removed"
+          accuracy: 0.6500
+          accuracy_drop: 0.0500
+          f1: 0.7410
+          recall: 1.0000
+          precision: 0.5880
+          tier1_recall: 1.0000
+          tier2_recall: 1.0000
+      ablation_note: >
+        Recall invariant at 100% across all conditions including fully ablated
+        codebook. Gemini classifies everything as FISCAL_MEASURE regardless of
+        codebook content. Codebook only affects precision: max drop 5pp when
+        all components removed. Compare Haiku (iter 19): clarifications caused
+        15pp accuracy drop and 15pp recall increase — functioning as a
+        meaningful precision gate.
+      n_test_texts: 40
+      baseline_composition:
+        predicted_FM: 32
+        predicted_NFM: 8
+        true_FM: 20
+        true_NFM: 20
+    interpretation: >
+      Gemini 2.5 Flash is not operationalizing the codebook. Three converging
+      signals: (1) Test VII per-class decomposition shows 75% of positive texts
+      follow label names, not definitions — the opposite of Haiku (iter 15:
+      100% definition-following on positives). Gemini's world knowledge of
+      "what a fiscal measure looks like" overwhelms codebook definitions.
+      (2) Ablation shows recall invariant at 100% across all conditions
+      including fully ablated codebook — the model classifies everything as
+      FISCAL_MEASURE regardless of what the codebook says. (3) Test V
+      modified_doc_modified_cb collapses to 20% — Gemini readily follows the
+      absurd elephant exclusion rule, unlike Haiku which overrode it with
+      domain judgment. This is a negative signal for cross-country
+      transferability where codebook instructions may not perfectly anticipate
+      local fiscal language. For C1 as a recall-optimized filter, Gemini's
+      profile is arguably functional (catch everything, let C2-C4 sort it
+      out). But for C2+ where nuanced definition-following is critical — e.g.,
+      distinguishing spending-driven from deficit-driven motivation — a model
+      that ignores definitions and follows label-name priors would be
+      unreliable.
+    decision: >
+      Gemini 2.5 Flash is not a viable candidate for the validated H&K
+      pipeline. Its recall-aggressive profile and failure to follow codebook
+      definitions disqualify it for C2+ where nuanced classification is
+      required. Formal H&K validation remains on Haiku, which demonstrated
+      100% definition-following on positive texts (iter 15) and meaningful
+      codebook sensitivity in ablation (iter 19). Gemini exploration for C1
+      is complete — no further S3 manual analysis needed since the behavioral
+      tests already reveal the fundamental limitation. Return to Haiku for
+      C2 development.
