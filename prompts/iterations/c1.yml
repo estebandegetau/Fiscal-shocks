@@ -2139,3 +2139,48 @@ iterations:
       reform) interact with R&R's 4-bucket classification. This will inform
       whether the F-error pattern requires a C1 codebook fix or is better
       addressed as a C2-level filter.
+
+  - iteration: 21
+    codebook_version: "0.6.0"
+    date: "2026-04-05"
+    git_commit: "723581d"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      Codebook updated from v0.5.0 to v0.6.0: added extra_output_fields
+      (discusses_motivation, discusses_timing, discusses_magnitude) as boolean
+      relevance flags conditional on FISCAL_MEASURE. Updated output_instructions
+      to describe the three flags and include them in the JSON schema. No changes
+      to class definitions, clarifications, or negative clarifications.
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+          change_rate_reversed: 0.0000
+          change_rate_shuffled: 0.0000
+          fleiss_kappa: 1.0000
+          kappa_interpretation: "Near-perfect agreement"
+    interpretation: >
+      New relevance flags working correctly as per S1 tests. All four behavioral
+      tests pass cleanly — no regression from v0.5.0 (iteration 17). The
+      extra_output_fields are populated with reasonable boolean values in Test I
+      responses. S1 has been stable across all Haiku runs since iteration 3.
+      Test III remains vacuously passed (no examples in codebook since v0.2.0).
+    decision: >
+      Proceed to S2 zero-shot evaluation on v0.6.0. S1 regression check complete.
