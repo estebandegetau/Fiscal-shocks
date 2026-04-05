@@ -215,6 +215,19 @@ list(
     deployment = "main"
   ),
 
+  # C2 act-level data: aggregate C1 chunks by act for motivation classification
+  tar_target(
+    c2_act_data,
+    assemble_c2_act_data(c1_chunk_data, aligned_data,
+                          n_tier2_per_act = 20L, seed = 20251206L),
+    packages = "tidyverse"
+  ),
+
+  tar_quarto(
+    varify_c2_inputs,
+    "notebooks/verify_c2_inputs.qmd"
+  ),
+
   # S0: Track codebook file so YAML edits invalidate downstream targets
   tar_target(
     c1_codebook_file,
