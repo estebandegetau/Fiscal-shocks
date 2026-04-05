@@ -59,6 +59,7 @@ llm_provider <- "openai"
 llm_model    <- "google/gemini-2.5-flash"
 llm_base_url <- "https://openrouter.ai/api/v1"
 llm_api_key  <- Sys.getenv("OPENROUTER_API_KEY")
+llm_max_tokens <- 1024
 
 list(
   tar_target(
@@ -256,6 +257,7 @@ list(
       aligned_data,
       c1_chunk_data,
       model = llm_model,
+      max_tokens = llm_max_tokens,
       provider = llm_provider,
       base_url = llm_base_url,
       api_key = llm_api_key
@@ -288,6 +290,7 @@ list(
       c1_s2_test_set,
       codebook_type = "C1",
       model = llm_model,
+      max_tokens = llm_max_tokens,
       provider = llm_provider,
       base_url = llm_base_url,
       api_key = llm_api_key
@@ -317,6 +320,7 @@ list(
       c1_codebook,
       c1_s3_test_set,
       model = llm_model,
+      max_tokens = llm_max_tokens,
       provider = llm_provider,
       base_url = llm_base_url,
       api_key = llm_api_key

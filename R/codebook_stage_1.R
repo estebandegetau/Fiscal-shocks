@@ -23,6 +23,7 @@ run_behavioral_tests_s1 <- function(codebook,
                                      model = "claude-haiku-4-5-20251001",
                                      n_test = 20,
                                      seed = 20251206,
+                                     max_tokens = 1024,
                                      provider = "anthropic",
                                      base_url = NULL,
                                      api_key = NULL) {
@@ -62,6 +63,7 @@ run_behavioral_tests_s1 <- function(codebook,
   # Test I: Legal Outputs
   message("  Test I: Legal Outputs...")
   test_i <- test_legal_outputs(codebook, test_texts, model,
+                               max_tokens = max_tokens,
                                provider = provider, base_url = base_url,
                                api_key = api_key)
   message(sprintf("    %s (%.0f%% valid)",
@@ -70,6 +72,7 @@ run_behavioral_tests_s1 <- function(codebook,
   # Test II: Definition Recovery (tests codebook, not input format)
   message("  Test II: Definition Recovery...")
   test_ii <- test_definition_recovery(codebook, model,
+                                      max_tokens = max_tokens,
                                       provider = provider, base_url = base_url,
                                       api_key = api_key)
   message(sprintf("    %s (%d/%d correct)",
@@ -84,6 +87,7 @@ run_behavioral_tests_s1 <- function(codebook,
   if (has_examples) {
     message("  Test III: Example Recovery...")
     test_iii <- test_example_recovery(codebook, model,
+                                      max_tokens = max_tokens,
                                       provider = provider, base_url = base_url,
                                       api_key = api_key)
     message(sprintf("    %s (%d/%d correct)",
@@ -111,6 +115,7 @@ run_behavioral_tests_s1 <- function(codebook,
   order_texts <- test_texts[seq_len(n_order_test)]
   message(sprintf("  Test IV: Order Invariance (n=%d)...", n_order_test))
   test_iv <- test_order_invariance(codebook, order_texts, model,
+                                   max_tokens = max_tokens,
                                    provider = provider, base_url = base_url,
                                    api_key = api_key)
   message(sprintf(

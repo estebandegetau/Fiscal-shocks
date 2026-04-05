@@ -77,6 +77,7 @@ assemble_s3_test_set <- function(c1_chunk_data,
 run_error_analysis <- function(codebook,
                                s3_test_set,
                                model = "claude-haiku-4-5-20251001",
+                               max_tokens = 1024,
                                provider = "anthropic",
                                base_url = NULL,
                                api_key = NULL) {
@@ -91,7 +92,7 @@ run_error_analysis <- function(codebook,
   message("  Computing baseline predictions...")
   baseline_details <- classify_batch_for_test(
     codebook, test_texts, model,
-    return_details = TRUE,
+    return_details = TRUE, max_tokens = max_tokens,
     provider = provider, base_url = base_url, api_key = api_key
   )
   baseline_preds <- baseline_details$label
@@ -100,6 +101,7 @@ run_error_analysis <- function(codebook,
   message("  Test V: Exclusion Criteria Consistency...")
   test_v <- test_exclusion_criteria(
     codebook, test_texts, true_labels, model,
+    max_tokens = max_tokens,
     provider = provider, base_url = base_url, api_key = api_key,
     baseline_preds = baseline_preds
   )
@@ -117,6 +119,7 @@ run_error_analysis <- function(codebook,
   message("  Test VI: Generic Labels...")
   test_vi <- test_generic_labels(
     codebook, test_texts, true_labels, model,
+    max_tokens = max_tokens,
     provider = provider, base_url = base_url, api_key = api_key,
     baseline_preds = baseline_preds
   )
@@ -131,6 +134,7 @@ run_error_analysis <- function(codebook,
   message("  Test VII: Swapped Labels...")
   test_vii <- test_swapped_labels(
     codebook, test_texts, true_labels, model,
+    max_tokens = max_tokens,
     provider = provider, base_url = base_url, api_key = api_key,
     baseline_preds = baseline_preds
   )
@@ -144,7 +148,8 @@ run_error_analysis <- function(codebook,
   message("  Running ablation study...")
   ablation <- run_ablation_study(
     codebook, test_texts, true_labels, tiers = s3_test_set$tier,
-    model = model, provider = provider, base_url = base_url, api_key = api_key,
+    model = model, max_tokens = max_tokens,
+    provider = provider, base_url = base_url, api_key = api_key,
     baseline_preds = baseline_preds
   )
 
@@ -189,6 +194,7 @@ run_ablation_study <- function(codebook,
                                true_labels,
                                tiers = NULL,
                                model = "claude-haiku-4-5-20251001",
+                               max_tokens = 1024,
                                provider = "anthropic",
                                base_url = NULL,
                                api_key = NULL,
@@ -220,6 +226,7 @@ run_ablation_study <- function(codebook,
   # Baseline (reuse cached predictions if available)
   if (is.null(baseline_preds)) {
     baseline_preds <- classify_batch_for_test(codebook, test_texts, model,
+                                              max_tokens = max_tokens,
                                               provider = provider,
                                               base_url = base_url,
                                               api_key = api_key)
@@ -258,6 +265,7 @@ run_ablation_study <- function(codebook,
       )
       ablated_preds <- classify_batch_for_test(
         codebook, test_texts, model, system_prompt = ablated_prompt,
+        max_tokens = max_tokens,
         provider = provider, base_url = base_url, api_key = api_key
       )
       abl_m <- calc_metrics(ablated_preds, true_labels, tiers)

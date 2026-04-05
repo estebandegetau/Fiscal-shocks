@@ -22,7 +22,7 @@
 test_legal_outputs <- function(codebook,
                                test_texts,
                                model = "claude-haiku-4-5-20251001",
-                               max_tokens = 500,
+                               max_tokens = 1024,
                                provider = "anthropic",
                                base_url = NULL,
                                api_key = NULL) {
@@ -86,6 +86,7 @@ test_legal_outputs <- function(codebook,
 #' @export
 test_definition_recovery <- function(codebook,
                                      model = "claude-haiku-4-5-20251001",
+                                     max_tokens = 1024,
                                      provider = "anthropic",
                                      base_url = NULL,
                                      api_key = NULL) {
@@ -106,7 +107,7 @@ test_definition_recovery <- function(codebook,
       raw <- call_llm_api(
         messages = list(list(role = "user", content = user_message)),
         model = model,
-        max_tokens = 300,
+        max_tokens = max_tokens,
         temperature = 0,
         system = system_prompt,
         provider = provider,
@@ -163,6 +164,7 @@ test_definition_recovery <- function(codebook,
 #' @export
 test_example_recovery <- function(codebook,
                                   model = "claude-haiku-4-5-20251001",
+                                  max_tokens = 1024,
                                   provider = "anthropic",
                                   base_url = NULL,
                                   api_key = NULL) {
@@ -188,7 +190,7 @@ test_example_recovery <- function(codebook,
         raw <- call_llm_api(
           messages = list(list(role = "user", content = user_message)),
           model = model,
-          max_tokens = 300,
+          max_tokens = max_tokens,
           temperature = 0,
           system = system_prompt,
           provider = provider,
@@ -238,7 +240,7 @@ test_example_recovery <- function(codebook,
         raw <- call_llm_api(
           messages = list(list(role = "user", content = user_message)),
           model = model,
-          max_tokens = 300,
+          max_tokens = max_tokens,
           temperature = 0,
           system = system_prompt,
           provider = provider,
@@ -364,6 +366,7 @@ test_order_invariance <- function(codebook,
                                   test_texts,
                                   model = "claude-haiku-4-5-20251001",
                                   seed = 42,
+                                  max_tokens = 1024,
                                   provider = "anthropic",
                                   base_url = NULL,
                                   api_key = NULL) {
@@ -402,6 +405,7 @@ test_order_invariance <- function(codebook,
           model = model,
           temperature = 0,
           system_prompt = prompt,
+          max_tokens = max_tokens,
           provider = provider,
           base_url = base_url,
           api_key = api_key
@@ -492,6 +496,7 @@ test_exclusion_criteria <- function(
     test_texts,
     true_labels,
     model = "claude-haiku-4-5-20251001",
+    max_tokens = 1024,
     provider = "anthropic",
     base_url = NULL,
     api_key = NULL,
@@ -544,6 +549,7 @@ test_exclusion_criteria <- function(
       preds <- baseline_preds
     } else {
       preds <- classify_batch_for_test(combo$cb, combo$texts, model,
+                                          max_tokens = max_tokens,
                                           provider = provider, base_url = base_url,
                                           api_key = api_key)
     }
@@ -604,6 +610,7 @@ test_generic_labels <- function(codebook,
                                 test_texts,
                                 true_labels,
                                 model = "claude-haiku-4-5-20251001",
+                                max_tokens = 1024,
                                 provider = "anthropic",
                                 base_url = NULL,
                                 api_key = NULL,
@@ -632,12 +639,14 @@ test_generic_labels <- function(codebook,
     baseline_preds
   } else {
     classify_batch_for_test(codebook, test_texts, model,
+                            max_tokens = max_tokens,
                             provider = provider, base_url = base_url,
                             api_key = api_key)
   }
 
   # Classify with generic labels
   generic_preds <- classify_batch_for_test(generic_codebook, test_texts, model,
+                                           max_tokens = max_tokens,
                                            provider = provider, base_url = base_url,
                                            api_key = api_key)
 
@@ -700,6 +709,7 @@ test_swapped_labels <- function(codebook,
                                 test_texts,
                                 true_labels,
                                 model = "claude-haiku-4-5-20251001",
+                                max_tokens = 1024,
                                 provider = "anthropic",
                                 base_url = NULL,
                                 api_key = NULL,
@@ -727,12 +737,14 @@ test_swapped_labels <- function(codebook,
     baseline_preds
   } else {
     classify_batch_for_test(codebook, test_texts, model,
+                            max_tokens = max_tokens,
                             provider = provider, base_url = base_url,
                             api_key = api_key)
   }
 
   # Classify with swapped definitions
   swapped_preds <- classify_batch_for_test(swapped_codebook, test_texts, model,
+                                           max_tokens = max_tokens,
                                            provider = provider, base_url = base_url,
                                            api_key = api_key)
 
@@ -799,6 +811,7 @@ test_swapped_labels <- function(codebook,
 classify_batch_for_test <- function(codebook, texts, model,
                                     system_prompt = NULL,
                                     return_details = FALSE,
+                                    max_tokens = 1024,
                                     provider = "anthropic",
                                     base_url = NULL,
                                     api_key = NULL) {
@@ -814,6 +827,7 @@ classify_batch_for_test <- function(codebook, texts, model,
         model = model,
         temperature = 0,
         system_prompt = system_prompt,
+        max_tokens = max_tokens,
         provider = provider,
         base_url = base_url,
         api_key = api_key
