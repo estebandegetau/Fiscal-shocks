@@ -2244,3 +2244,61 @@ iterations:
       Test IV order sensitivity is expected for non-Anthropic models and does
       not block S2 smoke test. Results are exploratory — formal H&K validation
       remains on Haiku.
+
+  - iteration: 23
+    codebook_version: "0.6.0"
+    date: "2026-04-05"
+    git_commit: "3ff2a22"
+    model: "google/gemini-2.5-flash"
+    provider: "openrouter"
+    stage: "s1"
+    changes: >
+      No codebook changes. Re-run of Gemini 2.5 Flash S1 after two fixes:
+      (1) max_tokens bumped from 500 to 1024 in iteration 22 to resolve
+      Test I truncation failure. (2) llm_provider corrected from "openai"
+      to "openrouter" to match configured API key and base URL.
+    results:
+      overall_pass: false
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.1000
+          threshold: 0.0500
+          pass: false
+          change_rate_reversed: 0.1000
+          change_rate_shuffled: 0.1000
+          fleiss_kappa: 0.4643
+          kappa_interpretation: "Moderate agreement"
+    interpretation: >
+      max_tokens fix resolved Test I — now 20/20 valid outputs (vs 19/20
+      in iteration 22). Test IV improved from 20% to 10% change rate: the
+      text_id 6 truncation no longer counts as a flip, leaving only text_id 3
+      (borderline Social Security Amendments table/index mention) which flips
+      from FISCAL_MEASURE to NOT_FISCAL_MEASURE in both reversed and shuffled
+      orderings. This is a genuinely ambiguous chunk — the codebook's negative
+      clarification ("merely name past legislation without providing substantive
+      detail") could justify either label. Haiku produces perfect kappa (1.0) on
+      the same codebook and test set across iterations 3, 8, 10, 17, and 21.
+      The order sensitivity on borderline inputs is a known Gemini limitation,
+      not a codebook deficiency. Testing Gemini as a potential Haiku substitute
+      for multilingual deployment — cheaper (7-8x) and strong multilingual
+      credentials. This S1 run confirms one known limitation: order sensitivity
+      on ambiguous inputs.
+    decision: >
+      Proceed to C1 S2 zero-shot evaluation on Gemini 2.5 Flash. Purpose is
+      to test the new code pipeline and assess Gemini's classification
+      capabilities as a cheaper multilingual candidate. Test IV failure on a
+      single borderline chunk does not block exploratory S2. Formal H&K
+      validation remains on Haiku (iteration 21, all pass).
