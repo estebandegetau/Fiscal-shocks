@@ -9,8 +9,8 @@ project:
     - "!reports/20260117.qmd"
     - index.qmd
     - "!*unused/"
-    - "!notebooks/c1*.qmd"
-    - "!notebooks/identifying_known_acts.qmd"
+    # - "!notebooks/c1*.qmd"
+    # - "!notebooks/identifying_known_acts.qmd"
 
 author: 
   - name: "Esteban Degetau"
@@ -36,6 +36,7 @@ website:
           - notebooks/review_data.qmd
           - notebooks/verify_body.qmd
           - notebooks/data_overview.qmd
+          - notebooks/verify_c2_inputs.qmd
       - section: "Data Quality"
         contents:
           - notebooks/test_text_extraction.qmd

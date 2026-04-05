@@ -1,6 +1,6 @@
 codebook:
   name: "C1: Fiscal Measure Identification"
-  version: "0.5.0"
+  version: "0.6.0"
   instructions: >
     You are an expert in fiscal policy analysis classifying chunks from official government
     economic and budget documents. Your task is to scan the entire chunk and determine whether
@@ -48,14 +48,36 @@ codebook:
         - "A passage is not excluded from FISCAL_MEASURE classification merely because it contains fiscal vocabulary such as 'tax', 'revenue', 'spending', or 'budget'; it must describe a specific fiscal measure to qualify"
         - "Brief historical references that merely name past legislation without substantive detail about provisions are NOT_FISCAL_MEASURE, but retrospective descriptions that provide substantive detail about an act's specific provisions should be classified as FISCAL_MEASURE"
 
+  extra_output_fields:
+    - name: "discusses_motivation"
+      type: "boolean"
+      conditional_on: "FISCAL_MEASURE"
+    - name: "discusses_timing"
+      type: "boolean"
+      conditional_on: "FISCAL_MEASURE"
+    - name: "discusses_magnitude"
+      type: "boolean"
+      conditional_on: "FISCAL_MEASURE"
+
   output_instructions: >
     Classify the chunk using exactly one of: FISCAL_MEASURE, NOT_FISCAL_MEASURE.
 
     If the chunk contains multiple fiscal measures, name the most prominent one.
 
+    If FISCAL_MEASURE, also assess three relevance flags for downstream analysis:
+
+    - discusses_motivation: Does this passage discuss **why** the fiscal measure was enacted — its purpose, stated goals, or the economic/political conditions that prompted it?
+
+    - discusses_timing: Does this passage discuss **when** the fiscal measure takes or took effect — implementation dates, phase-in schedules, or retroactive provisions?
+
+    - discusses_magnitude: Does this passage discuss **how large** the fiscal measure is — revenue estimates, dollar amounts, rate changes, or affected population sizes?
+
     Return your answer as JSON:
     {
       "label": "FISCAL_MEASURE" or "NOT_FISCAL_MEASURE",
       "measure_name": "Name of the most prominent act or proposal if FISCAL_MEASURE, null otherwise",
+      "discusses_motivation": true or false (if FISCAL_MEASURE, null otherwise),
+      "discusses_timing": true or false (if FISCAL_MEASURE, null otherwise),
+      "discusses_magnitude": true or false (if FISCAL_MEASURE, null otherwise),
       "reasoning": "Brief explanation citing specific evidence from the chunk"
     }

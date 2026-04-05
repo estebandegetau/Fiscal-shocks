@@ -219,12 +219,12 @@ list(
   tar_target(
     c2_act_data,
     assemble_c2_act_data(c1_chunk_data, aligned_data,
-                          n_tier2_per_act = 20L, seed = 20251206L),
+                         n_tier2_per_act = 20L, seed = 20251206L),
     packages = "tidyverse"
   ),
 
   tar_quarto(
-    varify_c2_inputs,
+    verify_c2_inputs,
     "notebooks/verify_c2_inputs.qmd"
   ),
 

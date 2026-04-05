@@ -833,6 +833,9 @@ classify_batch_for_test <- function(codebook, texts, model,
       reasoning = purrr::map_chr(results, ~ .x$reasoning %||% NA_character_),
       raw_response = purrr::map_chr(results, ~ .x$raw_response %||% NA_character_),
       measure_name = purrr::map_chr(results, ~ .x$measure_name %||% NA_character_),
+      discusses_motivation = purrr::map_lgl(results, ~ .x$discusses_motivation %||% NA),
+      discusses_timing = purrr::map_lgl(results, ~ .x$discusses_timing %||% NA),
+      discusses_magnitude = purrr::map_lgl(results, ~ .x$discusses_magnitude %||% NA),
       stop_reason = purrr::map_chr(results, ~ .x$stop_reason %||% NA_character_)
     )
   } else {

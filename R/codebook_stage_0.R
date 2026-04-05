@@ -174,14 +174,19 @@ construct_codebook_prompt <- function(codebook,
       parts <- c(parts, sprintf("**Positive examples for %s:**\n\n", cls$label))
       for (j in seq_along(cls$positive_examples)) {
         ex <- cls$positive_examples[[j]]
-        example_json <- jsonlite::toJSON(
-          list(
-            label = jsonlite::unbox(cls$label),
-            measure_name = jsonlite::unbox(NULL),
-            reasoning = jsonlite::unbox(ex$reasoning)
-          ),
-          pretty = TRUE, null = "null"
+        json_fields <- list(
+          label = jsonlite::unbox(cls$label),
+          measure_name = jsonlite::unbox(NA)
         )
+        # Include extra_output_fields (e.g., relevance flags) if defined
+        if (!is.null(codebook$extra_output_fields)) {
+          for (ef in codebook$extra_output_fields) {
+            json_fields[[ef$name]] <- jsonlite::unbox(NA)
+          }
+        }
+        json_fields$reasoning <- jsonlite::unbox(ex$reasoning)
+        example_json <- jsonlite::toJSON(json_fields,
+                                          pretty = TRUE, na = "null")
         parts <- c(parts,
           sprintf("Example %d:\nText: %s\n\nExpected output:\n%s\n\n",
                   j, trimws(ex$text), example_json))
@@ -350,6 +355,9 @@ classify_with_codebook <- function(text,
     list(
       label = result$prediction,
       measure_name = majority_result$measure_name %||% NA_character_,
+      discusses_motivation = majority_result$discusses_motivation %||% NA,
+      discusses_timing = majority_result$discusses_timing %||% NA,
+      discusses_magnitude = majority_result$discusses_magnitude %||% NA,
       reasoning = majority_result$reasoning %||% NA_character_,
       raw_response = majority_result$raw_response %||% NA_character_,
       stop_reason = majority_result$stop_reason %||% NA_character_,
@@ -378,6 +386,9 @@ classify_with_codebook <- function(text,
     list(
       label = label,
       measure_name = parsed$measure_name %||% NA_character_,
+      discusses_motivation = parsed$discusses_motivation %||% NA,
+      discusses_timing = parsed$discusses_timing %||% NA,
+      discusses_magnitude = parsed$discusses_magnitude %||% NA,
       reasoning = parsed$reasoning %||% NA_character_,
       raw_response = raw_text,
       stop_reason = response$stop_reason %||% NA_character_,
