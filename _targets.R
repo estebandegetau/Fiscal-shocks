@@ -55,10 +55,10 @@ min_year <- 1946
 # NOTE: H&K S1-S3 validation results reported in the paper must use a
 # consistent Anthropic model. Non-Anthropic providers are for cost/feasibility
 # exploration only. Mixing providers invalidates stage comparability.
-llm_provider <- "openrouter"
-llm_model    <- "google/gemini-2.5-flash"
-llm_base_url <- "https://openrouter.ai/api/v1"
-llm_api_key  <- Sys.getenv("OPENROUTER_API_KEY")
+llm_provider <- "anthropic"
+llm_model    <- "claude-haiku-4-5-20251001"
+llm_base_url <- "https://api.anthropic.com/v1"
+llm_api_key  <- Sys.getenv("ANTHROPIC_API_KEY")
 llm_max_tokens <- 1024
 
 list(
