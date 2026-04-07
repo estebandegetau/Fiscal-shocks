@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-04-07: C1 v0.6.0 S3 regression check passed — extra_output_fields confirmed as net positive
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S3 Error Analysis
+**Detail:** C1 v0.6.0 S3 regression check (iterations 27-28) passed with 31A/6B/0E/3F. The sole difference from v0.5.0 (iteration 20: 32A/5B/0E/3F) is text_id 24: the model now correctly identifies fiscal measures in footnotes of budget tables (SS Amendments 1950, Revenue Act 1951) that v0.5.0 missed. Judged Category B (incorrect gold standard). The `extra_output_fields` (discusses_motivation, discusses_timing, discusses_magnitude) prompted more thorough reading without introducing errors. S2 regression check (iteration 26) also showed no meaningful delta. C1 validation is complete across all stages for v0.6.0 on Haiku.
+**Suggested edit:** Update C1 status references from v0.5.0/iteration 20 to v0.6.0/iteration 28 where applicable. Note that extra_output_fields are a validated design pattern for future codebooks (C2-C4).
+
 ## 2026-04-04: C1 S3 gate passed (v0.5.0) — tax-vs-spending gray zone identified
 
 **Type:** status-change

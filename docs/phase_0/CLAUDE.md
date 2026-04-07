@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 S3 complete: Haiku behavioral tests + ablation (iteration 15), manual error analysis (iteration 16: 31A/5B/3E/1F, bias-corrected recall 100%); considering codebook clarification (taxpayer-liability heuristic) before C2; C2-C4 not yet started
+**Status**: IN PROGRESS — C1 complete through S3 (v0.6.0, iteration 28: 31A/6B/0E/3F, bias-corrected recall 100%, precision 83.3%). Taxpayer-liability clarification (v0.5.0) eliminated all Category E errors. v0.6.0 extra_output_fields confirmed as net positive. Proceeding to C2; C2-C4 not yet started
 
 ## Authoritative Methodology
 
