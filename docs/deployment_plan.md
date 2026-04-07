@@ -35,6 +35,8 @@ For each act, gather all chunks C1 tagged to it and present them as a structured
 - Improves on Option A by framing what the model is classifying (the act) and from what evidence (the passages), rather than dumping undifferentiated text.
 - Context length is not a concern: most acts appear in a handful of chunks, well within Haiku's 200K context. For rare outliers, cap at the N most relevant chunks.
 
+**Superseded (2026-04-07).** Empirical analysis of `c2_act_data` (39 acts, tier2 capped at 20/act) showed median 157K tokens, max 366K, with 6 acts exceeding 190K tokens. Context length *is* a concern. See strategy.md C2 Blueprint for the two-stage architecture (evidence extraction per chunk, then act-level classification) that resolves this.
+
 ---
 
 ## Decision 3: Phase 0 Ground Truth — Simulate C1 Production Output
@@ -56,6 +58,8 @@ This yields **39 act-level observations** (matching `aligned_data`), each with a
 - Uses gold-standard chunk-to-act mappings, isolating C2 codebook quality from C1 error propagation.
 - Reuses existing `c1_chunk_data` and `aligned_data` — no new data collection needed.
 - The 39-act sample matches strategy.md's S2 evaluation plan: "Ground truth: `aligned_data` motivation labels (44 acts)." (39 after alignment filtering.)
+
+**Partially superseded (2026-04-07).** The flat `tier1 + tier2` source and count-cap approach is replaced by C1-filtered chunks (`FISCAL_MEASURE` with `discusses_motivation = TRUE`), which are expert-vetted through C1 S3 manual analysis. The assembly logic, label distribution, and evaluation isolation principle remain valid.
 
 **Label distribution** (from `aligned_data`):
 

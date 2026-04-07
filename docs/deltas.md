@@ -9,19 +9,29 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
-## 2026-04-07: C1 v0.6.0 S3 regression check passed — extra_output_fields confirmed as net positive
+## ~~2026-04-07: deployment_plan.md Decisions 2-3 partially superseded by C1-filtered C2 input architecture~~ RESOLVED
+
+**Type:** superseded
+**Affects:** `docs/deployment_plan.md` > Decision 2 (Input Assembly) and Decision 3 (Phase 0 Ground Truth)
+**Detail:** Empirical analysis of `c2_act_data` (39 acts, tier2 capped at 20/act) shows median 157K tokens, max 366K, with 6 acts exceeding 190K tokens. Decision 2's rationale that "context length is not a concern" is empirically false. Decision 3's approach of building from raw `c1_chunk_data$tier1 + tier2` is superseded by using C1-filtered chunks (`FISCAL_MEASURE` with `discusses_motivation = TRUE`), which are expert-vetted through C1 S3 manual analysis. Decision 1 (act-level classification) and Decision 4 (no tier system for C2) remain valid. Strategy.md C2 Blueprint has been updated to reflect the new two-stage input architecture (evidence extraction per chunk, then act-level classification).
+**Suggested edit:** Update deployment_plan.md Decision 2 rationale to acknowledge token overflow. Update Decision 3 to reference C1-filtered input assembly as the primary approach. Not blocking — deployment_plan.md is a working document, not a specification.
+**Resolved:** Annotated deployment_plan.md Decisions 2 and 3 with supersession notes. deployment_plan.md is a historical decision record, not a specification — annotations preserve the original reasoning while pointing to current architecture in strategy.md.
+
+## ~~2026-04-07: C1 v0.6.0 S3 regression check passed — extra_output_fields confirmed as net positive~~ RESOLVED
 
 **Type:** status-change
 **Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S3 Error Analysis
 **Detail:** C1 v0.6.0 S3 regression check (iterations 27-28) passed with 31A/6B/0E/3F. The sole difference from v0.5.0 (iteration 20: 32A/5B/0E/3F) is text_id 24: the model now correctly identifies fiscal measures in footnotes of budget tables (SS Amendments 1950, Revenue Act 1951) that v0.5.0 missed. Judged Category B (incorrect gold standard). The `extra_output_fields` (discusses_motivation, discusses_timing, discusses_magnitude) prompted more thorough reading without introducing errors. S2 regression check (iteration 26) also showed no meaningful delta. C1 validation is complete across all stages for v0.6.0 on Haiku.
 **Suggested edit:** Update C1 status references from v0.5.0/iteration 20 to v0.6.0/iteration 28 where applicable. Note that extra_output_fields are a validated design pattern for future codebooks (C2-C4).
+**Resolved:** Incorporated into strategy.md Step 2 status (C1 marked complete). No separate design-pattern note needed — C2 Blueprint already references `discusses_motivation` from C1 v0.6.0, and the iteration log documents the regression evidence.
 
-## 2026-04-04: C1 S3 gate passed (v0.5.0) — tax-vs-spending gray zone identified
+## ~~2026-04-04: C1 S3 gate passed (v0.5.0) — tax-vs-spending gray zone identified~~ RESOLVED
 
 **Type:** status-change
 **Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > C1 Implementation > S3 Error Analysis; also C2 Implementation (new constraint)
 **Detail:** C1 v0.5.0 S3 manual analysis (iteration 20) passed the S3 gate. Distribution: 32A/5B/0E/3F. The v0.5.0 taxpayer-liability clarification eliminated all 3 Category E errors from v0.4.0 (iteration 16). Residual 3 F errors (texts 23, 32, 33) share one root cause: C1's definition of "fiscal measure" is broader than R&R's scope, which is specifically tax/revenue legislation. The model correctly identifies spending-side fiscal policy (EIA, PRWORA, General Revenue Sharing termination) that R&R never intended to capture. A deeper insight: some of these measures live in a gray zone where spending policy is implemented through tax-adjacent mechanisms (credits, rebates), and their exclusion from R&R may be driven by motivation-classification needs in C2 rather than C1 scope alone. With n=3, this is a hypothesis to monitor during C2 development.
 **Suggested edit:** Update C1 S3 status to "gate passed." Add note to C2 implementation plan: monitor how spending-side measures with behavioral/political motivation interact with R&R's 4-bucket classification, as this will inform whether the C1 F-error pattern requires a C1 codebook fix or is better addressed as a C2-level filter.
+**Resolved:** Incorporated into strategy.md Step 2 status (C1 marked complete). Gray zone issue is a C1 scope question, not a C2 concern — the 3 F errors are spending acts outside R&R's tax scope. No C2 monitoring note added. Context preserved in iteration log (iteration 20).
 
 ## ~~2026-03-10: C1 S3 manual error analysis complete — taxpayer-liability heuristic discovered~~ RESOLVED
 

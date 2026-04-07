@@ -136,6 +136,8 @@ In production, the output of Codebook N feeds into Codebook N+1:
 Documents → C1 (Measure ID) → C2 (Motivation) → C3 (Timing) → C4 (Magnitude) → Aggregation
 ```
 
+**Note on C1→C2 handoff.** C2 receives C1-filtered chunks (`FISCAL_MEASURE` with `discusses_motivation = TRUE`) via C1 v0.6.0's extra_output_fields, not raw heuristic tier labels. This two-stage architecture (evidence extraction per chunk, then act-level classification) compresses signal and fits any context window. See C2 Blueprint for details.
+
 **Note on enacted-status filtering.** C1 is a recall-optimized relevance filter that captures proposals alongside enacted measures (see C1 Blueprint). A post-C1 enacted-status filter — operating at the act level, not the chunk level — is required before C2-C4 in production. This filter aggregates C1's chunk-level output by act, then determines enacted status from the combined evidence. In Phase 0, this pathway is untestable (ground truth contains only enacted acts). Phase 1 validates the filter against `us_shocks.csv`; Phase 2 relies on expert review.
 
 Developing codebooks in production order allows us to:
@@ -257,7 +259,7 @@ Each R&R step is implemented and validated independently before proceeding to th
 | Step | Description | Deliverable |
 |------|-------------|-------------|
 | 1 | ✅ Source compilation complete (360 docs, 104K pages, 4 sources) | `notebooks/verify_body.qmd` updated |
-| 2 | 🔄 C1 (Measure ID): code implemented, S1 complete, S2 evaluated, S3 in progress | `notebooks/c1_measure_id.qmd` |
+| 2 | ✅ C1 (Measure ID): S0-S3 complete. May require adjustments based on C2-C4 development | `notebooks/c1_measure_id.qmd` |
 | 3 | Implement C2 (Motivation) through H&K S0-S3 | `notebooks/c2_motivation.qmd` |
 | 4 | Implement C3 (Timing) through H&K S0-S3 | `notebooks/c3_timing.qmd` |
 | 5 | Implement C4 (Magnitude) through H&K S0-S3 | `notebooks/c4_magnitude.qmd` |
@@ -296,17 +298,23 @@ Chunks with relevance keys but no Tier 1/2 match are excluded from evaluation (a
 
 ### C2: Motivation Classification Blueprint
 
+**Design Rationale.** C2 is the most methodologically demanding codebook: motivation is an act-level property that requires synthesizing evidence across multiple document chunks and source types (R&R: "use the most frequently cited motivation across all sources"). Unlike C1 (binary per-chunk classification), C2 must weigh heterogeneous evidence and resolve conflicts. This drives a two-stage architecture: (1) evidence extraction per chunk, then (2) act-level classification from extracted evidence. The two-stage pattern compresses signal, eliminates dilution from irrelevant text, and mirrors the actual R&R workflow (read sources, note evidence, classify). It also fits any context window at both stages, sidestepping the token budget problem that arises with naive concatenation (6 of 39 acts exceed Haiku's 190K effective token limit under the initial tier-based assembly). Note: this two-stage pattern is most valuable for C2 (cross-source synthesis); C3 and C4 involve more localized extraction and may not require it.
+
+**Input Architecture.** C2 receives C1-filtered chunks as input, not raw heuristic tier labels from `c1_chunk_data`. Specifically: chunks classified as `FISCAL_MEASURE` with `discusses_motivation = TRUE` by C1 v0.6.0. Rationale: (a) C1's output is a better proxy for "chunks containing motivation-relevant fiscal discussion" than the heuristic tier system, and has been expert-vetted through C1 S3 manual analysis (31A/6B/0E/3F — zero semantic errors); (b) the `discusses_motivation` flag provides targeted compression (635 FISCAL_MEASURE chunks to 531, 83.6%); (c) C1 outperforms heuristic tier2 labels (some tier2 chunks contain no fiscal discussion, just act name mentions). This supersedes the flat `n_tier2_per_act = 20` count cap in the initial `c2_act_data` assembly, which was a placeholder pending C1 validation. For any direct concatenation sensitivity tests, a token-aware priority replaces the count cap: tier1 always included, remaining chunks prioritized by `discusses_motivation = TRUE`, capped at ~180K tokens per act.
+
+**Error Decomposition.** Using C1's `discusses_motivation` flags as the input filter enables decomposable error attribution: when C2 misclassifies an act, we can distinguish C1 filtering errors (motivation evidence existed but C1 flagged `discusses_motivation = FALSE`) from C2 classification errors (evidence was correctly surfaced but C2 drew the wrong conclusion). This is tested via the sensitivity condition described under S2.
+
 **S0 Codebook Design.** Four classes: `SPENDING_DRIVEN`, `COUNTERCYCLICAL`, `DEFICIT_DRIVEN`, `LONG_RUN`, plus a derived exogenous flag (exogenous if `DEFICIT_DRIVEN` or `LONG_RUN`). C2 also handles enacted-status determination (measures that did not become law are filtered here, not in C1). Critical boundary cases from `docs/literature_review.md` Section 1.3: countercyclical vs. long-run distinction uses the "return to normal" test (is the stated goal restoring a prior state, or building something new?); spending-driven vs. deficit-driven uses the 1-year temporal rule (is spending the proximate cause within 1 year?); mixed motivation apportionment follows the EGTRRA 2001 worked example (split by component share).
 
 **S1 Behavioral Tests.** Test IV is most critical (4 semantically loaded class names). Run original, reversed, and shuffled orderings of class definitions. Validate both the 4-class motivation label and the derived exogenous flag. Tests I-III follow the standard pattern. Pass criteria: 100% legal outputs, 100% memorization, <5% order sensitivity across all orderings.
 
-**S2 Zero-Shot Eval.** Ground truth: `aligned_data` motivation labels (44 acts). Single-pass zero-shot classification. Primary metrics: Weighted F1 ≥70%, Exogenous Precision ≥85%. Report full 4x4 confusion matrix and 2x2 exogenous confusion matrix. Bootstrap 1000 resamples for 95% CIs.
+**S2 Zero-Shot Eval.** Ground truth: `aligned_data` motivation labels (39 acts after alignment filtering). Two evaluation conditions: (a) **Primary** — C1-filtered inputs (`FISCAL_MEASURE` chunks with `discusses_motivation = TRUE`) through the two-stage evidence-extraction-then-classification pipeline. (b) **Sensitivity** — relax the `discusses_motivation` requirement (include all `FISCAL_MEASURE` chunks) to test whether C2 finds motivation evidence that C1 missed; if sensitivity recall exceeds primary recall, the C1 filter is too aggressive. Primary metrics: Weighted F1 ≥70%, Exogenous Precision ≥85%. Report full 4x4 confusion matrix and 2x2 exogenous confusion matrix. Bootstrap 1000 resamples for 95% CIs. Per-act results reported to enable error decomposition (C1 filter error vs. C2 classification error).
 
-**S3 Error Analysis Plan.** Tests VI/VII are critical for C2: replace labels with generic `LABEL_1`..`LABEL_4` (Test VI), then swap definitions across labels (Test VII) to detect reliance on semantically loaded label names rather than definitions. Primary risk: "deficit" appearing in passage text triggers `DEFICIT_DRIVEN` even when R&R methodology says `SPENDING_DRIVEN` (1-year temporal rule). Ablation on negative clarifications for boundary cases between each class pair.
+**S3 Error Analysis Plan.** Tests VI/VII are critical for C2: replace labels with generic `LABEL_1`..`LABEL_4` (Test VI), then swap definitions across labels (Test VII) to detect reliance on semantically loaded label names rather than definitions. Primary risk: "deficit" appearing in passage text triggers `DEFICIT_DRIVEN` even when R&R methodology says `SPENDING_DRIVEN` (1-year temporal rule). Ablation on negative clarifications for boundary cases between each class pair. When C2 misclassifies, error decomposition uses C1's `discusses_motivation` flags to attribute failures: if relevant motivation evidence was present in `FISCAL_MEASURE` chunks but flagged `discusses_motivation = FALSE`, the error is upstream (C1 filtering); if evidence was correctly surfaced, the error is C2's classification logic. This decomposition guides whether to improve C1's relevance flags or C2's codebook definitions.
 
 **Migration from Legacy Code.** Adapt `R/model_b_loocv.R` (LOOCV framework, reusable for S3 few-shot ablation if zero-shot performance requires examples). Reuse `R/generate_few_shot_examples.R` stratification logic for balanced class representation in few-shot prompts.
 
-**Iteration Strategy.** If F1 <70%: examine confusion matrix for most confused class pair (likely countercyclical/long-run); strengthen distinguishing clarifications. If exogenous precision <85%: examine endogenous acts misclassified as exogenous; add negative examples for the specific confusion pattern.
+**Iteration Strategy.** If F1 <70%: examine confusion matrix for most confused class pair (likely countercyclical/long-run); strengthen distinguishing clarifications. If exogenous precision <85%: examine endogenous acts misclassified as exogenous; add negative examples for the specific confusion pattern. If sensitivity condition outperforms primary condition: C1's `discusses_motivation` filter is too aggressive; consider relaxing the filter or adding C1 codebook clarifications for motivation-relevant language.
 
 ### C3: Timing Extraction Blueprint
 
@@ -475,6 +483,7 @@ The entire pipeline is designed for **country-agnostic transfer**. This means:
 - **One notebook per R&R step**: Clear documentation of each implementation step
 - **Explicit methodology references**: Implementing agents consult `docs/methods/` for details
 - **Incremental validation**: Each R&R step validated before proceeding to next
+- **C2 two-stage architecture**: Evidence extraction per chunk, then act-level classification from extracted evidence — fits any context window, compresses signal, enables C1/C2 error decomposition
 
 ---
 
