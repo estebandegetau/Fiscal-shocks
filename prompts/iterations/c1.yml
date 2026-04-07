@@ -2532,3 +2532,104 @@ iterations:
       is complete — no further S3 manual analysis needed since the behavioral
       tests already reveal the fundamental limitation. Return to Haiku for
       C2 development.
+
+  - iteration: 26
+    codebook_version: "0.6.0"
+    date: "2026-04-06"
+    git_commit: "f0e24eb"
+    model: "claude-haiku-4-5-20251001"
+    provider: "anthropic"
+    stage: "s2"
+    changes: >
+      No codebook changes. Haiku S2 regression check on v0.6.0 after Gemini
+      exploration (iterations 22-25). v0.6.0 added extra_output_fields
+      (discusses_motivation, discusses_timing, discusses_magnitude) but did
+      not alter class definitions or clarifications. Last Haiku S2 was
+      iteration 18 (v0.5.0).
+    results:
+      overall_pass: false
+      metrics:
+        - metric: "combined_recall"
+          value: 0.7942
+          ci_lower: 0.7652
+          ci_upper: 0.8213
+          target: 0.9000
+          pass: false
+        - metric: "tier1_recall"
+          value: 0.9143
+          ci_lower: 0.8451
+          ci_upper: 0.9745
+          target: 0.9500
+          pass: false
+        - metric: "precision"
+          value: 0.9543
+          ci_lower: 0.9383
+          ci_upper: 0.9698
+          target: 0.7000
+          pass: true
+        - metric: "tier2_recall"
+          value: 0.7821
+          ci_lower: 0.7514
+          ci_upper: 0.8109
+        - metric: "f1"
+          value: 0.8670
+          ci_lower: 0.8481
+          ci_upper: 0.8856
+        - metric: "accuracy"
+          value: 0.7845
+          ci_lower: 0.7567
+          ci_upper: 0.8111
+        - metric: "specificity"
+          value: 0.7100
+          ci_lower: 0.6111
+          ci_upper: 0.7935
+      test_set:
+        n_total: 863
+        n_valid: 863
+        n_parse_failures: 0
+        n_tier1: 70
+        n_tier2: 693
+        n_negatives: 100
+      confusion_matrix:
+        tp: 606
+        fp: 29
+        fn: 157
+        tn: 71
+      comparison_vs_haiku_v050:
+        combined_recall_delta: +0.0013
+        tier1_recall_delta: -0.0286
+        tier2_recall_delta: +0.0043
+        precision_delta: -0.0030
+        specificity_delta: -0.0200
+        f1_delta: -0.0004
+        fp_delta: +2
+        fn_delta: -1
+        tier1_fn_delta: +2
+      extra_output_fields:
+        n_fm_predictions: 635
+        discusses_motivation_true: 531
+        discusses_motivation_false: 104
+        discusses_timing_true: 562
+        discusses_timing_false: 73
+        discusses_magnitude_true: 563
+        discusses_magnitude_false: 72
+        na_count: 0
+    interpretation: >
+      v0.6.0 shows no meaningful regression from v0.5.0 (iteration 18) on
+      Haiku. All metrics are within stochastic noise: combined recall +0.1pp,
+      precision -0.3pp, F1 -0.04pp. The only notable delta is tier1_recall
+      dropping from 94.3% to 91.4% (+2 Tier 1 FNs), but all 6 Tier 1 FNs
+      are chunks where the gold-standard label is attached via IKA document
+      matching while the chunk text does not substantively discuss the labeled
+      measure (cover pages, TOCs, tabular data, macro analysis). This is the
+      same Category B noise pattern confirmed in iteration 20's manual
+      analysis. The +2 delta is stochastic variation, not a codebook
+      regression. The three new extra_output_fields populate correctly on all
+      635 FM predictions with zero NAs: motivation (84% true), timing (88%
+      true), magnitude (89% true). Distribution is plausible — most fiscal
+      measure chunks discuss timing and magnitude, fewer discuss motivation.
+    decision: >
+      Proceed to S3 on Haiku v0.6.0 and manual analysis to complete the
+      regression check. Since class definitions are unchanged from v0.5.0,
+      expect S3 behavioral tests and manual audit to match iteration 19/20.
+      After S3 confirmation, C1 validation is complete and we proceed to C2.
