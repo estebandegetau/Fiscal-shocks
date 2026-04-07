@@ -2633,3 +2633,203 @@ iterations:
       regression check. Since class definitions are unchanged from v0.5.0,
       expect S3 behavioral tests and manual audit to match iteration 19/20.
       After S3 confirmation, C1 validation is complete and we proceed to C2.
+
+  - iteration: 27
+    codebook_version: "0.6.0"
+    date: "2026-04-07"
+    git_commit: "5f8c397"
+    model: "claude-haiku-4-5-20251001"
+    provider: "anthropic"
+    stage: "s3"
+    changes: >
+      No codebook changes. Haiku S3 regression check on v0.6.0 after S2
+      regression check (iteration 26). v0.6.0 added extra_output_fields
+      (discusses_motivation, discusses_timing, discusses_magnitude) but did
+      not alter class definitions or clarifications. Last Haiku S3 was
+      iteration 19 (v0.5.0).
+    results:
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            normal_doc_normal_cb: 0.7750
+            modified_doc_normal_cb: 0.8000
+            normal_doc_modified_cb: 0.8250
+            modified_doc_modified_cb: 0.5750
+          overall_consistency: 0.7438
+          all_combos_correct_rate: 0.4250
+        - test: "VI_generic_labels"
+          original_accuracy: 0.7750
+          generic_accuracy: 0.8421
+          accuracy_difference: -0.0671
+          original_f1: 0.7692
+          generic_f1: 0.9143
+          f1_difference: -0.1451
+          change_rate: 0.0526
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.4500
+          follows_names_rate: 0.5500
+          swapped_f1: 0.0952
+          swapped_accuracy: 0.5250
+      ablation:
+        - condition: "full"
+          accuracy: 0.7750
+          f1: 0.7692
+          recall: 0.7500
+          precision: 0.7895
+          tier1_recall: 1.0000
+          tier2_recall: 0.5000
+        - condition: "no_label_def"
+          accuracy: 0.7750
+          accuracy_drop: 0.0000
+          f1: 0.7568
+          recall: 0.7000
+          precision: 0.8235
+          tier1_recall: 0.9000
+          tier2_recall: 0.5000
+        - condition: "no_clarifications"
+          accuracy: 0.6500
+          accuracy_drop: 0.1250
+          f1: 0.7083
+          recall: 0.8500
+          precision: 0.6071
+          tier1_recall: 1.0000
+          tier2_recall: 0.7000
+        - condition: "all_removed"
+          accuracy: 0.6750
+          accuracy_drop: 0.1000
+          f1: 0.7234
+          recall: 0.8500
+          precision: 0.6296
+          tier1_recall: 1.0000
+          tier2_recall: 0.7000
+      baseline_misclassifications:
+        false_negatives: [11, 13, 17, 18, 19]
+        false_positives: [23, 24, 32, 33]
+      comparison_vs_v050:
+        baseline_accuracy_delta: -0.0250
+        baseline_f1_delta: -0.0203
+        baseline_recall_delta: 0.0000
+        baseline_precision_delta: -0.0438
+        tier1_recall_delta: 0.0000
+        tier2_recall_delta: 0.0000
+        test_v_consistency_delta: -0.0062
+        note: >
+          text_id 24 (budget receipts tables) is a new FP vs v0.5.0 (iter 19).
+          All other misclassifications identical.
+      n_test_texts: 40
+      test_set_composition:
+        positives: 20
+        negatives: 20
+        tier1: 10
+        tier2: 10
+        tier_na: 20
+    interpretation: >
+      No meaningful regression from v0.5.0 (iteration 19). All 5 FN are the
+      same Category B noise chunks (IKA labels on indexes, TOCs, admin text).
+      3 of 4 FP are the same Category F scope-ambiguity chunks (texts 23, 32,
+      33). The only change is text_id 24 (budget receipts tables) flipping
+      from correct NOT_FISCAL_MEASURE to FP — likely stochastic noise, as this
+      chunk was Category A in iteration 20 manual analysis. Ablation confirms
+      clarifications remain the highest-leverage component (12.5pp accuracy
+      drop). Tier 1 recall at ceiling (1.0) across all conditions. Test VI
+      generic-label improvement (+14.5pp F1) and Test V elephant-override
+      pattern are consistent with previous Haiku runs.
+    decision: >
+      Proceed to manual review of text_id 24 only (the single new FP vs
+      iteration 20 manual analysis). If confirmed as stochastic noise,
+      C1 v0.6.0 S3 regression check is complete and we proceed to C2.
+
+  - iteration: 28
+    codebook_version: "0.6.0"
+    date: "2026-04-07"
+    git_commit: "5f8c397"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3_manual_analysis"
+    changes: >
+      Targeted manual review of text_id 24 only — the single prediction
+      that differed from iteration 20 (v0.5.0) manual analysis. Full
+      40-chunk audit not repeated; iteration 20 judgments carried forward
+      for the 39 unchanged predictions.
+    results:
+      n_inspected: 1
+      n_carried_forward: 39
+      category_distribution:
+        - category: "A_llm_correct"
+          count: 31
+          pct: 77.5
+        - category: "B_incorrect_gold"
+          count: 6
+          pct: 15.0
+        - category: "C_document_error"
+          count: 0
+          pct: 0.0
+        - category: "D_non_compliance"
+          count: 0
+          pct: 0.0
+        - category: "E_semantics_reasoning"
+          count: 0
+          pct: 0.0
+        - category: "F_other"
+          count: 3
+          pct: 7.5
+      chunk_judgments:
+        - text_id: 24
+          chunk_id: "81"
+          doc_id: "AR_TREASURY-1952"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "B"
+          notes: >
+            Model identified Social Security Act Amendments of 1950 and
+            Revenue Act of 1951 from substantive footnotes in budget tables.
+            Footnotes provide specific provisions (self-employment tax),
+            effective dates (Jan 1 1951, Nov 1 1951), and dollar amounts
+            ($5.3M wagering taxes, $7.1M diesel fuel taxes). SS Amendments
+            of 1950 is in R&R's act list. Gold label is wrong — the chunk
+            does contain substantive fiscal measure discussion in footnotes.
+            The v0.6.0 extra_output_fields (discusses_motivation,
+            discusses_timing, discusses_magnitude) likely prompted the model
+            to read footnotes more carefully than v0.5.0 did. This is a
+            positive signal: the relevance flags improved model thoroughness.
+      comparison_vs_v050_manual:
+        v050_distribution: "32A / 5B / 0C / 0D / 0E / 3F"
+        v060_distribution: "31A / 6B / 0C / 0D / 0E / 3F"
+        changes: >
+          text_id 24 reclassified from A (v0.5.0: correct rejection) to B
+          (v0.6.0: model now correctly identifies fiscal content in footnotes
+          that was overlooked in v0.5.0 manual review). Net: zero semantic
+          errors remain across both versions. Category E count stable at 0.
+      bias_corrected_metrics:
+        excluded_B: 6
+        excluded_C: 0
+        effective_n: 34
+        accuracy: 91.2
+        precision: 83.3
+        recall: 100.0
+        tier1_recall: 100.0
+        tier2_recall: 100.0
+        specificity: 85.0
+        note: >
+          Excludes 6 Category B chunks. 5 are IKA noise on Tier 2 positives
+          (indexes, TOCs, admin text). 1 is an incorrect negative label
+          (text_id 24: real fiscal content in footnotes). All B chunks are
+          cases where the model is correct and the gold standard is wrong.
+          3 F false positives remain in denominator as codebook scope
+          ambiguity (spending-side fiscal policy outside R&R's tax scope).
+    interpretation: >
+      C1 v0.6.0 S3 regression check complete. Zero semantic errors (E=0),
+      unchanged from v0.5.0. The single new prediction (text_id 24) is a
+      positive finding: the extra_output_fields prompted the model to read
+      footnotes more carefully, correctly identifying two R&R-relevant fiscal
+      measures (SS Amendments 1950, Revenue Act 1951) that the v0.5.0 model
+      and iteration 20's human reviewer both overlooked. Bias-corrected
+      recall is 100% across both tiers. The 3 residual F errors (texts 23,
+      32, 33) remain the same spending-side scope ambiguity from v0.5.0 —
+      these are deferred to C2 development as planned in iteration 20.
+    decision: >
+      C1 S3 gate passed for v0.6.0. Proceed to C2 (Motivation) codebook
+      development. The extra_output_fields are a net positive — they improve
+      model thoroughness without introducing new errors. During C2
+      development, monitor the 3 F-error pattern (spending-side fiscal
+      policy) as planned.
