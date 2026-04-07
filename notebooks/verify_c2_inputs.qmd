@@ -1,13 +1,18 @@
 ---
 title: "C2 Input Verification"
-subtitle: "Validate act-level assembled data for motivation classification"
+subtitle: "Validate C1→C2 handoff: classified chunks and motivation-filtered input"
 execute:
   cache: false
 ---
 
 ## Overview
 
-Before building the C2 codebook or running evaluation, this notebook verifies that `c2_act_data` correctly assembles chunk text by act and attaches motivation labels. Five tests check coverage, label completeness, token budgets, class balance, and concatenation structure.
+Before building the C2 codebook or running evaluation, this notebook verifies the C1→C2 data handoff. Two targets are checked:
+
+- `c1_classified_chunks`: C1 S2 classifications merged with chunk text and ground truth labels from `aligned_data`
+- `c2_input_data`: Filtered to `pred_label == "FISCAL_MEASURE"` and `discusses_motivation == TRUE`
+
+Eight tests check coverage, label completeness, text joins, C1 output fields, filter correctness, post-filter act coverage, class balance, and token distribution.
 
 ```{r}
 #| label: setup
@@ -23,8 +28,9 @@ source(here("R/gt_theme.R"))
 ```{r}
 #| label: load-data
 
-c2_act_data  <- tar_read(c2_act_data)
-aligned_data <- tar_read(aligned_data)
+c1_classified <- tar_read(c1_classified_chunks)
+c2_input      <- tar_read(c2_input_data)
+aligned_data  <- tar_read(aligned_data)
 ```
 
 ```{r}
@@ -45,23 +51,25 @@ add_result <- function(id, name, result, status) {
 }
 ```
 
-## Test 1: Act Coverage
+## Part A: `c1_classified_chunks` (Precursor)
 
-Every act in `aligned_data` should appear in `c2_act_data`.
+### Test 1: Act Coverage
+
+Every act in `aligned_data` should appear in `c1_classified_chunks`.
 
 ```{r}
 #| label: test-1-coverage
 
 aligned_acts <- sort(unique(aligned_data$act_name))
-c2_acts <- sort(unique(c2_act_data$act_name))
+classified_acts <- sort(unique(c1_classified$act_name))
 
-missing_from_c2 <- setdiff(aligned_acts, c2_acts)
-extra_in_c2 <- setdiff(c2_acts, aligned_acts)
-coverage_ok <- length(missing_from_c2) == 0 && length(extra_in_c2) == 0
+missing <- setdiff(aligned_acts, classified_acts)
+extra <- setdiff(classified_acts, aligned_acts)
+coverage_ok <- length(missing) == 0 && length(extra) == 0
 
 add_result(
   1, "Act coverage",
-  sprintf("%d/%d acts present", length(c2_acts), length(aligned_acts)),
+  sprintf("%d/%d acts present", length(classified_acts), length(aligned_acts)),
   if (coverage_ok) "PASS" else "FAIL"
 )
 ```
@@ -70,108 +78,195 @@ add_result(
 #| label: test-1-details
 #| results: asis
 
-if (length(missing_from_c2) > 0) {
-  cat("\n\n**Acts in aligned_data but missing from c2_act_data:**\n\n")
-  for (act in missing_from_c2) cat(sprintf("- %s\n", act))
+if (length(missing) > 0) {
+  cat("\n\n**Acts in aligned_data but missing from c1_classified_chunks:**\n\n")
+  for (act in missing) cat(sprintf("- %s\n", act))
 }
-if (length(extra_in_c2) > 0) {
-  cat("\n\n**Acts in c2_act_data but not in aligned_data:**\n\n")
-  for (act in extra_in_c2) cat(sprintf("- %s\n", act))
+if (length(extra) > 0) {
+  cat("\n\n**Acts in c1_classified_chunks but not in aligned_data:**\n\n")
+  for (act in extra) cat(sprintf("- %s\n", act))
 }
 ```
 
-**Test 1**: `r if(coverage_ok) "PASS" else paste0("FAIL - ", length(missing_from_c2), " missing, ", length(extra_in_c2), " extra")`
+**Test 1**: `r if(coverage_ok) "PASS" else paste0("FAIL — ", length(missing), " missing, ", length(extra), " extra")`
 
-## Test 2: Label Completeness
+### Test 2: Label Completeness
 
 Every row must have non-NA `motivation_category` and `exogenous_flag`.
 
 ```{r}
 #| label: test-2-labels
 
-n_missing_motivation <- sum(is.na(c2_act_data$motivation_category))
-n_missing_exogenous <- sum(is.na(c2_act_data$exogenous_flag))
+n_missing_motivation <- sum(is.na(c1_classified$motivation_category))
+n_missing_exogenous <- sum(is.na(c1_classified$exogenous_flag))
 labels_ok <- n_missing_motivation == 0 && n_missing_exogenous == 0
 
 add_result(
   2, "Label completeness",
-  sprintf("motivation: %d NA, exogenous: %d NA", n_missing_motivation, n_missing_exogenous),
+  sprintf("motivation: %d NA, exogenous: %d NA",
+          n_missing_motivation, n_missing_exogenous),
   if (labels_ok) "PASS" else "FAIL"
 )
 ```
 
-**Test 2**: `r if(labels_ok) "PASS" else paste0("FAIL - ", n_missing_motivation + n_missing_exogenous, " missing labels")`
+**Test 2**: `r if(labels_ok) "PASS" else paste0("FAIL — ", n_missing_motivation + n_missing_exogenous, " missing labels")`
 
-## Test 3: Token Distribution
+### Test 3: Text Join Completeness
 
-All assembled texts must fit within the 200K context window after accounting for overhead (codebook prompt + output buffer).
+All rows should have non-NA, non-empty `text` after joining from `chunks`.
 
 ```{r}
-#| label: test-3-tokens
+#| label: test-3-text
 
-overhead_tokens <- 10000  # conservative estimate for codebook + output
-context_limit <- 200000
-effective_limit <- context_limit - overhead_tokens
-
-token_summary <- c2_act_data |>
-  summarise(
-    min = min(approx_tokens),
-    p25 = quantile(approx_tokens, 0.25),
-    median = median(approx_tokens),
-    mean = round(mean(approx_tokens)),
-    p75 = quantile(approx_tokens, 0.75),
-    p95 = quantile(approx_tokens, 0.95),
-    max = max(approx_tokens)
-  )
-
-n_over_limit <- sum(c2_act_data$approx_tokens > effective_limit)
-tokens_ok <- n_over_limit == 0
+n_na_text <- sum(is.na(c1_classified$text))
+n_empty_text <- sum(!is.na(c1_classified$text) & nchar(c1_classified$text) == 0)
+text_ok <- n_na_text == 0 && n_empty_text == 0
 
 add_result(
-  3, "Token budget fit",
-  sprintf("Max: %s tokens (limit: %s)", comma(token_summary$max), comma(effective_limit)),
-  if (tokens_ok) "PASS" else "FAIL"
+  3, "Text join completeness",
+  sprintf("%d NA, %d empty (of %d rows)", n_na_text, n_empty_text,
+          nrow(c1_classified)),
+  if (text_ok) "PASS" else "FAIL"
+)
+```
+
+**Test 3**: `r if(text_ok) "PASS" else paste0("FAIL — ", n_na_text, " NA + ", n_empty_text, " empty")`
+
+### Test 4: C1 Output Field Completeness
+
+`pred_label` should be non-NA for all rows. Report the distribution of `discusses_motivation`, `discusses_timing`, and `discusses_magnitude`.
+
+```{r}
+#| label: test-4-c1-fields
+
+n_na_pred <- sum(is.na(c1_classified$pred_label))
+pred_ok <- n_na_pred == 0
+
+add_result(
+  4, "C1 output fields",
+  sprintf("pred_label: %d NA; discusses_motivation: %d TRUE / %d FALSE / %d NA",
+          n_na_pred,
+          sum(c1_classified$discusses_motivation == TRUE, na.rm = TRUE),
+          sum(c1_classified$discusses_motivation == FALSE, na.rm = TRUE),
+          sum(is.na(c1_classified$discusses_motivation))),
+  if (pred_ok) "PASS" else "FAIL"
 )
 ```
 
 ```{r}
-#| label: test-3-histogram
-#| fig-cap: "Approximate token count per act (assembled text)"
-#| fig-width: 8
-#| fig-height: 4
+#| label: tbl-c1-pred-dist
+#| tbl-cap: "C1 prediction distribution"
 
-ggplot(c2_act_data, aes(x = approx_tokens)) +
-  geom_histogram(bins = 20, fill = "steelblue", alpha = 0.7) +
-  geom_vline(xintercept = effective_limit, color = "red", linetype = "dashed",
-             linewidth = 0.8) +
-  annotate("text", x = effective_limit, y = Inf, label = "Context limit",
-           hjust = 1.1, vjust = 2, color = "red", size = 3.5) +
-  scale_x_continuous(labels = comma) +
-  labs(x = "Approximate Tokens", y = "Acts") +
-  theme_minimal()
-```
-
-```{r}
-#| label: tbl-token-summary
-#| tbl-cap: "Token distribution summary across acts"
-
-token_summary |>
-  pivot_longer(everything(), names_to = "Statistic", values_to = "Tokens") |>
+c1_classified |>
+  count(pred_label, name = "n") |>
+  mutate(pct = n / sum(n)) |>
   gt() |>
-  fmt_number(columns = Tokens, decimals = 0) |>
+  cols_label(pred_label = "Predicted Label", n = "Chunks", pct = "Share") |>
+  fmt_percent(columns = pct, decimals = 1) |>
   gt_theme_report()
 ```
 
-**Test 3**: `r if(tokens_ok) "PASS" else paste0("FAIL - ", n_over_limit, " acts exceed context limit")`
+```{r}
+#| label: tbl-discusses-flags
+#| tbl-cap: "Extra output field distribution (FISCAL_MEASURE chunks only)"
 
-## Test 4: Motivation Class Balance
+c1_classified |>
+  filter(pred_label == "FISCAL_MEASURE") |>
+  summarise(
+    motivation_TRUE = sum(discusses_motivation == TRUE, na.rm = TRUE),
+    motivation_FALSE = sum(discusses_motivation == FALSE, na.rm = TRUE),
+    motivation_NA = sum(is.na(discusses_motivation)),
+    timing_TRUE = sum(discusses_timing == TRUE, na.rm = TRUE),
+    timing_FALSE = sum(discusses_timing == FALSE, na.rm = TRUE),
+    timing_NA = sum(is.na(discusses_timing)),
+    magnitude_TRUE = sum(discusses_magnitude == TRUE, na.rm = TRUE),
+    magnitude_FALSE = sum(discusses_magnitude == FALSE, na.rm = TRUE),
+    magnitude_NA = sum(is.na(discusses_magnitude))
+  ) |>
+  pivot_longer(everything(),
+               names_to = c("field", "value"),
+               names_sep = "_",
+               values_to = "n") |>
+  pivot_wider(names_from = value, values_from = n) |>
+  gt() |>
+  cols_label(field = "Field") |>
+  gt_theme_report()
+```
 
-Distribution should match `aligned_data`: Long-run (15), Spending-driven (10), Deficit-driven (8), Countercyclical (6).
+**Test 4**: `r if(pred_ok) "PASS" else paste0("FAIL — ", n_na_pred, " NA predictions")`
+
+## Part B: `c2_input_data` (Filtered)
+
+### Test 5: Filter Correctness
+
+All rows must have `pred_label == "FISCAL_MEASURE"` and `discusses_motivation == TRUE`.
 
 ```{r}
-#| label: test-4-balance
+#| label: test-5-filter
 
-c2_dist <- c2_act_data |>
+n_wrong_label <- sum(c2_input$pred_label != "FISCAL_MEASURE", na.rm = TRUE)
+n_wrong_motiv <- sum(c2_input$discusses_motivation != TRUE, na.rm = TRUE)
+filter_ok <- n_wrong_label == 0 && n_wrong_motiv == 0
+
+add_result(
+  5, "Filter correctness",
+  sprintf("Non-FISCAL_MEASURE: %d, discusses_motivation != TRUE: %d",
+          n_wrong_label, n_wrong_motiv),
+  if (filter_ok) "PASS" else "FAIL"
+)
+```
+
+**Test 5**: `r if(filter_ok) "PASS" else "FAIL — filter leakage detected"`
+
+### Test 6: Act Coverage Post-Filter
+
+How many aligned acts survive the motivation filter? Acts that lose all chunks cannot be evaluated by C2.
+
+```{r}
+#| label: test-6-post-filter
+
+c2_acts <- unique(c2_input$act_name)
+lost_acts <- setdiff(aligned_acts, c2_acts)
+n_lost <- length(lost_acts)
+post_filter_ok <- n_lost == 0
+
+add_result(
+  6, "Act coverage post-filter",
+  sprintf("%d/%d acts retained (%d lost)",
+          length(c2_acts), length(aligned_acts), n_lost),
+  if (post_filter_ok) "PASS" else "WARN"
+)
+```
+
+```{r}
+#| label: test-6-details
+#| results: asis
+
+if (n_lost > 0) {
+  cat("\n\n**Acts with no FISCAL_MEASURE + discusses_motivation chunks:**\n\n")
+  lost_info <- aligned_data |>
+    filter(act_name %in% lost_acts) |>
+    select(act_name, year, motivation_category) |>
+    distinct()
+  for (i in seq_len(nrow(lost_info))) {
+    cat(sprintf("- %s (%d) — %s\n",
+                lost_info$act_name[i], lost_info$year[i],
+                lost_info$motivation_category[i]))
+  }
+}
+```
+
+**Test 6**: `r if(post_filter_ok) "PASS" else paste0("WARN — ", n_lost, " act(s) lost all chunks")`
+
+### Test 7: Motivation Class Balance
+
+Distribution of `motivation_category` across C2 input chunks, compared to `aligned_data`.
+
+```{r}
+#| label: test-7-balance
+
+c2_act_dist <- c2_input |>
+  distinct(act_name, motivation_category) |>
   count(motivation_category, name = "n_c2") |>
   arrange(desc(n_c2))
 
@@ -179,24 +274,29 @@ aligned_dist <- aligned_data |>
   count(motivation_category, name = "n_aligned") |>
   arrange(desc(n_aligned))
 
-balance_check <- c2_dist |>
-  left_join(aligned_dist, by = "motivation_category") |>
-  mutate(match = n_c2 == n_aligned)
+balance_check <- c2_act_dist |>
+  full_join(aligned_dist, by = "motivation_category") |>
+  mutate(
+    n_c2 = replace_na(n_c2, 0L),
+    n_aligned = replace_na(n_aligned, 0L),
+    match = n_c2 == n_aligned
+  )
 
 balance_ok <- all(balance_check$match)
 
 add_result(
-  4, "Motivation class balance",
-  sprintf("%d/%d categories match aligned_data", sum(balance_check$match), nrow(balance_check)),
-  if (balance_ok) "PASS" else "FAIL"
+  7, "Motivation class balance",
+  sprintf("%d/%d categories match aligned_data",
+          sum(balance_check$match), nrow(balance_check)),
+  if (balance_ok) "PASS" else "WARN"
 )
 ```
 
 ```{r}
 #| label: tbl-balance
-#| tbl-cap: "Motivation category distribution"
+#| tbl-cap: "Motivation category: acts in c2_input vs aligned_data"
 
-exog_map <- c2_act_data |>
+exog_map <- aligned_data |>
   distinct(motivation_category, exogenous_flag)
 
 balance_check |>
@@ -206,65 +306,126 @@ balance_check |>
   cols_label(
     motivation_category = "Category",
     exogenous_flag = "Exogenous?",
-    n_c2 = "c2_act_data",
+    n_c2 = "c2_input",
     n_aligned = "aligned_data"
   ) |>
   gt_theme_report()
 ```
 
-**Test 4**: `r if(balance_ok) "PASS" else "FAIL — distribution mismatch"`
+```{r}
+#| label: tbl-chunks-per-category
+#| tbl-cap: "Chunk count per motivation category in c2_input"
 
-## Test 5: Rendered Example
+c2_input |>
+  count(motivation_category, name = "n_chunks") |>
+  arrange(desc(n_chunks)) |>
+  gt() |>
+  cols_label(motivation_category = "Category", n_chunks = "Chunks") |>
+  gt_theme_report()
+```
 
-Visual inspection of the assembled text for a mid-length act. The `---` delimiters should clearly separate individual chunks.
+**Test 7**: `r if(balance_ok) "PASS" else "WARN — some categories lost acts after filtering"`
+
+### Test 8: Token Distribution
+
+Per-chunk token distribution. Chunks were constructed to fit within the context window, so all should be well under 200K.
 
 ```{r}
-#| label: test-5-example
-#| results: asis
+#| label: test-8-tokens
 
-# Pick the act closest to median token count
-median_tokens <- median(c2_act_data$approx_tokens)
-example_act <- c2_act_data |>
-  mutate(dist = abs(approx_tokens - median_tokens)) |>
-  slice_min(dist, n = 1, with_ties = FALSE)
+token_summary <- c2_input |>
+  summarise(
+    min = min(approx_tokens),
+    p25 = quantile(approx_tokens, 0.25),
+    median = median(approx_tokens),
+    mean = round(mean(approx_tokens)),
+    p75 = quantile(approx_tokens, 0.75),
+    max = max(approx_tokens)
+  )
 
-cat(sprintf("\n\n### %s\n\n", example_act$act_name))
-cat(sprintf("**Year:** %d | **Category:** %s | **Exogenous:** %s\n\n",
-            example_act$year, example_act$motivation_category, example_act$exogenous_flag))
-cat(sprintf("**Chunks used:** %d (%d Tier 1, %d Tier 2) | **Tokens:** %s\n\n",
-            example_act$n_chunks_used, example_act$n_tier1, example_act$n_tier2,
-            comma(example_act$approx_tokens)))
+overhead_tokens <- 10000
+context_limit <- 200000
+effective_limit <- context_limit - overhead_tokens
+n_over <- sum(c2_input$approx_tokens > effective_limit)
+tokens_ok <- n_over == 0
 
-# Show first 3000 chars to keep notebook readable
-text_preview <- substr(example_act$assembled_text, 1, 3000)
-if (nchar(example_act$assembled_text) > 3000) {
-  text_preview <- paste0(text_preview, "\n\n[... truncated at 3000 chars ...]")
-}
-
-cat("\n\n::: {.callout-note collapse=\"true\"}\n## Full assembled text (click to expand)\n\n")
-cat("```\n")
-cat(text_preview)
-cat("\n```\n\n:::\n")
+add_result(
+  8, "Token budget fit",
+  sprintf("Max: %s tokens (limit: %s)",
+          comma(token_summary$max), comma(effective_limit)),
+  if (tokens_ok) "PASS" else "FAIL"
+)
 ```
 
 ```{r}
-#| label: tbl-per-act
-#| tbl-cap: "Per-act chunk and token summary"
+#| label: tbl-token-summary
+#| tbl-cap: "Token distribution across C2 input chunks"
 
-c2_act_data |>
-  select(act_name, year, motivation_category, n_chunks_used, n_tier1, n_tier2, approx_tokens) |>
-  arrange(desc(approx_tokens)) |>
+token_summary |>
+  pivot_longer(everything(), names_to = "Statistic", values_to = "Tokens") |>
+  gt() |>
+  fmt_number(columns = Tokens, decimals = 0) |>
+  gt_theme_report()
+```
+
+```{r}
+#| label: fig-token-hist
+#| fig-cap: "Approximate token count per chunk (C2 input)"
+#| fig-width: 8
+#| fig-height: 4
+
+ggplot(c2_input, aes(x = approx_tokens)) +
+  geom_histogram(bins = 30, fill = "steelblue", alpha = 0.7) +
+  geom_vline(xintercept = effective_limit, color = "red",
+             linetype = "dashed", linewidth = 0.8) +
+  annotate("text", x = effective_limit, y = Inf,
+           label = "Context limit", hjust = 1.1, vjust = 2,
+           color = "red", size = 3.5) +
+  scale_x_continuous(labels = comma) +
+  labs(x = "Approximate Tokens", y = "Chunks") +
+  theme_minimal()
+```
+
+**Test 8**: `r if(tokens_ok) "PASS" else paste0("FAIL — ", n_over, " chunks exceed context limit")`
+
+## Per-Act Summary
+
+```{r}
+#| label: tbl-per-act
+#| tbl-cap: "Per-act chunk summary: classified vs C2 input"
+
+classified_summary <- c1_classified |>
+  group_by(act_name) |>
+  summarise(
+    n_total = n(),
+    n_fiscal = sum(pred_label == "FISCAL_MEASURE", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+c2_summary <- c2_input |>
+  count(act_name, name = "n_c2")
+
+per_act <- aligned_data |>
+  distinct(act_name, year, motivation_category) |>
+  left_join(classified_summary, by = "act_name") |>
+  left_join(c2_summary, by = "act_name") |>
+  mutate(
+    n_total = replace_na(n_total, 0L),
+    n_fiscal = replace_na(n_fiscal, 0L),
+    n_c2 = replace_na(n_c2, 0L)
+  ) |>
+  arrange(desc(n_c2))
+
+per_act |>
   gt() |>
   cols_label(
     act_name = "Act",
     year = "Year",
     motivation_category = "Category",
-    n_chunks_used = "Chunks",
-    n_tier1 = "T1",
-    n_tier2 = "T2",
-    approx_tokens = "Tokens"
+    n_total = "Classified",
+    n_fiscal = "FISCAL_MEASURE",
+    n_c2 = "C2 Input"
   ) |>
-  fmt_number(columns = approx_tokens, decimals = 0) |>
   gt_theme_report()
 ```
 
@@ -279,6 +440,7 @@ dashboard <- test_results |>
   select(test_label, result, status)
 
 n_pass <- sum(dashboard$status == "PASS")
+n_warn <- sum(dashboard$status == "WARN")
 n_fail <- sum(dashboard$status == "FAIL")
 
 dashboard |>
@@ -293,12 +455,16 @@ dashboard |>
     locations = cells_body(columns = status, rows = status == "PASS")
   ) |>
   tab_style(
+    style = cell_fill(color = "#fff3cd"),
+    locations = cells_body(columns = status, rows = status == "WARN")
+  ) |>
+  tab_style(
     style = cell_fill(color = "#ffcccc"),
     locations = cells_body(columns = status, rows = status == "FAIL")
   ) |>
   gt_theme_report()
 ```
 
-**Overall**: `r n_pass` PASS, `r n_fail` FAIL out of `r nrow(dashboard)` tests.
+**Overall**: `r n_pass` PASS, `r n_warn` WARN, `r n_fail` FAIL out of `r nrow(dashboard)` tests.
 
-`r if(n_fail > 0) "**ACTION REQUIRED:** Fix all FAIL tests before proceeding to C2 codebook development." else "**All clear:** Act-level data is validated for C2 motivation classification."`
+`r if(n_fail > 0) "**ACTION REQUIRED:** Fix all FAIL tests before proceeding to C2 codebook development." else if(n_warn > 0) "**Review warnings.** WARN tests flag potential issues (e.g., acts lost after filtering) that may affect C2 evaluation coverage." else "**All clear:** C1→C2 handoff validated. Data is ready for C2 codebook development."`

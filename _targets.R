@@ -216,11 +216,17 @@ list(
     deployment = "main"
   ),
 
-  # C2 act-level data: aggregate C1 chunks by act for motivation classification
+  # C1-classified chunks: merge C1 LLM output with chunk text and ground truth
   tar_target(
-    c2_act_data,
-    assemble_c2_act_data(c1_chunk_data, aligned_data,
-                         n_tier2_per_act = 20L, seed = 20251206L),
+    c1_classified_chunks,
+    assemble_c1_classified_chunks(c1_s2_results, chunks, aligned_data),
+    packages = "tidyverse"
+  ),
+
+  # C2 input: FISCAL_MEASURE chunks with discusses_motivation == TRUE
+  tar_target(
+    c2_input_data,
+    assemble_c2_input_data(c1_classified_chunks),
     packages = "tidyverse"
   ),
 

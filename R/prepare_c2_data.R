@@ -1,67 +1,98 @@
-#' Assemble act-level data for C2 (Motivation Classification)
+#' Assemble C1-classified chunks with text and ground truth labels
 #'
-#' Aggregates C1 chunk data by act, concatenating chunk texts into a single
-#' input per act. Simulates what C2 would receive in production after C1
-#' identifies relevant chunks. Joins motivation labels from aligned_data.
+#' Merges C1 S2 classification outputs with chunk text and act-level ground
+#' truth labels from aligned_data. Produces one row per classified chunk that
+#' belongs to a labeled act. Negatives and chunks for unlabeled acts are
+#' dropped via inner join on act_name.
 #'
-#' @param c1_chunk_data List from assemble_c1_chunk_data() with $tier1, $tier2
+#' @param c1_s2_results Tibble from run_zero_shot() with C1 classifications
+#' @param chunks Tibble from make_chunks() with chunk text
 #' @param aligned_data Tibble from align_labels_shocks() with act-level labels
-#' @param n_tier2_per_act Max Tier 2 chunks per act (NULL = no cap)
-#' @param seed RNG seed for Tier 2 sampling
-#' @return Tibble with one row per act
-assemble_c2_act_data <- function(c1_chunk_data, aligned_data,
-                                  n_tier2_per_act = 20L, seed = 20251206L) {
+#' @return Tibble with one row per classified chunk: C1 outputs + text + labels
+#' @export
+assemble_c1_classified_chunks <- function(c1_s2_results, chunks, aligned_data) {
 
-  tier1 <- c1_chunk_data$tier1 |>
-    dplyr::select(chunk_id, doc_id, act_name, year, text) |>
-    dplyr::mutate(tier = 1L)
-
-  tier2 <- c1_chunk_data$tier2 |>
-    dplyr::select(chunk_id, doc_id, act_name, year, text) |>
-    dplyr::mutate(tier = 2L)
-
-  # Cap Tier 2 per act if requested
-  if (!is.null(n_tier2_per_act)) {
-    set.seed(seed)
-    tier2 <- tier2 |>
-      dplyr::group_by(act_name) |>
-      dplyr::mutate(.rand = runif(dplyr::n())) |>
-      dplyr::arrange(.rand, .by_group = TRUE) |>
-      dplyr::slice_head(n = n_tier2_per_act) |>
-      dplyr::ungroup() |>
-      dplyr::select(-".rand")
-  }
-
-  # Combine and aggregate by act
-  act_data <- dplyr::bind_rows(tier1, tier2) |>
-    dplyr::group_by(act_name) |>
-    dplyr::summarise(
-      n_tier1 = sum(tier == 1L),
-      n_tier2 = sum(tier == 2L),
-      n_chunks_used = dplyr::n(),
-      assembled_text = paste(text, collapse = "\n\n---\n\n"),
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(approx_tokens = round(nchar(assembled_text) / 4))
-
-  # Join ground truth labels from aligned_data
-  labels <- aligned_data |>
-    dplyr::select(act_name, year, motivation_category, exogenous_flag)
-
-  act_data <- act_data |>
-    dplyr::inner_join(labels, by = "act_name") |>
+  # Select C1 classification outputs
+  classified <- c1_s2_results |>
     dplyr::select(
-      act_name, year, motivation_category, exogenous_flag,
-      assembled_text, n_chunks_used, n_tier1, n_tier2, approx_tokens
+      chunk_id, doc_id, act_name, year, tier,
+      pred_label, discusses_motivation, discusses_timing, discusses_magnitude,
+      reasoning
     )
 
+  # Join chunk text
+  chunk_text <- chunks |>
+    dplyr::select(doc_id, chunk_id, text, approx_tokens)
+
+  classified <- classified |>
+    dplyr::left_join(chunk_text, by = c("doc_id", "chunk_id"))
+
+  n_missing_text <- sum(is.na(classified$text))
+  if (n_missing_text > 0) {
+    warning(sprintf(
+      "assemble_c1_classified_chunks: %d chunks have no text after join",
+      n_missing_text
+    ))
+  }
+
+  # Join ground truth labels from aligned_data (inner join drops negatives)
+  labels <- aligned_data |>
+    dplyr::select(act_name, motivation_category, exogenous_flag) |>
+    dplyr::distinct()
+
+  result <- classified |>
+    dplyr::inner_join(labels, by = "act_name")
+
   message(sprintf(
-    "C2 act data assembled: %d acts, %d-%d tokens (median %d), %d total chunks",
-    nrow(act_data),
-    min(act_data$approx_tokens), max(act_data$approx_tokens),
-    stats::median(act_data$approx_tokens),
-    sum(act_data$n_chunks_used)
+    "C1 classified chunks assembled: %d chunks across %d acts (%d FISCAL_MEASURE, %d NOT_FISCAL_MEASURE)",
+    nrow(result),
+    dplyr::n_distinct(result$act_name),
+    sum(result$pred_label == "FISCAL_MEASURE", na.rm = TRUE),
+    sum(result$pred_label == "NOT_FISCAL_MEASURE", na.rm = TRUE)
   ))
 
-  act_data
+  result
+}
+
+
+#' Assemble C2 input data from C1-classified chunks
+#'
+#' Filters C1-classified chunks to those predicted as FISCAL_MEASURE with
+#' discusses_motivation == TRUE. Returns individual chunks ready for C2
+#' motivation classification — no concatenation, no sampling.
+#'
+#' @param c1_classified_chunks Tibble from assemble_c1_classified_chunks()
+#' @return Tibble of filtered chunks for C2 input
+#' @export
+assemble_c2_input_data <- function(c1_classified_chunks) {
+
+  result <- c1_classified_chunks |>
+    dplyr::filter(
+      pred_label == "FISCAL_MEASURE",
+      discusses_motivation == TRUE
+    )
+
+  n_acts_before <- dplyr::n_distinct(c1_classified_chunks$act_name)
+  n_acts_after <- dplyr::n_distinct(result$act_name)
+  lost_acts <- setdiff(
+    unique(c1_classified_chunks$act_name),
+    unique(result$act_name)
+  )
+
+  if (length(lost_acts) > 0) {
+    warning(sprintf(
+      "assemble_c2_input_data: %d act(s) lost all chunks after filtering: %s",
+      length(lost_acts),
+      paste(lost_acts, collapse = ", ")
+    ))
+  }
+
+  message(sprintf(
+    "C2 input data: %d chunks across %d/%d acts (filtered from %d classified chunks)",
+    nrow(result),
+    n_acts_after, n_acts_before,
+    nrow(c1_classified_chunks)
+  ))
+
+  result
 }
