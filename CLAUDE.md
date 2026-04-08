@@ -46,7 +46,7 @@ The contribution is **methodological**, not just dataset scale:
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
   - **C1 (Measure ID)**: S3 GATE PASSED (v0.6.0, iteration 28). S3 manual analysis: 31A/6B/0E/3F — zero semantic errors, bias-corrected recall 100%, precision 83.3%. v0.6.0 added extra_output_fields (discusses_motivation/timing/magnitude) which improved model thoroughness without introducing errors. Residual 3 F errors are codebook scope ambiguity (spending-side fiscal policy outside R&R's tax/revenue scope). Proceeding to C2.
-  - **C2 (Motivation)**: Not started
+  - **C2 (Motivation)**: S0 COMPLETE (v0.2.0). Two-codebook architecture: c2a_extraction.yml (per-chunk evidence extraction) + c2b_classification.yml (act-level motivation classification). Enacted-status determination, mixed-motivation apportionment (EGTRRA model), country-agnostic language. Proceeding to S1.
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started
   - See `docs/strategy.md` for authoritative methodology

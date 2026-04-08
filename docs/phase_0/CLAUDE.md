@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 complete through S3 (v0.6.0, iteration 28: 31A/6B/0E/3F, bias-corrected recall 100%, precision 83.3%). Taxpayer-liability clarification (v0.5.0) eliminated all Category E errors. v0.6.0 extra_output_fields confirmed as net positive. Proceeding to C2; C2-C4 not yet started
+**Status**: IN PROGRESS — C1 complete through S3 (v0.6.0, iteration 28: 31A/6B/0E/3F, bias-corrected recall 100%, precision 83.3%). C2 S0 complete (v0.2.0, two-codebook architecture: c2a evidence extraction + c2b motivation classification). C3-C4 not yet started
 
 ## Authoritative Methodology
 
@@ -94,7 +94,8 @@ This document contains the complete R&R + H&K framework specification including:
 ### Codebooks (`/prompts/`)
 
 - ✅ `c1_measure_id.yml` — Created
-- `c2_motivation.yml`
+- ✅ `c2a_extraction.yml` — Created (C2a: per-chunk evidence extraction, v0.2.0)
+- ✅ `c2b_classification.yml` — Created (C2b: act-level motivation classification, v0.2.0)
 - `c3_timing.yml`
 - `c4_magnitude.yml`
 
@@ -126,7 +127,8 @@ tar_target(aligned_data, align_labels_shocks(us_labels, us_shocks))
 
 # Codebook loading and validation
 tar_target(c1_codebook, load_validate_codebook("prompts/c1_measure_id.yml"))
-tar_target(c2_codebook, load_validate_codebook("prompts/c2_motivation.yml"))
+tar_target(c2a_codebook, load_validate_codebook("prompts/c2a_extraction.yml"))
+tar_target(c2b_codebook, load_validate_codebook("prompts/c2b_classification.yml"))
 tar_target(c3_codebook, load_validate_codebook("prompts/c3_timing.yml"))
 tar_target(c4_codebook, load_validate_codebook("prompts/c4_magnitude.yml"))
 
