@@ -1,0 +1,77 @@
+# Iteration log for C2a: Motivation Evidence Extraction
+# Each entry records a codebook iteration: what changed, what happened, what to do next.
+# Retrieve any past codebook version: git show <git_commit>:prompts/c2a_extraction.yml
+
+iterations:
+  - iteration: 1
+    codebook_version: "0.1.0"
+    date: "2026-04-08"
+    git_commit: "18e3041"
+    model: ~
+    stage: "s0"
+    changes: >
+      Initial codebook (v0.1.0). Two-stage C2 architecture: C2a handles per-chunk
+      motivation evidence extraction using 4-class taxonomy (SPENDING_DRIVEN,
+      COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN) as reference categories. Output is
+      a JSON array of evidence items with quote, signal, and suggested_category.
+      Designed jointly with C2b (act-level classification). Independent versioning.
+    results: ~
+    interpretation: >
+      S0 draft based on R&R motivation categories from docs/literature_review.md
+      Section 1.3 and strategy.md C2 Blueprint. Boundary case rules (return-to-normal
+      test, 1-year temporal rule, mixed motivations, offsetting exogenous changes)
+      embedded in clarifications and negative clarifications. No examples included for
+      country-agnostic transferability. Passes load_validate_codebook() and
+      construct_codebook_prompt() produces coherent system prompt.
+    decision: >
+      Submit for specialist review (R&R, H&K, strategy) before proceeding to S1.
+
+  - iteration: 2
+    codebook_version: "0.2.0"
+    date: "2026-04-08"
+    git_commit: "7da0187"
+    model: ~
+    stage: "s0"
+    changes: >
+      Post-specialist-review revision. Three changes: (1) Added enacted-status signal
+      extraction as a parallel task — new enacted_signals array in output schema with
+      quote and signal fields. (2) Specialist suggestions applied: "smaller government"
+      added to LONG_RUN clarification; "trust fund solvency" replaced with
+      "social insurance fund or pension reserve solvency" in DEFICIT_DRIVEN for
+      country-agnostic transfer; LONG_RUN label_definition sharpened with "distinct
+      from restoring growth to a prior normal level". (3) Version bump to 0.2.0.
+    results: ~
+    interpretation: >
+      Specialist review identified two critical gaps in v0.1.0: missing enacted-status
+      extraction (strategy.md requirement) and insufficient mixed-motivation support
+      (EGTRRA 2001 model). Enacted-status addressed here in C2a via enacted_signals
+      array. Mixed-motivation addressed in C2b via motivations array. Class definition
+      improvements keep C2a and C2b taxonomies synchronized.
+    decision: >
+      Apply country-agnostic language fix to enacted-status wording, then proceed to
+      S1 implementation planning.
+
+  - iteration: 3
+    codebook_version: "0.2.0"
+    date: "2026-04-08"
+    git_commit: "a904507"
+    model: ~
+    stage: "s0"
+    changes: >
+      Country-agnostic enacted-status language fix. Replaced "signed by the head of
+      government" with "took legal effect (including via executive or administrative
+      action)" to cover parliamentary systems, presidential systems, and administrative
+      governance equally. No version bump (minor wording change within v0.2.0).
+    results: ~
+    interpretation: >
+      R&R specialist flagged that "signed by the head of government" is
+      presidential-system-centric. In Malaysia and other Southeast Asian parliamentary
+      systems, fiscal legislation receives royal assent or takes effect via gazette
+      rather than presidential signature. Executive fiscal orders (decrees, ministerial
+      orders) also bypass legislative signing. The revised language covers all
+      governance models relevant to the project's Phase 2-3 deployment.
+    decision: >
+      C2a S0 complete at v0.2.0. Ready for S1 behavioral test implementation. Known
+      S1 requirements: Test I needs C2a-specific schema validation (evidence array,
+      not single label); Test II needs adaptation for extraction output; Test III
+      deferred (no examples); Test IV applicable via suggested_category distribution.

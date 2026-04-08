@@ -1,0 +1,93 @@
+# Iteration log for C2b: Motivation Classification
+# Each entry records a codebook iteration: what changed, what happened, what to do next.
+# Retrieve any past codebook version: git show <git_commit>:prompts/c2b_classification.yml
+
+iterations:
+  - iteration: 1
+    codebook_version: "0.1.0"
+    date: "2026-04-08"
+    git_commit: "18e3041"
+    model: ~
+    stage: "s0"
+    changes: >
+      Initial codebook (v0.1.0). Act-level motivation classification from synthesized
+      C2a evidence records. Four classes (SPENDING_DRIVEN, COUNTERCYCLICAL,
+      DEFICIT_DRIVEN, LONG_RUN) with decision rules for conflicting evidence, boundary
+      case rules (return-to-normal test, 1-year temporal rule, offsetting exogenous
+      changes), and derived exogenous flag. Output: single motivation_category +
+      exogenous boolean + confidence + mixed_motivation flag + reasoning.
+    results: ~
+    interpretation: >
+      S0 draft based on R&R motivation categories. Decision rules capture the three
+      R&R conflict resolution principles: most frequently cited, prevailing at passage,
+      and mixed-motivation flag. Boundary cases embedded in both instructions (for
+      emphasis) and negative clarifications (for ablation). Semantic label risk
+      mitigated with "do not classify merely because the word X appears" guards on
+      all four classes. No examples for country-agnostic transferability. Passes
+      load_validate_codebook().
+    decision: >
+      Submit for specialist review (R&R, H&K, strategy) before proceeding to S1.
+
+  - iteration: 2
+    codebook_version: "0.2.0"
+    date: "2026-04-08"
+    git_commit: "7da0187"
+    model: ~
+    stage: "s0"
+    changes: >
+      Post-specialist-review revision addressing two critical gaps. (1) Enacted-status
+      determination added: new section in instructions with decision rule (default to
+      true if evidence absent); new enacted boolean in output schema. C2b receives
+      enacted_signals from C2a and makes the determination. (2) Mixed-motivation
+      apportionment redesigned: replaced single motivation_category + mixed_motivation
+      boolean with motivations array supporting multiple entries, each with category,
+      component description, and qualitative share (dominant/minor/sole). Follows R&R
+      EGTRRA 2001 model where distinct provisions get separate motivation assignments.
+      (3) Temporal-uncertainty note added to 1-year boundary rule. (4) Specialist
+      suggestions: "smaller government" in LONG_RUN, "social insurance fund or pension
+      reserve solvency" replacing "trust fund solvency", LONG_RUN definition sharpened.
+      (5) Removed "source chunk identifier" from input description — chunk_id handled
+      at pipeline level. (6) Version bump to 0.2.0.
+    results: ~
+    interpretation: >
+      Three specialist agents (R&R, H&K, strategy) identified enacted-status and
+      mixed-motivation apportionment as critical gaps. Enacted-status is a strategy.md
+      requirement (line 307). Mixed-motivation apportionment is required for R&R
+      methodological fidelity — EGTRRA 2001 produces two separate shock entries, not
+      a single majority-vote label. The motivations array with qualitative share fields
+      (dominant/minor/sole) captures the component structure. Revenue share quantification
+      deferred to C4 — C2 classifies motivation, C4 extracts magnitudes per component.
+      Design decision: exogenous flag derived from dominant motivation entry.
+    decision: >
+      Apply country-agnostic language fix to enacted-status wording, then proceed to
+      S1 implementation planning.
+
+  - iteration: 3
+    codebook_version: "0.2.0"
+    date: "2026-04-08"
+    git_commit: "a904507"
+    model: ~
+    stage: "s0"
+    changes: >
+      Country-agnostic enacted-status language fix. Replaced legislative-centric
+      "signed, became law, or was implemented" with "signed, became law, or took legal
+      effect (including executive orders, administrative actions, or ministerial
+      decrees)" to cover non-legislative fiscal actions across governance models.
+      No version bump (minor wording change within v0.2.0).
+    results: ~
+    interpretation: >
+      R&R specialist noted that enacted-status framing assumed legislative passage,
+      which excludes executive fiscal orders common in Southeast Asian contexts and
+      other governance models. R&R's methods doc (RR2) explicitly includes "executive
+      actions that substantially changed depreciation guidelines" — the codebook
+      language must cover these. Revised language handles parliamentary systems (royal
+      assent, gazette), presidential systems (signing), and administrative governance
+      (decrees, ministerial orders).
+    decision: >
+      C2b S0 complete at v0.2.0. Ready for S1 behavioral test implementation. Known
+      S1 requirements: standard Tests I-IV applicable (C2b is a classifier). Test III
+      deferred (no examples — record as N/A in S1 results). Test IV is most critical
+      due to semantically loaded label names. Known S2 requirements: define collapsing
+      rule for motivations array to single label for 4x4 confusion matrix (use dominant
+      entry). Delta in docs/deltas.md still open — strategy.md references single
+      c2_motivation.yml, needs updating to c2a + c2b.
