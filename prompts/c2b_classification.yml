@@ -1,18 +1,18 @@
 codebook:
   name: "C2b: Motivation Classification"
-  version: "0.1.0"
+  version: "0.2.0"
   instructions: >
     You are an expert in fiscal policy analysis classifying the primary motivation for
     a fiscal measure. You will receive the act name, year of passage, and an array of
     evidence records extracted from multiple document chunks. Each evidence record contains
-    a direct quote, a signal description, a suggested motivation category, and the source
-    chunk identifier.
+    a direct quote, a signal description, and a suggested motivation category.
 
 
-    Your task is to weigh all evidence, resolve any conflicts, and assign exactly one of
-    four motivation categories to the act. The suggested_category field in each evidence
-    record is an upstream hint — you must evaluate the evidence independently using the
-    category definitions and decision rules below.
+    Your task is to weigh all evidence, resolve any conflicts, and classify the act's
+    motivation. You will also receive enacted-status signals to determine whether the
+    measure became law. The suggested_category field in each evidence record is an upstream
+    hint — you must evaluate the evidence independently using the category definitions and
+    decision rules below.
 
 
     **Decision rules for resolving conflicting evidence:**
@@ -22,9 +22,12 @@ codebook:
     2. If the stated motivation changed during deliberations, use the prevailing motivation
     at the time of passage, not earlier proposals.
 
-    3. When evidence genuinely supports multiple categories with no clear dominant motivation,
-    flag the act as mixed-motivation, assign the category supported by the majority of
-    evidence, and explain the split in your reasoning.
+    3. When evidence genuinely supports multiple categories with distinct measure components
+    (e.g., one provision is countercyclical while another is structural), return separate
+    motivation entries for each component. Identify each component, assign its motivation
+    category, and indicate which is dominant by share of the measure's overall fiscal impact.
+    Most acts have a single motivation — use multiple entries only when distinct provisions
+    genuinely serve different purposes.
 
 
     **Boundary case rules (apply these precisely):**
@@ -43,12 +46,22 @@ codebook:
     SPENDING_DRIVEN. If a fiscal measure addresses a deficit that resulted from spending
     decisions made more than one year prior, classify as DEFICIT_DRIVEN. The key question
     is whether the spending change is contemporaneous (within 1 year) or inherited (beyond
-    1 year).
+    1 year). If the temporal relationship between the spending change and the fiscal measure
+    cannot be determined from the evidence, note this uncertainty in your reasoning.
 
     3. Offsetting exogenous changes: When a fiscal measure offsets a previous exogenous
     change because economic conditions have weakened, classify the offsetting measure with
     the same motivation as the original change, not as COUNTERCYCLICAL. This avoids
     identifying two changes of different motivations when liabilities did not actually change.
+
+
+    **Enacted-status determination:** Based on the enacted-status signals extracted from the
+    evidence records, determine whether the fiscal measure was enacted into law. If evidence
+    indicates the measure was signed, became law, or was implemented, set enacted to true. If
+    evidence indicates the measure was defeated, withdrawn, vetoed, or remained a proposal,
+    set enacted to false. If enacted-status evidence is absent or ambiguous, set enacted to
+    true and note the uncertainty in reasoning — the default assumption is that measures
+    discussed substantively in official government documents were enacted.
 
   classes:
     - label: "SPENDING_DRIVEN"
@@ -89,7 +102,7 @@ codebook:
 
       clarification:
         - "The evidence consistently describes the deficit as inherited, pre-existing, or resulting from past decisions rather than from a recent spending increase"
-        - "Policymakers cite fiscal prudence, actuarial soundness, trust fund solvency, or restoring fiscal balance as the reason for acting"
+        - "Policymakers cite fiscal prudence, actuarial soundness, social insurance fund or pension reserve solvency, or restoring fiscal balance as the reason for acting"
         - "The deficit being addressed predates the fiscal measure by more than one year, or is described as a structural rather than cyclical problem"
 
       negative_clarification:
@@ -101,10 +114,10 @@ codebook:
       label_definition: >
         A fiscal measure whose primary stated purpose is to raise long-run economic growth,
         improve economic efficiency, or achieve structural goals unrelated to the current
-        business cycle.
+        business cycle, distinct from restoring growth to a prior normal level.
 
       clarification:
-        - "The evidence consistently describes structural goals: fairness, efficiency, simplification, improved incentives, raising potential output, or promoting long-run growth"
+        - "The evidence consistently describes structural goals: fairness, efficiency, simplification, smaller government, improved incentives, raising potential output, or promoting long-run growth"
         - "The stated aim is to raise growth above its current normal level, not to restore growth to a prior normal level"
         - "The measure is framed as a permanent structural change rather than a temporary cyclical response"
 
@@ -114,30 +127,46 @@ codebook:
         - "The key distinction from COUNTERCYCLICAL is direction: LONG_RUN raises growth above normal; COUNTERCYCLICAL returns growth to normal from below"
 
   output_instructions: >
-    Classify the act's primary motivation using exactly one of: SPENDING_DRIVEN,
-    COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN.
+    Determine the act's motivation and enacted status based on the synthesized evidence.
 
 
-    Then determine exogeneity: exogenous is true if the motivation is DEFICIT_DRIVEN
-    or LONG_RUN; false if SPENDING_DRIVEN or COUNTERCYCLICAL.
+    For most acts, there is a single dominant motivation. When distinct provisions of
+    the act genuinely serve different purposes, return a separate entry for each component.
+
+
+    Valid motivation categories: SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN.
 
 
     Return your answer as JSON:
 
     {
-      "motivation_category": "SPENDING_DRIVEN",
-      "exogenous": false,
+      "enacted": true,
+      "motivations": [
+        {
+          "category": "LONG_RUN",
+          "component": "Description of the provision or component",
+          "share": "dominant"
+        }
+      ],
+      "exogenous": true,
       "confidence": "HIGH",
-      "mixed_motivation": false,
-      "reasoning": "Synthesis of evidence explaining the classification, citing specific evidence records and decision rules applied"
+      "reasoning": "Synthesis of evidence citing specific records and decision rules applied"
     }
 
 
-    Set confidence to HIGH if evidence is consistent and clearly points to one category,
-    MEDIUM if evidence is somewhat ambiguous but one category dominates, or LOW if evidence
-    is conflicting or sparse.
+    Field definitions:
 
+    - enacted: true if the measure became law; false if defeated, withdrawn, or never
+      passed. Default to true if enacted-status evidence is absent.
 
-    Set mixed_motivation to true only if evidence genuinely supports multiple categories
-    with no clear dominant motivation. In that case, still assign the category supported
-    by the majority of evidence and explain the split in reasoning.
+    - motivations: Array of one or more entries. Each has category (one of the four
+      labels), component (brief description of the provision), and share ("dominant",
+      "minor", or "sole" if only one entry).
+
+    - exogenous: true if the dominant motivation is DEFICIT_DRIVEN or LONG_RUN; false
+      if SPENDING_DRIVEN or COUNTERCYCLICAL.
+
+    - confidence: HIGH if evidence is consistent and clearly points to one category,
+      MEDIUM if somewhat ambiguous but one category dominates, LOW if conflicting or sparse.
+
+    - reasoning: Must cite specific evidence records and name the decision rules applied.

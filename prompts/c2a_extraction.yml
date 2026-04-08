@@ -1,13 +1,22 @@
 codebook:
   name: "C2a: Motivation Evidence Extraction"
-  version: "0.1.0"
+  version: "0.2.0"
   instructions: >
     You are an expert in fiscal policy analysis extracting motivation evidence from
     chunks of official government economic and budget documents. Each chunk has already
     been identified as containing a substantive discussion of a specific fiscal measure.
-    Your task is to extract all evidence about **why** the fiscal measure was enacted,
+    Your task is to extract two types of evidence from the chunk:
+
+
+    1. **Motivation evidence**: All evidence about **why** the fiscal measure was enacted,
     proposed, or under consideration — the stated goals, economic conditions cited as
     justification, and any other indications of the policymakers' motivation.
+
+
+    2. **Enacted-status signals**: Any evidence about the **legislative status** of the
+    measure — whether it was enacted into law, signed by the head of government, defeated,
+    withdrawn, or remained a proposal. These signals will be used downstream to determine
+    whether the measure became law.
 
 
     You will be given: the chunk text, the name of the fiscal measure, and the year of
@@ -59,7 +68,7 @@ codebook:
 
       clarification:
         - "Evidence that the stated purpose is to reduce a pre-existing or inherited budget deficit, restore fiscal balance, or achieve fiscal prudence"
-        - "References to past policy decisions, accumulated obligations, or trust fund solvency as the reason for the fiscal measure"
+        - "References to past policy decisions, accumulated obligations, or social insurance fund or pension reserve solvency as the reason for the fiscal measure"
         - "Statements describing the deficit as a legacy problem requiring correction, rather than as a consequence of a recent spending decision"
 
       negative_clarification:
@@ -70,10 +79,11 @@ codebook:
     - label: "LONG_RUN"
       label_definition: >
         A fiscal measure aimed at raising long-run economic growth, improving economic
-        efficiency, or achieving other structural goals unrelated to the current business cycle.
+        efficiency, or achieving other structural goals unrelated to the current business
+        cycle, distinct from restoring growth to a prior normal level.
 
       clarification:
-        - "Evidence that the stated goal is structural improvement such as fairness, efficiency, simplification, improved incentives, or raising potential output"
+        - "Evidence that the stated goal is structural improvement such as fairness, efficiency, simplification, smaller government, improved incentives, or raising potential output"
         - "References to long-run growth, supply-side effects, or economic reform as the motivation for the measure"
         - "Policymaker statements indicating a desire to raise growth above its normal level rather than to restore growth to normal"
 
@@ -83,21 +93,27 @@ codebook:
         - "The key distinction from COUNTERCYCLICAL is direction: LONG_RUN aims to raise growth above the current normal, while COUNTERCYCLICAL aims to return growth to normal from below"
 
   output_instructions: >
-    Extract all motivation evidence from the chunk. For each distinct piece of evidence,
-    provide a direct quote, a brief signal description, and a suggested motivation category.
+    Extract all motivation evidence and enacted-status signals from the chunk.
 
 
-    The suggested category is your best judgment based on the evidence and the category
-    definitions above. It is a preliminary tag, not a final classification — downstream
-    analysis will synthesize evidence across all chunks for the act.
+    For each distinct piece of motivation evidence, provide a direct quote, a brief signal
+    description, and a suggested motivation category. The suggested category is your best
+    judgment based on the evidence and the category definitions above. It is a preliminary
+    tag, not a final classification — downstream analysis will synthesize evidence across
+    all chunks for the act.
+
+
+    For each enacted-status signal, provide a direct quote and a brief description of what
+    it indicates about the measure's legislative status.
 
 
     Valid categories for suggested_category: SPENDING_DRIVEN, COUNTERCYCLICAL,
     DEFICIT_DRIVEN, LONG_RUN.
 
 
-    If the chunk contains no motivation evidence — no statements about why the fiscal
-    measure was enacted or proposed — return an empty evidence array.
+    If the chunk contains no motivation evidence, return an empty array for evidence.
+    If the chunk contains no enacted-status signals, return an empty array for
+    enacted_signals.
 
 
     Return your answer as JSON:
@@ -109,8 +125,11 @@ codebook:
           "signal": "Brief description of the evidence type (e.g., 'stated goal of deficit reduction', 'response to rising unemployment')",
           "suggested_category": "SPENDING_DRIVEN"
         }
+      ],
+      "enacted_signals": [
+        {
+          "quote": "Direct quote about legislative status",
+          "signal": "Brief description (e.g., 'signed into law', 'defeated in committee', 'proposed but not passed')"
+        }
       ]
     }
-
-
-    If no motivation evidence is found, return: {"evidence": []}
