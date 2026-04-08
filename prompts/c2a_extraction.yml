@@ -1,0 +1,116 @@
+codebook:
+  name: "C2a: Motivation Evidence Extraction"
+  version: "0.1.0"
+  instructions: >
+    You are an expert in fiscal policy analysis extracting motivation evidence from
+    chunks of official government economic and budget documents. Each chunk has already
+    been identified as containing a substantive discussion of a specific fiscal measure.
+    Your task is to extract all evidence about **why** the fiscal measure was enacted,
+    proposed, or under consideration — the stated goals, economic conditions cited as
+    justification, and any other indications of the policymakers' motivation.
+
+
+    You will be given: the chunk text, the name of the fiscal measure, and the year of
+    passage. For each distinct piece of motivation evidence you find, extract a direct
+    quote, describe the signal it represents, and suggest which of the four motivation
+    categories it best fits. The four categories are defined below as a reference taxonomy.
+
+
+    Extract only evidence that is explicitly present in the text. Do not infer motivation
+    from economic conditions unless policymakers are quoted or paraphrased as citing those
+    conditions as their reason for acting. Multiple pieces of evidence may point to the
+    same category or to different categories — extract them all separately.
+
+  classes:
+    - label: "SPENDING_DRIVEN"
+      label_definition: >
+        A fiscal measure motivated by a change in government spending — the measure
+        finances, offsets, or accompanies a specific spending program or commitment.
+
+      clarification:
+        - "Evidence that the measure is described as financing, paying for, or offsetting a specific government spending program or commitment"
+        - "References to increased spending obligations such as military operations, social programs, infrastructure, or public services as the reason for the fiscal measure"
+        - "Statements indicating that the fiscal measure and a spending change were enacted or proposed together as a package"
+
+      negative_clarification:
+        - "Do not suggest SPENDING_DRIVEN merely because government spending is mentioned in the passage; the spending change must be described as the motivation for the fiscal measure"
+        - "If a fiscal measure addresses a deficit that resulted from a spending increase more than one year prior, suggest DEFICIT_DRIVEN instead — the 1-year temporal boundary distinguishes contemporaneous spending-driven measures from inherited-deficit measures"
+        - "Do not suggest SPENDING_DRIVEN when the passage describes deficit reduction as the goal, even if the deficit was originally caused by spending; the key question is whether the spending change is contemporaneous"
+
+    - label: "COUNTERCYCLICAL"
+      label_definition: >
+        A fiscal measure designed to return output growth to its normal level in
+        response to a current or projected economic downturn.
+
+      clarification:
+        - "Evidence that the stated goal is to stimulate the economy, counteract a recession, or restore growth to its prior trend level"
+        - "References to rising unemployment, falling output, or economic contraction as the reason for acting"
+        - "Policymaker statements taken at face value that the economy is performing below normal and the measure aims to restore normal conditions"
+
+      negative_clarification:
+        - "Do not suggest COUNTERCYCLICAL when the stated goal is to raise growth above its normal level or to achieve structural improvements — that is LONG_RUN, even if the economy happens to be weak at the time"
+        - "Do not suggest COUNTERCYCLICAL merely because the passage uses words like 'stimulate' or 'growth'; the key test is whether the goal is to return to normal (COUNTERCYCLICAL) or to raise above normal (LONG_RUN)"
+        - "If the measure was proposed when the economy was growing normally but motivated by a desire for faster growth, it is LONG_RUN even if the economy weakened by the time of passage"
+
+    - label: "DEFICIT_DRIVEN"
+      label_definition: >
+        A fiscal measure whose stated purpose is to reduce a budget deficit inherited
+        from previous policy decisions, not one caused by a contemporaneous spending change.
+
+      clarification:
+        - "Evidence that the stated purpose is to reduce a pre-existing or inherited budget deficit, restore fiscal balance, or achieve fiscal prudence"
+        - "References to past policy decisions, accumulated obligations, or trust fund solvency as the reason for the fiscal measure"
+        - "Statements describing the deficit as a legacy problem requiring correction, rather than as a consequence of a recent spending decision"
+
+      negative_clarification:
+        - "Do not suggest DEFICIT_DRIVEN merely because the word 'deficit' appears in the passage; the deficit must be described as inherited or pre-existing, not as a result of a spending increase within the past year"
+        - "If the deficit is described as resulting from a spending increase that occurred within the past year, suggest SPENDING_DRIVEN instead — the 1-year temporal boundary applies"
+        - "Do not suggest DEFICIT_DRIVEN when the passage describes the measure as financing new spending, even if deficit reduction is mentioned as a secondary benefit"
+
+    - label: "LONG_RUN"
+      label_definition: >
+        A fiscal measure aimed at raising long-run economic growth, improving economic
+        efficiency, or achieving other structural goals unrelated to the current business cycle.
+
+      clarification:
+        - "Evidence that the stated goal is structural improvement such as fairness, efficiency, simplification, improved incentives, or raising potential output"
+        - "References to long-run growth, supply-side effects, or economic reform as the motivation for the measure"
+        - "Policymaker statements indicating a desire to raise growth above its normal level rather than to restore growth to normal"
+
+      negative_clarification:
+        - "Do not suggest LONG_RUN merely because the passage mentions growth; if the goal is to restore growth to its prior normal level during a downturn, suggest COUNTERCYCLICAL instead"
+        - "Do not suggest LONG_RUN when the primary stated purpose is deficit reduction or fiscal prudence — that is DEFICIT_DRIVEN"
+        - "The key distinction from COUNTERCYCLICAL is direction: LONG_RUN aims to raise growth above the current normal, while COUNTERCYCLICAL aims to return growth to normal from below"
+
+  output_instructions: >
+    Extract all motivation evidence from the chunk. For each distinct piece of evidence,
+    provide a direct quote, a brief signal description, and a suggested motivation category.
+
+
+    The suggested category is your best judgment based on the evidence and the category
+    definitions above. It is a preliminary tag, not a final classification — downstream
+    analysis will synthesize evidence across all chunks for the act.
+
+
+    Valid categories for suggested_category: SPENDING_DRIVEN, COUNTERCYCLICAL,
+    DEFICIT_DRIVEN, LONG_RUN.
+
+
+    If the chunk contains no motivation evidence — no statements about why the fiscal
+    measure was enacted or proposed — return an empty evidence array.
+
+
+    Return your answer as JSON:
+
+    {
+      "evidence": [
+        {
+          "quote": "Direct quote from the text",
+          "signal": "Brief description of the evidence type (e.g., 'stated goal of deficit reduction', 'response to rising unemployment')",
+          "suggested_category": "SPENDING_DRIVEN"
+        }
+      ]
+    }
+
+
+    If no motivation evidence is found, return: {"evidence": []}

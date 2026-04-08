@@ -1,0 +1,143 @@
+codebook:
+  name: "C2b: Motivation Classification"
+  version: "0.1.0"
+  instructions: >
+    You are an expert in fiscal policy analysis classifying the primary motivation for
+    a fiscal measure. You will receive the act name, year of passage, and an array of
+    evidence records extracted from multiple document chunks. Each evidence record contains
+    a direct quote, a signal description, a suggested motivation category, and the source
+    chunk identifier.
+
+
+    Your task is to weigh all evidence, resolve any conflicts, and assign exactly one of
+    four motivation categories to the act. The suggested_category field in each evidence
+    record is an upstream hint — you must evaluate the evidence independently using the
+    category definitions and decision rules below.
+
+
+    **Decision rules for resolving conflicting evidence:**
+
+    1. Use the motivation most frequently and consistently cited across all evidence records.
+
+    2. If the stated motivation changed during deliberations, use the prevailing motivation
+    at the time of passage, not earlier proposals.
+
+    3. When evidence genuinely supports multiple categories with no clear dominant motivation,
+    flag the act as mixed-motivation, assign the category supported by the majority of
+    evidence, and explain the split in your reasoning.
+
+
+    **Boundary case rules (apply these precisely):**
+
+    1. Countercyclical vs. Long-run — the "return to normal" test: If the stated goal is to
+    return output growth to its normal level (e.g., responding to rising unemployment or
+    falling output), classify as COUNTERCYCLICAL. If the stated goal is to raise growth
+    above its normal level (e.g., structural reform, improved incentives, potential output),
+    classify as LONG_RUN. Take policymakers' statements at face value regarding what they
+    consider normal growth. If the measure was proposed when the economy was growing normally
+    but motivated by a desire for faster growth, classify as LONG_RUN even if the economy
+    weakened by the time of passage.
+
+    2. Spending-driven vs. Deficit-driven — the 1-year temporal rule: If a fiscal measure
+    pays for a spending increase that occurred within the past year, classify as
+    SPENDING_DRIVEN. If a fiscal measure addresses a deficit that resulted from spending
+    decisions made more than one year prior, classify as DEFICIT_DRIVEN. The key question
+    is whether the spending change is contemporaneous (within 1 year) or inherited (beyond
+    1 year).
+
+    3. Offsetting exogenous changes: When a fiscal measure offsets a previous exogenous
+    change because economic conditions have weakened, classify the offsetting measure with
+    the same motivation as the original change, not as COUNTERCYCLICAL. This avoids
+    identifying two changes of different motivations when liabilities did not actually change.
+
+  classes:
+    - label: "SPENDING_DRIVEN"
+      label_definition: >
+        A fiscal measure whose primary stated purpose is to finance, offset, or accompany
+        a specific contemporaneous change in government spending.
+
+      clarification:
+        - "The evidence consistently describes the measure as financing or paying for a specific spending program or commitment that is being enacted or expanded at the same time"
+        - "The spending change and the fiscal measure are described as a package — the fiscal measure exists because of the spending decision"
+        - "The temporal link between the spending change and the fiscal measure is within one year"
+
+      negative_clarification:
+        - "Do not classify as SPENDING_DRIVEN if the fiscal measure addresses a deficit caused by spending decisions made more than one year prior — classify as DEFICIT_DRIVEN instead"
+        - "Do not classify as SPENDING_DRIVEN merely because spending is mentioned in the evidence; the spending change must be the stated reason for the fiscal measure"
+        - "Do not classify as SPENDING_DRIVEN when deficit reduction is the primary stated goal, even if the deficit was originally caused by a spending increase — apply the 1-year temporal rule"
+
+    - label: "COUNTERCYCLICAL"
+      label_definition: >
+        A fiscal measure whose primary stated purpose is to return output growth to its
+        normal level in response to a current or projected economic downturn.
+
+      clarification:
+        - "The evidence consistently describes the goal as restoring economic growth to its prior trend or normal level, not raising it above normal"
+        - "Policymakers cite current or projected economic weakness — rising unemployment, falling output, recession — as the reason for acting"
+        - "The measure is explicitly framed as temporary or responsive to cyclical conditions"
+
+      negative_clarification:
+        - "Do not classify as COUNTERCYCLICAL merely because the economy is weak at the time of passage; if the stated aim is structural reform, improved efficiency, or raising long-run potential, classify as LONG_RUN"
+        - "Do not classify as COUNTERCYCLICAL when the evidence uses words like 'stimulate' or 'growth' but the full context shows the goal is to raise growth above its normal level — apply the 'return to normal' test"
+        - "If the measure was proposed during normal economic conditions but motivated by faster growth, classify as LONG_RUN even if the economy weakened by passage"
+
+    - label: "DEFICIT_DRIVEN"
+      label_definition: >
+        A fiscal measure whose primary stated purpose is to reduce a budget deficit
+        inherited from previous policy decisions rather than caused by a contemporaneous
+        spending change.
+
+      clarification:
+        - "The evidence consistently describes the deficit as inherited, pre-existing, or resulting from past decisions rather than from a recent spending increase"
+        - "Policymakers cite fiscal prudence, actuarial soundness, trust fund solvency, or restoring fiscal balance as the reason for acting"
+        - "The deficit being addressed predates the fiscal measure by more than one year, or is described as a structural rather than cyclical problem"
+
+      negative_clarification:
+        - "Do not classify as DEFICIT_DRIVEN merely because the word 'deficit' appears in the evidence; the deficit must be described as inherited or structural, not as a consequence of a spending increase within the past year"
+        - "If the deficit results from a spending increase that occurred within the past year, classify as SPENDING_DRIVEN — the 1-year temporal rule takes precedence"
+        - "Do not classify as DEFICIT_DRIVEN when the primary stated goal is structural economic reform or growth improvement — that is LONG_RUN, even if deficit reduction is a secondary benefit"
+
+    - label: "LONG_RUN"
+      label_definition: >
+        A fiscal measure whose primary stated purpose is to raise long-run economic growth,
+        improve economic efficiency, or achieve structural goals unrelated to the current
+        business cycle.
+
+      clarification:
+        - "The evidence consistently describes structural goals: fairness, efficiency, simplification, improved incentives, raising potential output, or promoting long-run growth"
+        - "The stated aim is to raise growth above its current normal level, not to restore growth to a prior normal level"
+        - "The measure is framed as a permanent structural change rather than a temporary cyclical response"
+
+      negative_clarification:
+        - "Do not classify as LONG_RUN merely because the passage mentions growth; if the goal is to restore growth to its prior normal level during a downturn, classify as COUNTERCYCLICAL"
+        - "Do not classify as LONG_RUN when the primary stated purpose is deficit reduction or fiscal prudence — that is DEFICIT_DRIVEN"
+        - "The key distinction from COUNTERCYCLICAL is direction: LONG_RUN raises growth above normal; COUNTERCYCLICAL returns growth to normal from below"
+
+  output_instructions: >
+    Classify the act's primary motivation using exactly one of: SPENDING_DRIVEN,
+    COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN.
+
+
+    Then determine exogeneity: exogenous is true if the motivation is DEFICIT_DRIVEN
+    or LONG_RUN; false if SPENDING_DRIVEN or COUNTERCYCLICAL.
+
+
+    Return your answer as JSON:
+
+    {
+      "motivation_category": "SPENDING_DRIVEN",
+      "exogenous": false,
+      "confidence": "HIGH",
+      "mixed_motivation": false,
+      "reasoning": "Synthesis of evidence explaining the classification, citing specific evidence records and decision rules applied"
+    }
+
+
+    Set confidence to HIGH if evidence is consistent and clearly points to one category,
+    MEDIUM if evidence is somewhat ambiguous but one category dominates, or LOW if evidence
+    is conflicting or sparse.
+
+
+    Set mixed_motivation to true only if evidence genuinely supports multiple categories
+    with no clear dominant motivation. In that case, still assign the category supported
+    by the majority of evidence and explain the split in reasoning.
