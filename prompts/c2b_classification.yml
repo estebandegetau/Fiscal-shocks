@@ -57,8 +57,9 @@ codebook:
 
     **Enacted-status determination:** Based on the enacted-status signals extracted from the
     evidence records, determine whether the fiscal measure was enacted into law. If evidence
-    indicates the measure was signed, became law, or was implemented, set enacted to true. If
-    evidence indicates the measure was defeated, withdrawn, vetoed, or remained a proposal,
+    indicates the measure was signed, became law, or took legal effect (including executive
+    orders, administrative actions, or ministerial decrees), set enacted to true. If evidence
+    indicates the measure was defeated, withdrawn, vetoed, or remained a proposal,
     set enacted to false. If enacted-status evidence is absent or ambiguous, set enacted to
     true and note the uncertainty in reasoning — the default assumption is that measures
     discussed substantively in official government documents were enacted.

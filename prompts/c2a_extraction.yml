@@ -14,9 +14,9 @@ codebook:
 
 
     2. **Enacted-status signals**: Any evidence about the **legislative status** of the
-    measure — whether it was enacted into law, signed by the head of government, defeated,
-    withdrawn, or remained a proposal. These signals will be used downstream to determine
-    whether the measure became law.
+    measure — whether it was enacted into law, took legal effect (including via executive
+    or administrative action), was defeated, withdrawn, or remained a proposal. These signals
+    will be used downstream to determine whether the measure became law.
 
 
     You will be given: the chunk text, the name of the fiscal measure, and the year of
