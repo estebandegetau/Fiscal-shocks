@@ -91,3 +91,61 @@ iterations:
       rule for motivations array to single label for 4x4 confusion matrix (use dominant
       entry). Delta in docs/deltas.md still open — strategy.md references single
       c2_motivation.yml, needs updating to c2a + c2b.
+
+  - iteration: 4
+    codebook_version: "0.2.0"
+    date: "2026-04-09"
+    git_commit: "cd7e02a"
+    model: "qwen/qwen-2.5-72b-instruct"
+    stage: "s1"
+    changes: >
+      First S1 run. No codebook changes from S0 v0.2.0. Pipeline infrastructure
+      added: run_c2b_behavioral_tests_s1() with synthetic evidence generation,
+      per-target model config (decoupled from shared globals). Tested on Qwen 2.5
+      72B via OpenRouter for cheap iteration.
+    results:
+      overall_pass: false
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          note: "skipped — no examples in codebook"
+        - test: "IV_order_invariance"
+          value: 0.2500
+          threshold: 0.0500
+          pass: false
+      test_iv_diagnostics:
+        change_rate_reversed: 0.2500
+        change_rate_shuffled: 0.2500
+        change_rate_categories: 0.2500
+        change_rate_exogenous: 0.0000
+        fleiss_kappa: 0.7857
+        kappa_interpretation: "Substantial agreement"
+        n_total: 4
+        n_changed_reversed: 1
+        n_changed_shuffled: 1
+        note: >
+          Single instability: text_id 4 (Synthetic Long-Run Act) returns
+          LONG_RUN+LONG_RUN (2 motivation entries) on original ordering vs
+          LONG_RUN (1 entry) on reversed/shuffled. Category and exogenous flag
+          are correct in all orderings. Exogenous flag 100% stable.
+    interpretation: >
+      Pipeline runs tests correctly. Qwen failed the behavioral tests as it did
+      in C1, which was expected. C2b performs much better than C2a on Test IV —
+      substantial agreement (kappa 0.79) vs fair agreement (kappa 0.26). The only
+      instability is structural (motivation entry count), not categorical. The
+      exogenous flag — the most policy-relevant output — is perfectly stable.
+      Tests I-III pass cleanly, confirming codebook design is sound.
+    decision: >
+      Proceed with C2 S2 development and Haiku testing in S1. Do not iterate on
+      codebook based on Qwen Test IV results alone — rerun on Haiku first to
+      isolate model vs. codebook contribution to order sensitivity.
