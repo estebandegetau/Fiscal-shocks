@@ -1,0 +1,909 @@
+# C2 Behavioral Tests for H&K Codebook Validation
+# C2-specific test functions for the two-codebook architecture:
+#   C2a (evidence extraction) and C2b (motivation classification)
+#
+# Parallels R/behavioral_tests.R but does NOT modify it.
+# Reuses: construct_codebook_prompt(), call_llm_api(), parse_json_response(),
+#          get_valid_labels(), fleiss_kappa() from existing code.
+
+# =============================================================================
+# Generic Infrastructure
+# =============================================================================
+
+#' Call a codebook without assuming output schema
+#'
+#' Thin wrapper around call_llm_api() + parse_json_response() that does not
+#' enforce {label, reasoning} structure. Used by all C2 tests.
+#'
+#' @param user_message Character string (pre-formatted user message)
+#' @param codebook A validated codebook object
+#' @param model Character model ID
+#' @param system_prompt Optional override; built from codebook if NULL
+#' @param max_tokens Integer max output tokens
+#' @param temperature Numeric temperature (default 0)
+#' @param provider Character provider name
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return List with parsed JSON fields + $raw_response
+#' @keywords internal
+call_codebook_generic <- function(user_message,
+                                  codebook,
+                                  model = "claude-haiku-4-5-20251001",
+                                  system_prompt = NULL,
+                                  max_tokens = 1024,
+                                  temperature = 0,
+                                  provider = "anthropic",
+                                  base_url = NULL,
+                                  api_key = NULL) {
+  if (is.null(system_prompt)) {
+    system_prompt <- construct_codebook_prompt(codebook)
+  }
+
+  raw <- call_llm_api(
+    messages = list(list(role = "user", content = user_message)),
+    model = model,
+    max_tokens = max_tokens,
+    temperature = temperature,
+    system = system_prompt,
+    provider = provider,
+    base_url = base_url,
+    api_key = api_key
+  )
+
+  raw_text <- raw$content[[1]]$text
+  parsed <- parse_json_response(raw_text)
+  parsed$raw_response <- raw_text
+  parsed$stop_reason <- raw$stop_reason %||% NA_character_
+  parsed
+}
+
+
+#' Format user message for C2a (evidence extraction)
+#'
+#' @param text Character chunk text
+#' @param act_name Character act name
+#' @param year Integer or character year
+#' @return Character string formatted for C2a input
+#' @keywords internal
+format_c2a_input <- function(text, act_name, year) {
+  paste0(
+    "Act: ", act_name, "\n",
+    "Year: ", year, "\n\n",
+    "Chunk text:\n", text
+  )
+}
+
+
+#' Format user message for C2b (motivation classification)
+#'
+#' @param act_name Character act name
+#' @param year Integer or character year
+#' @param evidence List of evidence objects (each with quote, signal, suggested_category)
+#' @param enacted_signals List of enacted-status signal objects (each with quote, signal)
+#' @return Character string formatted for C2b input
+#' @keywords internal
+format_c2b_input <- function(act_name, year, evidence, enacted_signals = list()) {
+  evidence_json <- jsonlite::toJSON(evidence, auto_unbox = TRUE, pretty = TRUE)
+  signals_json <- jsonlite::toJSON(enacted_signals, auto_unbox = TRUE, pretty = TRUE)
+
+  paste0(
+    "Act: ", act_name, "\n",
+    "Year: ", year, "\n\n",
+    "Evidence records:\n", evidence_json, "\n\n",
+    "Enacted-status signals:\n", signals_json, "\n\n",
+    "Classify this act's motivation based on the evidence above."
+  )
+}
+
+
+#' Validate C2a output schema
+#'
+#' @param parsed List from parse_json_response()
+#' @param valid_categories Character vector of valid category labels
+#' @return List with $valid (logical) and $reason (character, NA if valid)
+#' @keywords internal
+validate_c2a_output <- function(parsed, valid_categories) {
+  # Check for parse errors
+  if (!is.null(parsed$error)) {
+    return(list(valid = FALSE, reason = paste("JSON parse error:", parsed$error)))
+  }
+
+  # evidence must exist and be a list
+  if (is.null(parsed$evidence) || !is.list(parsed$evidence)) {
+    return(list(valid = FALSE, reason = "Missing or non-list 'evidence' field"))
+  }
+
+  # Validate each evidence item
+  for (i in seq_along(parsed$evidence)) {
+    item <- parsed$evidence[[i]]
+    if (is.null(item$quote) || !is.character(item$quote)) {
+      return(list(valid = FALSE,
+                  reason = sprintf("evidence[%d]: missing or non-character 'quote'", i)))
+    }
+    if (is.null(item$signal) || !is.character(item$signal)) {
+      return(list(valid = FALSE,
+                  reason = sprintf("evidence[%d]: missing or non-character 'signal'", i)))
+    }
+    if (is.null(item$suggested_category) ||
+        !item$suggested_category %in% valid_categories) {
+      return(list(valid = FALSE,
+                  reason = sprintf("evidence[%d]: invalid suggested_category '%s'",
+                                   i, item$suggested_category %||% "NULL")))
+    }
+  }
+
+  # enacted_signals must exist and be a list
+  if (is.null(parsed$enacted_signals) || !is.list(parsed$enacted_signals)) {
+    return(list(valid = FALSE, reason = "Missing or non-list 'enacted_signals' field"))
+  }
+
+  # Validate each enacted_signal item (if any)
+  for (i in seq_along(parsed$enacted_signals)) {
+    item <- parsed$enacted_signals[[i]]
+    if (is.null(item$quote) || !is.character(item$quote)) {
+      return(list(valid = FALSE,
+                  reason = sprintf("enacted_signals[%d]: missing or non-character 'quote'", i)))
+    }
+    if (is.null(item$signal) || !is.character(item$signal)) {
+      return(list(valid = FALSE,
+                  reason = sprintf("enacted_signals[%d]: missing or non-character 'signal'", i)))
+    }
+  }
+
+  list(valid = TRUE, reason = NA_character_)
+}
+
+
+#' Validate C2b output schema
+#'
+#' @param parsed List from parse_json_response()
+#' @param valid_categories Character vector of valid category labels
+#' @return List with $valid (logical) and $reason (character, NA if valid)
+#' @keywords internal
+validate_c2b_output <- function(parsed, valid_categories) {
+  if (!is.null(parsed$error)) {
+    return(list(valid = FALSE, reason = paste("JSON parse error:", parsed$error)))
+  }
+
+  # enacted must be logical
+  if (is.null(parsed$enacted) || !is.logical(parsed$enacted)) {
+    return(list(valid = FALSE, reason = "Missing or non-logical 'enacted' field"))
+  }
+
+  # motivations must be a non-empty list
+  if (is.null(parsed$motivations) || !is.list(parsed$motivations) ||
+      length(parsed$motivations) == 0) {
+    return(list(valid = FALSE, reason = "Missing, non-list, or empty 'motivations' field"))
+  }
+
+  # Validate each motivation entry
+  for (i in seq_along(parsed$motivations)) {
+    item <- parsed$motivations[[i]]
+    if (is.null(item$category) || !item$category %in% valid_categories) {
+      return(list(valid = FALSE,
+                  reason = sprintf("motivations[%d]: invalid category '%s'",
+                                   i, item$category %||% "NULL")))
+    }
+    if (is.null(item$component) || !is.character(item$component)) {
+      return(list(valid = FALSE,
+                  reason = sprintf("motivations[%d]: missing or non-character 'component'", i)))
+    }
+    if (is.null(item$share) || !is.character(item$share)) {
+      return(list(valid = FALSE,
+                  reason = sprintf("motivations[%d]: missing or non-character 'share'", i)))
+    }
+  }
+
+  # exogenous must be logical
+  if (is.null(parsed$exogenous) || !is.logical(parsed$exogenous)) {
+    return(list(valid = FALSE, reason = "Missing or non-logical 'exogenous' field"))
+  }
+
+  # confidence must be character
+  if (is.null(parsed$confidence) || !is.character(parsed$confidence)) {
+    return(list(valid = FALSE, reason = "Missing or non-character 'confidence' field"))
+  }
+
+  # reasoning must be character
+  if (is.null(parsed$reasoning) || !is.character(parsed$reasoning)) {
+    return(list(valid = FALSE, reason = "Missing or non-character 'reasoning' field"))
+  }
+
+  list(valid = TRUE, reason = NA_character_)
+}
+
+
+# =============================================================================
+# C2a Tests (Evidence Extraction)
+# =============================================================================
+
+#' Test I: C2a Legal Outputs
+#'
+#' Sends chunk texts to C2a and validates that all responses have valid
+#' JSON with correct schema (evidence[] and enacted_signals[] arrays).
+#'
+#' @param codebook A validated C2a codebook object
+#' @param test_chunks Tibble with text, act_name, year columns
+#' @param model Character model ID
+#' @param max_tokens Integer max output tokens
+#' @param provider Character provider name
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return List with pass, n_valid, n_total, rate, threshold, details
+#' @export
+test_c2a_legal_outputs <- function(codebook,
+                                   test_chunks,
+                                   model = "claude-haiku-4-5-20251001",
+                                   max_tokens = 1024,
+                                   provider = "anthropic",
+                                   base_url = NULL,
+                                   api_key = NULL) {
+  valid_categories <- get_valid_labels(codebook)
+  system_prompt <- construct_codebook_prompt(codebook)
+  n <- nrow(test_chunks)
+
+  results <- purrr::map(seq_len(n), function(i) {
+    user_msg <- format_c2a_input(
+      test_chunks$text[i], test_chunks$act_name[i], test_chunks$year[i]
+    )
+
+    parsed <- tryCatch({
+      call_codebook_generic(
+        user_message = user_msg,
+        codebook = codebook,
+        model = model,
+        system_prompt = system_prompt,
+        max_tokens = max_tokens,
+        temperature = 0,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
+      )
+    }, error = function(e) {
+      list(error = e$message, raw_response = NA_character_)
+    })
+
+    validation <- validate_c2a_output(parsed, valid_categories)
+
+    tibble::tibble(
+      text_id = i,
+      act_name = test_chunks$act_name[i],
+      valid = validation$valid,
+      reason = validation$reason,
+      n_evidence = length(parsed$evidence %||% list()),
+      n_enacted_signals = length(parsed$enacted_signals %||% list()),
+      raw_response = parsed$raw_response %||% NA_character_
+    )
+  })
+
+  details <- dplyr::bind_rows(results)
+  n_valid <- sum(details$valid, na.rm = TRUE)
+
+  list(
+    test = "I_legal_outputs",
+    pass = n_valid == n,
+    n_valid = n_valid,
+    n_total = n,
+    rate = n_valid / n,
+    threshold = 1.0,
+    details = details
+  )
+}
+
+
+#' Test II: C2a Instruction Recovery
+#'
+#' Tests whether C2a can follow extraction instructions by giving it
+#' synthetic passages with obvious quotes and motivation signals.
+#' Each passage is constructed from a category's definition and
+#' clarifications, wrapped in a fiscal-policy frame.
+#'
+#' @param codebook A validated C2a codebook object
+#' @param model Character model ID
+#' @param max_tokens Integer max output tokens
+#' @param provider Character provider name
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return List with pass, n_correct, n_total, rate, threshold, details
+#' @export
+test_c2a_instruction_recovery <- function(codebook,
+                                          model = "claude-haiku-4-5-20251001",
+                                          max_tokens = 1024,
+                                          provider = "anthropic",
+                                          base_url = NULL,
+                                          api_key = NULL) {
+  valid_categories <- get_valid_labels(codebook)
+  system_prompt <- construct_codebook_prompt(codebook)
+
+  # Synthetic passages: one per category, each with an obvious extractable quote
+  # The quotes are designed to be unambiguous for the target category
+  synthetic_passages <- list(
+    SPENDING_DRIVEN = list(
+      act_name = "Test Spending Revenue Act",
+      year = 2000,
+      text = paste(
+        "The government introduced the Test Spending Revenue Act of 2000",
+        "to finance the new national infrastructure program.",
+        "As the budget report stated, 'this tax increase will pay for the",
+        "$50 billion highway construction initiative enacted this year.'",
+        "The revenue measure and the spending program were enacted together",
+        "as a single legislative package."
+      )
+    ),
+    COUNTERCYCLICAL = list(
+      act_name = "Test Stimulus Relief Act",
+      year = 2001,
+      text = paste(
+        "In response to the economic downturn, Congress passed the Test",
+        "Stimulus Relief Act of 2001. The President stated that 'with",
+        "unemployment rising and GDP falling, this temporary tax cut is",
+        "needed to restore the economy to its normal growth path.' The",
+        "measure was designed as a short-term response to the recession",
+        "and was expected to expire once economic conditions normalized."
+      )
+    ),
+    DEFICIT_DRIVEN = list(
+      act_name = "Test Fiscal Responsibility Act",
+      year = 1993,
+      text = paste(
+        "The Test Fiscal Responsibility Act of 1993 was enacted to address",
+        "the large budget deficit inherited from previous administrations.",
+        "The Secretary of the Treasury testified that 'the deficit, which",
+        "has accumulated over many years of past policy decisions, threatens",
+        "long-term fiscal stability and must be reduced through higher",
+        "revenues.' The act was signed into law on August 10, 1993."
+      )
+    ),
+    LONG_RUN = list(
+      act_name = "Test Economic Reform Act",
+      year = 1986,
+      text = paste(
+        "The Test Economic Reform Act of 1986 aimed to improve economic",
+        "efficiency and simplify the tax code. Policymakers argued that",
+        "'by broadening the tax base and lowering marginal rates, we can",
+        "raise long-run economic growth above its current trend and improve",
+        "incentives for investment and productivity.' The reform was",
+        "designed as a permanent structural change to the tax system."
+      )
+    )
+  )
+
+  results <- purrr::map(names(synthetic_passages), function(expected_cat) {
+    passage <- synthetic_passages[[expected_cat]]
+
+    user_msg <- format_c2a_input(passage$text, passage$act_name, passage$year)
+
+    parsed <- tryCatch({
+      call_codebook_generic(
+        user_message = user_msg,
+        codebook = codebook,
+        model = model,
+        system_prompt = system_prompt,
+        max_tokens = max_tokens,
+        temperature = 0,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
+      )
+    }, error = function(e) {
+      list(error = e$message, raw_response = NA_character_)
+    })
+
+    # Validate schema first
+    validation <- validate_c2a_output(parsed, valid_categories)
+
+    # Check instruction recovery: at least one evidence item with expected category
+    has_evidence <- length(parsed$evidence %||% list()) > 0
+    categories_found <- vapply(
+      parsed$evidence %||% list(),
+      function(e) e$suggested_category %||% NA_character_,
+      character(1)
+    )
+    correct_category <- expected_cat %in% categories_found
+
+    tibble::tibble(
+      expected_category = expected_cat,
+      act_name = passage$act_name,
+      valid_schema = validation$valid,
+      has_evidence = has_evidence,
+      correct_category = correct_category,
+      categories_found = paste(categories_found, collapse = ", "),
+      correct = validation$valid && has_evidence && correct_category
+    )
+  })
+
+  details <- dplyr::bind_rows(results)
+  n_correct <- sum(details$correct, na.rm = TRUE)
+
+  list(
+    test = "II_instruction_recovery",
+    pass = n_correct == nrow(details),
+    n_correct = n_correct,
+    n_total = nrow(details),
+    rate = n_correct / nrow(details),
+    threshold = 1.0,
+    details = details
+  )
+}
+
+
+#' Test IV: C2a Order Invariance
+#'
+#' Reorders class definitions in the C2a codebook prompt and checks
+#' whether suggested_category assignments change. Uses the sorted
+#' multiset of suggested_category values per chunk as the comparison unit.
+#'
+#' @param codebook A validated C2a codebook object
+#' @param test_chunks Tibble with text, act_name, year columns
+#' @param model Character model ID
+#' @param seed Integer seed for shuffled ordering
+#' @param max_tokens Integer max output tokens
+#' @param provider Character provider name
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return List with pass, change rates, fleiss_kappa, details
+#' @export
+test_c2a_order_invariance <- function(codebook,
+                                      test_chunks,
+                                      model = "claude-haiku-4-5-20251001",
+                                      seed = 42,
+                                      max_tokens = 1024,
+                                      provider = "anthropic",
+                                      base_url = NULL,
+                                      api_key = NULL) {
+  n_classes <- length(codebook$classes)
+  original_order <- seq_len(n_classes)
+  reversed_order <- rev(original_order)
+
+  # Generate shuffled order (must differ from original and reversed)
+  set.seed(seed)
+  shuffled_order <- sample(original_order)
+  attempts <- 0
+  while ((identical(shuffled_order, original_order) ||
+          identical(shuffled_order, reversed_order)) && attempts < 100) {
+    shuffled_order <- sample(original_order)
+    attempts <- attempts + 1
+  }
+
+  # Build prompts for each ordering
+  prompt_original <- construct_codebook_prompt(codebook, class_order = original_order)
+  prompt_reversed <- construct_codebook_prompt(codebook, class_order = reversed_order)
+  prompt_shuffled <- construct_codebook_prompt(codebook, class_order = shuffled_order)
+
+  # Helper: extract sorted category multiset string from C2a response
+  extract_category_multiset <- function(parsed) {
+    cats <- vapply(
+      parsed$evidence %||% list(),
+      function(e) e$suggested_category %||% NA_character_,
+      character(1)
+    )
+    cats <- sort(cats[!is.na(cats)])
+    if (length(cats) == 0) return("EMPTY")
+    paste(cats, collapse = "|")
+  }
+
+  n <- nrow(test_chunks)
+
+  results <- purrr::map(seq_len(n), function(i) {
+    user_msg <- format_c2a_input(
+      test_chunks$text[i], test_chunks$act_name[i], test_chunks$year[i]
+    )
+
+    classify_one <- function(prompt) {
+      tryCatch({
+        parsed <- call_codebook_generic(
+          user_message = user_msg,
+          codebook = codebook,
+          model = model,
+          system_prompt = prompt,
+          max_tokens = max_tokens,
+          temperature = 0,
+          provider = provider,
+          base_url = base_url,
+          api_key = api_key
+        )
+        extract_category_multiset(parsed)
+      }, error = function(e) NA_character_)
+    }
+
+    label_original <- classify_one(prompt_original)
+    label_reversed <- classify_one(prompt_reversed)
+    label_shuffled <- classify_one(prompt_shuffled)
+
+    tibble::tibble(
+      text_id = i,
+      label_original = label_original,
+      label_reversed = label_reversed,
+      label_shuffled = label_shuffled,
+      changed_reversed = !identical(label_original, label_reversed),
+      changed_shuffled = !identical(label_original, label_shuffled)
+    )
+  })
+
+  details <- dplyr::bind_rows(results)
+
+  n_changed_reversed <- sum(details$changed_reversed, na.rm = TRUE)
+  n_changed_shuffled <- sum(details$changed_shuffled, na.rm = TRUE)
+  n_total <- nrow(details)
+  change_rate_reversed <- n_changed_reversed / n_total
+  change_rate_shuffled <- n_changed_shuffled / n_total
+  change_rate_max <- max(change_rate_reversed, change_rate_shuffled)
+
+  # Fleiss's kappa across the three orderings
+  ratings_matrix <- cbind(
+    details$label_original,
+    details$label_reversed,
+    details$label_shuffled
+  )
+  fk <- fleiss_kappa(ratings_matrix)
+
+  list(
+    test = "IV_order_invariance",
+    pass = change_rate_max < 0.05,
+    change_rate = change_rate_max,
+    change_rate_reversed = change_rate_reversed,
+    change_rate_shuffled = change_rate_shuffled,
+    n_changed_reversed = n_changed_reversed,
+    n_changed_shuffled = n_changed_shuffled,
+    n_total = n_total,
+    threshold = 0.05,
+    fleiss_kappa = fk$kappa,
+    kappa_interpretation = fk$interpretation,
+    shuffled_order = shuffled_order,
+    details = details
+  )
+}
+
+
+# =============================================================================
+# C2b Tests (Motivation Classification)
+# =============================================================================
+
+#' Test I: C2b Legal Outputs
+#'
+#' Sends evidence arrays to C2b and validates that all responses have
+#' valid JSON with correct schema (enacted, motivations[], exogenous,
+#' confidence, reasoning).
+#'
+#' @param codebook A validated C2b codebook object
+#' @param test_evidence_sets List of evidence set lists, each with
+#'   act_name, year, evidence, enacted_signals
+#' @param model Character model ID
+#' @param max_tokens Integer max output tokens
+#' @param provider Character provider name
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return List with pass, n_valid, n_total, rate, threshold, details
+#' @export
+test_c2b_legal_outputs <- function(codebook,
+                                   test_evidence_sets,
+                                   model = "claude-haiku-4-5-20251001",
+                                   max_tokens = 1024,
+                                   provider = "anthropic",
+                                   base_url = NULL,
+                                   api_key = NULL) {
+  valid_categories <- get_valid_labels(codebook)
+  system_prompt <- construct_codebook_prompt(codebook)
+  n <- length(test_evidence_sets)
+
+  results <- purrr::map(seq_len(n), function(i) {
+    es <- test_evidence_sets[[i]]
+    user_msg <- format_c2b_input(
+      es$act_name, es$year, es$evidence, es$enacted_signals
+    )
+
+    parsed <- tryCatch({
+      call_codebook_generic(
+        user_message = user_msg,
+        codebook = codebook,
+        model = model,
+        system_prompt = system_prompt,
+        max_tokens = max_tokens,
+        temperature = 0,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
+      )
+    }, error = function(e) {
+      list(error = e$message, raw_response = NA_character_)
+    })
+
+    validation <- validate_c2b_output(parsed, valid_categories)
+
+    # Extract predicted category for diagnostics
+    pred_category <- if (validation$valid && length(parsed$motivations) > 0) {
+      parsed$motivations[[1]]$category
+    } else {
+      NA_character_
+    }
+
+    tibble::tibble(
+      text_id = i,
+      act_name = es$act_name,
+      valid = validation$valid,
+      reason = validation$reason,
+      pred_category = pred_category,
+      exogenous = parsed$exogenous %||% NA,
+      confidence = parsed$confidence %||% NA_character_,
+      raw_response = parsed$raw_response %||% NA_character_
+    )
+  })
+
+  details <- dplyr::bind_rows(results)
+  n_valid <- sum(details$valid, na.rm = TRUE)
+
+  list(
+    test = "I_legal_outputs",
+    pass = n_valid == n,
+    n_valid = n_valid,
+    n_total = n,
+    rate = n_valid / n,
+    threshold = 1.0,
+    details = details
+  )
+}
+
+
+#' Test II: C2b Definition Recovery
+#'
+#' For each class, constructs a synthetic evidence array whose signal
+#' matches the class definition. Verifies C2b returns the correct
+#' motivation category.
+#'
+#' @param codebook A validated C2b codebook object
+#' @param model Character model ID
+#' @param max_tokens Integer max output tokens
+#' @param provider Character provider name
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return List with pass, n_correct, n_total, rate, threshold, details
+#' @export
+test_c2b_definition_recovery <- function(codebook,
+                                         model = "claude-haiku-4-5-20251001",
+                                         max_tokens = 1024,
+                                         provider = "anthropic",
+                                         base_url = NULL,
+                                         api_key = NULL) {
+  valid_categories <- get_valid_labels(codebook)
+  system_prompt <- construct_codebook_prompt(codebook)
+
+  results <- purrr::map(codebook$classes, function(cls) {
+    # Build synthetic evidence with the class definition as the signal
+    evidence <- list(
+      list(
+        quote = paste(
+          "The fiscal measure was enacted for the following reason:",
+          trimws(cls$label_definition)
+        ),
+        signal = trimws(cls$label_definition)
+      )
+    )
+
+    enacted_signals <- list(
+      list(
+        quote = "The act was signed into law.",
+        signal = "Enacted"
+      )
+    )
+
+    user_msg <- format_c2b_input(
+      act_name = paste("Test", cls$label, "Act"),
+      year = 2000,
+      evidence = evidence,
+      enacted_signals = enacted_signals
+    )
+
+    parsed <- tryCatch({
+      call_codebook_generic(
+        user_message = user_msg,
+        codebook = codebook,
+        model = model,
+        system_prompt = system_prompt,
+        max_tokens = max_tokens,
+        temperature = 0,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
+      )
+    }, error = function(e) {
+      list(error = e$message, raw_response = NA_character_)
+    })
+
+    validation <- validate_c2b_output(parsed, valid_categories)
+
+    pred_category <- if (validation$valid && length(parsed$motivations) > 0) {
+      parsed$motivations[[1]]$category
+    } else {
+      NA_character_
+    }
+
+    tibble::tibble(
+      true_label = cls$label,
+      pred_label = pred_category,
+      correct = identical(pred_category, cls$label)
+    )
+  })
+
+  details <- dplyr::bind_rows(results)
+  n_correct <- sum(details$correct, na.rm = TRUE)
+
+  list(
+    test = "II_definition_recovery",
+    pass = n_correct == nrow(details),
+    n_correct = n_correct,
+    n_total = nrow(details),
+    rate = n_correct / nrow(details),
+    threshold = 1.0,
+    details = details
+  )
+}
+
+
+#' Test IV: C2b Order Invariance
+#'
+#' Reorders class definitions in the C2b codebook prompt and checks
+#' whether motivation category and exogenous flag assignments change.
+#'
+#' @param codebook A validated C2b codebook object
+#' @param test_evidence_sets List of evidence set lists
+#' @param model Character model ID
+#' @param seed Integer seed for shuffled ordering
+#' @param max_tokens Integer max output tokens
+#' @param provider Character provider name
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return List with pass, change rates, fleiss_kappa, details
+#' @export
+test_c2b_order_invariance <- function(codebook,
+                                      test_evidence_sets,
+                                      model = "claude-haiku-4-5-20251001",
+                                      seed = 42,
+                                      max_tokens = 1024,
+                                      provider = "anthropic",
+                                      base_url = NULL,
+                                      api_key = NULL) {
+  n_classes <- length(codebook$classes)
+  original_order <- seq_len(n_classes)
+  reversed_order <- rev(original_order)
+
+  set.seed(seed)
+  shuffled_order <- sample(original_order)
+  attempts <- 0
+  while ((identical(shuffled_order, original_order) ||
+          identical(shuffled_order, reversed_order)) && attempts < 100) {
+    shuffled_order <- sample(original_order)
+    attempts <- attempts + 1
+  }
+
+  prompt_original <- construct_codebook_prompt(codebook, class_order = original_order)
+  prompt_reversed <- construct_codebook_prompt(codebook, class_order = reversed_order)
+  prompt_shuffled <- construct_codebook_prompt(codebook, class_order = shuffled_order)
+
+  # Helper: extract combined label from C2b response (category multiset + exogenous)
+  extract_c2b_label <- function(parsed) {
+    cats <- vapply(
+      parsed$motivations %||% list(),
+      function(m) m$category %||% NA_character_,
+      character(1)
+    )
+    cats <- sort(cats[!is.na(cats)])
+    cat_str <- if (length(cats) == 0) "NONE" else paste(cats, collapse = "+")
+    exo_str <- as.character(parsed$exogenous %||% NA)
+    paste(cat_str, exo_str, sep = "|")
+  }
+
+  # Helper: extract just the category multiset (for separate reporting)
+  extract_category_str <- function(parsed) {
+    cats <- vapply(
+      parsed$motivations %||% list(),
+      function(m) m$category %||% NA_character_,
+      character(1)
+    )
+    cats <- sort(cats[!is.na(cats)])
+    if (length(cats) == 0) "NONE" else paste(cats, collapse = "+")
+  }
+
+  n <- length(test_evidence_sets)
+
+  results <- purrr::map(seq_len(n), function(i) {
+    es <- test_evidence_sets[[i]]
+    user_msg <- format_c2b_input(
+      es$act_name, es$year, es$evidence, es$enacted_signals
+    )
+
+    classify_one <- function(prompt) {
+      tryCatch({
+        parsed <- call_codebook_generic(
+          user_message = user_msg,
+          codebook = codebook,
+          model = model,
+          system_prompt = prompt,
+          max_tokens = max_tokens,
+          temperature = 0,
+          provider = provider,
+          base_url = base_url,
+          api_key = api_key
+        )
+        list(
+          combined = extract_c2b_label(parsed),
+          category = extract_category_str(parsed),
+          exogenous = as.character(parsed$exogenous %||% NA)
+        )
+      }, error = function(e) {
+        list(combined = NA_character_, category = NA_character_,
+             exogenous = NA_character_)
+      })
+    }
+
+    orig <- classify_one(prompt_original)
+    rev_r <- classify_one(prompt_reversed)
+    shuf <- classify_one(prompt_shuffled)
+
+    tibble::tibble(
+      text_id = i,
+      label_original = orig$combined,
+      label_reversed = rev_r$combined,
+      label_shuffled = shuf$combined,
+      cat_original = orig$category,
+      cat_reversed = rev_r$category,
+      cat_shuffled = shuf$category,
+      exo_original = orig$exogenous,
+      exo_reversed = rev_r$exogenous,
+      exo_shuffled = shuf$exogenous,
+      changed_reversed = !identical(orig$combined, rev_r$combined),
+      changed_shuffled = !identical(orig$combined, shuf$combined),
+      cat_changed_reversed = !identical(orig$category, rev_r$category),
+      cat_changed_shuffled = !identical(orig$category, shuf$category),
+      exo_changed_reversed = !identical(orig$exogenous, rev_r$exogenous),
+      exo_changed_shuffled = !identical(orig$exogenous, shuf$exogenous)
+    )
+  })
+
+  details <- dplyr::bind_rows(results)
+  n_total <- nrow(details)
+
+  # Overall change rates (category OR exogenous changed)
+  change_rate_reversed <- sum(details$changed_reversed, na.rm = TRUE) / n_total
+  change_rate_shuffled <- sum(details$changed_shuffled, na.rm = TRUE) / n_total
+  change_rate_max <- max(change_rate_reversed, change_rate_shuffled)
+
+  # Category-only change rates
+  cat_change_reversed <- sum(details$cat_changed_reversed, na.rm = TRUE) / n_total
+  cat_change_shuffled <- sum(details$cat_changed_shuffled, na.rm = TRUE) / n_total
+
+  # Exogenous-only change rates
+  exo_change_reversed <- sum(details$exo_changed_reversed, na.rm = TRUE) / n_total
+  exo_change_shuffled <- sum(details$exo_changed_shuffled, na.rm = TRUE) / n_total
+
+  # Fleiss's kappa on combined label
+  ratings_matrix <- cbind(
+    details$label_original,
+    details$label_reversed,
+    details$label_shuffled
+  )
+  fk <- fleiss_kappa(ratings_matrix)
+
+  list(
+    test = "IV_order_invariance",
+    pass = change_rate_max < 0.05,
+    change_rate = change_rate_max,
+    change_rate_reversed = change_rate_reversed,
+    change_rate_shuffled = change_rate_shuffled,
+    change_rate_categories = max(cat_change_reversed, cat_change_shuffled),
+    change_rate_exogenous = max(exo_change_reversed, exo_change_shuffled),
+    n_changed_reversed = sum(details$changed_reversed, na.rm = TRUE),
+    n_changed_shuffled = sum(details$changed_shuffled, na.rm = TRUE),
+    n_total = n_total,
+    threshold = 0.05,
+    fleiss_kappa = fk$kappa,
+    kappa_interpretation = fk$interpretation,
+    shuffled_order = shuffled_order,
+    details = details
+  )
+}
+
+
+# Null coalescing operator (local copy to avoid dependency on behavioral_tests.R)
+if (!exists("%||%", mode = "function", envir = environment())) {
+  `%||%` <- function(x, y) if (is.null(x)) y else x
+}

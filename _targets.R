@@ -235,7 +235,60 @@ list(
     "notebooks/verify_c2_inputs.qmd"
   ),
 
-  # S0: Track codebook file so YAML edits invalidate downstream targets
+  # C2 S0: Track codebook files so YAML edits invalidate downstream targets
+  tar_target(
+    c2a_codebook_file,
+    here::here("prompts", "c2a_extraction.yml"),
+    format = "file",
+    packages = "here"
+  ),
+  tar_target(
+    c2a_codebook,
+    load_validate_codebook(c2a_codebook_file),
+    packages = "yaml"
+  ),
+  tar_target(
+    c2b_codebook_file,
+    here::here("prompts", "c2b_classification.yml"),
+    format = "file",
+    packages = "here"
+  ),
+  tar_target(
+    c2b_codebook,
+    load_validate_codebook(c2b_codebook_file),
+    packages = "yaml"
+  ),
+
+  # C2 S1: Behavioral tests (independent per sub-codebook)
+  tar_target(
+    c2a_s1_results,
+    run_c2a_behavioral_tests_s1(
+      c2a_codebook,
+      c2_input_data,
+      model = llm_model,
+      max_tokens = llm_max_tokens,
+      provider = llm_provider,
+      base_url = llm_base_url,
+      api_key = llm_api_key
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+  tar_target(
+    c2b_s1_results,
+    run_c2b_behavioral_tests_s1(
+      c2b_codebook,
+      model = llm_model,
+      max_tokens = llm_max_tokens,
+      provider = llm_provider,
+      base_url = llm_base_url,
+      api_key = llm_api_key
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  # C1 S0: Track codebook file so YAML edits invalidate downstream targets
   tar_target(
     c1_codebook_file,
     here::here("prompts", "c1_measure_id.yml"),
