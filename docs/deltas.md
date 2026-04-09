@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-04-09: Per-target LLM config replaces shared globals in _targets.R
+
+**Type:** design-decision
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > Target Definitions (lines ~392-413)
+**Detail:** Shared `llm_provider`/`llm_model`/`llm_base_url`/`llm_api_key` globals removed from `_targets.R`. Each API-calling target now hardcodes its own model config directly in the `tar_target()` call. C1 targets use Haiku (validated), C2 S1 targets use Qwen/OpenRouter (cheap iteration). This prevents changing one codebook's model from invalidating another's cached results — a coupling bug discovered when switching to Qwen for C2 S1 invalidated C1 S2's cache. One-time cache invalidation accepted for C1 targets (expression change from variable to literal).
+**Suggested edit:** Update strategy.md target definition examples to show hardcoded model config per target instead of referencing shared globals. Note that `docs/model_discovery.md` recommends Qwen 2.5 72B via OpenRouter for S1 iteration ($0.04/$0.10 per M tokens).
+
 ## 2026-04-08: C2 split into two codebooks (c2a + c2b) instead of single c2_motivation.yml
 
 **Type:** design-decision
