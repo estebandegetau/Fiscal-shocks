@@ -50,16 +50,9 @@ tar_source()
 max_year <- 2022
 min_year <- 1946
 
-# LLM configuration: change these 4 variables to swap providers
-# Supported providers: "anthropic", "ollama", "openai", "groq", "openrouter"
-# NOTE: H&K S1-S3 validation results reported in the paper must use a
-# consistent Anthropic model. Non-Anthropic providers are for cost/feasibility
-# exploration only. Mixing providers invalidates stage comparability.
-llm_provider <- "anthropic"
-llm_model    <- "claude-haiku-4-5-20251001"
-llm_base_url <- "https://api.anthropic.com/v1"
-llm_api_key  <- Sys.getenv("ANTHROPIC_API_KEY")
-llm_max_tokens <- 1024
+# LLM configuration is hardcoded per target (not shared globals) so that
+# changing one codebook/stage's model never invalidates another's cache.
+# C1 targets: Haiku (validated). C2 S1: Qwen via OpenRouter (cheap iteration).
 
 list(
   tar_target(
@@ -265,11 +258,11 @@ list(
     run_c2a_behavioral_tests_s1(
       c2a_codebook,
       c2_input_data,
-      model = llm_model,
-      max_tokens = llm_max_tokens,
-      provider = llm_provider,
-      base_url = llm_base_url,
-      api_key = llm_api_key
+      model = "qwen/qwen-2.5-72b-instruct",
+      max_tokens = 1024,
+      provider = "openai",
+      base_url = "https://openrouter.ai/api/v1",
+      api_key = Sys.getenv("OPENROUTER_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
@@ -278,11 +271,11 @@ list(
     c2b_s1_results,
     run_c2b_behavioral_tests_s1(
       c2b_codebook,
-      model = llm_model,
-      max_tokens = llm_max_tokens,
-      provider = llm_provider,
-      base_url = llm_base_url,
-      api_key = llm_api_key
+      model = "qwen/qwen-2.5-72b-instruct",
+      max_tokens = 1024,
+      provider = "openai",
+      base_url = "https://openrouter.ai/api/v1",
+      api_key = Sys.getenv("OPENROUTER_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
@@ -315,11 +308,11 @@ list(
       c1_codebook,
       aligned_data,
       c1_chunk_data,
-      model = llm_model,
-      max_tokens = llm_max_tokens,
-      provider = llm_provider,
-      base_url = llm_base_url,
-      api_key = llm_api_key
+      model = "claude-haiku-4-5-20251001",
+      max_tokens = 1024,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
@@ -348,11 +341,11 @@ list(
       c1_codebook,
       c1_s2_test_set,
       codebook_type = "C1",
-      model = llm_model,
-      max_tokens = llm_max_tokens,
-      provider = llm_provider,
-      base_url = llm_base_url,
-      api_key = llm_api_key
+      model = "claude-haiku-4-5-20251001",
+      max_tokens = 1024,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
@@ -378,11 +371,11 @@ list(
     run_error_analysis(
       c1_codebook,
       c1_s3_test_set,
-      model = llm_model,
-      max_tokens = llm_max_tokens,
-      provider = llm_provider,
-      base_url = llm_base_url,
-      api_key = llm_api_key
+      model = "claude-haiku-4-5-20251001",
+      max_tokens = 1024,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
