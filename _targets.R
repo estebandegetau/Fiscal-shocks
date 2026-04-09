@@ -281,6 +281,65 @@ list(
     deployment = "main"
   ),
 
+  # ==========================================================================
+  # C2 S2: Zero-shot motivation classification (composed C2a→C2b pipeline)
+  # ==========================================================================
+
+  # Primary chain: C1-filtered inputs (FISCAL_MEASURE + discusses_motivation)
+  tar_target(
+    c2_s2_test_set,
+    assemble_c2_s2_test_set(c2_input_data, aligned_data),
+    packages = "tidyverse"
+  ),
+  tar_target(
+    c2_s2_results,
+    run_c2_zero_shot(
+      c2a_codebook, c2b_codebook, c2_s2_test_set,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2a = 1024, max_tokens_c2b = 1024,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+  tar_target(
+    c2_s2_eval,
+    evaluate_c2_classification(c2_s2_results),
+    packages = "tidyverse"
+  ),
+
+  # Sensitivity chain: relaxes discusses_motivation filter
+  tar_target(
+    c2_s2_sensitivity_data,
+    assemble_c2_s2_sensitivity_data(c1_classified_chunks),
+    packages = "tidyverse"
+  ),
+  tar_target(
+    c2_s2_sensitivity_test_set,
+    assemble_c2_s2_test_set(c2_s2_sensitivity_data, aligned_data),
+    packages = "tidyverse"
+  ),
+  tar_target(
+    c2_s2_sensitivity_results,
+    run_c2_zero_shot(
+      c2a_codebook, c2b_codebook, c2_s2_sensitivity_test_set,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2a = 1024, max_tokens_c2b = 1024,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+  tar_target(
+    c2_s2_sensitivity_eval,
+    evaluate_c2_classification(c2_s2_sensitivity_results),
+    packages = "tidyverse"
+  ),
+
   # C1 S0: Track codebook file so YAML edits invalidate downstream targets
   tar_target(
     c1_codebook_file,
