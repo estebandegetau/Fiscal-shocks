@@ -52,7 +52,7 @@ min_year <- 1946
 
 # LLM configuration is hardcoded per target (not shared globals) so that
 # changing one codebook/stage's model never invalidates another's cache.
-# C1 targets: Haiku (validated). C2 S1: Qwen via OpenRouter (cheap iteration).
+# C1 targets: Haiku (validated). C2 S1/S2: Qwen via OpenRouter (cheap iteration).
 
 list(
   tar_target(
@@ -295,11 +295,11 @@ list(
     c2_s2_results,
     run_c2_zero_shot(
       c2a_codebook, c2b_codebook, c2_s2_test_set,
-      model = "claude-haiku-4-5-20251001",
+      model = "qwen/qwen-2.5-72b-instruct",
       max_tokens_c2a = 1024, max_tokens_c2b = 1024,
-      provider = "anthropic",
-      base_url = "https://api.anthropic.com/v1",
-      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+      provider = "openrouter",
+      base_url = "https://openrouter.ai/api/v1",
+      api_key = Sys.getenv("OPENROUTER_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
@@ -325,11 +325,11 @@ list(
     c2_s2_sensitivity_results,
     run_c2_zero_shot(
       c2a_codebook, c2b_codebook, c2_s2_sensitivity_test_set,
-      model = "claude-haiku-4-5-20251001",
+      model = "qwen/qwen-2.5-72b-instruct",
       max_tokens_c2a = 1024, max_tokens_c2b = 1024,
-      provider = "anthropic",
-      base_url = "https://api.anthropic.com/v1",
-      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+      provider = "openrouter",
+      base_url = "https://openrouter.ai/api/v1",
+      api_key = Sys.getenv("OPENROUTER_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
