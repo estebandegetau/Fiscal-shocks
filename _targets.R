@@ -295,7 +295,7 @@ list(
     c2_s2_results,
     run_c2_zero_shot(
       c2a_codebook, c2b_codebook, c2_s2_test_set,
-      model = "qwen/qwen-2.5-72b-instruct",
+      model = "google/gemini-2.5-flash",
       max_tokens_c2a = 1024, max_tokens_c2b = 1024,
       provider = "openrouter",
       base_url = "https://openrouter.ai/api/v1",
@@ -325,7 +325,7 @@ list(
     c2_s2_sensitivity_results,
     run_c2_zero_shot(
       c2a_codebook, c2b_codebook, c2_s2_sensitivity_test_set,
-      model = "qwen/qwen-2.5-72b-instruct",
+      model = "google/gemini-2.5-flash",
       max_tokens_c2a = 1024, max_tokens_c2b = 1024,
       provider = "openrouter",
       base_url = "https://openrouter.ai/api/v1",
