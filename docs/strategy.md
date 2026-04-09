@@ -351,7 +351,8 @@ Chunks with relevance keys but no Tier 1/2 match are excluded from evaluation (a
 ### Codebooks (`/prompts/`)
 
 - ✅ `c1_measure_id.yml`
-- `c2_motivation.yml`
+- ✅ `c2a_extraction.yml` — per-chunk motivation evidence extraction (v0.2.0)
+- ✅ `c2b_classification.yml` — act-level motivation classification from extracted evidence (v0.2.0)
 - `c3_timing.yml`
 - `c4_magnitude.yml`
 
@@ -386,7 +387,8 @@ Concrete target definitions for the C1-C4 codebook evaluation pipeline, replacin
 ```r
 # Codebook loading and validation
 tar_target(c1_codebook, load_validate_codebook("prompts/c1_measure_id.yml"))
-tar_target(c2_codebook, load_validate_codebook("prompts/c2_motivation.yml"))
+tar_target(c2a_codebook, load_validate_codebook("prompts/c2a_extraction.yml"))
+tar_target(c2b_codebook, load_validate_codebook("prompts/c2b_classification.yml"))
 tar_target(c3_codebook, load_validate_codebook("prompts/c3_timing.yml"))
 tar_target(c4_codebook, load_validate_codebook("prompts/c4_magnitude.yml"))
 
@@ -397,10 +399,14 @@ tar_target(c1_s2_results, run_zero_shot(c1_codebook, c1_s2_test_set))
 tar_target(c1_s2_eval, evaluate_zero_shot(c1_s2_results, aligned_data))
 tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s3_test_set, aligned_data))
 
-# C2: Motivation pipeline
-tar_target(c2_s1_results, run_behavioral_tests_s1(c2_codebook, aligned_data))
-tar_target(c2_s2_results, run_zero_shot(c2_codebook, c2_s2_test_set))
-tar_target(c2_s3_results, run_error_analysis(c2_codebook, c2_s3_test_set, aligned_data))
+# C2: Motivation pipeline (two-codebook architecture)
+# S1: independent behavioral tests per sub-codebook
+tar_target(c2_input_data, assemble_c2_input_data(c1_classified_chunks))
+tar_target(c2a_s1_results, run_c2a_behavioral_tests_s1(c2a_codebook, c2_input_data))
+tar_target(c2b_s1_results, run_c2b_behavioral_tests_s1(c2b_codebook))
+# S2/S3: end-to-end evaluation of composed C2a→C2b pipeline
+tar_target(c2_s2_results, run_zero_shot(c2a_codebook, c2b_codebook, c2_s2_test_set))
+tar_target(c2_s3_results, run_error_analysis(c2a_codebook, c2b_codebook, c2_s3_test_set))
 
 # C3: Timing pipeline
 tar_target(c3_s1_results, run_behavioral_tests_s1(c3_codebook, aligned_data))
@@ -416,6 +422,8 @@ tar_target(c4_s3_results, run_error_analysis(c4_codebook, c4_s3_test_set, aligne
 tar_target(shocks_llm, aggregate_outputs(c1_s2_results, c2_s2_results,
                                           c3_s2_results, c4_s2_results))
 ```
+
+**Model configuration.** Each API-calling target hardcodes its own model config (provider, model ID, base URL, API key) directly in the `tar_target()` call — no shared globals. This prevents changing one codebook/stage's model from invalidating another's cached results. Validated stages (C1 S1-S3) use `claude-haiku-4-5-20251001`; exploration and S1 iteration use `qwen/qwen-2.5-72b-instruct` via OpenRouter (see `docs/model_discovery.md`). The code block above omits model arguments for readability; see `_targets.R` for the actual target definitions.
 
 ---
 

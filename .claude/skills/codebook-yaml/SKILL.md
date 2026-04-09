@@ -23,10 +23,11 @@ Each codebook is a single YAML file in `prompts/`:
 
 ```
 prompts/
-  c1_measure_id.yml     # C1: Measure Identification
-  c2_motivation.yml     # C2: Motivation Classification
-  c3_timing.yml         # C3: Timing Extraction
-  c4_magnitude.yml      # C4: Magnitude Extraction
+  c1_measure_id.yml           # C1: Measure Identification
+  c2a_extraction.yml         # C2a: Motivation Evidence Extraction (per-chunk)
+  c2b_classification.yml     # C2b: Motivation Classification (act-level)
+  c3_timing.yml              # C3: Timing Extraction
+  c4_magnitude.yml           # C4: Magnitude Extraction
 ```
 
 ## Top-Level Structure

@@ -9,19 +9,21 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
-## 2026-04-09: Per-target LLM config replaces shared globals in _targets.R
+## ~~2026-04-09: Per-target LLM config replaces shared globals in _targets.R~~ RESOLVED
 
 **Type:** design-decision
 **Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > Target Definitions (lines ~392-413)
 **Detail:** Shared `llm_provider`/`llm_model`/`llm_base_url`/`llm_api_key` globals removed from `_targets.R`. Each API-calling target now hardcodes its own model config directly in the `tar_target()` call. C1 targets use Haiku (validated), C2 S1 targets use Qwen/OpenRouter (cheap iteration). This prevents changing one codebook's model from invalidating another's cached results — a coupling bug discovered when switching to Qwen for C2 S1 invalidated C1 S2's cache. One-time cache invalidation accepted for C1 targets (expression change from variable to literal).
 **Suggested edit:** Update strategy.md target definition examples to show hardcoded model config per target instead of referencing shared globals. Note that `docs/model_discovery.md` recommends Qwen 2.5 72B via OpenRouter for S1 iteration ($0.04/$0.10 per M tokens).
+**Resolved:** Added "Model configuration" paragraph after Targets Pipeline Plan code block in strategy.md. Target examples kept schematic (no model args) for readability, with note pointing to `_targets.R` for actual definitions.
 
-## 2026-04-08: C2 split into two codebooks (c2a + c2b) instead of single c2_motivation.yml
+## ~~2026-04-08: C2 split into two codebooks (c2a + c2b) instead of single c2_motivation.yml~~ RESOLVED
 
 **Type:** design-decision
 **Affects:** `docs/strategy.md` > C2 Blueprint (line 299); `docs/strategy.md` > Files to Create (line 354); `.claude/skills/codebook-yaml/SKILL.md` > File Structure (line 27)
 **Detail:** C2's two-stage architecture (evidence extraction per chunk, then act-level classification) requires two separate codebooks with different task types: `prompts/c2a_extraction.yml` (per-chunk evidence extraction, v0.2.0) and `prompts/c2b_classification.yml` (act-level motivation classification, v0.2.0). Strategy.md and the codebook-yaml SKILL both reference a single `c2_motivation.yml`. The two codebooks share the same 4-class taxonomy (SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN) but have different instructions, output schemas, and clarification emphases. Versioning is independent. H&K validation uses Option B: independent S0/S1, shared S2/S3 (end-to-end metrics are act-level). v0.2.0 additions after specialist review: (a) C2a extracts enacted-status signals alongside motivation evidence; C2b determines enacted status and outputs an `enacted` boolean — addressing strategy.md's requirement that C2 handles enacted-status filtering. (b) C2b outputs a `motivations` array (not a single category) to support R&R mixed-motivation apportionment (EGTRRA 2001 model). (c) Specialist suggestions applied: "smaller government" added to LONG_RUN, "trust fund solvency" → "social insurance fund or pension reserve solvency" for country-agnostic transfer, LONG_RUN definition sharpened with "distinct from restoring growth to a prior normal level."
 **Suggested edit:** Update strategy.md Files to Create from `c2_motivation.yml` to `c2a_extraction.yml` + `c2b_classification.yml`. Update codebook-yaml SKILL file structure listing. Add note to C2 Blueprint that the two-stage architecture maps to two codebook files with independent versioning.
+**Resolved:** Updated strategy.md Files to Create (c2a + c2b with ✅ markers), Targets Pipeline Plan (c2a/c2b codebook loading, independent S1 targets, composed S2/S3 targets, c2_input_data intermediate), and codebook-yaml SKILL file structure listing. C2 Blueprint Design Rationale already describes the two-stage architecture — no additional note needed there.
 
 ## ~~2026-04-07: deployment_plan.md Decisions 2-3 partially superseded by C1-filtered C2 input architecture~~ RESOLVED
 
