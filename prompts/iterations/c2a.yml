@@ -130,3 +130,69 @@ iterations:
       Proceed with C2 S2 development and Haiku testing in S1. Do not iterate on
       codebook based on Qwen Test IV results alone — rerun on Haiku first to
       isolate model vs. codebook contribution to order sensitivity.
+
+  - iteration: 5
+    codebook_version: "0.2.0"
+    date: "2026-04-10"
+    git_commit: "7c5265c"
+    model: "google/gemini-2.5-flash"
+    stage: "s2"
+    changes: >
+      First S2 run (composed C2a→C2b pipeline). No codebook changes. Model set to
+      Gemini 2.5 Flash via OpenRouter for pipeline validation after Qwen 2.5 72B
+      hit 32K context limit on high-evidence acts. Pipeline infrastructure added:
+      run_c2_zero_shot(), assemble_c2_s2_test_set(), evaluate_c2_classification().
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 27
+      c2a_failure_rate: 0.3576
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.5533
+          ci_lower: 0.3549
+          ci_upper: 0.7378
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.5882
+          ci_lower: 0.3529
+          ci_upper: 0.8235
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.5471
+          ci_lower: 0.4062
+          ci_upper: 0.7689
+        - metric: "accuracy"
+          value: 0.5556
+          ci_lower: 0.3704
+          ci_upper: 0.7407
+        - metric: "exogenous_recall"
+          value: 0.6667
+          ci_lower: 0.4209
+          ci_upper: 0.8824
+        - metric: "exogenous_f1"
+          value: 0.6250
+          ci_lower: 0.4000
+          ci_upper: 0.8002
+      quality_flags:
+        c2a_failures_total: 182
+        n_acts_excluded: 12
+        n_multiple_dominant: 1
+        n_exo_inconsistent: 1
+    interpretation: >
+      Pipeline validation run — pipeline ran successfully end-to-end. Gemini 2.5
+      Flash failed to comply with output schema: 35.8% C2a failure rate (182/509
+      chunks), 12 of 39 acts excluded due to C2b parse failures. Metrics are
+      unreliable for codebook evaluation given the high exclusion rate (31% of
+      acts dropped). On the 27 valid acts, dominant confusion pattern is
+      SPENDING_DRIVEN ↔ LONG_RUN (5 acts misclassified), but this signal is
+      noisy given the small valid sample. This was a model compliance issue
+      (H&K category C), not a codebook issue.
+    decision: >
+      Move on with S3 pipeline implementation and S2 real Haiku tests. Flash
+      compliance issues confirm that model choice matters for output schema
+      adherence — Haiku S2 run will provide clean metrics for actual codebook
+      evaluation.
