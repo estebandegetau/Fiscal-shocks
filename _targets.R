@@ -345,9 +345,11 @@ list(
     c2_s3_results,
     run_c2_error_analysis(
       c2b_codebook, c2_s2_results,
-      model = "claude-haiku-4-5-20251001",
+      model = "google/gemini-2.5-flash",
       max_tokens_c2b = 1024,
-      provider = "anthropic"
+      provider = "openrouter",
+      base_url = "https://openrouter.ai/api/v1",
+      api_key = Sys.getenv("OPENROUTER_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
