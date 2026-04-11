@@ -340,6 +340,19 @@ list(
     packages = "tidyverse"
   ),
 
+  # C2 S3: Error analysis (Tests V-VII + ablation on C2b)
+  tar_target(
+    c2_s3_results,
+    run_c2_error_analysis(
+      c2b_codebook, c2_s2_results,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2b = 1024,
+      provider = "anthropic"
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
   # C1 S0: Track codebook file so YAML edits invalidate downstream targets
   tar_target(
     c1_codebook_file,
