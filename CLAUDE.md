@@ -46,7 +46,7 @@ The contribution is **methodological**, not just dataset scale:
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
   - **C1 (Measure ID)**: S3 GATE PASSED (v0.6.0, iteration 28). S3 manual analysis: 31A/6B/0E/3F — zero semantic errors, bias-corrected recall 100%, precision 83.3%. v0.6.0 added extra_output_fields (discusses_motivation/timing/magnitude) which improved model thoroughness without introducing errors. Residual 3 F errors are codebook scope ambiguity (spending-side fiscal policy outside R&R's tax/revenue scope). Proceeding to C2.
-  - **C2 (Motivation)**: S2 IN PROGRESS (v0.2.0, iteration 5). Two-codebook architecture: c2a_extraction.yml + c2b_classification.yml. S1: Tests I-III pass on Qwen, Test IV fails (expected — Qwen order sensitivity), Haiku rerun pending. S2: Pipeline validation run on Gemini 2.5 Flash — model compliance failure (35.8% C2a failure rate, 12/39 acts excluded). Metrics unreliable. Next: Haiku S2 run for real codebook evaluation + S3 pipeline implementation.
+  - **C2 (Motivation)**: S2 IN PROGRESS (v0.2.0, iteration 5). Two-codebook architecture: c2a_extraction.yml + c2b_classification.yml. S1: Tests I-III pass on Qwen, Test IV fails (expected — Qwen order sensitivity), Haiku rerun pending. S2: Pipeline validation run on Gemini 2.5 Flash — model compliance failure (35.8% C2a failure rate, 12/39 acts excluded). Metrics unreliable. S3: Pipeline code implemented (`R/c2_codebook_stage_3.R`) — Tests V-VII + ablation on C2b using cached S2 evidence. Next: Flash pipeline validation run (S2→S3), then Haiku rerun for real evaluation.
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started
   - See `docs/strategy.md` for authoritative methodology

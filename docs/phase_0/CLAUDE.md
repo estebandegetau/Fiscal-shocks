@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 complete through S3 (v0.6.0, iteration 28: 31A/6B/0E/3F, bias-corrected recall 100%, precision 83.3%). C2 S2 in progress (v0.2.0, iteration 5: S1 Tests I-III pass on Qwen, Test IV pending Haiku rerun; S2 Flash validation run showed model compliance failure, Haiku rerun pending). C3-C4 not yet started
+**Status**: IN PROGRESS — C1 complete through S3 (v0.6.0, iteration 28: 31A/6B/0E/3F, bias-corrected recall 100%, precision 83.3%). C2 S2 in progress, S3 pipeline implemented (v0.2.0, iteration 5: S1 Tests I-III pass on Qwen, Test IV pending Haiku rerun; S2 Flash validation run showed model compliance failure; S3 code ready in `R/c2_codebook_stage_3.R`, Flash validation run pending). C3-C4 not yet started
 
 ## Authoritative Methodology
 
@@ -104,7 +104,8 @@ This document contains the complete R&R + H&K framework specification including:
 - ✅ `codebook_stage_0.R` — Created (codebook loading/validation)
 - ✅ `codebook_stage_1.R` — Created (behavioral tests runner)
 - ✅ `codebook_stage_2.R` — Created (zero-shot evaluation; LOOCV reserved for S3 few-shot ablation)
-- ✅ `codebook_stage_3.R` — Created (error analysis)
+- ✅ `codebook_stage_3.R` — Created (C1 error analysis)
+- ✅ `c2_codebook_stage_3.R` — Created (C2 error analysis: Tests V-VII + ablation on C2b)
 - ✅ `behavioral_tests.R` — Created (H&K test suite implementation)
 - ✅ `generate_c1_examples.R` — Created (C1 few-shot example generation)
 

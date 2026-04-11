@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-04-11: C2 S3 pipeline implemented — run_c2_zero_shot output schema extended
+
+**Type:** status-change
+**Affects:** `docs/strategy.md` > C2 Blueprint > S3 Error Analysis
+**Detail:** C2 S3 pipeline code implemented in `R/c2_codebook_stage_3.R`. Key design: S3 consumes `c2_s2_results` as baseline (no recomputation), tests only C2b with modified codebooks using cached C2a evidence. `run_c2_zero_shot()` output extended with `enacted_signals_raw` and `c2b_raw_response` columns to preserve full raw data for downstream use. Strategy.md target pseudocode shows `run_error_analysis(c2a_codebook, c2b_codebook, c2_s3_test_set)` — actual implementation is `run_c2_error_analysis(c2b_codebook, c2_s2_results)` (different signature, depends on S2 output).
+**Suggested edit:** Update strategy.md target pseudocode for C2 S3 to reflect actual signature and S2 dependency.
+
 ## ~~2026-04-09: Per-target LLM config replaces shared globals in _targets.R~~ RESOLVED
 
 **Type:** design-decision
