@@ -227,13 +227,16 @@ test_c2b_exclusion_criteria <- function(
       )
     }
 
+    combo_name <- combo$name
+    combo_expected <- combo$expected
+
     tibble::tibble(
-      combo = combo$name,
+      combo = combo_name,
       act_id = seq_along(preds),
       true_label = true_labels,
-      expected = combo$expected,
+      expected = combo_expected,
       predicted = preds,
-      correct = preds == combo$expected
+      correct = preds == combo_expected
     )
   }) |> dplyr::bind_rows()
 
