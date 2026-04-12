@@ -320,10 +320,16 @@ list(
   ),
 
   # Sensitivity chain: relaxes discusses_motivation filter
+  # Original (live): tar_target(c2_s2_sensitivity_data, assemble_c2_s2_sensitivity_data(c1_classified_chunks), packages = "tidyverse")
+  tar_target(
+    c2_s2_sensitivity_file,
+    here::here("data", "validated", "c2_s2_sensitivity_data.qs"),
+    format = "file"
+  ),
   tar_target(
     c2_s2_sensitivity_data,
-    assemble_c2_s2_sensitivity_data(c1_classified_chunks),
-    packages = "tidyverse"
+    qs2::qs_read(c2_s2_sensitivity_file),
+    packages = "qs2"
   ),
   tar_target(
     c2_s2_sensitivity_test_set,
