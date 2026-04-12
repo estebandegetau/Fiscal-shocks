@@ -213,14 +213,23 @@ list(
   tar_target(
     c1_classified_chunks,
     assemble_c1_classified_chunks(c1_s2_results, chunks, aligned_data),
+    cue = tar_cue(mode = "never"),
     packages = "tidyverse"
   ),
 
-  # C2 input: FISCAL_MEASURE chunks with discusses_motivation == TRUE
+  # C2 input: frozen C1→C2 handoff (decouples C2 from C1 function changes).
+  # To refresh after C1 re-validation: source("R/freeze_results.R"); freeze_results("c2_input_data")
+  # To restore live derivation: uncomment the original target below and comment out the frozen pair.
+  # Original (live): tar_target(c2_input_data, assemble_c2_input_data(c1_classified_chunks), packages = "tidyverse")
+  tar_target(
+    c2_input_file,
+    here::here("data", "validated", "c2_input_data.qs"),
+    format = "file"
+  ),
   tar_target(
     c2_input_data,
-    assemble_c2_input_data(c1_classified_chunks),
-    packages = "tidyverse"
+    qs2::qs_read(c2_input_file),
+    packages = "qs2"
   ),
 
   tar_quarto(
