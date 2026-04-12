@@ -371,3 +371,88 @@ iterations:
       Adopt sensitivity condition as likely primary input path pending Haiku
       confirmation. Next: check S3 pipeline outcomes on current data, then
       unblock Haiku S2 run (both conditions) for real codebook evaluation.
+
+  - iteration: 8
+    codebook_version: "0.2.0"
+    date: "2026-04-12"
+    git_commit: "fc0809b"
+    model: "google/gemini-2.5-flash"
+    stage: "s3"
+    changes: >
+      First S3 run (Tests V-VII + ablation). No codebook changes. S3 pipeline
+      (R/c2_codebook_stage_3.R) runs on cached S2 baseline data (27 valid acts).
+      Tests V (exclusion criteria with 2x2 evidence×codebook design), VI (generic
+      labels), VII (swapped labels), and 4-condition ablation.
+    results:
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            normal_ev_normal_cb: 1.0000
+            normal_ev_modified_cb: 0.9630
+            modified_ev_normal_cb: 0.8889
+            modified_ev_modified_cb: 0.4074
+          overall_consistency: 0.8148
+          override_label: "LONG_RUN"
+        - test: "VI_generic_labels"
+          original_accuracy: 0.5556
+          generic_accuracy: 0.7000
+          accuracy_difference: -0.1444
+          change_rate: 0.0000
+          original_weighted_f1: 0.5533
+          generic_weighted_f1: 0.7081
+          f1_difference: -0.1548
+          note: "17/27 acts produce NA under generic labels; accuracy improvement from different valid-act composition, not label effect"
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.0000
+          follows_names_rate: 1.0000
+          swapped_accuracy: 0.4074
+          swapped_weighted_f1: 0.5589
+          interpretation: "WARNING: Model follows label names, not definitions"
+      ablation:
+        - condition: "full"
+          accuracy: 0.5556
+          weighted_f1: 0.5533
+          macro_f1: 0.5471
+        - condition: "no_label_def"
+          accuracy: 0.5190
+          weighted_f1: 0.5697
+          macro_f1: 0.5500
+          accuracy_drop: 0.0370
+          weighted_f1_drop: -0.0164
+        - condition: "no_clarifications"
+          accuracy: 0.4444
+          weighted_f1: 0.5763
+          macro_f1: 0.5858
+          accuracy_drop: 0.1111
+          weighted_f1_drop: -0.0230
+        - condition: "all_removed"
+          accuracy: 0.5190
+          weighted_f1: 0.5383
+          macro_f1: 0.6263
+          accuracy_drop: 0.0370
+          weighted_f1_drop: 0.0150
+    interpretation: >
+      S3 pipeline yields valid results but findings are deeply compromised by
+      Gemini Flash's behavior. Three critical signals: (1) Test VII shows 0%
+      definition-following — Flash classifies entirely from label name semantics
+      in pretraining, making codebook definitions decorative. (2) Test VI shows
+      generic labels improve accuracy by +14.4pp, but 17/27 acts produce NAs
+      under generic labels; the improvement comes from different valid-act
+      composition, not a real label effect. (3) Ablation shows paradoxical
+      results — removing clarifications drops accuracy (-11.1pp) but improves
+      weighted F1 (+2.3pp), and removing label definitions also improves F1.
+      This confirms the model isn't learning from codebook components. Test V
+      shows negative clarifications have minimal protective value (1 flip when
+      removed), but suggested_category hints in C2a evidence are important for
+      compliance (3 NAs when removed). Dominant confusion: 5/12 errors are
+      SPENDING_DRIVEN(true) → LONG_RUN(pred). All findings are on Flash with
+      35.8% C2a failure rate and 31% act exclusion — may not generalize to Haiku.
+    decision: >
+      S3 pipeline validated. All S3 findings are Flash-specific and cannot drive
+      codebook iteration decisions until confirmed on Haiku. Proceed to Haiku
+      evaluation across S1→S3: (1) Haiku S1 behavioral tests (Tests I-IV) to
+      confirm codebook compliance, (2) Haiku S2 zero-shot eval (both baseline
+      and sensitivity conditions) for real metrics, (3) Haiku S3 error analysis
+      if S2 metrics warrant iteration. Adopt sensitivity condition (no
+      discusses_motivation filter) as primary input path pending Haiku
+      confirmation.
