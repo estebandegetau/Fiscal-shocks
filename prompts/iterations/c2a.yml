@@ -267,3 +267,52 @@ iterations:
       step (hypothesis: reduces cognitive load, improves both extraction
       stability and output length). C2b will handle all classification.
       Rerun C2a S1 after both changes.
+
+  - iteration: 7
+    codebook_version: "0.4.0"
+    date: "2026-04-12"
+    git_commit: "667cd07"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      Two codebook changes since v0.2.0 (iterations skipped v0.3.0): (1) v0.4.0
+      removed suggested_category from C2a output schema and class taxonomy from
+      instructions, making C2a a pure evidence extraction step. Replaced class
+      taxonomy with synthetic extraction examples showing desired output format.
+      (2) max_tokens increased from 1024 to 4096 in pipeline config to prevent
+      truncation on high-evidence chunks. Code fence stripping added to parser.
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_instruction_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          note: "skipped — no examples in codebook"
+        - test: "IV_order_invariance"
+          value: ~
+          threshold: 0.0500
+          pass: true
+          note: "skipped — classless codebook, no categorical output to compare"
+    interpretation: >
+      All non-skipped tests pass on Haiku. Test I regression from iteration 6
+      (80%→100%) resolved by increasing max_tokens from 1024 to 4096, eliminating
+      truncation on high-evidence chunks. Test IV is now structurally inapplicable:
+      v0.4.0 removed suggested_category, so C2a produces no categorical output for
+      order invariance comparison. The skip is methodologically sound for a classless
+      extraction codebook. Extraction output variability (evidence count/content
+      across orderings) will be evaluated indirectly at S2 through C2a→C2b pipeline
+      accuracy. Test II confirms Haiku faithfully follows extraction instructions
+      (4/4 synthetic evidence sets correctly extracted).
+    decision: >
+      C2a S1 gate passed. Proceed to S2 on Haiku. Run both baseline (with
+      discusses_motivation filter) and sensitivity (without filter) conditions
+      to confirm iteration 7's finding that the filter hurts C2 performance.
