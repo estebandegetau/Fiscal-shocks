@@ -456,3 +456,62 @@ iterations:
       if S2 metrics warrant iteration. Adopt sensitivity condition (no
       discusses_motivation filter) as primary input path pending Haiku
       confirmation.
+
+  - iteration: 9
+    codebook_version: "0.2.0"
+    date: "2026-04-12"
+    git_commit: "e4d28e8"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      First Haiku S1 run for C2b. No codebook changes from v0.2.0. Model
+      switched from Qwen/Flash to Haiku for real evaluation per iteration 8
+      decision.
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          note: "skipped — no examples in codebook"
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+      test_iv_diagnostics:
+        change_rate_reversed: 0.0000
+        change_rate_shuffled: 0.0000
+        change_rate_categories: 0.0000
+        change_rate_exogenous: 0.0000
+        fleiss_kappa: 1.0000
+        kappa_interpretation: "Near-perfect agreement"
+        n_total: 4
+        n_changed_reversed: 0
+        n_changed_shuffled: 0
+        note: >
+          Perfect stability across all orderings. All 4 synthetic evidence
+          sets produce identical category + exogenous classifications. Major
+          improvement over Qwen (iteration 4: 25% change rate, kappa 0.786).
+    interpretation: >
+      C2b S1 gate passed on Haiku. All four tests pass with perfect scores.
+      Test IV shows near-perfect agreement (kappa=1.0) — a significant
+      improvement over Qwen's substantial agreement (kappa=0.786). The
+      classification task is inherently more stable than C2a's extraction
+      task because the model receives structured evidence and makes a single
+      categorical judgment rather than open-ended extraction. Haiku follows
+      C2b's definitions faithfully on synthetic evidence.
+    decision: >
+      C2b S1 gate passed. Hold for C2a fixes before proceeding to S2 —
+      removing suggested_category from C2a will change C2b's input format
+      (evidence items will no longer carry category hints). After C2a
+      codebook update, rerun C2b S1 to confirm stability holds without
+      suggested_category in input, then proceed to S2.

@@ -196,3 +196,74 @@ iterations:
       compliance issues confirm that model choice matters for output schema
       adherence — Haiku S2 run will provide clean metrics for actual codebook
       evaluation.
+
+  - iteration: 6
+    codebook_version: "0.2.0"
+    date: "2026-04-12"
+    git_commit: "e4d28e8"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      First Haiku S1 run for C2a. No codebook changes from v0.2.0. Model
+      switched from Qwen/Flash to Haiku for real evaluation per iteration 5
+      decision.
+    results:
+      overall_pass: false
+      metrics:
+        - test: "I_legal_outputs"
+          value: 0.8000
+          threshold: 1.0000
+          pass: false
+        - test: "II_instruction_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          note: "skipped — no examples in codebook"
+        - test: "IV_order_invariance"
+          value: 0.5000
+          threshold: 0.0500
+          pass: false
+      test_iv_diagnostics:
+        change_rate_reversed: 0.5000
+        change_rate_shuffled: 0.3000
+        fleiss_kappa: 0.5122
+        kappa_interpretation: "Moderate agreement"
+        n_total: 10
+        n_changed_reversed: 5
+        n_changed_shuffled: 3
+        note: >
+          Three instability types: (1) evidence count varies across orderings
+          (text_ids 3, 5, 6), (2) borderline category flips (text_id 7:
+          DEFICIT_DRIVEN|LONG_RUN → LONG_RUN|LONG_RUN), (3) total category
+          instability (text_id 10: LONG_RUN → COUNTERCYCLICAL → SPENDING_DRIVEN
+          across all three orderings).
+      test_i_diagnostics:
+        note: >
+          2/10 failures are JSON parse errors from truncation — both failed
+          responses are notably long (12+ enacted_signals, 9 evidence items)
+          and hit max_tokens=1024. All 10 responses wrapped in markdown code
+          fences; parser tolerates fences on shorter responses but fails on
+          truncated ones.
+    interpretation: >
+      Haiku improves over Qwen on Test IV (50% vs 70% change rate, kappa
+      0.512 vs 0.261) but still far from the <5% gate. Test I regression
+      (80% vs Qwen's 100%) is a mechanical issue: max_tokens=1024 is
+      insufficient for chunks that produce many evidence items, and Haiku
+      wraps output in markdown code fences. Root cause analysis identifies
+      two independent problems: (1) Test I: truncation + code fences
+      (pipeline fix, not codebook), (2) Test IV: C2a performs dual tasks
+      (extract + classify via suggested_category), and the classification
+      component introduces order sensitivity. Removing suggested_category
+      reduces cognitive load, should improve extraction stability, and
+      reduces output length (helping Test I too).
+    decision: >
+      Bundle two fixes for next iteration: (1) increase max_tokens and strip
+      code fences in parser (mechanical fix for Test I), (2) remove
+      suggested_category from C2a output schema to make C2a a pure extraction
+      step (hypothesis: reduces cognitive load, improves both extraction
+      stability and output length). C2b will handle all classification.
+      Rerun C2a S1 after both changes.
