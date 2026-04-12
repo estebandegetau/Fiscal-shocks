@@ -1,6 +1,6 @@
 codebook:
   name: "C2a: Motivation Evidence Extraction"
-  version: "0.3.0"
+  version: "0.4.0"
   instructions: >
     You are an expert in fiscal policy analysis extracting motivation evidence from
     chunks of official government economic and budget documents. Each chunk has already
@@ -21,8 +21,8 @@ codebook:
 
     You will be given: the chunk text, the name of the fiscal measure, and the year of
     passage. For each distinct piece of motivation evidence you find, extract a direct
-    quote and describe the signal it represents. The four motivation categories defined
-    below serve as a reference taxonomy for what kinds of signals to look for.
+    quote and describe the signal it represents. See the examples below for what kinds
+    of motivation signals to look for.
 
 
     Extract only evidence that is explicitly present in the text. Do not infer motivation
@@ -30,75 +30,91 @@ codebook:
     conditions as their reason for acting. Multiple pieces of evidence may point to
     different types of motivation — extract them all separately.
 
-  classes:
-    - label: "SPENDING_DRIVEN"
-      label_definition: >
-        A fiscal measure motivated by a change in government spending — the measure
-        finances, offsets, or accompanies a specific spending program or commitment.
+  examples:
+    - input:
+        act_name: "National Defense Revenue Act"
+        year: 1951
+        text: >
+          After the outbreak of hostilities in Korea, the Congress recognized the need
+          for substantially increased revenues to meet the rising costs of national defense.
+          The President stated that 'we must pay for the increased defense effort through
+          higher taxes rather than through borrowing.' The act was signed into law on
+          October 20, 1951, raising individual and corporate income tax rates.
+      output:
+        evidence:
+          - quote: "the Congress recognized the need for substantially increased revenues to meet the rising costs of national defense"
+            signal: "Revenue measure motivated by financing increased defense spending"
+          - quote: "we must pay for the increased defense effort through higher taxes rather than through borrowing"
+            signal: "Stated goal of financing defense spending through taxation"
+        enacted_signals:
+          - quote: "The act was signed into law on October 20, 1951"
+            signal: "Signed into law"
 
-      clarification:
-        - "Evidence that the measure is described as financing, paying for, or offsetting a specific government spending program or commitment"
-        - "References to increased spending obligations such as military operations, social programs, infrastructure, or public services as the reason for the fiscal measure"
-        - "Statements indicating that the fiscal measure and a spending change were enacted or proposed together as a package"
+    - input:
+        act_name: "Economic Recovery Tax Act"
+        year: 1981
+        text: >
+          The Administration argued that high marginal tax rates were reducing incentives
+          for work, saving, and investment. The President stated that 'our tax system has
+          become an obstacle to growth, penalizing productive effort and discouraging
+          innovation.' By reducing marginal rates and indexing tax brackets for inflation,
+          the act aimed to raise long-run economic growth and improve economic efficiency.
+          The measure was enacted on August 13, 1981.
+      output:
+        evidence:
+          - quote: "high marginal tax rates were reducing incentives for work, saving, and investment"
+            signal: "Stated concern about structural disincentives from the tax system"
+          - quote: "our tax system has become an obstacle to growth, penalizing productive effort and discouraging innovation"
+            signal: "Stated goal of removing structural barriers to long-run growth"
+          - quote: "the act aimed to raise long-run economic growth and improve economic efficiency"
+            signal: "Stated goal of raising long-run growth and improving efficiency"
+        enacted_signals:
+          - quote: "The measure was enacted on August 13, 1981"
+            signal: "Enacted into law"
 
-      negative_clarification:
-        - "Do not suggest SPENDING_DRIVEN merely because government spending is mentioned in the passage; the spending change must be described as the motivation for the fiscal measure"
-        - "If a fiscal measure addresses a deficit that resulted from a spending increase more than one year prior, suggest DEFICIT_DRIVEN instead — the 1-year temporal boundary distinguishes contemporaneous spending-driven measures from inherited-deficit measures"
-        - "Do not suggest SPENDING_DRIVEN when the passage describes deficit reduction as the goal, even if the deficit was originally caused by spending; the key question is whether the spending change is contemporaneous"
+    - input:
+        act_name: "Emergency Stimulus Act"
+        year: 2009
+        text: >
+          With unemployment rising sharply and GDP contracting for the second consecutive
+          quarter, the government enacted temporary tax relief. The Secretary of the Treasury
+          testified that 'these measures are needed to counteract the recession and restore
+          the economy to its normal growth path.' The relief provisions were designed to
+          expire once economic conditions normalized.
+      output:
+        evidence:
+          - quote: "unemployment rising sharply and GDP contracting for the second consecutive quarter"
+            signal: "Economic conditions cited as justification for the measure"
+          - quote: "these measures are needed to counteract the recession and restore the economy to its normal growth path"
+            signal: "Stated goal of counteracting recession and restoring normal growth"
+          - quote: "The relief provisions were designed to expire once economic conditions normalized"
+            signal: "Temporary measure tied to cyclical economic conditions"
+        enacted_signals: []
 
-    - label: "COUNTERCYCLICAL"
-      label_definition: >
-        A fiscal measure designed to return output growth to its normal level in
-        response to a current or projected economic downturn.
-
-      clarification:
-        - "Evidence that the stated goal is to stimulate the economy, counteract a recession, or restore growth to its prior trend level"
-        - "References to rising unemployment, falling output, or economic contraction as the reason for acting"
-        - "Policymaker statements taken at face value that the economy is performing below normal and the measure aims to restore normal conditions"
-
-      negative_clarification:
-        - "Do not suggest COUNTERCYCLICAL when the stated goal is to raise growth above its normal level or to achieve structural improvements — that is LONG_RUN, even if the economy happens to be weak at the time"
-        - "Do not suggest COUNTERCYCLICAL merely because the passage uses words like 'stimulate' or 'growth'; the key test is whether the goal is to return to normal (COUNTERCYCLICAL) or to raise above normal (LONG_RUN)"
-        - "If the measure was proposed when the economy was growing normally but motivated by a desire for faster growth, it is LONG_RUN even if the economy weakened by the time of passage"
-
-    - label: "DEFICIT_DRIVEN"
-      label_definition: >
-        A fiscal measure whose stated purpose is to reduce a budget deficit inherited
-        from previous policy decisions, not one caused by a contemporaneous spending change.
-
-      clarification:
-        - "Evidence that the stated purpose is to reduce a pre-existing or inherited budget deficit, restore fiscal balance, or achieve fiscal prudence"
-        - "References to past policy decisions, accumulated obligations, or social insurance fund or pension reserve solvency as the reason for the fiscal measure"
-        - "Statements describing the deficit as a legacy problem requiring correction, rather than as a consequence of a recent spending decision"
-
-      negative_clarification:
-        - "Do not suggest DEFICIT_DRIVEN merely because the word 'deficit' appears in the passage; the deficit must be described as inherited or pre-existing, not as a result of a spending increase within the past year"
-        - "If the deficit is described as resulting from a spending increase that occurred within the past year, suggest SPENDING_DRIVEN instead — the 1-year temporal boundary applies"
-        - "Do not suggest DEFICIT_DRIVEN when the passage describes the measure as financing new spending, even if deficit reduction is mentioned as a secondary benefit"
-
-    - label: "LONG_RUN"
-      label_definition: >
-        A fiscal measure aimed at raising long-run economic growth, improving economic
-        efficiency, or achieving other structural goals unrelated to the current business
-        cycle, distinct from restoring growth to a prior normal level.
-
-      clarification:
-        - "Evidence that the stated goal is structural improvement such as fairness, efficiency, simplification, smaller government, improved incentives, or raising potential output"
-        - "References to long-run growth, supply-side effects, or economic reform as the motivation for the measure"
-        - "Policymaker statements indicating a desire to raise growth above its normal level rather than to restore growth to normal"
-
-      negative_clarification:
-        - "Do not suggest LONG_RUN merely because the passage mentions growth; if the goal is to restore growth to its prior normal level during a downturn, suggest COUNTERCYCLICAL instead"
-        - "Do not suggest LONG_RUN when the primary stated purpose is deficit reduction or fiscal prudence — that is DEFICIT_DRIVEN"
-        - "The key distinction from COUNTERCYCLICAL is direction: LONG_RUN aims to raise growth above the current normal, while COUNTERCYCLICAL aims to return growth to normal from below"
+    - input:
+        act_name: "Fiscal Responsibility Act"
+        year: 1993
+        text: >
+          The deficit, accumulated over many years of past policy decisions, threatened
+          long-term fiscal stability. The primary purpose of the act was to restore fiscal
+          balance and reduce the structural budget deficit. The President signed the act
+          into law on August 10, 1993.
+      output:
+        evidence:
+          - quote: "The deficit, accumulated over many years of past policy decisions, threatened long-term fiscal stability"
+            signal: "Deficit described as inherited from past decisions"
+          - quote: "The primary purpose of the act was to restore fiscal balance and reduce the structural budget deficit"
+            signal: "Stated goal of deficit reduction and fiscal prudence"
+        enacted_signals:
+          - quote: "The President signed the act into law on August 10, 1993"
+            signal: "Signed into law"
 
   output_instructions: >
     Extract all motivation evidence and enacted-status signals from the chunk.
 
 
     For each distinct piece of motivation evidence, provide a direct quote and a brief
-    signal description. The category definitions above serve as a reference taxonomy for
-    what kinds of motivation signals to look for — do not tag evidence with categories.
+    signal description.
 
 
     For each enacted-status signal, provide a direct quote and a brief description of what

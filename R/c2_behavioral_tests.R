@@ -232,7 +232,6 @@ test_c2a_legal_outputs <- function(codebook,
                                    provider = "anthropic",
                                    base_url = NULL,
                                    api_key = NULL) {
-  valid_categories <- get_valid_labels(codebook)
   system_prompt <- construct_codebook_prompt(codebook)
   n <- nrow(test_chunks)
 
@@ -437,6 +436,25 @@ test_c2a_order_invariance <- function(codebook,
                                       provider = "anthropic",
                                       base_url = NULL,
                                       api_key = NULL) {
+  # Skip for extraction codebooks without classes (nothing to reorder)
+  if (is.null(codebook$classes) || length(codebook$classes) == 0) {
+    return(list(
+      test = "IV_order_invariance",
+      pass = TRUE,
+      change_rate = NA_real_,
+      change_rate_reversed = NA_real_,
+      change_rate_shuffled = NA_real_,
+      n_changed_reversed = NA_integer_,
+      n_changed_shuffled = NA_integer_,
+      n_total = nrow(test_chunks),
+      threshold = 0.05,
+      fleiss_kappa = NA_real_,
+      kappa_interpretation = NA_character_,
+      details = tibble::tibble(),
+      skipped = TRUE
+    ))
+  }
+
   n_classes <- length(codebook$classes)
   original_order <- seq_len(n_classes)
   reversed_order <- rev(original_order)

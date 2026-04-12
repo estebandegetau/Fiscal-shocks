@@ -194,15 +194,19 @@ run_c2a_behavioral_tests_s1 <- function(codebook,
                                        max_tokens = max_tokens,
                                        provider = provider, base_url = base_url,
                                        api_key = api_key)
-  message(sprintf(
-    "    %s (max change rate: %.1f%% [rev=%.1f%%, shuf=%.1f%%], kappa=%.3f %s)",
-    if (test_iv$pass) "PASS" else "FAIL",
-    test_iv$change_rate * 100,
-    test_iv$change_rate_reversed * 100,
-    test_iv$change_rate_shuffled * 100,
-    test_iv$fleiss_kappa,
-    test_iv$kappa_interpretation
-  ))
+  if (isTRUE(test_iv$skipped)) {
+    message("    SKIPPED (no classes to reorder)")
+  } else {
+    message(sprintf(
+      "    %s (max change rate: %.1f%% [rev=%.1f%%, shuf=%.1f%%], kappa=%.3f %s)",
+      if (test_iv$pass) "PASS" else "FAIL",
+      test_iv$change_rate * 100,
+      test_iv$change_rate_reversed * 100,
+      test_iv$change_rate_shuffled * 100,
+      test_iv$fleiss_kappa,
+      test_iv$kappa_interpretation
+    ))
+  }
 
   overall_pass <- test_i$pass && test_ii$pass && test_iii$pass && test_iv$pass
 
@@ -222,7 +226,8 @@ run_c2a_behavioral_tests_s1 <- function(codebook,
       test = c("I_legal_outputs", "II_instruction_recovery",
                "III_example_recovery", "IV_order_invariance"),
       pass = c(test_i$pass, test_ii$pass, test_iii$pass, test_iv$pass),
-      metric = c(test_i$rate, test_ii$rate, test_iii$rate, test_iv$change_rate),
+      metric = c(test_i$rate, test_ii$rate, test_iii$rate,
+                 test_iv$change_rate %||% NA_real_),
       threshold = c(1.0, 1.0, 1.0, 0.05),
       comparison = c(">=", ">=", ">=", "<")
     )

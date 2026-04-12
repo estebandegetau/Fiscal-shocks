@@ -172,7 +172,6 @@ run_c2_zero_shot <- function(c2a_codebook,
 
   c2a_system <- construct_codebook_prompt(c2a_codebook)
   c2b_system <- construct_codebook_prompt(c2b_codebook)
-  c2a_labels <- get_valid_labels(c2a_codebook)
   c2b_labels <- get_valid_labels(c2b_codebook)
   n_acts <- nrow(c2_s2_test_set)
 

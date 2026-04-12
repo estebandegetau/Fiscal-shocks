@@ -25,47 +25,49 @@ load_validate_codebook <- function(path) {
 
   cb <- raw$codebook
 
-  # Validate top-level fields
-  required_top <- c("name", "version", "instructions",
-                     "classes", "output_instructions")
+  # Validate top-level fields (classes optional for extraction codebooks)
+  required_top <- c("name", "version", "instructions", "output_instructions")
   missing_top <- setdiff(required_top, names(cb))
   if (length(missing_top) > 0) {
     stop("Codebook missing required top-level fields: ",
          paste(missing_top, collapse = ", "))
   }
 
-  # Validate each class
-  required_class <- c("label", "label_definition", "clarification",
-                       "negative_clarification")
+  # Validate each class (if present)
+  valid_labels <- character(0)
 
-  for (i in seq_along(cb$classes)) {
-    cls <- cb$classes[[i]]
-    missing_cls <- setdiff(required_class, names(cls))
-    if (length(missing_cls) > 0) {
-      stop(sprintf("Class '%s' missing required fields: %s",
-                   cls$label %||% paste0("index ", i),
-                   paste(missing_cls, collapse = ", ")))
-    }
+  if (!is.null(cb$classes) && length(cb$classes) > 0) {
+    required_class <- c("label", "label_definition", "clarification",
+                         "negative_clarification")
 
-    # Validate examples have text + reasoning
-    for (j in seq_along(cls$positive_examples)) {
-      ex <- cls$positive_examples[[j]]
-      if (is.null(ex$text) || is.null(ex$reasoning)) {
-        stop(sprintf("Class '%s' positive_example %d missing text or reasoning",
-                     cls$label, j))
+    for (i in seq_along(cb$classes)) {
+      cls <- cb$classes[[i]]
+      missing_cls <- setdiff(required_class, names(cls))
+      if (length(missing_cls) > 0) {
+        stop(sprintf("Class '%s' missing required fields: %s",
+                     cls$label %||% paste0("index ", i),
+                     paste(missing_cls, collapse = ", ")))
+      }
+
+      # Validate examples have text + reasoning
+      for (j in seq_along(cls$positive_examples)) {
+        ex <- cls$positive_examples[[j]]
+        if (is.null(ex$text) || is.null(ex$reasoning)) {
+          stop(sprintf("Class '%s' positive_example %d missing text or reasoning",
+                       cls$label, j))
+        }
+      }
+      for (j in seq_along(cls$negative_examples)) {
+        ex <- cls$negative_examples[[j]]
+        if (is.null(ex$text) || is.null(ex$reasoning)) {
+          stop(sprintf("Class '%s' negative_example %d missing text or reasoning",
+                       cls$label, j))
+        }
       }
     }
-    for (j in seq_along(cls$negative_examples)) {
-      ex <- cls$negative_examples[[j]]
-      if (is.null(ex$text) || is.null(ex$reasoning)) {
-        stop(sprintf("Class '%s' negative_example %d missing text or reasoning",
-                     cls$label, j))
-      }
-    }
+
+    valid_labels <- vapply(cb$classes, function(cls) cls$label, character(1))
   }
-
-  # Extract metadata
-  valid_labels <- vapply(cb$classes, function(cls) cls$label, character(1))
 
   structure(
     cb,
@@ -114,8 +116,9 @@ construct_codebook_prompt <- function(codebook,
   # Task description and instructions
   parts <- c(parts, codebook$instructions, "\n\n")
 
-  # Class definitions
+  # Class definitions (skip if codebook has no classes)
   classes <- codebook$classes
+  if (!is.null(classes) && length(classes) > 0) {
   if (!is.null(class_order)) {
     classes <- classes[class_order]
   }
@@ -202,6 +205,21 @@ construct_codebook_prompt <- function(codebook,
           sprintf("Example %d:\nText: %s\n\nWhy not %s: %s\n\n",
                   j, trimws(ex$text), cls$label, trimws(ex$reasoning)))
       }
+    }
+  }
+  }
+
+  # Examples section (for extraction codebooks without classes)
+  if (!is.null(codebook$examples) && length(codebook$examples) > 0) {
+    parts <- c(parts, "# Examples\n\n")
+    for (i in seq_along(codebook$examples)) {
+      ex <- codebook$examples[[i]]
+      parts <- c(parts, sprintf("## Example %d\n\n", i))
+      parts <- c(parts, sprintf("**Act:** %s (%s)\n\n", ex$input$act_name, ex$input$year))
+      parts <- c(parts, sprintf("**Text:** %s\n\n", trimws(ex$input$text)))
+      parts <- c(parts, "**Expected output:**\n")
+      parts <- c(parts, sprintf("```json\n%s\n```\n\n",
+        jsonlite::toJSON(ex$output, auto_unbox = TRUE, pretty = TRUE)))
     }
   }
 
