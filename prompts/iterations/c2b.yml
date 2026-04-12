@@ -283,3 +283,91 @@ iterations:
     decision: >
       Unblock S2 with Haiku. First review S2 sensitivity results and S3
       pipeline outputs to validate those targets before switching models.
+
+  - iteration: 7
+    codebook_version: "0.2.0"
+    date: "2026-04-12"
+    git_commit: "3b1f59b"
+    model: "google/gemini-2.5-flash"
+    stage: "s2"
+    condition: "sensitivity (relaxed discusses_motivation filter)"
+    changes: >
+      No codebook changes. Ran sensitivity condition: C2 input includes all
+      FISCAL_MEASURE chunks (606 chunks) instead of only those with
+      discusses_motivation=TRUE (509 chunks, +19%). Tests whether C1's
+      discusses_motivation filter is helping or hurting C2 performance.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 32
+      c2a_failure_rate: 0.3069
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.6561
+          ci_lower: 0.4805
+          ci_upper: 0.8188
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.7273
+          ci_lower: 0.5263
+          ci_upper: 0.9001
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.6376
+          ci_lower: 0.4868
+          ci_upper: 0.8086
+        - metric: "accuracy"
+          value: 0.6563
+          ci_lower: 0.5000
+          ci_upper: 0.8125
+        - metric: "exogenous_recall"
+          value: 0.8000
+          ci_lower: 0.6111
+          ci_upper: 0.9524
+        - metric: "exogenous_f1"
+          value: 0.7619
+          ci_lower: 0.6000
+          ci_upper: 0.8889
+      quality_flags:
+        c2a_failures_total: 186
+        n_acts_excluded: 7
+        n_multiple_dominant: 0
+        n_exo_inconsistent: 0
+      per_class_f1:
+        SPENDING_DRIVEN: 0.6154
+        COUNTERCYCLICAL: 0.4444
+        DEFICIT_DRIVEN: 0.8750
+        LONG_RUN: 0.6154
+      comparison_vs_baseline:
+        weighted_f1_delta: "+0.103"
+        exogenous_precision_delta: "+0.139"
+        valid_acts_delta: "+5"
+        transitions:
+          na_to_correct: 6
+          na_to_wrong: 1
+          wrong_to_correct: 1
+          correct_to_wrong: 0
+          correct_to_na: 1
+          note: >
+            OBRA 1987 regressed from correct to NA. 6 acts recovered from
+            NA (Deficit Reduction 1984, Job Creation 2002, Jobs & Growth 2003,
+            OBRA 1990, OBRA 1993, SS Amendments 1977). Crude Oil Windfall 1980
+            flipped from SPENDING_DRIVEN (wrong) to LONG_RUN (correct).
+    interpretation: >
+      Sensitivity condition uniformly improves all metrics over baseline:
+      weighted F1 +10.3pp (0.553→0.656), exogenous precision +13.9pp
+      (0.588→0.727), 5 more valid acts (27→32). The discusses_motivation
+      filter is actively hurting C2 by excluding chunks that contain
+      motivation evidence C1 didn't flag. No correct predictions regressed
+      to wrong — the only regression is OBRA 1987 (correct→NA), outweighed
+      by 6 NA→correct recoveries plus 1 wrong→correct. However, all metrics
+      still come from Gemini Flash with 30.7% C2a failure rate, so these
+      are model-compliance-contaminated signals. The filter question needs
+      confirmation on Haiku where compliance should be cleaner.
+    decision: >
+      Adopt sensitivity condition as likely primary input path pending Haiku
+      confirmation. Next: check S3 pipeline outcomes on current data, then
+      unblock Haiku S2 run (both conditions) for real codebook evaluation.
