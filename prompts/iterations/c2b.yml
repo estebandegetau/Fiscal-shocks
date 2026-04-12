@@ -215,3 +215,71 @@ iterations:
       compliance issues confirm that model choice matters for output schema
       adherence — Haiku S2 run will provide clean metrics for actual codebook
       evaluation.
+
+  - iteration: 6
+    codebook_version: "0.2.0"
+    date: "2026-04-12"
+    git_commit: "98cac3e"
+    model: "google/gemini-2.5-flash"
+    stage: "s2"
+    changes: >
+      No codebook changes. S3 pipeline developed (Tests V-VII + ablation in
+      R/c2_codebook_stage_3.R). Fixed tibble 3.3.0 column-name shadowing bug
+      in Test V (combo column shadowed combo list variable inside tibble() call).
+      Re-ran S2 eval targets against existing S2 results to confirm pipeline
+      validity after S3 development.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 27
+      c2a_failure_rate: 0.3576
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.5533
+          ci_lower: 0.3549
+          ci_upper: 0.7378
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.5882
+          ci_lower: 0.3529
+          ci_upper: 0.8235
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.5471
+          ci_lower: 0.4062
+          ci_upper: 0.7689
+        - metric: "accuracy"
+          value: 0.5556
+          ci_lower: 0.3704
+          ci_upper: 0.7407
+        - metric: "exogenous_recall"
+          value: 0.6667
+          ci_lower: 0.4209
+          ci_upper: 0.8824
+        - metric: "exogenous_f1"
+          value: 0.6250
+          ci_lower: 0.4000
+          ci_upper: 0.8002
+      quality_flags:
+        c2a_failures_total: 106
+        n_acts_excluded: 12
+        n_multiple_dominant: 1
+        n_exo_inconsistent: 1
+    interpretation: >
+      S2 results confirmed stable after S3 pipeline development — no
+      regressions. Metrics identical to iteration 5 (same model, codebook,
+      data). Metrics remain unreliable on Flash due to 31% exclusion rate
+      with non-random dropout biasing against COUNTERCYCLICAL (4/8 acts
+      dropped) and DEFICIT_DRIVEN (3/7 acts dropped). Dominant confusion
+      pattern is SPENDING_DRIVEN → LONG_RUN (5 acts): model gravitates
+      toward structural language even when R&R motivation is spending-driven.
+      12 NA-prediction acts all have valid evidence (median 33.5 items vs 16
+      for valid acts) but C2b returns NA — context overflow on high-evidence
+      payloads, not C2a failure. One exogenous flag inconsistency (Revenue
+      Act of 1964: LONG_RUN but exogenous=FALSE).
+    decision: >
+      Unblock S2 with Haiku. First review S2 sensitivity results and S3
+      pipeline outputs to validate those targets before switching models.
