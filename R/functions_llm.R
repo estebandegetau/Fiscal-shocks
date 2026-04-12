@@ -385,8 +385,14 @@ parse_json_response <- function(response_text, required_fields = NULL) {
     # Found JSON in code block
     json_str <- json_match[1, 2]
   } else {
-    # Try to find raw JSON (starting with { or [)
-    json_str <- response_text
+    # Try stripping leading code fence (handles truncated responses)
+    fence_prefix <- "^```json\\s*\\n?"
+    if (grepl(fence_prefix, response_text)) {
+      json_str <- sub(fence_prefix, "", response_text)
+      json_str <- sub("\\n?```\\s*$", "", json_str)
+    } else {
+      json_str <- response_text
+    }
   }
 
   # Parse JSON

@@ -78,7 +78,7 @@ format_c2a_input <- function(text, act_name, year) {
 #'
 #' @param act_name Character act name
 #' @param year Integer or character year
-#' @param evidence List of evidence objects (each with quote, signal, suggested_category)
+#' @param evidence List of evidence objects (each with quote, signal)
 #' @param enacted_signals List of enacted-status signal objects (each with quote, signal)
 #' @return Character string formatted for C2b input
 #' @keywords internal
@@ -102,7 +102,7 @@ format_c2b_input <- function(act_name, year, evidence, enacted_signals = list())
 #' @param valid_categories Character vector of valid category labels
 #' @return List with $valid (logical) and $reason (character, NA if valid)
 #' @keywords internal
-validate_c2a_output <- function(parsed, valid_categories) {
+validate_c2a_output <- function(parsed) {
   # Check for parse errors
   if (!is.null(parsed$error)) {
     return(list(valid = FALSE, reason = paste("JSON parse error:", parsed$error)))
@@ -123,12 +123,6 @@ validate_c2a_output <- function(parsed, valid_categories) {
     if (is.null(item$signal) || !is.character(item$signal)) {
       return(list(valid = FALSE,
                   reason = sprintf("evidence[%d]: missing or non-character 'signal'", i)))
-    }
-    if (is.null(item$suggested_category) ||
-        !item$suggested_category %in% valid_categories) {
-      return(list(valid = FALSE,
-                  reason = sprintf("evidence[%d]: invalid suggested_category '%s'",
-                                   i, item$suggested_category %||% "NULL")))
     }
   }
 
@@ -263,7 +257,7 @@ test_c2a_legal_outputs <- function(codebook,
       list(error = e$message, raw_response = NA_character_)
     })
 
-    validation <- validate_c2a_output(parsed, valid_categories)
+    validation <- validate_c2a_output(parsed)
 
     tibble::tibble(
       text_id = i,
@@ -390,25 +384,17 @@ test_c2a_instruction_recovery <- function(codebook,
     })
 
     # Validate schema first
-    validation <- validate_c2a_output(parsed, valid_categories)
+    validation <- validate_c2a_output(parsed)
 
-    # Check instruction recovery: at least one evidence item with expected category
+    # Check instruction recovery: model extracts evidence from clear synthetic passages
     has_evidence <- length(parsed$evidence %||% list()) > 0
-    categories_found <- vapply(
-      parsed$evidence %||% list(),
-      function(e) e$suggested_category %||% NA_character_,
-      character(1)
-    )
-    correct_category <- expected_cat %in% categories_found
 
     tibble::tibble(
       expected_category = expected_cat,
       act_name = passage$act_name,
       valid_schema = validation$valid,
       has_evidence = has_evidence,
-      correct_category = correct_category,
-      categories_found = paste(categories_found, collapse = ", "),
-      correct = validation$valid && has_evidence && correct_category
+      correct = validation$valid && has_evidence
     )
   })
 
@@ -430,8 +416,8 @@ test_c2a_instruction_recovery <- function(codebook,
 #' Test IV: C2a Order Invariance
 #'
 #' Reorders class definitions in the C2a codebook prompt and checks
-#' whether suggested_category assignments change. Uses the sorted
-#' multiset of suggested_category values per chunk as the comparison unit.
+#' whether extracted evidence changes. Uses sorted evidence fingerprints
+#' (truncated quote + signal) per chunk as the comparison unit.
 #'
 #' @param codebook A validated C2a codebook object
 #' @param test_chunks Tibble with text, act_name, year columns
@@ -470,16 +456,16 @@ test_c2a_order_invariance <- function(codebook,
   prompt_reversed <- construct_codebook_prompt(codebook, class_order = reversed_order)
   prompt_shuffled <- construct_codebook_prompt(codebook, class_order = shuffled_order)
 
-  # Helper: extract sorted category multiset string from C2a response
-  extract_category_multiset <- function(parsed) {
-    cats <- vapply(
-      parsed$evidence %||% list(),
-      function(e) e$suggested_category %||% NA_character_,
-      character(1)
-    )
-    cats <- sort(cats[!is.na(cats)])
-    if (length(cats) == 0) return("EMPTY")
-    paste(cats, collapse = "|")
+  # Helper: extract sorted evidence fingerprint string from C2a response
+  extract_evidence_fingerprint <- function(parsed) {
+    evidence <- parsed$evidence %||% list()
+    if (length(evidence) == 0) return("EMPTY")
+    fingerprints <- vapply(evidence, function(e) {
+      q <- substr(e$quote %||% "", 1, 80)
+      s <- e$signal %||% ""
+      paste(q, s, sep = "|")
+    }, character(1))
+    paste(sort(fingerprints), collapse = "||")
   }
 
   n <- nrow(test_chunks)
@@ -502,7 +488,7 @@ test_c2a_order_invariance <- function(codebook,
           base_url = base_url,
           api_key = api_key
         )
-        extract_category_multiset(parsed)
+        extract_evidence_fingerprint(parsed)
       }, error = function(e) NA_character_)
     }
 

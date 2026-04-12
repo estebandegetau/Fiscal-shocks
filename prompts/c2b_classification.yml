@@ -1,17 +1,16 @@
 codebook:
   name: "C2b: Motivation Classification"
-  version: "0.2.0"
+  version: "0.3.0"
   instructions: >
     You are an expert in fiscal policy analysis classifying the primary motivation for
     a fiscal measure. You will receive the act name, year of passage, and an array of
     evidence records extracted from multiple document chunks. Each evidence record contains
-    a direct quote, a signal description, and a suggested motivation category.
+    a direct quote and a signal description.
 
 
     Your task is to weigh all evidence, resolve any conflicts, and classify the act's
     motivation. You will also receive enacted-status signals to determine whether the
-    measure became law. The suggested_category field in each evidence record is an upstream
-    hint — you must evaluate the evidence independently using the category definitions and
+    measure became law. You must evaluate the evidence using the category definitions and
     decision rules below.
 
 

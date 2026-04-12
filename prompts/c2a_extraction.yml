@@ -1,6 +1,6 @@
 codebook:
   name: "C2a: Motivation Evidence Extraction"
-  version: "0.2.0"
+  version: "0.3.0"
   instructions: >
     You are an expert in fiscal policy analysis extracting motivation evidence from
     chunks of official government economic and budget documents. Each chunk has already
@@ -21,14 +21,14 @@ codebook:
 
     You will be given: the chunk text, the name of the fiscal measure, and the year of
     passage. For each distinct piece of motivation evidence you find, extract a direct
-    quote, describe the signal it represents, and suggest which of the four motivation
-    categories it best fits. The four categories are defined below as a reference taxonomy.
+    quote and describe the signal it represents. The four motivation categories defined
+    below serve as a reference taxonomy for what kinds of signals to look for.
 
 
     Extract only evidence that is explicitly present in the text. Do not infer motivation
     from economic conditions unless policymakers are quoted or paraphrased as citing those
-    conditions as their reason for acting. Multiple pieces of evidence may point to the
-    same category or to different categories — extract them all separately.
+    conditions as their reason for acting. Multiple pieces of evidence may point to
+    different types of motivation — extract them all separately.
 
   classes:
     - label: "SPENDING_DRIVEN"
@@ -96,19 +96,13 @@ codebook:
     Extract all motivation evidence and enacted-status signals from the chunk.
 
 
-    For each distinct piece of motivation evidence, provide a direct quote, a brief signal
-    description, and a suggested motivation category. The suggested category is your best
-    judgment based on the evidence and the category definitions above. It is a preliminary
-    tag, not a final classification — downstream analysis will synthesize evidence across
-    all chunks for the act.
+    For each distinct piece of motivation evidence, provide a direct quote and a brief
+    signal description. The category definitions above serve as a reference taxonomy for
+    what kinds of motivation signals to look for — do not tag evidence with categories.
 
 
     For each enacted-status signal, provide a direct quote and a brief description of what
     it indicates about the measure's legislative status.
-
-
-    Valid categories for suggested_category: SPENDING_DRIVEN, COUNTERCYCLICAL,
-    DEFICIT_DRIVEN, LONG_RUN.
 
 
     If the chunk contains no motivation evidence, return an empty array for evidence.
@@ -122,8 +116,7 @@ codebook:
       "evidence": [
         {
           "quote": "Direct quote from the text",
-          "signal": "Brief description of the evidence type (e.g., 'stated goal of deficit reduction', 'response to rising unemployment')",
-          "suggested_category": "SPENDING_DRIVEN"
+          "signal": "Brief description of the evidence type (e.g., 'stated goal of deficit reduction', 'response to rising unemployment')"
         }
       ],
       "enacted_signals": [

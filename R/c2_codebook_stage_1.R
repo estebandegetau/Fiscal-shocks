@@ -26,13 +26,11 @@ generate_c2b_test_evidence <- function(seed = 42) {
       evidence = list(
         list(
           quote = "The tax increase was enacted to finance the new military operations abroad.",
-          signal = "Revenue measure explicitly linked to financing a spending commitment",
-          suggested_category = "SPENDING_DRIVEN"
+          signal = "Revenue measure explicitly linked to financing a spending commitment"
         ),
         list(
           quote = "The revenue provisions and the defense appropriations were passed together as a single package.",
-          signal = "Fiscal measure and spending change enacted together",
-          suggested_category = "SPENDING_DRIVEN"
+          signal = "Fiscal measure and spending change enacted together"
         )
       ),
       enacted_signals = list(
@@ -48,18 +46,15 @@ generate_c2b_test_evidence <- function(seed = 42) {
       evidence = list(
         list(
           quote = "With unemployment rising sharply and GDP contracting, the government enacted emergency tax relief.",
-          signal = "Response to economic downturn, goal of restoring growth to normal",
-          suggested_category = "COUNTERCYCLICAL"
+          signal = "Response to economic downturn, goal of restoring growth to normal"
         ),
         list(
           quote = "The stimulus package aims to counteract the recession and return the economy to its pre-crisis trajectory.",
-          signal = "Explicit countercyclical framing, temporary measure",
-          suggested_category = "COUNTERCYCLICAL"
+          signal = "Explicit countercyclical framing, temporary measure"
         ),
         list(
           quote = "These temporary measures will expire once economic conditions normalize.",
-          signal = "Temporary nature tied to cyclical conditions",
-          suggested_category = "COUNTERCYCLICAL"
+          signal = "Temporary nature tied to cyclical conditions"
         )
       ),
       enacted_signals = list(
@@ -75,13 +70,11 @@ generate_c2b_test_evidence <- function(seed = 42) {
       evidence = list(
         list(
           quote = "The deficit, accumulated over many years of past policy decisions, threatens long-term fiscal stability.",
-          signal = "Deficit described as inherited from past decisions",
-          suggested_category = "DEFICIT_DRIVEN"
+          signal = "Deficit described as inherited from past decisions"
         ),
         list(
           quote = "The primary purpose of this act is to restore fiscal balance and reduce the structural budget deficit.",
-          signal = "Stated goal of deficit reduction and fiscal prudence",
-          suggested_category = "DEFICIT_DRIVEN"
+          signal = "Stated goal of deficit reduction and fiscal prudence"
         )
       ),
       enacted_signals = list(
@@ -97,13 +90,11 @@ generate_c2b_test_evidence <- function(seed = 42) {
       evidence = list(
         list(
           quote = "By broadening the tax base and lowering marginal rates, we can improve economic efficiency and raise long-run growth.",
-          signal = "Structural reform aimed at raising growth above normal level",
-          suggested_category = "LONG_RUN"
+          signal = "Structural reform aimed at raising growth above normal level"
         ),
         list(
           quote = "The reform simplifies the tax code to improve incentives for investment and raise potential output.",
-          signal = "Permanent structural change for efficiency and supply-side improvement",
-          suggested_category = "LONG_RUN"
+          signal = "Permanent structural change for efficiency and supply-side improvement"
         )
       ),
       enacted_signals = list(

@@ -177,8 +177,7 @@ test_c2b_exclusion_criteria <- function(
   # --- Modified evidence: inject distractor into each act's evidence ---
   distractor_record <- list(
     quote = "The committee also discussed the welfare of elephants.",
-    signal = "elephant welfare",
-    suggested_category = "LONG_RUN"
+    signal = "elephant welfare"
   )
 
   modified_evidence <- acts_evidence

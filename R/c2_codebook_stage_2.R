@@ -211,7 +211,7 @@ run_c2_zero_shot <- function(c2a_codebook,
           base_url = base_url,
           api_key = api_key
         )
-        validation <- validate_c2a_output(parsed, c2a_labels)
+        validation <- validate_c2a_output(parsed)
         if (!validation$valid) {
           list(valid = FALSE, reason = validation$reason, parsed = parsed)
         } else {
@@ -235,7 +235,7 @@ run_c2_zero_shot <- function(c2a_codebook,
             base_url = base_url,
             api_key = api_key
           )
-          validation <- validate_c2a_output(parsed, c2a_labels)
+          validation <- validate_c2a_output(parsed)
           if (!validation$valid) {
             list(valid = FALSE, reason = validation$reason, parsed = parsed)
           } else {
