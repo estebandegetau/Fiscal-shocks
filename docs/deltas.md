@@ -9,6 +9,20 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-04-12: Frozen c2_input_data pattern decouples C2 from C1 function changes
+
+**Type:** design-decision
+**Affects:** `docs/strategy.md` > Phase 0 Implementation Blueprint > Targets Pipeline Plan
+**Detail:** `c2_input_data` is now read from a frozen `.qs` file (`data/validated/c2_input_data.qs`) via a `format = "file"` target (`c2_input_file`), rather than derived live from `c1_classified_chunks`. This prevents shared R function changes (e.g., `codebook_stage_0.R`, `functions_llm.R`) from invalidating expensive C1 API targets during C2 development. The user calls `freeze_results("c2_input_data")` after C1 re-validation to update the handoff. New file: `R/freeze_results.R`.
+**Suggested edit:** Add note to strategy.md Targets Pipeline Plan describing the frozen handoff pattern and when to re-freeze.
+
+## 2026-04-12: C2a v0.4.0 removes class taxonomy — pure extraction codebook
+
+**Type:** design-decision
+**Affects:** `docs/strategy.md` > C2 Blueprint > S0 Codebook Prep; `docs/strategy.md` > C2 Blueprint > S1 Behavioral Tests
+**Detail:** C2a no longer contains a `classes` section with the 4-category motivation taxonomy (SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN). Instead, it uses 4 synthetic input→output extraction examples to guide evidence extraction. This aligns the codebook structure with its actual task (extract quotes + signals, not classify). `load_validate_codebook()` and `construct_codebook_prompt()` updated to make `classes` optional. Test IV (order invariance) is now skipped for classless codebooks. Strategy.md's C2 Blueprint states "both codebooks share the same 4-class taxonomy" — this is no longer true for C2a.
+**Suggested edit:** Update C2 Blueprint S0 description to note that C2a is an extraction codebook without classes, guided by examples. Update S1 description to note Test IV is N/A for C2a.
+
 ## 2026-04-11: C2 S3 pipeline implemented — run_c2_zero_shot output schema extended
 
 **Type:** status-change

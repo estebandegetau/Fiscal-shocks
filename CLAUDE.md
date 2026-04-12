@@ -46,7 +46,7 @@ The contribution is **methodological**, not just dataset scale:
 
 - **Phase 0**: IN PROGRESS — Codebook development using C1-C4 framework
   - **C1 (Measure ID)**: S3 GATE PASSED (v0.6.0, iteration 28). S3 manual analysis: 31A/6B/0E/3F — zero semantic errors, bias-corrected recall 100%, precision 83.3%. v0.6.0 added extra_output_fields (discusses_motivation/timing/magnitude) which improved model thoroughness without introducing errors. Residual 3 F errors are codebook scope ambiguity (spending-side fiscal policy outside R&R's tax/revenue scope). Proceeding to C2.
-  - **C2 (Motivation)**: S2 IN PROGRESS (v0.2.0, iteration 5). Two-codebook architecture: c2a_extraction.yml + c2b_classification.yml. S1: Tests I-III pass on Qwen, Test IV fails (expected — Qwen order sensitivity), Haiku rerun pending. S2: Pipeline validation run on Gemini 2.5 Flash — model compliance failure (35.8% C2a failure rate, 12/39 acts excluded). Metrics unreliable. S3: Pipeline code implemented (`R/c2_codebook_stage_3.R`) — Tests V-VII + ablation on C2b using cached S2 evidence. Next: Flash pipeline validation run (S2→S3), then Haiku rerun for real evaluation.
+  - **C2 (Motivation)**: S1 IN PROGRESS (iteration 6). Two-codebook architecture: c2a_extraction.yml (v0.4.0) + c2b_classification.yml (v0.3.0). C2b S1 gate passed on Haiku (4/4 tests pass, kappa=1.0). C2a S1: Tests I-II pass, Test IV structurally inapplicable (free-text extraction output compared via string equality — now skipped for classless codebooks). v0.4.0 removed class taxonomy from C2a, replaced with synthetic extraction examples. `c2_input_data` frozen to `data/validated/` to decouple C2 from C1 function changes. Next: rerun C2a+C2b S1 on Haiku with v0.4.0, then proceed to S2.
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started
   - See `docs/strategy.md` for authoritative methodology
@@ -135,7 +135,7 @@ The project uses `{targets}` for reproducible data pipelines with `crew` for par
 3. **Processing**: Text cleaning → Document structuring → Paragraph extraction
 4. **Filtering**: Keyword-based relevance filtering using `relevance_keys`
 
-Key targets: `us_urls`, `us_text`, `us_body`, `aligned_data`, `chunks`, `c1_chunk_data`, `c1_s2_test_set`, `c1_s2_results`, `c1_s2_eval`, `c1_s3_test_set`, `c1_s3_results`
+Key targets: `us_urls`, `us_text`, `us_body`, `aligned_data`, `chunks`, `c1_chunk_data`, `c1_s2_test_set`, `c1_s2_results`, `c1_s2_eval`, `c1_s3_test_set`, `c1_s3_results`, `c2_input_file`, `c2_input_data`, `c2a_s1_results`, `c2b_s1_results`, `c2_s2_results`, `c2_s2_eval`, `c2_s3_results`
 
 See `_targets.R` for the complete list.
 
@@ -159,6 +159,7 @@ Each evaluation stage (S1, S2, S3) has independent targets, model configs, and t
 - `docs/phase_1/` - Phase 2 (Malaysia Pilot) strategy and expert review protocols
 - `docs/archive/` - Historical Model A/B/C documentation (superseded)
 - `data/raw/` - Reference data (`us_shocks.csv`, `us_labels.csv`)
+- `data/validated/` - Frozen pipeline results (e.g., `c2_input_data.qs`) to decouple cross-codebook dependencies
 - `prompts/` - YAML codebooks (C1-C4) and few-shot examples
 - `.claude/agents/` - Specialized Claude Code agent configurations
 
