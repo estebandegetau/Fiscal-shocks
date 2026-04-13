@@ -320,11 +320,11 @@ list(
     c2a_evidence,
     run_c2a_extraction(
       c2a_codebook, c2_s2_sensitivity_test_set,
-      model = "google/gemini-3.1-flash-lite-preview",
+      model = "claude-haiku-4-5-20251001",
       max_tokens_c2a = 4096,
-      provider = "openrouter",
-      base_url = "https://openrouter.ai/api/v1",
-      api_key = Sys.getenv("OPENROUTER_API_KEY")
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
@@ -337,11 +337,11 @@ list(
       c2b_codebook,
       c2a_evidence |> dplyr::filter(discusses_motivation == TRUE),
       c2_s2_test_set,
-      model = "google/gemini-3.1-flash-lite-preview",
+      model = "claude-haiku-4-5-20251001",
       max_tokens_c2b = 4096,
-      provider = "openrouter",
-      base_url = "https://openrouter.ai/api/v1",
-      api_key = Sys.getenv("OPENROUTER_API_KEY")
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
@@ -359,11 +359,11 @@ list(
       c2b_codebook,
       c2a_evidence,
       c2_s2_sensitivity_test_set,
-      model = "google/gemini-3.1-flash-lite-preview",
+      model = "claude-haiku-4-5-20251001",
       max_tokens_c2b = 4096,
-      provider = "openrouter",
-      base_url = "https://openrouter.ai/api/v1",
-      api_key = Sys.getenv("OPENROUTER_API_KEY")
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
