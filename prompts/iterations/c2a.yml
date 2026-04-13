@@ -316,3 +316,92 @@ iterations:
       C2a S1 gate passed. Proceed to S2 on Haiku. Run both baseline (with
       discusses_motivation filter) and sensitivity (without filter) conditions
       to confirm iteration 7's finding that the filter hurts C2 performance.
+
+  - iteration: 8
+    codebook_version: "0.4.0"
+    date: "2026-04-13"
+    git_commit: "5856e2e"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "sensitivity (all FISCAL_MEASURE chunks, no discusses_motivation filter)"
+    changes: >
+      No codebook changes from v0.4.0. First Haiku S2 run for sensitivity
+      condition. Pipeline uses frozen c2_s2_sensitivity_data (606 chunks across
+      39 acts) vs baseline c2_input_data (509 chunks with discusses_motivation
+      filter). max_tokens_c2a=4096, max_tokens_c2b=1024.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 17
+      n_na: 22
+      c2a_failure_rate: 0.0026
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.5637
+          ci_lower: 0.2952
+          ci_upper: 0.8201
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.6667
+          ci_lower: 0.3636
+          ci_upper: 1.0000
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.6042
+          ci_lower: 0.4000
+          ci_upper: 0.8207
+        - metric: "accuracy"
+          value: 0.5882
+          ci_lower: 0.3529
+          ci_upper: 0.8235
+        - metric: "exogenous_recall"
+          value: 0.6667
+          ci_lower: 0.3333
+          ci_upper: 1.0000
+        - metric: "exogenous_f1"
+          value: 0.6667
+          ci_lower: 0.3750
+          ci_upper: 0.9000
+      per_class_f1:
+        SPENDING_DRIVEN: 0.6000
+        COUNTERCYCLICAL: 0.6667
+        DEFICIT_DRIVEN: 0.7500
+        LONG_RUN: 0.4000
+      quality_flags:
+        c2a_failures_total: 1
+        n_acts_excluded: 22
+        n_multiple_dominant: 2
+        n_exo_inconsistent: 0
+      na_act_diagnostics:
+        note: >
+          All 22 NA acts have zero C2a failures. C2b fails on high-evidence
+          acts: NA acts have median 88.5 evidence items (range 47-233) vs
+          valid acts median 58 (range 1-109). C2b raw responses are all NA,
+          confirming API call or parse failure from output truncation at
+          max_tokens_c2b=1024. Major legislation affected: EGTRRA 2001,
+          ERTA 1981, TRA 1986, Revenue Act of 1964, OBRA 1987/1990/1993.
+    interpretation: >
+      Haiku's C2a has near-perfect compliance (1 failure across 606 chunks),
+      but this thoroughness backfires: C2a extracts so much evidence per act
+      that C2b overflows at max_tokens_c2b=1024. Result is 56% NA rate (22/39
+      acts), making all classification metrics unreliable — they're computed
+      on a biased subsample of simpler acts with fewer chunks. Paradoxically,
+      Haiku produces worse overall results than Flash sensitivity (iteration 7
+      in c2b log: 32/39 valid) because Flash's C2a failures acted as accidental
+      evidence compression. On the 17 valid acts, classification quality is
+      reasonable: DEFICIT_DRIVEN F1=0.75, COUNTERCYCLICAL F1=0.67. LONG_RUN
+      is worst (F1=0.40, recall=0.33) with persistent confusion toward
+      COUNTERCYCLICAL (2 acts) and SPENDING_DRIVEN (1 act). Also discovered
+      that the sensitivity and baseline pipelines call C2a on overlapping
+      chunks independently — an inefficiency to address in refactoring.
+    decision: >
+      Two fixes before re-running: (1) Increase max_tokens_c2b from 1024 to
+      4096 to match C2a's setting and eliminate truncation-driven NAs. This is
+      the highest-leverage change. (2) Refactor pipeline so sensitivity and
+      baseline share C2a results rather than calling C2a twice on overlapping
+      chunks. Re-run both baseline and sensitivity on Haiku after fixes to get
+      clean comparison. Defer codebook iteration until NA rate is resolved —
+      current metrics cannot drive codebook decisions.

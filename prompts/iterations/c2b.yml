@@ -575,3 +575,95 @@ iterations:
     decision: >
       C2b S1 gate passed. Both C2a and C2b pass S1 on Haiku. Proceed to S2
       zero-shot evaluation on Haiku with both conditions (baseline + sensitivity).
+
+  - iteration: 11
+    codebook_version: "0.3.0"
+    date: "2026-04-13"
+    git_commit: "5856e2e"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "sensitivity (all FISCAL_MEASURE chunks, no discusses_motivation filter)"
+    changes: >
+      No codebook changes from v0.3.0. First Haiku S2 run for sensitivity
+      condition. C2b receives evidence extracted by C2a v0.4.0 (classless,
+      quote+signal pairs without suggested_category). max_tokens_c2b=1024.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 17
+      n_na: 22
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.5637
+          ci_lower: 0.2952
+          ci_upper: 0.8201
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.6667
+          ci_lower: 0.3636
+          ci_upper: 1.0000
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.6042
+          ci_lower: 0.4000
+          ci_upper: 0.8207
+        - metric: "accuracy"
+          value: 0.5882
+          ci_lower: 0.3529
+          ci_upper: 0.8235
+        - metric: "exogenous_recall"
+          value: 0.6667
+          ci_lower: 0.3333
+          ci_upper: 1.0000
+        - metric: "exogenous_f1"
+          value: 0.6667
+          ci_lower: 0.3750
+          ci_upper: 0.9000
+      per_class_f1:
+        SPENDING_DRIVEN: 0.6000
+        COUNTERCYCLICAL: 0.6667
+        DEFICIT_DRIVEN: 0.7500
+        LONG_RUN: 0.4000
+      quality_flags:
+        c2a_failures_total: 1
+        n_acts_excluded: 22
+        n_multiple_dominant: 2
+        n_exo_inconsistent: 0
+      confusion_matrix:
+        note: >
+          Dominant confusion: LONG_RUN misclassified as COUNTERCYCLICAL (2 acts)
+          and SPENDING_DRIVEN (1 act). SPENDING_DRIVEN misclassified as LONG_RUN
+          (2 acts). LONG_RUN worst-performing class (F1=0.40, recall=0.33).
+      na_diagnostics:
+        note: >
+          22 NA acts all have zero C2a failures. C2b fails on high-evidence
+          acts: median 88.5 evidence items (range 47-233) vs valid acts median
+          58 (range 1-109). Root cause: max_tokens_c2b=1024 insufficient for
+          Haiku to produce valid JSON with reasoning when processing 50+
+          evidence items. All c2b_raw_response values are NA (call failure,
+          not parse failure).
+      comparison_vs_flash_sensitivity:
+        note: >
+          Flash sensitivity (iteration 7): 32/39 valid, weighted_f1=0.656,
+          exo_precision=0.727. Haiku sensitivity: 17/39 valid, weighted_f1=0.564,
+          exo_precision=0.667. Haiku's thorough C2a extraction paradoxically
+          produces worse results because evidence volume overwhelms C2b.
+    interpretation: >
+      C2b's classification quality is reasonable on the 17 acts where it
+      produces valid output (DEFICIT_DRIVEN F1=0.75, COUNTERCYCLICAL F1=0.67),
+      but 56% NA rate makes all metrics unreliable. The NAs are not a codebook
+      issue — they are a pipeline parameter issue (max_tokens_c2b=1024 too
+      small for Haiku's thorough extraction output). LONG_RUN remains the
+      weakest class (F1=0.40), continuing the pattern from Flash iterations
+      where structural reform language gets confused with countercyclical or
+      spending-driven motivations. However, codebook iteration is premature
+      until the NA rate is resolved — we cannot diagnose classification errors
+      on a 44% subsample biased toward simpler acts.
+    decision: >
+      Increase max_tokens_c2b from 1024 to 4096 before re-running. Refactor
+      pipeline to share C2a extraction results between baseline and sensitivity
+      conditions (currently calling C2a twice on overlapping chunks). Defer
+      codebook changes until clean Haiku metrics are available on all 39 acts.
