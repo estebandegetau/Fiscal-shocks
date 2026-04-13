@@ -1016,3 +1016,110 @@ iterations:
       Adopt primary condition (discusses_motivation filter) as default for
       reporting — marginal improvement and cleaner quality flags. Proceed to
       S3 and manual error analysis before codebook changes.
+
+  - iteration: 17
+    codebook_version: "0.3.0"
+    date: "2026-04-13"
+    git_commit: "b518e6d"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3"
+    changes: >
+      No codebook changes from v0.3.0. First Haiku S3 run (Tests V-VII +
+      ablation). S3 pipeline reuses cached c2_s2_results (39 acts, primary
+      condition) as baseline — no C2a re-extraction. Pipeline validated on
+      Flash in iteration 8; this is the first run on the target model.
+    results:
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            normal_ev_normal_cb: 1.0000
+            modified_ev_normal_cb: 0.9744
+            normal_ev_modified_cb: 0.9744
+            modified_ev_modified_cb: 0.2051
+          overall_consistency: 0.7885
+          all_combos_correct_rate: 0.2051
+          override_label: "LONG_RUN"
+          note: >
+            Combos 2-3 each have 1 error (acts 20 and 36). Combo 4: only 8/39
+            acts flipped to override label LONG_RUN — model prioritizes real
+            evidence over artificial elephant exclusion rule.
+        - test: "VI_generic_labels"
+          original_accuracy: 0.6154
+          generic_accuracy: 0.5641
+          change_rate: 0.0769
+          original_weighted_f1: 0.6106
+          generic_weighted_f1: 0.5545
+          note: >
+            Only 3/39 acts changed prediction with generic labels. Small wF1
+            drop (5.6pp). Model can classify from definitions alone when label
+            names are neutral.
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.2051
+          follows_names_rate: 0.7692
+          swapped_accuracy: 0.5385
+          interpretation: "WARNING: Model appears to rely on label names rather than definitions"
+          note: >
+            When definitions are cyclically rotated across label names, 76.9%
+            of acts follow label names rather than definitions. Only 20.5%
+            follow the reassigned definitions. Apparent contradiction with
+            Test VI resolved: definitions suffice when names are neutral, but
+            names override definitions when they conflict.
+      ablation:
+        - condition: "full"
+          accuracy: 0.6154
+          weighted_f1: 0.6106
+        - condition: "no_label_def"
+          accuracy: 0.6410
+          weighted_f1: 0.6404
+          accuracy_drop: -0.0256
+          weighted_f1_drop: -0.0298
+        - condition: "no_clarifications"
+          accuracy: 0.6410
+          weighted_f1: 0.6434
+          accuracy_drop: -0.0256
+          weighted_f1_drop: -0.0328
+        - condition: "all_removed"
+          accuracy: 0.5641
+          weighted_f1: 0.5288
+          accuracy_drop: 0.0513
+          weighted_f1_drop: 0.0818
+        note: >
+          Paradoxical result: removing label definitions or clarifications
+          individually improves wF1 slightly. Only removing everything
+          degrades performance (wF1 drop 8.2pp). Consistent with Test VII —
+          if model classifies from label name semantics, definitions add
+          noise rather than signal. Label names alone carry strong semantic
+          signal for these fiscal categories.
+      comparison_vs_flash_s3:
+        note: >
+          Flash S3 (iteration 8, N=27): Test VII 0% definition-following,
+          Test V combo 4 40.7%, ablation all_removed wF1 drop 1.5pp.
+          Haiku S3 (N=39): Test VII 20.5% definition-following (slightly
+          better), Test V combo 4 20.5% (less responsive to override),
+          ablation all_removed wF1 drop 8.2pp (uses codebook components
+          more). Haiku shows marginally more definition-following than Flash
+          but the label-name dominance pattern persists across models.
+    interpretation: >
+      Label names appear to drive classification results significantly. The
+      model resolves LONG_RUN vs COUNTERCYCLICAL ambiguity toward the label
+      whose name best matches surface-level evidence language, rather than
+      applying the codebook's "return to normal" boundary test. This may be
+      evidence that Haiku is too small for this cognitively demanding
+      classification task — the boundary rules require multi-step reasoning
+      (identify stated goal → compare to "normal" growth → classify) that
+      smaller models shortcut via label name semantics. However, the ablation
+      shows Haiku does use codebook components more than Flash (8.2pp vs 1.5pp
+      wF1 drop when all removed), suggesting it is not entirely ignoring
+      definitions. The key question is whether the LONG_RUN→COUNTERCYCLICAL
+      errors are category E (model semantic errors fixable by codebook or model
+      changes) or category F (ambiguous ground truth where R&R's own labels
+      are debatable).
+    decision: >
+      Proceed to manual error analysis before making decisions on model or
+      codebook. The 15 S2 misclassifications need human audit using H&K
+      6-category framework (A-F) to distinguish genuine model errors from
+      ambiguous ground truth. If most LONG_RUN→COUNTERCYCLICAL cases are
+      category F, the current codebook may be closer to targets than raw
+      metrics suggest. If category E, two paths: (1) desemantify label names
+      (M1-M4) to force definition-following, or (2) upgrade to a larger
+      model (Sonnet) that can execute multi-step boundary reasoning.
