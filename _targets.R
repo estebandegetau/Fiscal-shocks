@@ -217,19 +217,26 @@ list(
     packages = "tidyverse"
   ),
 
-  # C2 input: frozen C1→C2 handoff (decouples C2 from C1 function changes).
-  # To refresh after C1 re-validation: source("R/freeze_results.R"); freeze_results("c2_input_data")
-  # To restore live derivation: uncomment the original target below and comment out the frozen pair.
-  # Original (live): tar_target(c2_input_data, assemble_c2_input_data(c1_classified_chunks), packages = "tidyverse")
+  # C2 input: single frozen source (sensitivity superset = all FISCAL_MEASURE chunks).
+  # Primary condition (discusses_motivation == TRUE) derived by filtering.
+  # To refresh after C1 re-validation: source("R/freeze_results.R"); freeze_results("c2_s2_sensitivity_data")
+  # Note: chunk_id 94 exists in the old c2_input_data.qs but is missing from
+  # c2_s2_sensitivity_data.qs (frozen at different times). Accepted as immaterial (1/508).
   tar_target(
-    c2_input_file,
-    here::here("data", "validated", "c2_input_data.qs"),
+    c2_s2_sensitivity_file,
+    here::here("data", "validated", "c2_s2_sensitivity_data.qs"),
     format = "file"
   ),
   tar_target(
-    c2_input_data,
-    qs2::qs_read(c2_input_file),
+    c2_s2_sensitivity_data,
+    qs2::qs_read(c2_s2_sensitivity_file),
     packages = "qs2"
+  ),
+  tar_target(
+    c2_input_data,
+    c2_s2_sensitivity_data |>
+      dplyr::filter(discusses_motivation == TRUE),
+    packages = "tidyverse"
   ),
 
   tar_quarto(
@@ -291,21 +298,47 @@ list(
   ),
 
   # ==========================================================================
-  # C2 S2: Zero-shot motivation classification (composed C2a→C2b pipeline)
+  # C2 S2: Zero-shot motivation classification (split C2a → C2b pipeline)
+  # C2a runs ONCE on the sensitivity superset (all FISCAL_MEASURE chunks).
+  # C2b runs TWICE: primary (discusses_motivation only) and sensitivity (all).
   # ==========================================================================
 
-  # Primary chain: C1-filtered inputs (FISCAL_MEASURE + discusses_motivation)
+  # Test sets (act-level with nested chunks + ground truth)
   tar_target(
     c2_s2_test_set,
     assemble_c2_s2_test_set(c2_input_data, aligned_data),
     packages = "tidyverse"
   ),
   tar_target(
-    c2_s2_results,
-    run_c2_zero_shot(
-      c2a_codebook, c2b_codebook, c2_s2_test_set,
+    c2_s2_sensitivity_test_set,
+    assemble_c2_s2_test_set(c2_s2_sensitivity_data, aligned_data),
+    packages = "tidyverse"
+  ),
+
+  # C2a: single extraction pass on all sensitivity chunks
+  tar_target(
+    c2a_evidence,
+    run_c2a_extraction(
+      c2a_codebook, c2_s2_sensitivity_test_set,
       model = "claude-haiku-4-5-20251001",
-      max_tokens_c2a = 4096, max_tokens_c2b = 1024,
+      max_tokens_c2a = 4096,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  # C2b primary: filter evidence to discusses_motivation == TRUE chunks
+  tar_target(
+    c2_s2_results,
+    run_c2b_classification(
+      c2b_codebook,
+      c2a_evidence |> dplyr::filter(discusses_motivation == TRUE),
+      c2_s2_test_set,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")
@@ -319,29 +352,15 @@ list(
     packages = "tidyverse"
   ),
 
-  # Sensitivity chain: relaxes discusses_motivation filter
-  # Original (live): tar_target(c2_s2_sensitivity_data, assemble_c2_s2_sensitivity_data(c1_classified_chunks), packages = "tidyverse")
-  tar_target(
-    c2_s2_sensitivity_file,
-    here::here("data", "validated", "c2_s2_sensitivity_data.qs"),
-    format = "file"
-  ),
-  tar_target(
-    c2_s2_sensitivity_data,
-    qs2::qs_read(c2_s2_sensitivity_file),
-    packages = "qs2"
-  ),
-  tar_target(
-    c2_s2_sensitivity_test_set,
-    assemble_c2_s2_test_set(c2_s2_sensitivity_data, aligned_data),
-    packages = "tidyverse"
-  ),
+  # C2b sensitivity: use all evidence
   tar_target(
     c2_s2_sensitivity_results,
-    run_c2_zero_shot(
-      c2a_codebook, c2b_codebook, c2_s2_sensitivity_test_set,
+    run_c2b_classification(
+      c2b_codebook,
+      c2a_evidence,
+      c2_s2_sensitivity_test_set,
       model = "claude-haiku-4-5-20251001",
-      max_tokens_c2a = 4096, max_tokens_c2b = 1024,
+      max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")
@@ -361,7 +380,7 @@ list(
     run_c2_error_analysis(
       c2b_codebook, c2_s2_results,
       model = "claude-haiku-4-5-20251001",
-      max_tokens_c2b = 1024,
+      max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")

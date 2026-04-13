@@ -99,7 +99,9 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
         chunk_id = chunk_id,
         doc_id = doc_id,
         text = text,
-        tier = tier
+        tier = tier,
+        discusses_motivation = if ("discusses_motivation" %in% names(dplyr::cur_data()))
+          discusses_motivation else NA
       )),
       n_chunks = dplyr::n(),
       .groups = "drop"
@@ -136,7 +138,349 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
 
 
 # =============================================================================
-# Composed Runner (C2a → C2b)
+# Split Runner: C2a extraction + C2b classification (preferred)
+# =============================================================================
+
+#' Run C2a evidence extraction on all chunks
+#'
+#' Extracts motivation evidence from each chunk independently. Returns a
+#' chunk-level tibble that can be filtered (e.g., by discusses_motivation)
+#' before feeding into run_c2b_classification().
+#'
+#' @param c2a_codebook Parsed C2a codebook (evidence extraction)
+#' @param c2_s2_test_set Tibble from assemble_c2_s2_test_set() with nested chunks
+#' @param model Character model ID
+#' @param max_tokens_c2a Integer max output tokens for C2a (default 4096)
+#' @param max_retries Integer retries on validation failure (default 1)
+#' @param show_progress Logical show progress messages (default TRUE)
+#' @param provider Character API provider (default "anthropic")
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return Tibble with one row per chunk: chunk_id, act_name, year,
+#'   discusses_motivation, evidence (list-col), enacted_signals (list-col),
+#'   c2a_valid (logical), c2a_failure_reason (character|NA)
+#' @export
+run_c2a_extraction <- function(c2a_codebook,
+                               c2_s2_test_set,
+                               model = "claude-haiku-4-5-20251001",
+                               max_tokens_c2a = 4096,
+                               max_retries = 1,
+                               show_progress = TRUE,
+                               provider = "anthropic",
+                               base_url = NULL,
+                               api_key = NULL) {
+
+  c2a_system <- construct_codebook_prompt(c2a_codebook)
+
+  # Unnest to flat chunk tibble
+  flat <- c2_s2_test_set |>
+    tidyr::unnest(chunks) |>
+    dplyr::select(chunk_id, act_name, year, doc_id, text, tier,
+                  dplyr::any_of("discusses_motivation"))
+
+  n_chunks <- nrow(flat)
+  message(sprintf("C2a extraction: %d chunks across %d acts",
+                  n_chunks, dplyr::n_distinct(flat$act_name)))
+
+  results <- purrr::map_dfr(seq_len(n_chunks), function(j) {
+    chunk <- flat[j, ]
+
+    if (show_progress) {
+      message(sprintf(
+        "  C2a chunk %d/%d [%s] chunk_id=%s",
+        j, n_chunks, chunk$act_name, chunk$chunk_id
+      ))
+    }
+
+    user_msg <- format_c2a_input(
+      text = chunk$text,
+      act_name = chunk$act_name,
+      year = chunk$year
+    )
+
+    c2a_result <- tryCatch({
+      parsed <- call_codebook_generic(
+        user_message = user_msg,
+        codebook = c2a_codebook,
+        model = model,
+        system_prompt = c2a_system,
+        max_tokens = max_tokens_c2a,
+        temperature = 0,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
+      )
+      validation <- validate_c2a_output(parsed)
+      if (!validation$valid) {
+        list(valid = FALSE, reason = validation$reason, parsed = parsed)
+      } else {
+        list(valid = TRUE, parsed = parsed)
+      }
+    }, error = function(e) {
+      list(valid = FALSE, reason = e$message, parsed = NULL)
+    })
+
+    # Retry on failure
+    if (!c2a_result$valid && max_retries >= 1) {
+      c2a_result <- tryCatch({
+        parsed <- call_codebook_generic(
+          user_message = user_msg,
+          codebook = c2a_codebook,
+          model = model,
+          system_prompt = c2a_system,
+          max_tokens = max_tokens_c2a,
+          temperature = 0,
+          provider = provider,
+          base_url = base_url,
+          api_key = api_key
+        )
+        validation <- validate_c2a_output(parsed)
+        if (!validation$valid) {
+          list(valid = FALSE, reason = validation$reason, parsed = parsed)
+        } else {
+          list(valid = TRUE, parsed = parsed)
+        }
+      }, error = function(e) {
+        list(valid = FALSE, reason = e$message, parsed = NULL)
+      })
+    }
+
+    if (!c2a_result$valid) {
+      warning(sprintf(
+        "C2a validation failed for [%s] chunk_id=%s: %s",
+        chunk$act_name, chunk$chunk_id,
+        c2a_result$reason %||% "unknown"
+      ))
+    }
+
+    tibble::tibble(
+      chunk_id = chunk$chunk_id,
+      act_name = chunk$act_name,
+      year = chunk$year,
+      discusses_motivation = if ("discusses_motivation" %in% names(chunk))
+        chunk$discusses_motivation else NA,
+      evidence = list(
+        if (c2a_result$valid) c2a_result$parsed$evidence %||% list() else list()
+      ),
+      enacted_signals = list(
+        if (c2a_result$valid) c2a_result$parsed$enacted_signals %||% list() else list()
+      ),
+      c2a_valid = c2a_result$valid,
+      c2a_failure_reason = if (!c2a_result$valid) c2a_result$reason %||% "unknown"
+                           else NA_character_
+    )
+  })
+
+  n_valid <- sum(results$c2a_valid)
+  n_failed <- sum(!results$c2a_valid)
+  message(sprintf(
+    "C2a extraction complete: %d/%d valid, %d failed",
+    n_valid, n_chunks, n_failed
+  ))
+
+  results
+}
+
+
+#' Run C2b act-level classification from pre-extracted C2a evidence
+#'
+#' Aggregates chunk-level C2a evidence by act, then runs C2b classification.
+#' Accepts pre-filtered c2a_results (e.g., filtered to discusses_motivation == TRUE
+#' for the primary condition).
+#'
+#' @param c2b_codebook Parsed C2b codebook (motivation classification)
+#' @param c2a_results Tibble from run_c2a_extraction(), potentially pre-filtered
+#' @param test_set Tibble from assemble_c2_s2_test_set() with ground truth
+#' @param model Character model ID
+#' @param max_tokens_c2b Integer max output tokens for C2b (default 4096)
+#' @param max_retries Integer retries on validation failure (default 1)
+#' @param show_progress Logical show progress messages (default TRUE)
+#' @param provider Character API provider (default "anthropic")
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return Tibble with one row per act (same schema as run_c2_zero_shot output)
+#' @export
+run_c2b_classification <- function(c2b_codebook,
+                                   c2a_results,
+                                   test_set,
+                                   model = "claude-haiku-4-5-20251001",
+                                   max_tokens_c2b = 4096,
+                                   max_retries = 1,
+                                   show_progress = TRUE,
+                                   provider = "anthropic",
+                                   base_url = NULL,
+                                   api_key = NULL) {
+
+  c2b_system <- construct_codebook_prompt(c2b_codebook)
+  c2b_labels <- get_valid_labels(c2b_codebook)
+
+  # Aggregate C2a evidence by act
+  act_evidence <- c2a_results |>
+    dplyr::group_by(act_name, year) |>
+    dplyr::summarize(
+      all_evidence = list(unlist(evidence, recursive = FALSE)),
+      all_enacted = list(unlist(enacted_signals, recursive = FALSE)),
+      n_chunks = dplyr::n(),
+      n_c2a_failures = sum(!c2a_valid),
+      .groups = "drop"
+    )
+
+  # Join ground truth from test_set (only acts present in both)
+  combined <- act_evidence |>
+    dplyr::inner_join(
+      test_set |> dplyr::select(act_name, true_motivation, true_exogenous),
+      by = "act_name"
+    )
+
+  n_acts <- nrow(combined)
+  message(sprintf("C2b classification: %d acts", n_acts))
+
+  results <- purrr::map_dfr(seq_len(n_acts), function(i) {
+    act <- combined[i, ]
+    all_evidence <- act$all_evidence[[1]]
+    all_enacted <- act$all_enacted[[1]]
+
+    if (show_progress) {
+      message(sprintf(
+        "  C2b act %d/%d [%s] — %d evidence items, %d enacted signals",
+        i, n_acts, act$act_name, length(all_evidence), length(all_enacted)
+      ))
+    }
+
+    # ------ C2b: classify from aggregated evidence ------
+    c2b_parsed <- NULL
+    c2b_valid <- FALSE
+
+    for (attempt in seq_len(1 + max_retries)) {
+      c2b_result <- tryCatch({
+        user_msg_b <- format_c2b_input(
+          act_name = act$act_name,
+          year = act$year,
+          evidence = all_evidence,
+          enacted_signals = all_enacted
+        )
+        parsed <- call_codebook_generic(
+          user_message = user_msg_b,
+          codebook = c2b_codebook,
+          model = model,
+          system_prompt = c2b_system,
+          max_tokens = max_tokens_c2b,
+          temperature = 0,
+          provider = provider,
+          base_url = base_url,
+          api_key = api_key
+        )
+        validation <- validate_c2b_output(parsed, c2b_labels)
+        if (!validation$valid) {
+          list(valid = FALSE, reason = validation$reason, parsed = parsed)
+        } else {
+          list(valid = TRUE, parsed = parsed)
+        }
+      }, error = function(e) {
+        list(valid = FALSE, reason = e$message, parsed = NULL)
+      })
+
+      if (c2b_result$valid) {
+        c2b_parsed <- c2b_result$parsed
+        c2b_valid <- TRUE
+        break
+      }
+    }
+
+    if (!c2b_valid) {
+      warning(sprintf(
+        "C2b validation failed for [%s] after %d attempts: %s",
+        act$act_name, 1 + max_retries,
+        c2b_result$reason %||% "unknown"
+      ))
+    }
+
+    # ------ Collapse motivations[] to single label ------
+    pred_motivation <- NA_character_
+    pred_exogenous <- NA
+    enacted <- NA
+    confidence <- NA_character_
+    reasoning <- NA_character_
+    motivations_raw <- list(NULL)
+    multiple_dominant <- FALSE
+    no_dominant <- FALSE
+
+    if (c2b_valid && !is.null(c2b_parsed)) {
+      motivations <- c2b_parsed$motivations %||% list()
+      motivations_raw <- list(motivations)
+      enacted <- c2b_parsed$enacted %||% NA
+      pred_exogenous <- c2b_parsed$exogenous %||% NA
+      confidence <- c2b_parsed$confidence %||% NA_character_
+      reasoning <- c2b_parsed$reasoning %||% NA_character_
+
+      if (length(motivations) > 0) {
+        shares <- vapply(motivations, function(m) m$share %||% "", character(1))
+
+        sole_idx <- which(shares == "sole")
+        dominant_idx <- which(shares == "dominant")
+
+        if (length(sole_idx) >= 1) {
+          pred_motivation <- motivations[[sole_idx[1]]]$category
+        } else if (length(dominant_idx) == 1) {
+          pred_motivation <- motivations[[dominant_idx[1]]]$category
+        } else if (length(dominant_idx) > 1) {
+          multiple_dominant <- TRUE
+          pred_motivation <- motivations[[dominant_idx[1]]]$category
+          warning(sprintf(
+            "Multiple 'dominant' motivations for [%s]: %s",
+            act$act_name,
+            paste(vapply(motivations[dominant_idx],
+                         function(m) m$category, character(1)),
+                  collapse = ", ")
+          ))
+        } else {
+          no_dominant <- TRUE
+          pred_motivation <- motivations[[1]]$category
+          warning(sprintf(
+            "No 'dominant' or 'sole' motivation for [%s], using first: %s",
+            act$act_name, pred_motivation
+          ))
+        }
+      }
+    }
+
+    tibble::tibble(
+      act_name = act$act_name,
+      year = act$year,
+      true_motivation = act$true_motivation,
+      true_exogenous = act$true_exogenous,
+      pred_motivation = pred_motivation,
+      pred_exogenous = pred_exogenous,
+      enacted = enacted,
+      confidence = confidence,
+      motivations_raw = motivations_raw,
+      evidence_raw = list(all_evidence),
+      enacted_signals_raw = list(all_enacted),
+      c2b_raw_response = if (c2b_valid) c2b_parsed$raw_response else NA_character_,
+      reasoning = reasoning,
+      n_chunks = act$n_chunks,
+      n_evidence_items = length(all_evidence),
+      n_c2a_failures = act$n_c2a_failures,
+      multiple_dominant = multiple_dominant,
+      no_dominant = no_dominant
+    )
+  })
+
+  message(sprintf(
+    "\nC2b classification complete: %d acts, %d valid predictions, %d NA predictions",
+    nrow(results),
+    sum(!is.na(results$pred_motivation)),
+    sum(is.na(results$pred_motivation))
+  ))
+
+  results
+}
+
+
+# =============================================================================
+# Composed Runner (C2a → C2b) — DEPRECATED
+# Use run_c2a_extraction() + run_c2b_classification() instead.
+# Kept for reference and backward compatibility with cached targets.
 # =============================================================================
 
 #' Run C2 zero-shot evaluation (composed C2a→C2b pipeline)
