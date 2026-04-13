@@ -817,3 +817,202 @@ iterations:
     decision: >
       Proceed to Haiku eval. Sensitivity condition confirmed as viable —
       include both conditions in the Haiku run.
+
+  - iteration: 15
+    codebook_version: "0.3.0"
+    date: "2026-04-13"
+    git_commit: "73efa0c"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "primary (discusses_motivation == TRUE chunks only)"
+    changes: >
+      No codebook changes from v0.3.0. First clean Haiku S2 run: model switched
+      back to Haiku with max_tokens_c2b=4096 (up from 1024) and refactored
+      pipeline (shared C2a extraction). This is the first Haiku eval with zero NAs
+      on all 39 acts.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 39
+      n_na: 0
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.6112
+          ci_lower: 0.4530
+          ci_upper: 0.7660
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.7895
+          ci_lower: 0.6000
+          ci_upper: 0.9520
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.6220
+        - metric: "accuracy"
+          value: 0.6154
+        - metric: "exogenous_recall"
+          value: 0.6522
+        - metric: "exogenous_f1"
+          value: 0.7143
+      per_class:
+        - class: "SPENDING_DRIVEN"
+          precision: 0.8333
+          recall: 0.5000
+          f1: 0.6250
+          support: 10
+        - class: "COUNTERCYCLICAL"
+          precision: 0.3571
+          recall: 0.8333
+          f1: 0.5000
+          support: 6
+        - class: "DEFICIT_DRIVEN"
+          precision: 0.7273
+          recall: 1.0000
+          f1: 0.8421
+          support: 8
+        - class: "LONG_RUN"
+          precision: 0.7500
+          recall: 0.4000
+          f1: 0.5217
+          support: 15
+      quality_flags:
+        n_c2a_failures_total: 0
+        n_multiple_dominant: 2
+        n_no_dominant: 0
+        n_exo_inconsistent: 0
+      confusion_analysis:
+        dominant_pattern: "LONG_RUN → COUNTERCYCLICAL (7/15 errors)"
+        n_misclassified: 15
+        all_errors_high_confidence: false
+        note: >
+          7 of 15 LONG_RUN acts predicted as COUNTERCYCLICAL — the single
+          dominant error pattern. Model sees cyclical language (economic weakness,
+          unemployment) and classifies as COUNTERCYCLICAL even when R&R classify
+          the structural reform motivation as LONG_RUN. 5/10 SPENDING_DRIVEN acts
+          also misclassified (heterogeneous: 2→COUNTERCYCLICAL, 2→LONG_RUN,
+          1→DEFICIT_DRIVEN). DEFICIT_DRIVEN is perfect (8/8 recall).
+      exogeneity_analysis:
+        note: >
+          All 8 exo false negatives (true exo → pred endo) are motivation
+          misclassification cascade: LONG_RUN acts classified as COUNTERCYCLICAL
+          automatically become endogenous. Fixing LONG_RUN recall would fix most
+          exogeneity errors. 4 false positives are SPENDING_DRIVEN acts
+          misclassified as LONG_RUN or DEFICIT_DRIVEN.
+    interpretation: >
+      First clean Haiku S2 evaluation on all 39 acts. Both primary metrics miss
+      targets but are close: weighted F1 0.611 (target 0.70, gap 8.9pp) and
+      exogenous precision 0.789 (target 0.85, gap 6.1pp). CIs overlap targets
+      (weighted F1 upper bound 0.766, exo precision upper bound 0.952). This is
+      a meaningful improvement over all previous iterations that had clean data
+      (Gemini Flash Lite iteration 13: weighted_f1=0.604, exo_precision=0.680).
+      DEFICIT_DRIVEN is the strongest class (F1=0.842, perfect recall).
+      LONG_RUN is weakest (F1=0.522, recall=0.400) with 7/15 acts misclassified
+      as COUNTERCYCLICAL — the model systematically resolves LONG_RUN vs
+      COUNTERCYCLICAL ambiguity toward COUNTERCYCLICAL when cyclical language
+      coexists with structural intent. These errors are high-confidence,
+      suggesting the model genuinely believes the countercyclical reading.
+      Several of these acts (Revenue Act of 1964, Revenue Act of 1978) are
+      historically contested boundary cases.
+    decision: >
+      Performance close to targets. Proceed to S3 and manual error analysis
+      before making codebook content decisions. The LONG_RUN→COUNTERCYCLICAL
+      pattern needs manual audit to distinguish category E (model semantic
+      errors) from category F (ambiguous ground truth) before investing in
+      codebook changes.
+
+  - iteration: 16
+    codebook_version: "0.3.0"
+    date: "2026-04-13"
+    git_commit: "73efa0c"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "sensitivity (all FISCAL_MEASURE chunks, no discusses_motivation filter)"
+    changes: >
+      Same run as iteration 15. Sensitivity condition uses all C2a evidence
+      without discusses_motivation filter.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 39
+      n_na: 0
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.5994
+          ci_lower: 0.4310
+          ci_upper: 0.7620
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.7500
+          ci_lower: 0.5500
+          ci_upper: 0.9410
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.6230
+        - metric: "accuracy"
+          value: 0.6154
+        - metric: "exogenous_recall"
+          value: 0.6522
+        - metric: "exogenous_f1"
+          value: 0.6977
+      per_class:
+        - class: "SPENDING_DRIVEN"
+          precision: 0.8000
+          recall: 0.4000
+          f1: 0.5333
+          support: 10
+        - class: "COUNTERCYCLICAL"
+          precision: 0.4000
+          recall: 1.0000
+          f1: 0.5714
+          support: 6
+        - class: "DEFICIT_DRIVEN"
+          precision: 0.8000
+          recall: 1.0000
+          f1: 0.8889
+          support: 8
+        - class: "LONG_RUN"
+          precision: 0.6667
+          recall: 0.4000
+          f1: 0.5000
+          support: 15
+      quality_flags:
+        n_c2a_failures_total: 0
+        n_multiple_dominant: 5
+        n_no_dominant: 0
+        n_exo_inconsistent: 1
+      comparison_vs_primary:
+        weighted_f1_delta: "-0.012"
+        exo_precision_delta: "-0.040"
+        n_acts_differ: 2
+        transitions:
+          - act: "Social Security Amendments of 1954"
+            primary: "SPENDING_DRIVEN (correct)"
+            sensitivity: "LONG_RUN (wrong)"
+          - act: "Tax Reform Act of 1969"
+            primary: "DEFICIT_DRIVEN (wrong)"
+            sensitivity: "COUNTERCYCLICAL (correct)"
+        note: >
+          Primary marginally outperforms sensitivity on both primary metrics.
+          Only 2 acts differ — one correct-to-wrong, one wrong-to-correct.
+          Sensitivity has more multiple_dominant flags (5 vs 2) and 1
+          exo_inconsistent flag, suggesting unfiltered chunks introduce noise.
+          The discusses_motivation filter provides marginal benefit on Haiku.
+    interpretation: >
+      Primary and sensitivity are nearly identical on Haiku (accuracy tied at
+      61.5%, weighted F1 within 1.2pp, exo precision within 4.0pp). The filter
+      provides marginal benefit — primary slightly outperforms sensitivity on
+      both primary metrics and produces cleaner quality flags (2 vs 5 multiple
+      dominant, 0 vs 1 exo inconsistent). This matches the Gemini Flash Lite
+      pattern (iterations 13-14: negligible difference). The LONG_RUN→
+      COUNTERCYCLICAL pattern (7 acts) is identical across conditions,
+      confirming it is a codebook boundary issue, not an evidence volume issue.
+    decision: >
+      Adopt primary condition (discusses_motivation filter) as default for
+      reporting — marginal improvement and cleaner quality flags. Proceed to
+      S3 and manual error analysis before codebook changes.

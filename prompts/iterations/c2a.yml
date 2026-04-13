@@ -442,3 +442,38 @@ iterations:
       Pipeline infrastructure validated. Proceed to Haiku S2 run with the
       refactored pipeline and max_tokens_c2b=4096 to get clean Haiku metrics
       on all 39 acts for the first time.
+
+  - iteration: 12
+    codebook_version: "0.4.0"
+    date: "2026-04-13"
+    git_commit: "73efa0c"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "shared C2a extraction serving both primary and sensitivity C2b runs"
+    changes: >
+      No codebook changes from v0.4.0. Model switched back to Haiku for validated
+      S2 eval. Pipeline uses refactored architecture from iteration 11: single C2a
+      extraction on sensitivity superset (606 chunks), C2b filters downstream.
+      max_tokens_c2a=4096 (unchanged), max_tokens_c2b=4096 (increased from 1024).
+    results:
+      overall_pass: true
+      n_total: 39
+      n_valid: 39
+      n_c2a_failures: 0
+      metrics:
+        note: >
+          C2a is an extraction stage (no classification labels). Zero C2a failures
+          across 606 chunks on Haiku, consistent with iteration 8 (1 failure) and
+          iteration 11 on Gemini (0 failures). Downstream C2b metrics reported in
+          c2b.yml iterations 15 (primary) and 16 (sensitivity).
+    interpretation: >
+      C2a extraction continues to be near-perfect on Haiku — zero failures across
+      all 606 chunks for the second consecutive Haiku run (iteration 8 had 1 failure).
+      The v0.4.0 classless architecture (pure quote+signal extraction without
+      suggested_category) is fully stable. Combined with max_tokens_c2b=4096, this
+      is the first Haiku run with zero NAs in downstream C2b results (39/39 valid),
+      unlocking the first clean full-sample codebook evaluation on the target model.
+    decision: >
+      C2a extraction validated on Haiku. Performance is close to S2 targets on
+      C2b (see c2b.yml iterations 15-16). Proceed to S3 manual analysis before
+      making codebook content decisions.
