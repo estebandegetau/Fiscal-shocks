@@ -667,3 +667,153 @@ iterations:
       pipeline to share C2a extraction results between baseline and sensitivity
       conditions (currently calling C2a twice on overlapping chunks). Defer
       codebook changes until clean Haiku metrics are available on all 39 acts.
+
+  - iteration: 13
+    codebook_version: "0.3.0"
+    date: "2026-04-13"
+    git_commit: "04060e1"
+    model: "google/gemini-3.1-flash-lite-preview"
+    stage: "s2"
+    condition: "primary (discusses_motivation == TRUE chunks only)"
+    changes: >
+      No codebook changes from v0.3.0. Pipeline refactored: C2a runs once on
+      sensitivity superset, C2b filters to discusses_motivation chunks
+      downstream. max_tokens_c2b increased from 1024 to 4096. Model switched
+      to Gemini 3.1 Flash Lite via OpenRouter for exploratory pipeline validation.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 39
+      n_na: 0
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.6036
+          ci_lower: 0.4426
+          ci_upper: 0.7580
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.6800
+          ci_lower: 0.5000
+          ci_upper: 0.8519
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.6234
+          ci_lower: 0.4705
+          ci_upper: 0.7528
+        - metric: "accuracy"
+          value: 0.6154
+          ci_lower: 0.4615
+          ci_upper: 0.7436
+        - metric: "exogenous_recall"
+          value: 0.7391
+          ci_lower: 0.5417
+          ci_upper: 0.9091
+        - metric: "exogenous_f1"
+          value: 0.7083
+          ci_lower: 0.5453
+          ci_upper: 0.8333
+      per_class:
+        - class: "SPENDING_DRIVEN"
+          precision: 0.6670
+          recall: 0.4000
+          f1: 0.5000
+          support: 10
+        - class: "COUNTERCYCLICAL"
+          precision: 0.5000
+          recall: 0.6670
+          f1: 0.5710
+          support: 6
+        - class: "DEFICIT_DRIVEN"
+          precision: 0.8000
+          recall: 1.0000
+          f1: 0.8890
+          support: 8
+        - class: "LONG_RUN"
+          precision: 0.5330
+          recall: 0.5330
+          f1: 0.5330
+          support: 15
+      quality_flags:
+        n_c2a_failures_total: 0
+        n_multiple_dominant: 0
+        n_no_dominant: 0
+        n_exo_inconsistent: 0
+      error_summary:
+        n_misclassified: 15
+        dominant_confusion: "LONG_RUN boundaries (12/15 errors)"
+        all_errors_high_confidence: true
+    interpretation: >
+      Refactored pipeline produces valid results on all 39 acts — zero NAs,
+      confirming the max_tokens_c2b=4096 fix resolves the truncation issue from
+      iteration 12 (56% NA rate on Haiku). Gemini 3.1 Flash Lite's metrics are
+      exploratory (non-Anthropic model, not reportable as H&K validation).
+      Weighted F1=0.604 and exogenous precision=0.680 both below targets but
+      represent the first clean full-sample evaluation. DEFICIT_DRIVEN is the
+      strongest class (F1=0.889, perfect recall). LONG_RUN remains weakest
+      (F1=0.533) with 7 boundary errors against COUNTERCYCLICAL (4) and
+      SPENDING_DRIVEN (3). All 15 errors are HIGH confidence — the model
+      confidently misapplies boundary rules, not hedging on ambiguous cases.
+    decision: >
+      Pipeline infrastructure validated. Proceed to Haiku S2 run with
+      max_tokens_c2b=4096 to get clean Haiku metrics for codebook evaluation.
+
+  - iteration: 14
+    codebook_version: "0.3.0"
+    date: "2026-04-13"
+    git_commit: "04060e1"
+    model: "google/gemini-3.1-flash-lite-preview"
+    stage: "s2"
+    condition: "sensitivity (all FISCAL_MEASURE chunks, no discusses_motivation filter)"
+    changes: >
+      Same run as iteration 13. Sensitivity condition uses all C2a evidence
+      without discusses_motivation filter.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 39
+      n_na: 0
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.6038
+          ci_lower: 0.4299
+          ci_upper: 0.7615
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.6786
+          ci_lower: 0.5000
+          ci_upper: 0.8335
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.6044
+        - metric: "accuracy"
+          value: 0.6154
+        - metric: "exogenous_recall"
+          value: 0.8261
+        - metric: "exogenous_f1"
+          value: 0.7451
+      quality_flags:
+        n_exo_inconsistent: 1
+      comparison_vs_primary:
+        weighted_f1_delta: "+0.000"
+        exo_precision_delta: "-0.001"
+        exo_recall_delta: "+0.087"
+        note: >
+          Primary and sensitivity conditions produce near-identical results.
+          The discusses_motivation filter has negligible effect on classification
+          outcomes. One exo_inconsistent flag in sensitivity (not in primary).
+    interpretation: >
+      Sensitivity and primary conditions are effectively equivalent on Gemini
+      3.1 Flash Lite. The discusses_motivation filter neither helps nor hurts —
+      additional non-motivation chunks add noise-free evidence that doesn't
+      change C2b's classification. This is a positive signal: the pipeline is
+      robust to the sensitivity condition. The one exo_inconsistent flag
+      warrants investigation on Haiku but is immaterial for pipeline validation.
+    decision: >
+      Proceed to Haiku eval. Sensitivity condition confirmed as viable —
+      include both conditions in the Haiku run.
