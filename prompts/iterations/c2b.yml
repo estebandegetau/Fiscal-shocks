@@ -1123,3 +1123,455 @@ iterations:
       metrics suggest. If category E, two paths: (1) desemantify label names
       (M1-M4) to force definition-following, or (2) upgrade to a larger
       model (Sonnet) that can execute multi-step boundary reasoning.
+
+  - iteration: 18
+    codebook_version: "0.3.0"
+    date: "2026-04-14"
+    git_commit: "4354666"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3_manual_analysis"
+    changes: >
+      Manual error analysis of S2 baseline predictions (39 acts) using H&K
+      6-category framework (A-F). No codebook changes. All 39 acts inspected
+      collaboratively: Claude pre-screened, human reviewed each mismatch with
+      R&R's published reasoning as ground truth reference.
+    results:
+      n_inspected: 39
+      category_distribution:
+        - category: "A_llm_correct"
+          count: 24
+          pct: 61.5
+        - category: "B_incorrect_gold"
+          count: 0
+          pct: 0.0
+        - category: "C_document_error"
+          count: 2
+          pct: 5.1
+        - category: "D_non_compliance"
+          count: 0
+          pct: 0.0
+        - category: "E_semantics_reasoning"
+          count: 3
+          pct: 7.7
+        - category: "F_other"
+          count: 10
+          pct: 25.6
+      act_judgments:
+        - act_id: 1
+          act_name: "Changes in Depreciation Guidelines and Revenue Act of 1962"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: ""
+        - act_id: 2
+          act_name: "Crude Oil Windfall Profit Tax Act of 1980"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: ""
+        - act_id: 3
+          act_name: "Deficit Reduction Act of 1984"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 4
+          act_name: "Economic Growth and Tax Relief Reconciliation Act of 2001"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: ""
+        - act_id: 5
+          act_name: "Economic Recovery Tax Act of 1981"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: ""
+        - act_id: 6
+          act_name: "Excess Profits Tax Act of 1950"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 7
+          act_name: "Excise Tax Reduction Act of 1954"
+          true: "SPENDING_DRIVEN"
+          pred: "LONG_RUN"
+          category: "E"
+          notes: >
+            Model had sufficient evidence and clear instructions (codebook
+            defines SPENDING_DRIVEN as "offset" spending changes) but let
+            structural reform language volume override explicit causal link
+            to spending reductions. Evidence 48: reductions "justified only
+            because of reductions in proposed expenditures."
+        - act_id: 8
+          act_name: "Excise Tax Reduction Act of 1965"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: ""
+        - act_id: 9
+          act_name: "Expiration of Excess Profits Tax and of Temporary Income Tax Increases"
+          true: "SPENDING_DRIVEN"
+          pred: "COUNTERCYCLICAL"
+          category: "E"
+          notes: >
+            Same pattern as act 7: spending-offset evidence present but
+            countercyclical language volume dominated. Low consequentiality
+            (both SPENDING_DRIVEN and COUNTERCYCLICAL are endogenous).
+        - act_id: 10
+          act_name: "Federal-Aid Highway Act of 1956"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 11
+          act_name: "Federal-Aid Highway Act of 1959"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 12
+          act_name: "Job Creation and Worker Assistance Act of 2002"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: ""
+        - act_id: 13
+          act_name: "Jobs and Growth Tax Relief Reconciliation Act of 2003"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Codebook lacks guidance on: (1) ambiguous cyclical language
+            ("spur recovery" vs explicit output gap), (2) weighing provision
+            structure vs stated framing, (3) multi-actor motivation analysis
+            (administration vs Congress). RR concluded "push growth above
+            normal" from nuanced reading model could not replicate.
+        - act_id: 14
+          act_name: "Omnibus Budget Reconciliation Act of 1987"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 15
+          act_name: "Omnibus Budget Reconciliation Act of 1990"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 16
+          act_name: "Omnibus Budget Reconciliation Act of 1993"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 17
+          act_name: "Public Law 89-800 (Suspension of Investment Tax Credit)"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: ""
+        - act_id: 18
+          act_name: "Public Law 90-26 (Restoration of the Investment Tax Credit)"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Codebook lacks distinction between restoring a structural policy
+            to its baseline (LONG_RUN) vs stimulating the economy because
+            conditions weakened (COUNTERCYCLICAL). Return-to-normal test
+            ambiguous about economic conditions vs policy stance. Frequency
+            rule disadvantages LONG_RUN when suspension-era language dominates.
+        - act_id: 19
+          act_name: "Revenue Act of 1945"
+          true: "SPENDING_DRIVEN"
+          pred: "COUNTERCYCLICAL"
+          category: "E"
+          notes: >
+            Same pattern as acts 7 and 9: post-WWII spending decline caused
+            the tax cut, but model picked COUNTERCYCLICAL from economic
+            transition framing. Low consequentiality (both endogenous).
+        - act_id: 20
+          act_name: "Revenue Act of 1948"
+          true: "LONG_RUN"
+          pred: "SPENDING_DRIVEN"
+          category: "F"
+          notes: >
+            Corpus lacks congressional documents (committee reports, floor
+            speeches) that RR relied on for this veto-override act. Codebook
+            lacks guidance on executive-vs-congressional motivation conflicts.
+            Low priority: only veto-override act in the dataset.
+        - act_id: 21
+          act_name: "Revenue Act of 1950"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 22
+          act_name: "Revenue Act of 1964"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Classic boundary case (Kennedy tax cut). Codebook's return-to-
+            normal test is too literal; doesn't distinguish "closing output
+            gap via structural reform" (LONG_RUN) from "closing output gap
+            via demand management" (COUNTERCYCLICAL). Model found the key
+            quote ("prime purpose...long-range stimulation...permanently
+            higher levels") but lacked instructions to read through rhetorical
+            framing to underlying policy intent.
+        - act_id: 23
+          act_name: "Revenue Act of 1971"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Same systematic pattern: model correctly identified dual structure
+            but frequency rule + literal return-to-normal test favored
+            COUNTERCYCLICAL over provision-level structural intent. RR
+            concluded "push growth above normal."
+        - act_id: 24
+          act_name: "Revenue Act of 1978"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Same systematic pattern. Model saw "continued recovery" and
+            "reduction in unemployment" as countercyclical. RR saw structural
+            investment incentives and capital formation goals.
+        - act_id: 25
+          act_name: "Revenue and Expenditure Control Act of 1968"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: ""
+        - act_id: 26
+          act_name: "Social Security Amendments of 1950"
+          true: "SPENDING_DRIVEN"
+          pred: "LONG_RUN"
+          category: "C"
+          notes: >
+            Zero evidence items from 1 chunk. Pipeline failed to extract
+            motivation evidence for this act. Model classified blind.
+        - act_id: 27
+          act_name: "Social Security Amendments of 1954"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 28
+          act_name: "Social Security Amendments of 1965"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 29
+          act_name: "Social Security Amendments of 1977"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 30
+          act_name: "Social Security Amendments of 1983"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 31
+          act_name: "Tax Adjustment Act of 1966"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Novel codebook gap: RR's classification depends on cross-act
+            consistency (offsetting a prior exogenous excise tax cut), not on
+            this act's evidence alone. Codebook treats acts independently.
+            Low priority edge case — don't redesign around it.
+        - act_id: 32
+          act_name: "Tax Equity and Fiscal Responsibility Act of 1982"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: ""
+        - act_id: 33
+          act_name: "Tax Rate Extension Act of 1958"
+          true: "LONG_RUN"
+          pred: "DEFICIT_DRIVEN"
+          category: "F"
+          notes: >
+            Thin evidence (2 chunks, 8 items), likely missing congressional
+            debate on freight excise repeal for railroads. Codebook lacks
+            guidance on distinguishing status-quo preservation (rate extension)
+            from active policy change (excise repeal).
+        - act_id: 34
+          act_name: "Tax Reduction Act of 1975"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: ""
+        - act_id: 35
+          act_name: "Tax Reduction and Simplification Act of 1977"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Codebook doesn't capture that deliberately overshooting normal
+            growth to reduce unemployment is LONG_RUN in RR's framework,
+            even via demand-side channels. RR: "designed to raise growth
+            above normal and reduce the unemployment rate."
+        - act_id: 36
+          act_name: "Tax Reform Act of 1969"
+          true: "COUNTERCYCLICAL"
+          pred: "DEFICIT_DRIVEN"
+          category: "F"
+          notes: >
+            Codebook doesn't clearly distinguish inflation-fighting fiscal
+            restraint (COUNTERCYCLICAL) from inherited deficit reduction
+            (DEFICIT_DRIVEN). Model also misapplied 1-year temporal rule to
+            inflation context rather than fiscal deficit context.
+        - act_id: 37
+          act_name: "Tax Reform Act of 1976"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: ""
+        - act_id: 38
+          act_name: "Tax Reform Act of 1986"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: ""
+        - act_id: 39
+          act_name: "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997"
+          true: "SPENDING_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "C"
+          notes: >
+            Insufficient documentary support for RR's spending-driven
+            classification in the evidence the model received.
+      bias_corrected_metrics:
+        effective_n: 37
+        effective_accuracy: 0.6486
+        e_error_rate: 0.0811
+        f_error_rate: 0.2703
+      error_pattern_summary:
+        pattern_1_long_run_to_countercyclical:
+          count: 7
+          category: "F"
+          acts: [13, 18, 22, 23, 24, 31, 35]
+          root_cause: >
+            Return-to-normal test too literal; frequency-based decision rule
+            systematically favors COUNTERCYCLICAL when cyclical language
+            coexists with structural intent. Codebook lacks: provision-level
+            analysis, multi-actor motivation separation, "push above normal"
+            vs "return to normal" disambiguation.
+        pattern_2_spending_offset:
+          count: 3
+          category: "E"
+          acts: [7, 9, 19]
+          root_cause: >
+            Model had adequate codebook definitions ("offset...spending
+            changes") and explicit causal evidence but let countercyclical
+            or structural language volume override the causal spending link.
+        pattern_3_document_gaps:
+          count: 2
+          category: "C"
+          acts: [26, 39]
+          root_cause: >
+            Pipeline failed to extract sufficient motivation evidence.
+            Act 26 had zero evidence items; act 39 lacked documentary support
+            for the spending-driven classification.
+        pattern_4_miscellaneous_f:
+          count: 3
+          category: "F"
+          acts: [20, 33, 36]
+          root_cause: >
+            Three distinct codebook gaps: (a) act 20 — corpus lacks
+            congressional data for veto-override act, only case in dataset;
+            (b) act 33 — codebook lacks status-quo-preservation vs active-
+            policy-change distinction; (c) act 36 — codebook doesn't
+            distinguish inflation-fighting restraint from deficit reduction.
+      codebook_gaps_identified:
+        - gap: "return_to_normal_too_literal"
+          severity: "high"
+          affected_acts: 7
+          description: >
+            The return-to-normal test does not distinguish: (a) closing an
+            output gap via structural reform (LONG_RUN) vs demand management
+            (COUNTERCYCLICAL); (b) restoring a structural policy to baseline
+            (LONG_RUN) vs cyclical stimulus; (c) deliberately overshooting
+            normal growth to reduce unemployment (LONG_RUN in RR). RR reads
+            through rhetorical framing to underlying policy intent; the
+            codebook takes policymaker language at face value.
+        - gap: "frequency_rule_disadvantages_long_run"
+          severity: "high"
+          affected_acts: 7
+          description: >
+            "Most frequently cited" decision rule systematically favors
+            COUNTERCYCLICAL because cyclical language fills more space in
+            budget documents than structural intent statements. Provision
+            structure should be weighed alongside stated framing.
+        - gap: "no_provision_level_analysis"
+          severity: "medium"
+          affected_acts: 5
+          description: >
+            Codebook instructs act-level classification but RR often
+            classifies based on the character of specific provisions
+            (permanent rate changes = LONG_RUN even if enacted during
+            weakness). Guidance needed on weighing provision structure
+            vs stated timing rationale.
+        - gap: "inflation_fighting_vs_deficit_reduction"
+          severity: "low"
+          affected_acts: 1
+          description: >
+            Codebook doesn't distinguish inflation-fighting fiscal restraint
+            (COUNTERCYCLICAL) from inherited deficit reduction (DEFICIT_DRIVEN).
+            Model misapplied 1-year temporal rule to inflation context.
+        - gap: "cross_act_consistency"
+          severity: "low"
+          affected_acts: 1
+          description: >
+            RR sometimes classifies acts based on relationship to prior
+            exogenous acts (offsetting principle). Codebook treats each act
+            independently. Low priority edge case.
+        - gap: "congressional_corpus"
+          severity: "medium"
+          affected_acts: 3
+          description: >
+            Executive-branch documents dominate the corpus. For acts where
+            congressional motivation differs from executive (veto overrides,
+            industry-specific provisions), the model lacks evidence. Adding
+            congressional committee reports would address acts 20, 33, and
+            partially 22.
+    interpretation: >
+      Performance was strong for the first round of C2b development. 24/39
+      acts correct (61.5% raw accuracy), with zero B errors (RR's ground
+      truth is defensible in every case) and zero D errors (full output
+      compliance). The error distribution is highly encouraging: F errors
+      dominate (10/15 = 66.7% of errors), meaning the codebook — not the
+      model — is the primary bottleneck. Only 3 errors are genuine model
+      reasoning failures (category E), all from one pattern (spending-offset
+      recognition). The 7 LONG_RUN→COUNTERCYCLICAL errors share a single
+      root cause: the return-to-normal test is too literal and the frequency
+      rule disadvantages LONG_RUN. Addressing the identified codebook gaps
+      (especially return-to-normal disambiguation and provision-level
+      analysis) combined with a possible model upgrade could realistically
+      yield ~95% accuracy. The remaining ~5% (2 C errors) would require
+      additional congressional data in the corpus. Bias-corrected accuracy
+      excluding document errors is 64.9% (24/37), with E errors at 8.1%
+      and F errors at 27.0%.
+    decision: >
+      Proceed to edit codebook with observations from manual analysis. Priority
+      codebook changes: (1) Sharpen return-to-normal test to distinguish
+      "closing output gap via structural reform" from "demand management" —
+      add guidance on reading through rhetorical framing to provision-level
+      intent; (2) Modify frequency-based decision rule to weigh provision
+      structure alongside stated framing; (3) Add guidance on "push growth
+      above normal" as LONG_RUN even when language sounds countercyclical;
+      (4) Clarify that inflation-fighting fiscal restraint is COUNTERCYCLICAL,
+      not DEFICIT_DRIVEN. Lower priority: cross-act consistency, veto-override
+      guidance, status-quo-preservation distinction. After codebook edits,
+      rerun S1 to confirm behavioral tests still pass, then S2+S3 for
+      updated metrics. Consider Sonnet evaluation if Haiku plateaus after
+      codebook improvements.
