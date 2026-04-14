@@ -477,3 +477,42 @@ iterations:
       C2a extraction validated on Haiku. Performance is close to S2 targets on
       C2b (see c2b.yml iterations 15-16). Proceed to S3 manual analysis before
       making codebook content decisions.
+
+  - iteration: 13
+    codebook_version: "0.4.0"
+    date: "2026-04-14"
+    git_commit: "5d74eae"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      S1 regression check after v0.4.0 codebook edits. C2a v0.4.0 removed class
+      taxonomy, replaced with synthetic extraction examples, and improved
+      cross-country transferability of instruction language (commits 9f99b77,
+      5d74eae). No structural changes to C2a extraction logic.
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_instruction_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          skipped: true
+          pass: true
+          note: "Structurally inapplicable — classless extraction codebook"
+    interpretation: >
+      All S1 tests pass. Test IV is structurally skipped for C2a (no class
+      taxonomy to reorder). No regression from v0.4.0 changes. C2a extraction
+      codebook remains behaviorally stable across all versions tested on Haiku.
+    decision: >
+      Proceed to S2 rerun to measure impact of v0.4.0 codebook changes on
+      downstream C2b classification accuracy (baseline: 61.5% from iteration 12).

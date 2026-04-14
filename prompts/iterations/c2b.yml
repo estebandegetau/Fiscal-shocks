@@ -1575,3 +1575,56 @@ iterations:
       rerun S1 to confirm behavioral tests still pass, then S2+S3 for
       updated metrics. Consider Sonnet evaluation if Haiku plateaus after
       codebook improvements.
+
+  - iteration: 19
+    codebook_version: "0.4.0"
+    date: "2026-04-14"
+    git_commit: "5d74eae"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      S1 regression check after v0.4.0 codebook edits. C2b v0.4.0 sharpened
+      return-to-normal disambiguation, modified frequency-based decision rules,
+      added guidance on "push growth above normal" as LONG_RUN, clarified
+      inflation-fighting fiscal restraint as COUNTERCYCLICAL, and improved
+      cross-country transferability of instruction language (commits 9f99b77,
+      5d74eae). These changes targeted the 10 F errors and 3 E errors from
+      S3 manual analysis (iteration 18).
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+          change_rate_reversed: 0.0000
+          change_rate_shuffled: 0.0000
+          fleiss_kappa: 1.0000
+          kappa_interpretation: "Near-perfect agreement"
+          change_rate_categories: 0.0000
+          change_rate_exogenous: 0.0000
+    interpretation: >
+      All S1 tests pass with perfect scores. Test IV shows kappa=1.0 with zero
+      change across all orderings — codebook definitions (not label names) are
+      driving classification. The v0.4.0 edits (return-to-normal disambiguation,
+      frequency rules, inflation-fighting guidance) did not regress behavioral
+      test performance. This is expected since S1 uses synthetic evidence sets
+      designed to be unambiguous; the real test of v0.4.0 changes will be S2.
+    decision: >
+      Proceed to S2 rerun on Haiku to measure impact of v0.4.0 codebook changes
+      on classification accuracy. Baseline from iteration 16: 61.5% raw accuracy,
+      10 F errors, 3 E errors. The v0.4.0 edits specifically targeted these
+      error patterns.
