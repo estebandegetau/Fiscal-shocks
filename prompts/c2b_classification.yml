@@ -55,11 +55,12 @@ codebook:
     underlying provision-level intent: (a) closing an output gap via structural reform
     (permanent rate reductions, investment incentives, supply-side measures) is LONG_RUN, not
     COUNTERCYCLICAL, because the mechanism targets the economy's structural capacity rather
-    than aggregate demand; (b) restoring a structural policy to its pre-existing baseline or
-    extending a structural program is LONG_RUN even if framed as "preventing harm";
-    (c) deliberately pushing growth above normal to reduce unemployment is LONG_RUN — Romer
-    and Romer classify such acts as exogenous because the goal exceeds returning to the prior
-    trend. Do not take policymaker language at face value when the provision structure
+    than aggregate demand; (b) restoring a pre-existing structural policy to its baseline (e.g., reinstating a
+    suspended tax provision or extending a structural program) is LONG_RUN because the
+    mechanism is structural, not demand management, regardless of how it is framed;
+    (c) deliberately pushing growth above normal to reduce unemployment is LONG_RUN — the
+    goal exceeds returning to the prior trend and instead targets a structurally higher level
+    of output. Do not take policymaker language at face value when the provision structure
     contradicts the stated framing. If the measure was proposed when the economy was growing
     normally but motivated by a desire for faster growth, classify as LONG_RUN even if the
     economy weakened by the time of passage.
@@ -105,7 +106,7 @@ codebook:
         - "The evidence consistently describes the measure as financing or paying for a specific spending program or commitment that is being enacted or expanded at the same time"
         - "The spending change and the fiscal measure are described as a package — the fiscal measure exists because of the spending decision"
         - "The temporal link between the spending change and the fiscal measure is within one year"
-        - "When an explicit causal link between a spending change and the fiscal measure is present (e.g., tax reductions 'justified because of reductions in proposed expenditures'), this direct causal chain is strong evidence of SPENDING_DRIVEN even if other-category language (countercyclical, structural, deficit) appears more frequently in the evidence"
+        - "When an explicit causal link between a spending change and the fiscal measure is present (e.g., the fiscal change would not have occurred absent the associated spending decision), this direct causal chain is strong evidence of SPENDING_DRIVEN even if other-category language (countercyclical, structural, deficit) appears more frequently in the evidence"
 
       negative_clarification:
         - "Do not classify as SPENDING_DRIVEN if the fiscal measure addresses a deficit caused by spending decisions made more than one year prior — classify as DEFICIT_DRIVEN instead"
