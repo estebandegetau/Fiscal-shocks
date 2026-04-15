@@ -516,3 +516,37 @@ iterations:
     decision: >
       Proceed to S2 rerun to measure impact of v0.4.0 codebook changes on
       downstream C2b classification accuracy (baseline: 61.5% from iteration 12).
+
+  - iteration: 14
+    codebook_version: "0.4.0"
+    date: "2026-04-15"
+    git_commit: "96b33ce"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "primary (discusses_motivation == TRUE chunks only)"
+    changes: >
+      No codebook changes from v0.4.0. S2 rerun after v0.4.0 codebook edits
+      to C2b (return-to-normal disambiguation, frequency rule modifications,
+      inflation-fighting guidance, cross-country language improvements). C2a
+      extraction unchanged — this run validates extraction stability on the
+      same pipeline configuration as iteration 12.
+    results:
+      n_total: 39
+      n_valid: 38
+      n_c2a_failures: 0
+      metrics:
+        note: >
+          C2a is an extraction stage (no classification labels). Zero C2a
+          failures across all chunks on Haiku, consistent with iterations 8
+          (1 failure), 11 (0 failures on Gemini), and 12 (0 failures on Haiku).
+          Downstream C2b metrics reported in c2b.yml iteration 20.
+    interpretation: >
+      C2a extraction remains perfectly stable at v0.4.0 on Haiku — zero
+      failures for the third consecutive Haiku run. The classless architecture
+      (pure quote+signal extraction) is fully validated. One act excluded from
+      downstream evaluation (38/39 valid in C2b), likely due to C2b parse
+      failure rather than C2a extraction issue.
+    decision: >
+      C2a extraction validated. No further C2a changes needed. Focus shifts
+      to C2b codebook improvements and potential model upgrade (Sonnet) to
+      address persistent LONG_RUN→COUNTERCYCLICAL classification errors.

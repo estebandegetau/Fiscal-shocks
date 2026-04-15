@@ -1628,3 +1628,141 @@ iterations:
       on classification accuracy. Baseline from iteration 16: 61.5% raw accuracy,
       10 F errors, 3 E errors. The v0.4.0 edits specifically targeted these
       error patterns.
+
+  - iteration: 20
+    codebook_version: "0.4.0"
+    date: "2026-04-15"
+    git_commit: "96b33ce"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "primary (discusses_motivation == TRUE chunks only)"
+    changes: >
+      S2 rerun after v0.4.0 codebook edits. C2b v0.4.0 sharpened return-to-
+      normal disambiguation, modified frequency-based decision rules, added
+      guidance on "push growth above normal" as LONG_RUN, clarified inflation-
+      fighting fiscal restraint as COUNTERCYCLICAL, and improved cross-country
+      transferability of instruction language (commits 9f99b77, 5d74eae). These
+      changes targeted the 10 F errors and 3 E errors identified in S3 manual
+      analysis (iteration 18).
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 38
+      n_na: 1
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.6310
+          ci_lower: 0.4613
+          ci_upper: 0.7806
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.8235
+          ci_lower: 0.6154
+          ci_upper: 1.0000
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.6408
+          ci_lower: 0.4778
+          ci_upper: 0.7755
+        - metric: "accuracy"
+          value: 0.6316
+          ci_lower: 0.4737
+          ci_upper: 0.7895
+        - metric: "exogenous_recall"
+          value: 0.6087
+          ci_lower: 0.4091
+          ci_upper: 0.8077
+        - metric: "exogenous_f1"
+          value: 0.7000
+          ci_lower: 0.5161
+          ci_upper: 0.8421
+      per_class:
+        - class: "SPENDING_DRIVEN"
+          precision: 0.6670
+          recall: 0.4440
+          f1: 0.5330
+          support: 9
+        - class: "COUNTERCYCLICAL"
+          precision: 0.4000
+          recall: 1.0000
+          f1: 0.5710
+          support: 6
+        - class: "DEFICIT_DRIVEN"
+          precision: 0.8750
+          recall: 0.8750
+          f1: 0.8750
+          support: 8
+        - class: "LONG_RUN"
+          precision: 0.7780
+          recall: 0.4670
+          f1: 0.5830
+          support: 15
+      quality_flags:
+        n_c2a_failures_total: 0
+        n_multiple_dominant: 5
+        n_no_dominant: 0
+        n_exo_inconsistent: 0
+      confusion_matrix:
+        note: >
+          Predicted\True:  SD  CC  DD  LR
+          SPENDING_DRIVEN:  4   0   1   1
+          COUNTERCYCLICAL:  2   6   0   7
+          DEFICIT_DRIVEN:   1   0   7   0
+          LONG_RUN:         2   0   0   7
+          COUNTERCYCLICAL is a magnet class: 15 predictions vs 6 true support.
+      comparison_vs_v030:
+        weighted_f1_delta: "+0.020"
+        exo_precision_delta: "+0.035"
+        accuracy_delta: "+0.017"
+        transitions:
+          fixed:
+            - act: "Jobs and Growth Tax Relief Reconciliation Act of 2003"
+              v030: "LONG_RUN→COUNTERCYCLICAL (wrong)"
+              v040: "LONG_RUN→LONG_RUN (correct)"
+              note: "Targeted by v0.4.0 'push above normal' guidance"
+            - act: "Tax Reform Act of 1969"
+              v030: "COUNTERCYCLICAL→DEFICIT_DRIVEN (wrong)"
+              v040: "COUNTERCYCLICAL→COUNTERCYCLICAL (correct)"
+              note: "Targeted by v0.4.0 inflation-fighting guidance"
+            - act: "Revenue Act of 1948"
+              v030: "LONG_RUN→SPENDING_DRIVEN (wrong)"
+              v040: "LONG_RUN→LONG_RUN (correct)"
+              note: "Was category F in manual analysis"
+          regressed:
+            - act: "Federal-Aid Highway Act of 1959"
+              v030: "DEFICIT_DRIVEN→DEFICIT_DRIVEN (correct)"
+              v040: "DEFICIT_DRIVEN→SPENDING_DRIVEN (wrong)"
+              note: "New regression — investigate spending-related guidance side effects"
+          persistent_errors:
+            long_run_to_countercyclical: 7
+            note: >
+              Same 7 acts as v0.3.0: Crude Oil 1980, PL 90-26 1967, Revenue
+              Act 1964, Revenue Act 1971, Revenue Act 1978, Tax Rate Extension
+              1958, Tax Reduction & Simplification 1977. All category F in
+              manual analysis. v0.4.0 codebook changes insufficient.
+    interpretation: >
+      Codebook edits fixed 3 acts and regressed 1 — net +2 on comparable acts.
+      Both primary metrics improved (wF1 +2.0pp, exo precision +3.5pp) but
+      remain below targets. CIs overlap targets on both metrics. The core
+      LONG_RUN→COUNTERCYCLICAL pattern (7 acts, all category F) persists
+      unchanged despite v0.4.0's return-to-normal disambiguation, frequency
+      rule modifications, and "push above normal" guidance. S3 Test VII
+      (iteration 17) showed 77% label-name dominance on Haiku — the model
+      resolves ambiguity via label name semantics rather than applying codebook
+      boundary rules. This suggests we are approaching Haiku's cognitive
+      capacity for the multi-step reasoning required by LONG_RUN vs
+      COUNTERCYCLICAL boundary cases (identify provision structure → assess
+      stated goal → apply return-to-normal test → weigh provision-level vs
+      act-level intent).
+    decision: >
+      Proceed to S3 on v0.4.0 before trying Sonnet for C2b. S3 will reveal
+      whether v0.4.0's codebook changes improved ablation scores or
+      definition-following rates (Test VII) even if they didn't flip the
+      7 persistent errors. If S3 confirms that label-name dominance persists
+      despite improved codebook definitions, the bottleneck is model capacity,
+      not codebook quality. Two paths: (1) desemantify label names (M1-M4),
+      (2) upgrade to Sonnet for C2b. Investigate Federal-Aid Highway 1959
+      regression before next codebook edit.
