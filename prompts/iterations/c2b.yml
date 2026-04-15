@@ -1868,3 +1868,53 @@ iterations:
       may prove effective on the larger model. If Sonnet also shows label-name
       dominance, desemantify labels (M1-M4) as fallback. Keep C2a on Haiku
       (extraction is stable and model-agnostic).
+
+  - iteration: 22
+    codebook_version: "0.4.0"
+    date: "2026-04-15"
+    git_commit: "99962f0"
+    model: "claude-sonnet-4-20250514"
+    stage: "s1"
+    changes: >
+      No codebook changes. Model upgrade from Haiku to Sonnet for C2b
+      classification, per iteration 21 decision. Fixed model ID typo
+      (claude-sonnet-4-5-20250514 → claude-sonnet-4-20250514) that caused
+      404 errors on first attempt.
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+          change_rate_reversed: 0.0000
+          change_rate_shuffled: 0.0000
+          fleiss_kappa: 1.0000
+          kappa_interpretation: "Near-perfect agreement"
+          change_rate_categories: 0.0000
+          change_rate_exogenous: 0.0000
+    interpretation: >
+      Sonnet passes all S1 behavioral tests with perfect scores, as expected
+      for a more capable model. All 4 synthetic evidence sets classified
+      correctly with zero order sensitivity (kappa=1.0). S1 confirms Sonnet
+      can parse the v0.4.0 codebook and produce valid, stable outputs. The
+      real test is S2/S3, where we'll see whether Sonnet follows codebook
+      definitions over label-name semantics (the critical failure mode on
+      Haiku identified in iteration 21).
+    decision: >
+      Proceed to S2. Run C2a extraction (Haiku) + C2b classification (Sonnet)
+      on the full test set. Compare against Haiku S2 baseline (wF1=0.631,
+      exo_prec=0.824 from iteration 20) to isolate model contribution.
