@@ -1,0 +1,272 @@
+---
+title: "Claude Code Insights"
+subtitle: "35 sessions total · 349 messages · 180h · 56 commits"
+date: 2026-04-13
+date-range: "2026-04-04 to 2026-04-13"
+format: html
+---
+
+## At a Glance
+
+**What's working:** We've built a disciplined, repeatable research workflow --- pre-flight, review, log, commit, doc-sync --- that runs consistently across sessions, giving us a strong audit trail for codebook pipeline iterations. Claude is used effectively as a design partner for substantive research decisions (like multi-motivation handling and gray-zone classification) before jumping to implementation, keeping codebooks grounded in domain expertise.
+
+**What's hindering:** On Claude's side, it sometimes jumps into implementation before asked, and occasionally proposes wrong approaches (wrong packages, stale results, incomplete parameter threading) that require catching and correcting. On our side, Claude would benefit from more explicit constraints upfront --- specifying available packages, which model to use, or saying "plan first" --- to avoid redirect cycles that eat into sessions.
+
+**Quick wins:** The pre-flight -> review -> log -> commit -> doc-sync loop runs in 15+ sessions and is a perfect candidate for a custom slash command that executes the whole sequence with built-in gates. A hook to auto-verify target freshness before any review step would eliminate the stale-results problem.
+
+**Ambitious workflows:** The entire pipeline iteration cycle could run as a single autonomous loop in headless mode --- Claude executes pre-flight through commit and only surfaces decisions that genuinely need human judgment, like ambiguous metric interpretation or codebook design changes. Further out, parallel sub-agents could simultaneously evaluate codebook variants across Haiku, Flash, and Gemini, synthesizing a comparative cost-quality report without shepherding each run individually.
+
+## Project Areas
+
+| Area | Sessions | Description |
+|------|:--------:|-------------|
+| C1 Codebook Pipeline Iteration & Evaluation | 12 | Iterative development and evaluation of a C1 (fiscal shock classification) codebook using an LLM-based pipeline with structured R targets workflows. Claude ran pre-flight checks, reviewed S1/S2/S3 stage results, logged iterations, performed manual error analysis, and committed changes across multiple codebook versions. |
+| C2 Codebook Design & Implementation | 12 | Designed and built a C2 pipeline for evaluating fiscal shocks with two-codebook extraction and classification stages, including multi-motivation handling. Claude facilitated design discussions, implemented evaluation functions and targets across many files, built test suites, and iterated on sensitivity analyses (S1-S3). |
+| Pipeline Architecture & Refactoring | 5 | Structural improvements to the R targets pipeline, including consolidating redundant API-calling targets, implementing a freeze pattern to decouple C1/C2 stages, threading centralized config variables, and fixing column-shadowing bugs. Claude explored codebases, planned refactors, and implemented changes across multiple files. |
+| Model Selection & Provider Configuration | 4 | Researching, switching, and configuring LLM providers and models (Haiku, Gemini 2.5 Flash, OpenRouter) for cost and multilingual performance. Claude updated model configs, handled max_tokens issues with verbose models, documented model discovery findings, and committed configuration changes. |
+| Strategy & Documentation Sync | 4 | Maintaining alignment between strategy documents, deployment docs, and code implementation. Claude identified deltas between strategy docs and code, facilitated design discussions to capture decisions in strategy.md, ran doc-sync workflows, and resolved discrepancies across documentation files. |
+
+: Project areas by session count {.striped}
+
+## Interaction Style
+
+We operate with a **highly structured, workflow-driven approach** to Claude Code, running repeatable multi-step pipelines (pre-flight -> review -> log iteration -> commit -> doc-sync) across the majority of 35 sessions. With 731 Bash calls and 72 TodoWrite invocations against only 349 messages, we clearly **delegate heavily and let Claude execute long autonomous sequences** rather than micromanaging each step. The top goals --- `run_predefined_skill`, `commit_changes`, and `git_commits` --- confirm we've essentially built a system of reusable "skills" that Claude orchestrates on our behalf, treating it as a pipeline operator rather than a conversational coding assistant.
+
+That said, we're not passive. When Claude goes off-track, we **intervene decisively with domain expertise** --- correcting its suggestion to remove mixed-motivation acts ("keeping them is necessary for causal identification safety"), redirecting from Qwen to Flash 2.5 when context limits hit, and interrupting when Claude started implementing before asked for a plan. The friction log shows course-correction on approach about 7 times, but misunderstandings are rare (just 1), indicating strong upfront context. The 12 `design_discussion` sessions show Claude is also used as a **substantive thinking partner** for research design decisions --- like C1->C2 pipeline architecture and manual error analysis --- before encoding those decisions into strategy docs and code. The 83% fully-achieved rate and overwhelmingly satisfied ratings reflect a mature, well-calibrated collaboration.
+
+**Key pattern:** We treat Claude Code as a structured pipeline operator, running repeatable skill-based workflows with minimal hand-holding but intervening sharply when domain-specific judgment is needed.
+
+## Usage Statistics
+
+### Activity
+
+| Metric | Value |
+|--------|------:|
+| Messages | 349 |
+| Lines changed | +9,061 / -577 |
+| Files touched | 111 |
+| Days active | 10 |
+| Messages/day | 34.9 |
+
+: Activity summary {.striped}
+
+### Top Goals
+
+| Goal | Sessions |
+|------|:--------:|
+| Run Predefined Skill | 19 |
+| Commit Changes | 14 |
+| Design Discussion | 12 |
+| Git Commits | 11 |
+| Git Commit | 10 |
+| Commit | 9 |
+
+: What we wanted Claude to do {.striped}
+
+### Top Tools Used
+
+| Tool | Calls |
+|------|------:|
+| Bash | 731 |
+| Read | 390 |
+| Edit | 216 |
+| Grep | 213 |
+| TodoWrite | 72 |
+| Agent | 48 |
+
+: Tool usage {.striped}
+
+### Languages
+
+| Language | Signals |
+|----------|--------:|
+| YAML | 184 |
+| Markdown | 138 |
+| JSON | 6 |
+
+: Language signals {.striped}
+
+### Session Types
+
+| Type | Count |
+|------|------:|
+| Multi Task | 20 |
+| Iterative Refinement | 12 |
+| Single Task | 1 |
+| Quick Question | 1 |
+| Exploration | 1 |
+
+: Session types {.striped}
+
+### Response Time
+
+| Bucket | Messages |
+|--------|:--------:|
+| 2--10s | 28 |
+| 10--30s | 34 |
+| 30s--1m | 30 |
+| 1--2m | 32 |
+| 2--5m | 65 |
+| 5--15m | 40 |
+| >15m | 21 |
+
+: User response time distribution (median 123s, mean 301s) {.striped}
+
+### Multi-Clauding
+
+| Metric | Value |
+|--------|------:|
+| Overlap events | 6 |
+| Sessions involved | 11 |
+| % of messages | 9% |
+
+: Parallel session usage {.striped}
+
+## Impressive Things We Did
+
+Over 35 sessions in 10 days, we've built a highly disciplined, repeatable workflow for iterating on an LLM-powered classification pipeline with impressive consistency and rigor.
+
+### Structured Pipeline Iteration Cycles
+
+We've developed a remarkably consistent workflow pattern --- pre-flight checks, result review, iteration logging, and commits --- that repeats across dozens of sessions. This disciplined approach gives us a clear audit trail of every pipeline change and its outcomes, making our research process highly reproducible.
+
+### Multi-Model Evaluation Strategy
+
+We systematically test the pipeline across multiple LLM providers (Haiku, Gemini Flash, OpenRouter) and compare cost and quality tradeoffs. We catch real issues like Gemini's verbosity requiring max_tokens adjustments, showing a practical engineering mindset toward finding the right model for our use case.
+
+### Design-First Codebook Development
+
+Claude is used as a genuine design partner for substantive research decisions --- like handling multi-motivation fiscal shocks and gray-zone classification cases --- before implementing changes. Manual error analysis sessions and specialist review discussions ensure codebooks are grounded in domain expertise rather than just prompt engineering.
+
+### What Helped Most
+
+| Capability | Sessions |
+|------------|:--------:|
+| Multi-file changes | 20 |
+| Good explanations | 6 |
+| Proactive help | 4 |
+| Good debugging | 2 |
+| Correct code edits | 2 |
+
+: Claude's most valuable capabilities {.striped}
+
+### Outcomes
+
+| Result | Sessions |
+|--------|:--------:|
+| Fully achieved | 29 |
+| Mostly achieved | 3 |
+| Partially achieved | 2 |
+| Not achieved | 1 |
+
+: Session outcomes {.striped}
+
+## Where Things Go Wrong
+
+The workflow is highly structured and productive, but friction arises when Claude acts before we're ready, takes wrong technical approaches, and misses stale or incomplete state in the pipeline.
+
+### Premature execution without confirming intent
+
+Claude sometimes jumps into implementation or tool calls before the user has laid out what they want, forcing interruptions and redirects. Front-loading prompts with explicit instructions like "plan first, don't implement yet" avoids wasted rounds.
+
+- Claude started implementing changes before asked for a plan, requiring an interrupt and reset of the conversation flow
+- Claude began tool calls immediately when a target needed to run first, causing an interruption and restart
+
+### Wrong technical approach requiring correction cycles
+
+Claude occasionally proposes incorrect solutions or uses wrong packages/models, leading to debugging rounds. Providing explicit constraints upfront (e.g., available packages, model requirements) could reduce these missteps.
+
+- Claude switched to Qwen which hit context length limits, and had to be redirected to Flash 2.5 instead
+- Initial max_tokens fix only patched one function but missed the override in test_legal_outputs, requiring a second debugging round and a full systematic refactor across 5 files
+
+### Reviewing stale or incomplete pipeline state
+
+Claude sometimes operates on outdated results or misses that targets need rebuilding, leading to analysis of wrong data.
+
+- Claude reviewed stale v0.4.0 evaluation results instead of noticing the eval target hadn't been rebuilt for v0.5.0 codebook changes
+- Claude raised a concern about missing enacted_signals storage that confused us, reflecting incomplete awareness of current pipeline state before flagging issues
+
+### Friction Types
+
+| Type | Count |
+|------|------:|
+| Wrong approach | 7 |
+| Buggy code | 5 |
+| User rejected action | 4 |
+| Misunderstood request | 1 |
+| Insufficient context | 1 |
+
+: Primary friction types {.striped}
+
+### Tool Errors
+
+| Error Type | Count |
+|------------|------:|
+| Command failed | 43 |
+| Other | 42 |
+| User rejected | 20 |
+| File too large | 11 |
+| Edit failed | 4 |
+| File not found | 4 |
+
+: Tool errors encountered {.striped}
+
+## Suggestions
+
+### CLAUDE.md Additions to Consider
+
+1. **Plan-first mode (Workflow Rules):** "When asked to make changes, present a plan first and wait for approval before implementing. Never start editing files until the user confirms the approach." *Why: Multiple sessions show Claude jumping into implementation before the user was ready, requiring interruptions and restarts.*
+
+2. **Trace parameters (Code Changes):** "When modifying a parameter or config value, always trace it through ALL files that reference it. Use Grep to find every occurrence before making changes. Never assume a single-file fix is sufficient." *Why: Several sessions had bugs from incomplete parameter threading --- max_tokens, serialization libraries, trailing commas --- where Claude fixed one file but missed others.*
+
+3. **Verify target freshness (Pipeline):** "Always check that evaluation targets have been rebuilt before reviewing results. Verify timestamps or invalidation status to avoid reviewing stale outputs." *Why: At least one session wasted time reviewing stale v0.4.0 results when v0.5.0 eval hadn't been rebuilt yet.*
+
+4. **Use qs2, not qs (Dependencies):** "This project uses the R targets pipeline. Key packages: targets, qs2 (NOT qs). When writing serialization code, always use qs2:: namespace." *Why: Claude used qs:: instead of qs2:: causing errors; establishing the correct package avoids repeated corrections.*
+
+5. **Wait for user decisions (Workflow Rules):** "When the user asks for a review or log-iteration, wait for explicit arguments and decisions from the user before writing. Do not assume next steps or pre-fill decisions." *Why: Multiple sessions show the user interrupting Claude's log-iteration attempts to provide their own explicit args and decisions.*
+
+### Features to Try
+
+**Custom Skills.** Top goal is `run_predefined_skill` (19 sessions) with a clear repeating workflow: pre-flight -> review -> log-iteration -> commit -> doc-sync. Codifying each step as a skill ensures consistency and eliminates re-explaining the workflow each session. (Already partially implemented with `/iterate`, `/pre-flight`, `/review-iteration`, `/log-iteration`.)
+
+**Hooks.** Friction from trailing commas, blank lines, and formatting issues after edits. A post-edit hook can auto-lint R and YAML files so manual cleanup is never needed.
+
+**Headless Mode.** Commit and doc-sync steps are highly repetitive (44+ commit-related goals across sessions). These could be scripted as a single shell command that runs after interactive review sessions:
+
+```bash
+claude -p "Sync all strategy and deployment docs with current code state, then commit with a descriptive message" --allowedTools "Read,Edit,Write,Bash,Grep,Glob"
+```
+
+### Usage Patterns
+
+**Formalize the pipeline workflow as a checklist.** The pre-flight -> review -> log -> commit -> doc-sync loop appears in 15+ sessions. A single gated prompt would enforce the order and require approval at each stage before proceeding, reducing Claude's tendency to jump ahead or review stale data.
+
+**Ask Claude to grep before editing.** The most common friction pattern is Claude changing a value in one file but missing 3--4 other files that reference it. The max_tokens threading issue, qs vs qs2, and trailing comma problems all stem from incomplete search-before-edit.
+
+**Front-load design discussions separately from implementation.** 12 design discussion goals and 7 "wrong_approach" friction events. Several times Claude started coding during what should have been a planning conversation. Design sessions that worked well (C1->C2 strategy, codebook design) were ones where discussion and implementation were clearly phased.
+
+## On the Horizon
+
+Our workflow has evolved into a sophisticated, structured pipeline of pre-flight checks, reviews, iteration logging, and commits --- a pattern ripe for deeper automation.
+
+### Fully Autonomous Pipeline Iteration Cycles
+
+The most common workflow --- pre-flight, review results, log iteration, commit --- repeats across 15+ sessions and could run as a single autonomous loop. Claude could execute the entire cycle end-to-end, only pausing when results require a human judgment call like codebook design changes or ambiguous metric interpretation.
+
+**Getting started:** Define structured workflow steps in a CLAUDE.md file as a skill, then invoke with a single command. Use TodoWrite to let Claude self-checkpoint through each phase.
+
+### Parallel Sub-Agents for Multi-Codebook Evaluation
+
+We already use the Agent tool 48 times --- but the C1/C2 codebook pipelines with S1/S2/S3 stages could be evaluated in parallel. Spawn separate agents to simultaneously run sensitivity analyses across different models (Haiku, Flash 2.5, Gemini) and synthesize a comparative report, cutting the 180-hour exploration time dramatically.
+
+**Getting started:** Use the Agent tool to dispatch parallel evaluation tasks, each scoped to a specific model-codebook-stage combination. Have a parent agent collect and compare results.
+
+### Test-Driven Codebook Refinement with Auto-Iteration
+
+Friction data shows issues like stale evaluations, missed parameter threading, and wrong-approach starts --- all preventable with a test-first loop. Claude could iterate autonomously against the behavioral test suite: modify the codebook, run tests, check for regressions, and keep refining until all tests pass or a maximum iteration count is hit.
+
+**Getting started:** Structure behavioral tests as explicit pass/fail gates. Let Claude run an edit-test-fix loop using Bash for test execution and TodoWrite to track which tests remain failing.
+
+## Fun Fact
+
+During C2 pipeline design, Claude suggested simplifying things by removing mixed-motivation acts from evaluation --- a reasonable-sounding shortcut that would have quietly undermined the entire causal inference strategy. We caught it and corrected course: keeping them is essential for causal identification safety.
