@@ -1766,3 +1766,105 @@ iterations:
       not codebook quality. Two paths: (1) desemantify label names (M1-M4),
       (2) upgrade to Sonnet for C2b. Investigate Federal-Aid Highway 1959
       regression before next codebook edit.
+
+  - iteration: 21
+    codebook_version: "0.4.0"
+    date: "2026-04-15"
+    git_commit: "be0e424"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3"
+    changes: >
+      No codebook changes from v0.4.0. S3 rerun after v0.4.0 codebook edits
+      (return-to-normal disambiguation, frequency rules, inflation-fighting
+      guidance). Tests V-VII + ablation on 38 valid acts from S2 (iteration 20).
+    results:
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            normal_ev_normal_cb: 1.0000
+            modified_ev_normal_cb: 0.9740
+            normal_ev_modified_cb: 0.8950
+            modified_ev_modified_cb: 0.2630
+          overall_consistency: 0.7829
+          override_label: "LONG_RUN"
+          note: >
+            Combo 3 regressed vs v0.3.0 (89.5% vs 97.4%): removing negative
+            clarifications now flips 4 acts (was 1). v0.4.0's expanded
+            clarifications constrain the model on more acts but not enough
+            to overcome label-name dominance. Combo 4: only 10/38 acts
+            flipped to override label — model resists artificial exclusion.
+        - test: "VI_generic_labels"
+          original_accuracy: 0.6316
+          generic_accuracy: 0.6053
+          accuracy_difference: 0.0263
+          change_rate: 0.0526
+          original_weighted_f1: 0.6310
+          generic_weighted_f1: 0.5907
+          f1_difference: 0.0403
+          note: >
+            Only 2/38 acts changed prediction with generic labels. Small wF1
+            drop (4.0pp). Model can classify from definitions alone when label
+            names are neutral — but Test VII shows names override definitions
+            when they conflict.
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.0000
+          follows_names_rate: 0.9737
+          swapped_accuracy: 0.6053
+          swapped_weighted_f1: 0.6026
+          interpretation: "CRITICAL: Model follows label names exclusively, zero definition-following"
+          note: >
+            Only 1/38 acts changed prediction when definitions were cyclically
+            rotated across label names (act 8: LONG_RUN→COUNTERCYCLICAL).
+            Massive regression from v0.3.0 (20.5% definition-following →
+            0.0%). v0.4.0's added instruction complexity pushed Haiku harder
+            toward label-name shortcuts.
+      ablation:
+        - condition: "full"
+          accuracy: 0.6316
+          weighted_f1: 0.6310
+        - condition: "no_label_def"
+          accuracy: 0.6316
+          weighted_f1: 0.6612
+          accuracy_drop: 0.0000
+          weighted_f1_drop: -0.0302
+        - condition: "no_clarifications"
+          accuracy: 0.6579
+          weighted_f1: 0.6530
+          accuracy_drop: -0.0263
+          weighted_f1_drop: -0.0220
+        - condition: "all_removed"
+          accuracy: 0.6316
+          weighted_f1: 0.6230
+          accuracy_drop: 0.0000
+          weighted_f1_drop: 0.0080
+        note: >
+          Removing label definitions or clarifications individually improves
+          wF1 — codebook definitions add noise when the model classifies from
+          label name semantics. Removing everything causes only 0.8pp wF1
+          drop (vs 8.2pp in v0.3.0). v0.4.0 made the model rely on codebook
+          components less, not more.
+      comparison_vs_v030_s3:
+        test_vii_definition_following: "20.5% → 0.0% (REGRESSED)"
+        test_vi_change_rate: "7.7% → 5.3% (improved)"
+        ablation_all_removed_wf1_drop: "8.2pp → 0.8pp (REGRESSED)"
+        test_v_combo3: "97.4% → 89.5% (REGRESSED)"
+    interpretation: >
+      S3 confirms Haiku is classifying from label name semantics, not codebook
+      definitions. Test VII shows 0% definition-following (down from 20.5% in
+      v0.3.0) — when definitions are cyclically swapped across label names,
+      97.4% of predictions follow the original label names. The v0.4.0 codebook
+      edits made this worse, not better: added instruction complexity pushed
+      Haiku toward shortcuts rather than multi-step reasoning. The ablation
+      confirms this — removing all codebook components drops wF1 by only 0.8pp
+      (down from 8.2pp in v0.3.0), meaning the codebook contributes almost
+      nothing to Haiku's classification decisions. The model is effectively
+      pattern-matching fiscal language to label name semantics from pretraining.
+      This is a model capacity problem, not a codebook quality problem.
+    decision: >
+      Switch to Sonnet for C2b classification. The S3 evidence is unambiguous:
+      Haiku cannot follow definitions over label names for this task. Run Sonnet
+      S2 with v0.4.0 codebook to isolate model vs codebook contribution. If
+      Sonnet follows definitions (Test VII >50%), the v0.4.0 codebook changes
+      may prove effective on the larger model. If Sonnet also shows label-name
+      dominance, desemantify labels (M1-M4) as fallback. Keep C2a on Haiku
+      (extraction is stable and model-agnostic).
