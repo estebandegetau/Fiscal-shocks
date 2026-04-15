@@ -1918,3 +1918,149 @@ iterations:
       Proceed to S2. Run C2a extraction (Haiku) + C2b classification (Sonnet)
       on the full test set. Compare against Haiku S2 baseline (wF1=0.631,
       exo_prec=0.824 from iteration 20) to isolate model contribution.
+
+  - iteration: 23
+    codebook_version: "0.4.0"
+    date: "2026-04-15"
+    git_commit: "7ec9b64"
+    model: "claude-sonnet-4-20250514"
+    stage: "s2"
+    condition: "primary (discusses_motivation == TRUE chunks only)"
+    changes: >
+      No codebook changes. Model upgrade from Haiku to Sonnet for C2b
+      classification, per iteration 21 decision. C2a extraction remains on
+      Haiku. This iteration isolates model contribution vs codebook.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 38
+      n_na: 1
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.6581
+          ci_lower: 0.5109
+          ci_upper: 0.8121
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.7500
+          ci_lower: 0.5500
+          ci_upper: 0.9334
+          target: 0.8500
+          pass: false
+      secondary_metrics:
+        - metric: "macro_f1"
+          value: 0.6591
+          ci_lower: 0.5108
+          ci_upper: 0.8050
+        - metric: "accuracy"
+          value: 0.6579
+          ci_lower: 0.5263
+          ci_upper: 0.8158
+        - metric: "exogenous_recall"
+          value: 0.6818
+          ci_lower: 0.5000
+          ci_upper: 0.8636
+        - metric: "exogenous_f1"
+          value: 0.7143
+          ci_lower: 0.5556
+          ci_upper: 0.8511
+      per_class:
+        - class: "SPENDING_DRIVEN"
+          precision: 0.5833
+          recall: 0.7000
+          f1: 0.6364
+          support: 10
+        - class: "COUNTERCYCLICAL"
+          precision: 0.5000
+          recall: 0.5000
+          f1: 0.5000
+          support: 6
+        - class: "DEFICIT_DRIVEN"
+          precision: 0.8571
+          recall: 0.8571
+          f1: 0.8571
+          support: 7
+        - class: "LONG_RUN"
+          precision: 0.6923
+          recall: 0.6000
+          f1: 0.6429
+          support: 15
+      quality_flags:
+        n_c2a_failures_total: 0
+        n_multiple_dominant: 0
+        n_no_dominant: 0
+        n_exo_inconsistent: 0
+      confusion_matrix:
+        note: >
+          Predicted\True:  SD  CC  DD  LR
+          SPENDING_DRIVEN:  7   1   1   3
+          COUNTERCYCLICAL:  0   3   0   3
+          DEFICIT_DRIVEN:   1   0   6   0
+          LONG_RUN:         2   2   0   9
+          LR↔CC is the dominant error axis (7/13 errors). COUNTERCYCLICAL
+          magnet problem from Haiku (15 preds vs 6 true) is resolved.
+      sensitivity_comparison:
+        note: >
+          Sensitivity run uses all c2b_inputs (unfiltered). Both runs on
+          Sonnet v0.4.0.
+        sensitivity_weighted_f1: 0.5966
+        sensitivity_accuracy: 0.6000
+        sensitivity_exo_precision: 0.6818
+        sensitivity_n_valid: 35
+        sensitivity_n_total: 39
+        delta_weighted_f1: "-6.1pp"
+        delta_exo_precision: "-6.8pp"
+        delta_n_valid: "-3"
+        conclusion: >
+          Filtering to discusses_motivation == TRUE helps substantially
+          (~+6pp across metrics). Unfiltered evidence adds noise and causes
+          3 additional NA responses from token-limit saturation. Validates
+          the C2a discusses_motivation filter as a meaningful pre-processing
+          step.
+      comparison_vs_haiku_s2:
+        haiku_weighted_f1: 0.6310
+        sonnet_weighted_f1: 0.6581
+        delta_weighted_f1: "+2.7pp"
+        haiku_exo_precision: 0.8235
+        sonnet_exo_precision: 0.7500
+        delta_exo_precision: "-7.4pp"
+        haiku_exo_recall: 0.6087
+        sonnet_exo_recall: 0.6818
+        delta_exo_recall: "+7.3pp"
+        haiku_accuracy: 0.6316
+        sonnet_accuracy: 0.6579
+        delta_accuracy: "+2.6pp"
+        note: >
+          Sonnet trades exo precision for recall. Net effect: +2.7pp wF1,
+          -7.4pp exo_prec. Haiku over-predicted COUNTERCYCLICAL (magnet
+          class: 15 preds vs 6 true); Sonnet resolves this but under-
+          predicts CC (3 preds vs 6 true, 50% recall). The LR↔CC boundary
+          remains the hardest axis on both models (7/13 Sonnet errors).
+      na_act:
+        act_name: "Omnibus Budget Reconciliation Act of 1990"
+        true_motivation: "DEFICIT_DRIVEN"
+        n_evidence_items: 77
+        note: "Largest evidence set; likely exceeded context/output capacity"
+    interpretation: >
+      Sonnet did not yield the expected wins when we drafted v0.4.0. The
+      v0.4.0 boundary-case rules were designed to sharpen LR↔CC
+      disambiguation, but Sonnet applies the "return to normal" test too
+      aggressively — classifying permanent-provision acts (1964, 1977, 1978)
+      as COUNTERCYCLICAL when R&R weight provision structure more heavily.
+      The model traded exo recall for exo precision: +7.3pp recall but
+      -7.4pp precision. For C2, which is designed to maximize exo precision
+      (target ≥0.85), this is the wrong direction. Exo precision dropped
+      from 0.824 (Haiku) to 0.750 (Sonnet), moving further from the target.
+      The wF1 gain (+2.7pp) is real but insufficient — still below the 0.70
+      target. The dominant error pattern (7/13 errors on LR↔CC boundary)
+      suggests the codebook's boundary case rule 1 needs sharpening, but
+      we should first confirm via S3 that Sonnet actually follows codebook
+      definitions (unlike Haiku's 0% definition-following in iteration 21).
+    decision: >
+      Proceed to S3. The critical question is whether Sonnet follows
+      codebook definitions over label-name semantics (Test VII). If Sonnet
+      shows >50% definition-following, codebook refinement (especially
+      strengthening provision-structure override in boundary case rule 1)
+      is the right lever. If Sonnet also shows label-name dominance,
+      desemantify labels (M1-M4) before further codebook investment.
