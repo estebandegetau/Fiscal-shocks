@@ -2064,3 +2064,95 @@ iterations:
       strengthening provision-structure override in boundary case rule 1)
       is the right lever. If Sonnet also shows label-name dominance,
       desemantify labels (M1-M4) before further codebook investment.
+
+  - iteration: 24
+    codebook_version: "0.4.0"
+    date: "2026-04-15"
+    git_commit: "a8c3f6d"
+    model: "claude-sonnet-4-20250514"
+    stage: "s3"
+    changes: >
+      No codebook changes. Model upgrade from Haiku to Sonnet for C2b S3
+      (Tests V-VII + ablation). S3 reuses S2 baseline predictions from
+      iteration 23 (38 valid acts, primary condition). C2a extraction
+      remains on Haiku.
+    results:
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            normal_ev_normal_cb: 1.0000
+            modified_ev_normal_cb: 0.8684
+            normal_ev_modified_cb: 0.8684
+            modified_ev_modified_cb: 0.2895
+          overall_consistency: 0.7566
+          override_label: "LONG_RUN"
+        - test: "VI_generic_labels"
+          original_accuracy: 0.6579
+          generic_accuracy: 0.6286
+          accuracy_difference: 0.0293
+          change_rate: 0.1143
+          original_weighted_f1: 0.6581
+          generic_weighted_f1: 0.6319
+          f1_difference: 0.0262
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.0000
+          follows_names_rate: 0.8611
+          swapped_accuracy: 0.5789
+          swapped_weighted_f1: 0.6111
+          interpretation: "INVALID — test implementation bug discovered"
+      ablation:
+        - condition: "full"
+          accuracy: 0.6579
+          weighted_f1: 0.6581
+        - condition: "no_label_def"
+          accuracy: 0.5789
+          weighted_f1: 0.6311
+          accuracy_drop: 0.0789
+          weighted_f1_drop: 0.0270
+        - condition: "no_clarifications"
+          accuracy: 0.6053
+          weighted_f1: 0.6662
+          accuracy_drop: 0.0526
+          weighted_f1_drop: -0.0081
+        - condition: "all_removed"
+          accuracy: 0.5526
+          weighted_f1: 0.5776
+          accuracy_drop: 0.1053
+          weighted_f1_drop: 0.0804
+      baseline_vs_s2:
+        accuracy: 0.6579
+        weighted_f1: 0.6581
+        exo_precision: 0.7500
+        n_valid: 38
+        n_misclassified: 13
+    interpretation: >
+      Test VII results are INVALID due to an implementation bug: the swapped-labels
+      test rotates class definitions (label_definition, clarification,
+      negative_clarification) but does NOT swap the global instructions block, which
+      contains boundary-case rules that reference label names directly (e.g.,
+      "classify as COUNTERCYCLICAL", "classify as LONG_RUN"). The model receives
+      conflicting signals — swapped definitions say one thing, unswapped
+      instructions say another — and follows the instructions. This produces 0%
+      definition-following as an artifact, not a genuine model signal. All prior
+      Test VII results (Haiku v0.3.0 iter 17: 20.5%, Haiku v0.4.0 iter 21: 0%,
+      Sonnet v0.4.0 iter 24: 0%) are unreliable. The decision to upgrade from
+      Haiku to Sonnet (iteration 21) was partially based on this invalid signal.
+      Ablation results ARE valid: Sonnet shows meaningful codebook utilization
+      (all_removed drops wF1 by 8.0pp and accuracy by 10.5pp), much better than
+      Haiku v0.4.0 (0.8pp wF1 drop). Label definitions contribute 7.9pp accuracy,
+      confirming Sonnet uses them. Clarifications paradoxically hurt wF1 (-0.8pp)
+      while helping accuracy (+5.3pp). Overall accuracy improved to 65.8% (from
+      63.2% on Haiku v0.4.0) with wF1=0.658 (from 0.631), but exo precision
+      regressed to 0.750 (from 0.824 on Haiku). Sonnet resolved Haiku's
+      COUNTERCYCLICAL magnet problem (6 preds vs 15 on Haiku) but introduced
+      more SPENDING_DRIVEN false positives.
+    decision: >
+      Proceed to manual error analysis (S3 manual) on Sonnet's 13 misclassified
+      acts using H&K 6-category framework before making codebook or model
+      decisions. The Test VII bug must be fixed before Test VII results can
+      inform any decision — the test needs conceptual redesign: either swap
+      label-name references in the instructions block alongside the class
+      definitions, or remove label-name directives from the instructions section
+      entirely (making instructions label-name-agnostic). Reassess Haiku's
+      viability once valid Test VII data is available — the prior conclusion
+      that "Haiku can't follow definitions" was based on invalid test results.
