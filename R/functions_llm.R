@@ -4,7 +4,7 @@
 #' Call Claude API with retry logic and rate limiting
 #'
 #' @param messages List of message objects with role and content
-#' @param model Character string for model ID (default: claude-sonnet-4-5-20250514)
+#' @param model Character string for model ID (default: claude-sonnet-4-20250514)
 #' @param max_tokens Integer for max output tokens
 #' @param temperature Numeric 0-1 for sampling temperature
 #' @param max_retries Integer for number of retry attempts (default 10 for long pipelines)
@@ -13,7 +13,7 @@
 #' @return List with response content and metadata
 #' @export
 call_claude_api <- function(messages,
-                            model = "claude-sonnet-4-5-20250514",
+                            model = "claude-sonnet-4-20250514",
                             max_tokens = 1000,
                             temperature = 0.0,
                             max_retries = 10,
@@ -431,7 +431,7 @@ get_model_pricing <- function(model) {
       input = 0.001, output = 0.005,
       cache_write = 0.00125, cache_read = 0.0001
     ),
-    "claude-sonnet-4-5-20250514" = list(
+    "claude-sonnet-4-20250514" = list(
       input = 0.003, output = 0.015,
       cache_write = 0.00375, cache_read = 0.0003
     ),

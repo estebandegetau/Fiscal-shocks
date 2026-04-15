@@ -287,7 +287,7 @@ list(
     c2b_s1_results,
     run_c2b_behavioral_tests_s1(
       c2b_codebook,
-      model = "claude-sonnet-4-5-20250514",
+      model = "claude-sonnet-4-20250514",
       max_tokens = 1024,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
@@ -330,14 +330,28 @@ list(
     deployment = "main"
   ),
 
+  # Frozen C2a evidence for C2b consumption (decouples C2b from C2a code changes)
+  # To refresh: source("R/freeze_results.R"); freeze_results("c2a_evidence")
+  tar_target(
+    c2b_inputs_file,
+    here::here("data", "validated", "c2a_evidence.qs"),
+    format = "file",
+    packages = "here"
+  ),
+  tar_target(
+    c2b_inputs,
+    qs2::qs_read(c2b_inputs_file),
+    packages = "qs2"
+  ),
+
   # C2b primary: filter evidence to discusses_motivation == TRUE chunks
   tar_target(
     c2_s2_results,
     run_c2b_classification(
       c2b_codebook,
-      c2a_evidence |> dplyr::filter(discusses_motivation == TRUE),
+      c2b_inputs |> dplyr::filter(discusses_motivation == TRUE),
       c2_s2_test_set,
-      model = "claude-sonnet-4-5-20250514",
+      model = "claude-sonnet-4-20250514",
       max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
@@ -357,9 +371,9 @@ list(
     c2_s2_sensitivity_results,
     run_c2b_classification(
       c2b_codebook,
-      c2a_evidence,
+      c2b_inputs,
       c2_s2_sensitivity_test_set,
-      model = "claude-sonnet-4-5-20250514",
+      model = "claude-sonnet-4-20250514",
       max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
@@ -379,7 +393,7 @@ list(
     c2_s3_results,
     run_c2_error_analysis(
       c2b_codebook, c2_s2_results,
-      model = "claude-sonnet-4-5-20250514",
+      model = "claude-sonnet-4-20250514",
       max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
