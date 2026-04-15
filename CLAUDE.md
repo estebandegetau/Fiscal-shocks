@@ -205,7 +205,7 @@ These rules govern how Claude Code operates in this project. They prevent recurr
 
 1. **Plan-first mode.** When asked to diagnose, investigate, or propose, present findings and wait. Do NOT implement changes or run code unless explicitly told to.
 2. **Root cause first.** When something fails, identify the root cause before proposing a fix. Do not patch symptoms (e.g., don't fix test implementation when the codebook example is the problem).
-3. **Model ID validation.** Before writing any model parameter, verify against known valid IDs. Current valid: `claude-haiku-4-5-20251001`, `claude-sonnet-4-5-20250514`. Flag any legacy IDs (e.g., `claude-3-5-sonnet-20241022`).
+3. **Model ID validation.** Before writing any model parameter, verify against known valid IDs. Current valid: `claude-haiku-4-5-20251001`, `claude-sonnet-4-20250514`. Flag any legacy IDs (e.g., `claude-3-5-sonnet-20241022`).
 4. **Prefer existing files.** Search with Glob/Grep before creating new files. Duplicate implementations create maintenance burden.
 5. **NO autonomous API calls.** Never run `tar_make()` on API-calling targets without explicit user approval. Read-only operations (`tar_read()`, `tar_outdated()`, `tar_visnetwork()`) are always safe.
 6. **Commit before pipeline runs.** Before running API-calling targets, ensure no uncommitted changes to codebook YAML or R function files. The iteration log stores git hashes for reproducibility.
@@ -213,6 +213,8 @@ These rules govern how Claude Code operates in this project. They prevent recurr
 8. **Pipeline data validation.** After `tar_make()` completes, verify result shape with `tar_read(<target>) |> str()` before proceeding.
 9. **Quarto render safety.** Always render specific files (`quarto render notebooks/c1_measure_id.qmd`), never the full project.
 10. **Strategy reconciliation.** After a stage gate crossing (S1/S2/S3 pass) or when 3+ unresolved entries accumulate in `docs/deltas.md`, run `/strategy-sync` to reconcile implementation deltas with strategy docs. This is a human-driven reflection exercise: Claude challenges the user's reasoning, the user justifies decisions, and the rationale is recorded as an audit trail.
+11. **Grep before editing.** When modifying a parameter or config value, first grep the entire codebase for every reference. Show all occurrences to the user and propose a plan to update ALL of them consistently. Never assume a single-file fix is sufficient.
+12. **Verify target freshness.** Before reviewing pipeline results, check that evaluation targets have been rebuilt for the current codebook version. Run `tar_meta()` or `tar_outdated()` to verify timestamps. Do not review stale outputs.
 
 ### Multi-Agent Workflow Patterns
 
