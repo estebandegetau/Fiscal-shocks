@@ -4,7 +4,7 @@ format:
     toc-depth: 3
     self-contained: true
     title-block-banner: false
-  typst: default
+  # typst: default
 
 execute:
   warning: false

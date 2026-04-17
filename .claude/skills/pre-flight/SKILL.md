@@ -105,7 +105,7 @@ Estimate cost at the model's pricing. For known models:
 | Model | Input (per 1M tokens) | Output (per 1M tokens) |
 |-------|----------------------|------------------------|
 | claude-haiku-4-5-20251001 | $1.00 | $5.00 |
-| claude-sonnet-4-5-20250514 | $3.00 | $15.00 |
+| claude-sonnet-4-20250514 | $3.00 | $15.00 |
 
 For non-Anthropic models, look up current pricing or note "check provider pricing".
 

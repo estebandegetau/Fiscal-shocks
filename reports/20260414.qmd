@@ -1,0 +1,253 @@
+---
+title: "Scaling Fiscal Shock Identification with LLMs"
+subtitle: "Milestone Report: Measure Identification Validated, Motivation Classification Approaching Targets"
+date: "2026-04-16"
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+library(targets)
+library(tidyverse)
+library(gt)
+library(here)
+library(scales)
+
+here::i_am("reports/20260414.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
+```
+
+## Executive Summary
+
+Our [March 4 report](20260304.qmd) concluded with the first of two classification steps approaching its performance targets. This report covers six weeks of development that produced two milestones.
+
+The pipeline classifies fiscal policy changes in two steps. First, **Measure Identification (C1)** scans government documents to find passages that describe a fiscal policy change. Second, **Motivation Classification (C2)** determines *why* each measure was enacted---and, critically, whether it qualifies as an exogenous shock (a policy change not driven by current economic conditions). C2 itself has two sub-steps: evidence extraction (C2a) pulls motivation-relevant quotes from each passage, then act-level classification (C2b) synthesizes that evidence into a final judgment. Together, C1 and C2 produce the core deliverable: a set of fiscal policy changes identified as exogenous.
+
+**Milestone 1: C1 is validated and ready for production.** C1 passed its error analysis gate (v0.6.0, iteration 28). Manual inspection of all predictions found zero semantic errors---every misclassification traced to ambiguity in how we defined the scope of "fiscal measure," not to the model misunderstanding its instructions.
+
+**Milestone 2: C2 completed its first full evaluation cycle.** The motivation classifier reached weighted F1 of 0.611 (target: 0.70) and exogenous precision of 0.789 (target: 0.85) on all 39 labeled acts. Manual error analysis revealed that **the codebook, not the model, is the primary bottleneck**: 10 of 15 errors trace to gaps in the classification instructions (category F), while only 3 are genuine model reasoning failures (category E). This is a positive finding---instruction gaps are addressable through revision.
+
+The @halterman2025 validation framework is working as designed. Each stage produced actionable diagnostics: behavioral tests (S1) confirmed instruction compliance, formal evaluation (S2) quantified performance, and error analysis (S3) identified specific revisions to close the gap. The same iterative process validated C1 in 28 iterations and is now driving C2 toward its targets.
+
+
+## Measure Identification (C1) --- Gate Passed
+
+C1 v0.6.0 passed the error analysis (S3) gate at iteration 28. @tbl-c1-summary shows the final metrics.
+
+```{r}
+#| label: tbl-c1-summary
+#| tbl-cap: "C1 Final Performance (v0.6.0, Haiku)"
+
+tibble(
+  Metric = c(
+    "Tier 1 recall (verbatim passages)",
+    "Combined recall",
+    "Precision",
+    "F1",
+    "S3 manual: semantic errors (category E)",
+    "S3 manual: codebook scope errors (category F)"
+  ),
+  Value = c("100%", "100%*", "83.3%*", "—", "0 / 40", "3 / 40"),
+  Target = c("≥95%", "≥90%", "≥70%", "—", "—", "—"),
+  Status = c("Pass", "Pass", "Pass", "—", "Pass (gate criterion)", "Acceptable")
+) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = "S2 metrics from iteration 26; S3 manual analysis from iteration 28"
+  ) %>%
+  tab_footnote(
+    footnote = "* Bias-corrected estimates from S3 manual analysis. Raw S2 recall was lower due to scope ambiguity in ground truth labels, not model errors.",
+    locations = cells_body(columns = Value, rows = 2)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#E8F5E9"),
+    locations = cells_body(rows = Status == "Pass" | Status == "Pass (gate criterion)")
+  ) %>%
+  gt_theme_report()
+```
+
+The 3 category F errors are codebook scope ambiguity (spending-side fiscal policy outside the @romer2010 tax/revenue scope), not model failures. No further C1 iteration is needed.
+
+
+## Classification Pipeline
+
+@fig-pipeline shows the two-step classification architecture. C1 filters ~15,000 document passages down to those describing fiscal policy changes. C2 then determines why each measure was enacted: the evidence extraction step (C2a) pulls motivation-relevant quotes from each passage, and the classification step (C2b) synthesizes evidence across all passages for a given act into a single motivation judgment. The motivation category determines whether the act is exogenous (a shock suitable for causal analysis) or endogenous (a policy response to current conditions).
+
+```{dot}
+//| label: fig-pipeline
+//| fig-cap: "Classification pipeline for exogenous fiscal shock identification"
+digraph pipeline {
+    rankdir=LR
+    node [fontname="Libertinus Serif" fontsize=11 shape=box style="rounded,filled"]
+    edge [fontname="Libertinus Serif" fontsize=9]
+
+    docs [label="~15,000\ndocument\npassages" fillcolor="#F5F5F5"]
+    c1   [label="C1\nMeasure\nIdentification" fillcolor="#E8F5E9"]
+    c2a  [label="C2a\nEvidence\nExtraction" fillcolor="#E3F2FD"]
+    c2b  [label="C2b\nMotivation\nClassification" fillcolor="#E3F2FD"]
+    exo  [label="Exogenous\n(Long-run · Deficit-driven)" fillcolor="#C8E6C9"]
+    endo [label="Endogenous\n(Countercyclical · Spending-driven)" fillcolor="#FFECB3"]
+
+    docs -> c1 [label="  all passages  "]
+    c1 -> c2a [label="  fiscal measures  "]
+    c2a -> c2b [label="  motivation evidence  "]
+    c2b -> exo
+    c2b -> endo
+}
+```
+
+
+## Motivation Classification (C2) --- Error Analysis Complete, Codebook Revision Next
+
+As described in @fig-pipeline, the motivation classifier works in two steps: evidence extraction (C2a) and act-level classification (C2b). Both steps passed behavioral tests (S1) on Haiku. @tbl-c2-summary shows the formal evaluation (S2) results.
+
+```{r}
+#| label: tbl-c2-summary
+#| tbl-cap: "C2 Performance (C2a v0.4.0 + C2b v0.3.0, Haiku)"
+
+tibble(
+  Metric = c(
+    "Weighted F1",
+    "Exogenous precision",
+    "Accuracy",
+    "Exogenous recall",
+    "C2a extraction failure rate"
+  ),
+  Value = c("0.611", "0.789", "61.5%", "65.2%", "0.0%"),
+  Target = c("≥0.70", "≥0.85", "—", "—", "—"),
+  Gap = c("8.9pp", "6.1pp", "—", "—", "—")
+) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = "First clean full-sample evaluation: 39/39 acts valid, zero NAs"
+  ) %>%
+  tab_footnote(
+    footnote = "Primary condition (discusses_motivation filter). 95% CIs overlap targets: weighted F1 [0.453, 0.766], exogenous precision [0.600, 0.952].",
+    locations = cells_column_labels(columns = Value)
+  ) %>%
+  gt_theme_report()
+```
+
+### Per-Class Performance
+
+```{r}
+#| label: tbl-c2-perclass
+#| tbl-cap: "C2b Per-Class Performance (Haiku, Primary Condition)"
+
+tibble(
+  Class = c("Deficit-driven", "Spending-driven", "Long-run", "Countercyclical"),
+  `Reader-facing` = c(
+    "Tax changes to address inherited deficits",
+    "Tax changes to offset spending changes",
+    "Structural reforms (exogenous)",
+    "Cyclical stabilization (endogenous)"
+  ),
+  Precision = c("72.7%", "83.3%", "75.0%", "35.7%"),
+  Recall = c("100%", "50.0%", "40.0%", "83.3%"),
+  F1 = c("0.842", "0.625", "0.522", "0.500"),
+  N = c(8L, 10L, 15L, 6L)
+) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = "39 labeled acts from @romer2010"
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#E8F5E9"),
+    locations = cells_body(rows = 1)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#FFF3E0"),
+    locations = cells_body(rows = c(3, 4))
+  ) %>%
+  tab_footnote(
+    footnote = "Deficit-driven and spending-driven are endogenous categories (not fiscal shocks). Long-run and countercyclical determine exogeneity.",
+    locations = cells_column_labels(columns = Class)
+  ) %>%
+  gt_theme_report()
+```
+
+Deficit-driven acts are classified near-perfectly (F1 = 0.842, 100% recall). The weakness is the boundary between long-run structural reforms and countercyclical stabilization: 7 of 15 long-run acts were misclassified as countercyclical. This is the dominant error pattern, and it directly affects exogeneity determination---long-run acts misclassified as countercyclical are incorrectly labeled endogenous.
+
+### Error Analysis: Classification Instructions are the Bottleneck
+
+Manual analysis of all 39 acts using the @halterman2025 six-category error framework revealed a favorable error distribution (@tbl-c2-errors).
+
+```{r}
+#| label: tbl-c2-errors
+#| tbl-cap: "C2b Error Distribution (S3 Manual Analysis)"
+
+tibble(
+  Category = c(
+    "A: Model correct",
+    "B: Ground truth error",
+    "C: Document/evidence gap",
+    "D: Output non-compliance",
+    "E: Model semantic error",
+    "F: Codebook gap"
+  ),
+  Count = c(24L, 0L, 2L, 0L, 3L, 10L),
+  Share = percent(c(24, 0, 2, 0, 3, 10) / 39, accuracy = 0.1),
+  Implication = c(
+    "No action needed",
+    "Ground truth is defensible in all cases",
+    "Corpus lacks evidence for these acts",
+    "Full output compliance on Haiku",
+    "Model had adequate instructions but reasoned incorrectly",
+    "Codebook lacks guidance for these boundary cases"
+  )
+) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = "All 39 acts inspected collaboratively (human + AI)"
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#E8F5E9"),
+    locations = cells_body(rows = 1)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#FFF3E0"),
+    locations = cells_body(rows = 6)
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#FFEBEE"),
+    locations = cells_body(rows = 5)
+  ) %>%
+  tab_footnote(
+    footnote = "Category F errors are addressable through codebook revision. Category E errors may require model upgrade.",
+    locations = cells_body(columns = Category, rows = 5)
+  ) %>%
+  gt_theme_report()
+```
+
+The key finding: **66.7% of errors (10/15) are category F** --- the codebook lacks guidance for specific boundary cases, particularly distinguishing structural reform from cyclical stabilization when both use similar language. Only 3 errors (20%) are genuine model reasoning failures. Two specific codebook gaps account for 7 of the 10 category F errors:
+
+1. **Return-to-normal test too literal.** The classification instructions' rule for distinguishing long-run from countercyclical takes policymaker rhetoric at face value. @romer2010 read through rhetorical framing to underlying policy intent---a distinction the current instructions do not encode.
+
+2. **Frequency rule disadvantages long-run.** The "most frequently cited motivation" decision rule systematically favors countercyclical because cyclical language fills more space in budget documents than structural intent statements.
+
+Both gaps have clear revision paths. After revision, the realistic ceiling is approximately 95% accuracy (36--37 of 39 acts), with the remaining errors requiring additional congressional documents in the corpus.
+
+
+## Next Steps
+
+1. **C2 codebook revision** (immediate): Sharpen the return-to-normal test and modify the frequency-based decision rule to weigh provision structure alongside stated framing. Rerun behavioral tests (S1) to confirm compliance, then formal evaluation (S2) and error analysis (S3) for updated metrics.
+
+2. **Model exploration** (if codebook revision plateaus): The error analysis found that the model relies on label name semantics over definitions for boundary cases, suggesting Haiku may be too small for the multi-step reasoning these cases require. A larger model (Sonnet) is the fallback.
+
+3. **US production pilot** (late April target): Once C2 passes its evaluation gate, run the validated C1+C2 pipeline on the full US corpus (~15,000 passages) to produce the first complete set of exogenous fiscal shock identifications for 1945--2022, and compare to @romer2010 dataset. 
+
+4. **South East Asia deployment** (mid May): After validating the production machinery on the US, we can start analysing government documents from SEA to produce exogenous only fiscal shock datasets.
+
+5. **Timing and magnitude** (future extension): Extracting *when* each measure takes effect and *how large* the fiscal impact is are natural extensions of this pipeline. These enrichments can be pursued if the World Bank office determines they are valuable, but the core deliverable---identifying which fiscal policy changes are exogenous---does not depend on them.
+
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
