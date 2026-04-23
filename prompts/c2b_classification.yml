@@ -1,6 +1,6 @@
 codebook:
   name: "C2b: Motivation Classification"
-  version: "0.4.0"
+  version: "0.5.0"
   instructions: >
     You are an expert in fiscal policy analysis classifying the primary motivation for
     a fiscal measure. You will receive the act name, year of passage, and an array of
@@ -45,46 +45,51 @@ codebook:
 
     **Boundary case rules (apply these precisely):**
 
-    1. Countercyclical vs. Long-run — the "return to normal" test: If the primary policy
-    goal is to return output growth to its normal level through temporary demand management
-    (e.g., responding to rising unemployment or falling output with temporary tax cuts or
-    spending), classify as COUNTERCYCLICAL. If the primary policy goal is to raise growth
-    above its normal level, improve the economy's structural capacity, or achieve permanent
-    reform, classify as LONG_RUN — even if enacted during a downturn and even if policymakers
-    use cyclical language to justify it politically. Read through rhetorical framing to the
-    underlying provision-level intent: (a) closing an output gap via structural reform
-    (permanent rate reductions, investment incentives, supply-side measures) is LONG_RUN, not
-    COUNTERCYCLICAL, because the mechanism targets the economy's structural capacity rather
-    than aggregate demand; (b) restoring a pre-existing structural policy to its baseline (e.g., reinstating a
-    suspended tax provision or extending a structural program) is LONG_RUN because the
+    1. Cyclical-stabilization vs. structural-reform — the "return to normal" test: If the
+    primary policy goal is to return output growth to its normal level through temporary
+    demand management (e.g., responding to rising unemployment or falling output with
+    temporary tax cuts or spending), classify in the cyclical-stabilization category. If
+    the primary policy goal is to raise growth above its normal level, improve the economy's
+    structural capacity, or achieve permanent reform, classify in the structural-reform
+    category — even if enacted during a downturn and even if policymakers use cyclical
+    language to justify it politically. Read through rhetorical framing to the underlying
+    provision-level intent: (a) closing an output gap via structural reform (permanent rate
+    reductions, investment incentives, supply-side measures) belongs in the structural-reform
+    category, not the cyclical-stabilization category, because the mechanism targets the
+    economy's structural capacity rather than aggregate demand; (b) restoring a pre-existing
+    structural policy to its baseline (e.g., reinstating a suspended tax provision or
+    extending a structural program) belongs in the structural-reform category because the
     mechanism is structural, not demand management, regardless of how it is framed;
-    (c) deliberately pushing growth above normal to reduce unemployment is LONG_RUN — the
-    goal exceeds returning to the prior trend and instead targets a structurally higher level
-    of output. Do not take policymaker language at face value when the provision structure
-    contradicts the stated framing. If the measure was proposed when the economy was growing
-    normally but motivated by a desire for faster growth, classify as LONG_RUN even if the
-    economy weakened by the time of passage.
+    (c) deliberately pushing growth above normal to reduce unemployment belongs in the
+    structural-reform category — the goal exceeds returning to the prior trend and instead
+    targets a structurally higher level of output. Do not take policymaker language at face
+    value when the provision structure contradicts the stated framing. If the measure was
+    proposed when the economy was growing normally but motivated by a desire for faster
+    growth, classify in the structural-reform category even if the economy weakened by the
+    time of passage.
 
-    2. Spending-driven vs. Deficit-driven — the 1-year temporal rule: If a fiscal measure
-    pays for a spending increase that occurred within the past year, classify as
-    SPENDING_DRIVEN. If a fiscal measure addresses a deficit that resulted from spending
-    decisions made more than one year prior, classify as DEFICIT_DRIVEN. The key question
-    is whether the spending change is contemporaneous (within 1 year) or inherited (beyond
-    1 year). If the temporal relationship between the spending change and the fiscal measure
-    cannot be determined from the evidence, note this uncertainty in your reasoning.
+    2. Spending-offset vs. inherited-deficit — the 1-year temporal rule: If a fiscal
+    measure pays for a spending increase that occurred within the past year, classify in
+    the spending-offset category. If a fiscal measure addresses a deficit that resulted
+    from spending decisions made more than one year prior, classify in the inherited-deficit
+    category. The key question is whether the spending change is contemporaneous (within
+    1 year) or inherited (beyond 1 year). If the temporal relationship between the spending
+    change and the fiscal measure cannot be determined from the evidence, note this
+    uncertainty in your reasoning.
 
     3. Offsetting exogenous changes: When a fiscal measure offsets a previous exogenous
     change because economic conditions have weakened, classify the offsetting measure with
-    the same motivation as the original change, not as COUNTERCYCLICAL. This avoids
-    identifying two changes of different motivations when liabilities did not actually change.
+    the same motivation as the original change, not in the cyclical-stabilization category.
+    This avoids identifying two changes of different motivations when liabilities did not
+    actually change.
 
     4. Inflation-fighting fiscal restraint vs. deficit reduction: When a fiscal measure
-    restrains fiscal policy to combat current inflation or economic overheating, classify as
-    COUNTERCYCLICAL — the measure responds to current macroeconomic conditions (inflation is
-    a cyclical phenomenon). Do not classify as DEFICIT_DRIVEN merely because deficit language
-    accompanies the inflation-fighting rationale. The 1-year temporal rule (boundary case
-    rule 2) applies to spending-driven vs. deficit-driven distinctions, not to inflation vs.
-    deficit distinctions.
+    restrains fiscal policy to combat current inflation or economic overheating, classify in
+    the cyclical-stabilization category — the measure responds to current macroeconomic
+    conditions (inflation is a cyclical phenomenon). Do not use the inherited-deficit
+    category merely because deficit language accompanies the inflation-fighting rationale.
+    The 1-year temporal rule (boundary case rule 2) applies to spending-offset vs.
+    inherited-deficit distinctions, not to inflation vs. deficit distinctions.
 
 
     **Enacted-status determination:** Based on the enacted-status signals extracted from the
@@ -106,12 +111,12 @@ codebook:
         - "The evidence consistently describes the measure as financing or paying for a specific spending program or commitment that is being enacted or expanded at the same time"
         - "The spending change and the fiscal measure are described as a package — the fiscal measure exists because of the spending decision"
         - "The temporal link between the spending change and the fiscal measure is within one year"
-        - "When an explicit causal link between a spending change and the fiscal measure is present (e.g., the fiscal change would not have occurred absent the associated spending decision), this direct causal chain is strong evidence of SPENDING_DRIVEN even if other-category language (countercyclical, structural, deficit) appears more frequently in the evidence"
+        - "When an explicit causal link between a spending change and the fiscal measure is present (e.g., the fiscal change would not have occurred absent the associated spending decision), this direct causal chain is strong evidence for this category even if other-category language (cyclical, structural, deficit) appears more frequently in the evidence"
 
       negative_clarification:
-        - "Do not classify as SPENDING_DRIVEN if the fiscal measure addresses a deficit caused by spending decisions made more than one year prior — classify as DEFICIT_DRIVEN instead"
-        - "Do not classify as SPENDING_DRIVEN merely because spending is mentioned in the evidence; the spending change must be the stated reason for the fiscal measure"
-        - "Do not classify as SPENDING_DRIVEN when deficit reduction is the primary stated goal, even if the deficit was originally caused by a spending increase — apply the 1-year temporal rule"
+        - "Do not use this category if the fiscal measure addresses a deficit caused by spending decisions made more than one year prior — use the inherited-deficit category instead"
+        - "Do not use this category merely because spending is mentioned in the evidence; the spending change must be the stated reason for the fiscal measure"
+        - "Do not use this category when deficit reduction is the primary stated goal, even if the deficit was originally caused by a spending increase — apply the 1-year temporal rule"
 
     - label: "COUNTERCYCLICAL"
       label_definition: >
@@ -122,13 +127,13 @@ codebook:
         - "The evidence consistently describes the goal as restoring economic growth to its prior trend or normal level, not raising it above normal"
         - "Policymakers cite current or projected economic weakness — rising unemployment, falling output, recession — as the reason for acting"
         - "The measure is explicitly framed as temporary or responsive to cyclical conditions"
-        - "Fiscal restraint enacted to combat current inflation or economic overheating is COUNTERCYCLICAL — responding to inflation is responding to current macroeconomic conditions, even if deficit reduction language accompanies the inflation rationale"
+        - "Fiscal restraint enacted to combat current inflation or economic overheating belongs in this category — responding to inflation is responding to current macroeconomic conditions, even if deficit reduction language accompanies the inflation rationale"
 
       negative_clarification:
-        - "Do not classify as COUNTERCYCLICAL merely because the economy is weak at the time of passage; if the stated aim is structural reform, improved efficiency, or raising long-run potential, classify as LONG_RUN"
-        - "Do not classify as COUNTERCYCLICAL when the evidence uses words like 'stimulate' or 'growth' but the full context shows the goal is to raise growth above its normal level — apply the 'return to normal' test"
-        - "If the measure was proposed during normal economic conditions but motivated by faster growth, classify as LONG_RUN even if the economy weakened by passage"
-        - "Do not classify as COUNTERCYCLICAL when the measure's provisions are permanent, structural, or supply-side in character (e.g., permanent rate reductions, investment incentives, structural reform) — classify as LONG_RUN even if policymakers cite economic weakness as a reason for acting. The character of the provisions outweighs cyclical rhetoric when they conflict."
+        - "Do not use this category merely because the economy is weak at the time of passage; if the stated aim is structural reform, improved efficiency, or raising long-run potential, use the structural-reform category"
+        - "Do not use this category when the evidence uses words like 'stimulate' or 'growth' but the full context shows the goal is to raise growth above its normal level — apply the 'return to normal' test"
+        - "If the measure was proposed during normal economic conditions but motivated by faster growth, use the structural-reform category even if the economy weakened by passage"
+        - "Do not use this category when the measure's provisions are permanent, structural, or supply-side in character (e.g., permanent rate reductions, investment incentives, structural reform) — use the structural-reform category even if policymakers cite economic weakness as a reason for acting. The character of the provisions outweighs cyclical rhetoric when they conflict."
 
     - label: "DEFICIT_DRIVEN"
       label_definition: >
@@ -142,10 +147,10 @@ codebook:
         - "The deficit being addressed predates the fiscal measure by more than one year, or is described as a structural rather than cyclical problem"
 
       negative_clarification:
-        - "Do not classify as DEFICIT_DRIVEN merely because the word 'deficit' appears in the evidence; the deficit must be described as inherited or structural, not as a consequence of a spending increase within the past year"
-        - "If the deficit results from a spending increase that occurred within the past year, classify as SPENDING_DRIVEN — the 1-year temporal rule takes precedence"
-        - "Do not classify as DEFICIT_DRIVEN when the primary stated goal is structural economic reform or growth improvement — that is LONG_RUN, even if deficit reduction is a secondary benefit"
-        - "Do not classify as DEFICIT_DRIVEN when the primary motivation is fiscal restraint to combat current inflation or economic overheating — that is COUNTERCYCLICAL, even if deficit language is used alongside the inflation-fighting rationale"
+        - "Do not use this category merely because the word 'deficit' appears in the evidence; the deficit must be described as inherited or structural, not as a consequence of a spending increase within the past year"
+        - "If the deficit results from a spending increase that occurred within the past year, use the spending-offset category — the 1-year temporal rule takes precedence"
+        - "Do not use this category when the primary stated goal is structural economic reform or growth improvement — that belongs in the structural-reform category, even if deficit reduction is a secondary benefit"
+        - "Do not use this category when the primary motivation is fiscal restraint to combat current inflation or economic overheating — that belongs in the cyclical-stabilization category, even if deficit language is used alongside the inflation-fighting rationale"
 
     - label: "LONG_RUN"
       label_definition: >
@@ -157,12 +162,12 @@ codebook:
         - "The evidence consistently describes structural goals: fairness, efficiency, simplification, smaller government, improved incentives, raising potential output, or promoting long-run growth"
         - "The stated aim is to raise growth above its current normal level, not to restore growth to a prior normal level"
         - "The measure is framed as a permanent structural change rather than a temporary cyclical response"
-        - "Permanent rate changes, investment incentives, supply-side reforms, and structural tax simplification are strong evidence of LONG_RUN even when enacted during economic weakness or justified with cyclical language — the structural character of the provisions outweighs the timing or rhetorical context"
+        - "Permanent rate changes, investment incentives, supply-side reforms, and structural tax simplification are strong evidence for this category even when enacted during economic weakness or justified with cyclical language — the structural character of the provisions outweighs the timing or rhetorical context"
 
       negative_clarification:
-        - "Do not classify as LONG_RUN merely because the passage mentions growth; if the goal is to restore growth to its prior normal level during a downturn, classify as COUNTERCYCLICAL"
-        - "Do not classify as LONG_RUN when the primary stated purpose is deficit reduction or fiscal prudence — that is DEFICIT_DRIVEN"
-        - "The key distinction from COUNTERCYCLICAL is direction: LONG_RUN raises growth above normal; COUNTERCYCLICAL returns growth to normal from below"
+        - "Do not use this category merely because the passage mentions growth; if the goal is to restore growth to its prior normal level during a downturn, use the cyclical-stabilization category"
+        - "Do not use this category when the primary stated purpose is deficit reduction or fiscal prudence — that belongs in the inherited-deficit category"
+        - "The key distinction from the cyclical-stabilization category is direction: this category raises growth above normal; the cyclical-stabilization category returns growth to normal from below"
 
   output_instructions: >
     Determine the act's motivation and enacted status based on the synthesized evidence.
