@@ -1083,13 +1083,13 @@ iterations:
           weighted_f1: 0.5288
           accuracy_drop: 0.0513
           weighted_f1_drop: 0.0818
-        note: >
-          Paradoxical result: removing label definitions or clarifications
-          individually improves wF1 slightly. Only removing everything
-          degrades performance (wF1 drop 8.2pp). Consistent with Test VII —
-          if model classifies from label name semantics, definitions add
-          noise rather than signal. Label names alone carry strong semantic
-          signal for these fiscal categories.
+      ablation_note: >
+        Paradoxical result: removing label definitions or clarifications
+        individually improves wF1 slightly. Only removing everything
+        degrades performance (wF1 drop 8.2pp). Consistent with Test VII —
+        if model classifies from label name semantics, definitions add
+        noise rather than signal. Label names alone carry strong semantic
+        signal for these fiscal categories.
       comparison_vs_flash_s3:
         note: >
           Flash S3 (iteration 8, N=27): Test VII 0% definition-following,
@@ -1837,12 +1837,12 @@ iterations:
           weighted_f1: 0.6230
           accuracy_drop: 0.0000
           weighted_f1_drop: 0.0080
-        note: >
-          Removing label definitions or clarifications individually improves
-          wF1 — codebook definitions add noise when the model classifies from
-          label name semantics. Removing everything causes only 0.8pp wF1
-          drop (vs 8.2pp in v0.3.0). v0.4.0 made the model rely on codebook
-          components less, not more.
+      ablation_note: >
+        Removing label definitions or clarifications individually improves
+        wF1 — codebook definitions add noise when the model classifies from
+        label name semantics. Removing everything causes only 0.8pp wF1
+        drop (vs 8.2pp in v0.3.0). v0.4.0 made the model rely on codebook
+        components less, not more.
       comparison_vs_v030_s3:
         test_vii_definition_following: "20.5% → 0.0% (REGRESSED)"
         test_vi_change_rate: "7.7% → 5.3% (improved)"
@@ -2156,3 +2156,542 @@ iterations:
       entirely (making instructions label-name-agnostic). Reassess Haiku's
       viability once valid Test VII data is available — the prior conclusion
       that "Haiku can't follow definitions" was based on invalid test results.
+
+  - iteration: 25
+    codebook_version: "0.4.0"
+    date: "2026-04-23"
+    git_commit: "0f4a74f"
+    model: "claude-sonnet-4-20250514"
+    stage: "s3_manual_analysis"
+    changes: >
+      Manual error analysis of S3 baseline predictions (38 acts, Sonnet v0.4.0)
+      using H&K 6-category framework (A-F). Efficient review: inherited prior
+      iteration 18 categories for 24 acts whose predicted label matched the
+      prior Haiku v0.3.0 run; auto-assigned A for 6 acts fixed in this run
+      (prior wrong, now correct); individually reviewed 8 acts with deviations
+      (regressions from A or different error modes). R&R concluding arguments
+      consulted for each reviewed act; C2b input evidence inspected for
+      sufficiency on acts 18, 32, 35.
+    results:
+      n_inspected: 38
+      category_distribution:
+        - category: "A_llm_correct"
+          count: 25
+          pct: 65.8
+        - category: "B_incorrect_gold"
+          count: 0
+          pct: 0.0
+        - category: "C_document_error"
+          count: 3
+          pct: 7.9
+        - category: "D_non_compliance"
+          count: 0
+          pct: 0.0
+        - category: "E_semantics_reasoning"
+          count: 0
+          pct: 0.0
+        - category: "F_other"
+          count: 10
+          pct: 26.3
+      act_judgments:
+        - act_id: 1
+          act_name: "Changes in Depreciation Guidelines and Revenue Act of 1962"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 2
+          act_name: "Crude Oil Windfall Profit Tax Act of 1980"
+          true: "LONG_RUN"
+          pred: "SPENDING_DRIVEN"
+          category: "F"
+          notes: >
+            REGRESSION from prior A. Decision rule 4 over-applied. R&R classify
+            as LONG_RUN because tax was "loosely tied to spending increases"
+            with structural regulatory motive (limit oil company profits).
+            Model treated earmarking to energy programs as tight spending
+            coupling. Codebook lacks tight/loose coupling test for decision
+            rule 4. Priority fix.
+        - act_id: 3
+          act_name: "Deficit Reduction Act of 1984"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 4
+          act_name: "Economic Growth and Tax Relief Reconciliation Act of 2001"
+          true: "COUNTERCYCLICAL"
+          pred: "LONG_RUN"
+          category: "F"
+          notes: >
+            REGRESSION from prior A. Multi-motivation act (per R&R: permanent
+            LONG_RUN cut + 2001 acceleration as COUNTERCYCLICAL). Gold label
+            hardcoded to endogenous (COUNTER) per ground-truth convention.
+            Codebook's decision rule 3 instructs dominant-by-fiscal-impact,
+            which gives LONG_RUN. The "default to endogenous when
+            multi-motivation" rule is at the ground-truth labeling layer, not
+            in the codebook. Priority fix.
+        - act_id: 5
+          act_name: "Economic Recovery Tax Act of 1981"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 6
+          act_name: "Excess Profits Tax Act of 1950"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 7
+          act_name: "Excise Tax Reduction Act of 1954"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: >
+            FIXED from prior E. v0.4.0 strengthening of decision rule 4
+            (explicit spending causal link) correctly applied here. Model
+            now recognizes the "justified only because of reductions in
+            proposed expenditures" framing as SPENDING_DRIVEN.
+        - act_id: 8
+          act_name: "Excise Tax Reduction Act of 1965"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 9
+          act_name: "Expiration of Excess Profits Tax and of Temporary Income Tax Increases"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: >
+            FIXED from prior E. v0.4.0 strengthened decision rule 4 resolved
+            the spending-offset recognition issue for this act.
+        - act_id: 10
+          act_name: "Federal-Aid Highway Act of 1956"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 11
+          act_name: "Federal-Aid Highway Act of 1959"
+          true: "DEFICIT_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "F"
+          notes: >
+            REGRESSION from prior A. R&R classify as DEFICIT_DRIVEN based on
+            (1) tax increase occurred >1 year after mid-1958 spending and
+            (2) "loosely tied" to that spending. Model applied 1-year rule at
+            year-level granularity (1958 vs 1959) treating as contemporaneous.
+            Evidence granularity may have been year-level only — note as
+            secondary factor. R&R themselves call this "somewhat more
+            ambiguous than usual." Codebook gap: loose-coupling test missing
+            (same as act 2) + temporal-rule precision unclear at boundary.
+            Weird borderline case; note for future analyses.
+        - act_id: 12
+          act_name: "Job Creation and Worker Assistance Act of 2002"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 13
+          act_name: "Jobs and Growth Tax Relief Reconciliation Act of 2003"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: >
+            FIXED from prior F. v0.4.0 provision-structure-outweighs-cyclical-
+            rhetoric edit resolved the return-to-normal gap for this act.
+        - act_id: 14
+          act_name: "Omnibus Budget Reconciliation Act of 1987"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 15
+          act_name: "Omnibus Budget Reconciliation Act of 1993"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 16
+          act_name: "Public Law 89-800 (Suspension of Investment Tax Credit)"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 17
+          act_name: "Public Law 90-26 (Restoration of the Investment Tax Credit)"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: >
+            FIXED from prior F. v0.4.0 edits on structural-policy-restoration
+            resolved the ambiguity between restoring a structural policy
+            (LONG_RUN) vs cyclical stimulus (COUNTER).
+        - act_id: 18
+          act_name: "Revenue Act of 1945"
+          true: "SPENDING_DRIVEN"
+          pred: "LONG_RUN"
+          category: "F"
+          notes: >
+            Persistent spending-offset pattern, different error mode
+            (prior E picked COUNTER; now picks LONG_RUN). Evidence
+            UNAMBIGUOUSLY sufficient — 5+ items explicitly document
+            "decline in war expenditures" → tax cut causal link.
+            Codebook rule priority gap: decision rule 1 (provision
+            structure → LONG_RUN) vs decision rule 4 (spending causal
+            link → SPENDING_DRIVEN). v0.4.0 strengthened DR1 without
+            specifying when it yields to DR4. Boundary case rule 3
+            (offsetting exogenous changes) also scoped too narrowly —
+            blocks COUNTER only, not LONG_RUN. Priority fix, bundled
+            with act 24.
+        - act_id: 19
+          act_name: "Revenue Act of 1948"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: >
+            FIXED from prior F. Model correctly classified despite veto-
+            override complexity. v0.4.0 edits improved structural-transition
+            recognition.
+        - act_id: 20
+          act_name: "Revenue Act of 1950"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 21
+          act_name: "Revenue Act of 1964"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Inherited from iteration 18 (same prediction, F). Classic
+            Kennedy tax cut boundary case. Return-to-normal test still
+            too literal; model reads "close output gap" as cyclical
+            when R&R read as structural capacity increase. Persistent
+            gap despite v0.4.0 edits.
+        - act_id: 22
+          act_name: "Revenue Act of 1971"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: >
+            FIXED from prior F. v0.4.0 provision-structure emphasis
+            correctly applied for this structural competitiveness reform.
+        - act_id: 23
+          act_name: "Revenue Act of 1978"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Inherited from iteration 18 (same prediction, F). Same
+            return-to-normal pattern as act 21. v0.4.0 edits did not
+            fix this case.
+        - act_id: 24
+          act_name: "Revenue and Expenditure Control Act of 1968"
+          true: "COUNTERCYCLICAL"
+          pred: "SPENDING_DRIVEN"
+          category: "F"
+          notes: >
+            REGRESSION from prior A. Evidence abundant (18 chunks, 123
+            items) — model explicitly acknowledged inflation-fighting
+            language. Codebook rule hierarchy gap: decision rule 4
+            (spending link precedence) conflicts with boundary case
+            rule 1 (return-to-normal) and boundary case rule 4
+            (inflation-fighting). Boundary case 4 is narrowly scoped to
+            inflation-vs-deficit, not inflation-vs-spending. v0.4.0
+            strengthening of DR4 without strengthening competing rules
+            caused this regression. Priority fix: (a) specify rule
+            hierarchy, (b) extend boundary case 4 to cover
+            inflation-vs-spending.
+        - act_id: 25
+          act_name: "Social Security Amendments of 1950"
+          true: "SPENDING_DRIVEN"
+          pred: "LONG_RUN"
+          category: "C"
+          notes: >
+            Inherited from iteration 18. Persistent data gap: zero
+            evidence items from 1 chunk. Pipeline failed to extract
+            motivation evidence for this act.
+        - act_id: 26
+          act_name: "Social Security Amendments of 1954"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 27
+          act_name: "Social Security Amendments of 1965"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 28
+          act_name: "Social Security Amendments of 1977"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 29
+          act_name: "Social Security Amendments of 1983"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 30
+          act_name: "Tax Adjustment Act of 1966"
+          true: "LONG_RUN"
+          pred: "SPENDING_DRIVEN"
+          category: "F"
+          notes: >
+            Different error mode from prior F (prior picked COUNTER;
+            now picks SPENDING). Cross-act consistency gap (same root
+            cause as iteration 18). R&R classification depends on
+            methodological rule: tax increase that partially undoes a
+            prior exogenous tax cut (1965 excise cut) should be
+            classified with the same motivation to avoid inconsistent
+            exogeneity patterns. Codebook treats acts independently;
+            cross-act state not available to model. LOW PRIORITY —
+            structural limitation, don't redesign around it.
+        - act_id: 31
+          act_name: "Tax Equity and Fiscal Responsibility Act of 1982"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 32
+          act_name: "Tax Rate Extension Act of 1958"
+          true: "LONG_RUN"
+          pred: "SPENDING_DRIVEN"
+          category: "C"
+          notes: >
+            UPGRADED from prior F to C after evidence inspection. Only
+            6 unique evidence items (8 with duplicates); ZERO evidence
+            of the freight excise repeal for railroads — which is
+            R&R's entire basis for LONG_RUN classification ("tax cut
+            was passed to aid one particular industry"). Congressional
+            documents missing from corpus. No codebook fix would help
+            this act; evidence is the bottleneck.
+        - act_id: 33
+          act_name: "Tax Reduction Act of 1975"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 34
+          act_name: "Tax Reduction and Simplification Act of 1977"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            Inherited from iteration 18 (same prediction, F). Codebook
+            doesn't capture that deliberately overshooting normal growth
+            to reduce unemployment is LONG_RUN in R&R's framework, even
+            via demand-side channels. v0.4.0 edits did not fix.
+        - act_id: 35
+          act_name: "Tax Reform Act of 1969"
+          true: "COUNTERCYCLICAL"
+          pred: "LONG_RUN"
+          category: "F"
+          notes: >
+            Different error mode from prior F (prior picked DEFICIT;
+            now picks LONG_RUN). Evidence ABUNDANT — 30+ items out of
+            219 explicitly document inflation-fighting / return-to-normal /
+            fiscal restraint signals. Multi-motivation act (per R&R:
+            dominant COUNTER + LONG_RUN ~$3B exemption increase). Gold
+            label hardcoded to endogenous (COUNTER). Same codebook gap
+            as act 4: (1) multi-motivation single-label convention
+            missing, (2) rule hierarchy between DR1 and boundary case 4
+            (v0.4.0 addition) unclear. Boundary case 4 correctly blocked
+            DEFICIT but didn't block LONG_RUN. Priority fix, bundled
+            with act 4.
+        - act_id: 36
+          act_name: "Tax Reform Act of 1976"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 37
+          act_name: "Tax Reform Act of 1986"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 18 (same prediction)."
+        - act_id: 38
+          act_name: "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997"
+          true: "SPENDING_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "C"
+          notes: >
+            Inherited from iteration 18. Insufficient documentary
+            support for R&R's spending-driven classification in the
+            evidence the model received.
+      bias_corrected_metrics:
+        effective_n: 35
+        effective_accuracy: 0.7143
+        raw_accuracy: 0.6579
+        e_error_rate: 0.0000
+        f_error_rate: 0.2632
+        c_error_rate: 0.0789
+      comparison_to_iteration_18:
+        prior_iteration: 18
+        prior_model: "claude-haiku-4-5-20251001"
+        prior_codebook_version: "0.3.0"
+        prior_n: 39
+        prior_distribution:
+          A: 24
+          B: 0
+          C: 2
+          D: 0
+          E: 3
+          F: 10
+        current_distribution:
+          A: 25
+          B: 0
+          C: 3
+          D: 0
+          E: 0
+          F: 10
+        deltas:
+          fixed_prior_errors: 6
+          new_regressions: 4
+          different_error_mode: 4
+          persistent_errors: 5
+        interpretation: >
+          Raw accuracy improved slightly (65.8% vs 61.5%). E errors
+          eliminated (3 → 0) — v0.4.0 strengthening of decision rule
+          4 resolved the spending-offset pattern for acts 7 and 9.
+          But 4 new regressions appeared (acts 2, 4, 11, 24) — all
+          F-category codebook gaps driven by v0.4.0's strengthening
+          of decision rule 1 (provision structure) and decision rule
+          4 (spending causal link precedence) without specifying rule
+          hierarchy. Net: fewer reasoning errors, more codebook-gap
+          errors. The underlying issue is a rule-priority problem
+          introduced by v0.4.0 edits: strong rules in isolation,
+          ambiguous in combination.
+      error_pattern_summary:
+        pattern_1_rule_hierarchy_gap:
+          count: 4
+          category: "F"
+          acts: [18, 24, 35, 4]
+          root_cause: >
+            v0.4.0 strengthened decision rule 1 (provision structure
+            outweighs cyclical rhetoric) and decision rule 4 (explicit
+            spending causal link takes precedence) without specifying
+            which rule wins when both apply. Boundary case rule 4
+            (inflation-fighting → COUNTER) is scoped too narrowly
+            (inflation-vs-deficit only). When an act has both
+            provision-structure signals and spending-link signals, the
+            model picks whichever rule dominates in the specific
+            wording — leading to inconsistent classifications across
+            similar acts. Priority fix.
+        pattern_2_multi_motivation_convention:
+          count: 2
+          category: "F"
+          acts: [4, 35]
+          root_cause: >
+            Multi-motivation acts (EGTRRA, TRA 1969) are labeled in
+            gold with the endogenous category by convention. But the
+            codebook's decision rule 3 instructs the model to pick
+            dominant-by-fiscal-impact for single-label output, which
+            selects the exogenous LONG_RUN component. The
+            "default-to-endogenous" rule is at the ground-truth
+            labeling layer, not in the codebook. Priority fix:
+            add explicit instruction to default to endogenous when
+            multi-motivation is detected for single-label output.
+        pattern_3_loose_coupling_test_missing:
+          count: 2
+          category: "F"
+          acts: [2, 11]
+          root_cause: >
+            Decision rule 4 (spending causal link) has no tight/loose
+            coupling test. R&R distinguish (a) tax enacted BECAUSE of
+            a spending program (tight — SPENDING_DRIVEN) from (b) tax
+            with structural/regulatory purpose whose revenues happen
+            to be earmarked (loose — LONG_RUN/DEFICIT). v0.4.0 edits
+            strengthened DR4 without adding this distinction. Priority
+            fix.
+        pattern_4_return_to_normal_persistent:
+          count: 2
+          category: "F"
+          acts: [21, 23]
+          root_cause: >
+            Return-to-normal test still too literal despite v0.4.0
+            edits. Kennedy tax cut (1964) and Revenue Act 1978 both
+            read as cyclical response when R&R read as structural
+            capacity increase. Persistent codebook gap.
+        pattern_5_push_above_normal:
+          count: 1
+          category: "F"
+          acts: [34]
+          root_cause: >
+            Codebook doesn't capture that deliberately overshooting
+            normal growth to reduce unemployment is LONG_RUN in R&R's
+            framework, even via demand-side channels.
+        pattern_6_cross_act_consistency:
+          count: 1
+          category: "F"
+          acts: [30]
+          root_cause: >
+            R&R's methodological rule: tax increase that partially
+            undoes a prior exogenous tax cut should retain the same
+            motivation. Codebook treats acts independently. LOW
+            PRIORITY — structural limitation.
+        pattern_7_document_gaps:
+          count: 3
+          category: "C"
+          acts: [25, 32, 38]
+          root_cause: >
+            Pipeline/corpus gap: act 25 has 0 evidence items; act 32
+            missing freight excise repeal provision for railroads (the
+            key R&R classification basis); act 38 lacks documentary
+            support for R&R's spending-driven classification. Too few
+            congressional documents in corpus to surface critical
+            evidence for these acts.
+    interpretation: >
+      Mixed progress on Sonnet v0.4.0. Raw accuracy improved marginally
+      (65.8% vs 61.5% on Haiku v0.3.0). E errors eliminated (3 → 0),
+      demonstrating v0.4.0's strengthening of decision rule 4 resolved
+      the spending-offset reasoning pattern for acts 7 and 9. B errors
+      remain at zero — R&R's ground truth is defensible in every case
+      reviewed. But F errors are unchanged (10 in both iterations), with
+      4 NEW regressions (acts 2, 4, 11, 24) appearing alongside 6 fixed
+      prior errors. The regression pattern reveals the core v0.4.0 issue:
+      individual rules were strengthened, but rule hierarchy was left
+      ambiguous. When decision rule 1 (provision structure) conflicts
+      with decision rule 4 (spending causal link) or boundary case rules
+      1/4, the model picks whichever rule's wording is more absolute —
+      which varies by act. This is not a model failure; it's a codebook
+      specification failure. The 4 regressions are all cases where
+      v0.4.0 introduced a strong rule without specifying when it yields.
+      Separately, two structural codebook gaps persist: (1) multi-
+      motivation single-label convention missing (acts 4, 35), and (2)
+      tight/loose spending coupling test missing (acts 2, 11). The
+      evidence inspection for acts 18, 32, 35 confirmed that for act 18
+      and 35 evidence was abundantly sufficient — codebook is the
+      bottleneck — but for act 32 the congressional documents missing
+      from the corpus make R&R's classification unreachable regardless
+      of codebook quality. C errors count increased by 1 (act 32
+      upgraded from F to C after evidence inspection).
+    decision: >
+      Priority codebook fixes, bundled to address the rule-hierarchy
+      problem holistically rather than piecemeal: (1) Specify rule
+      hierarchy when decision rule 1 (provision structure) and
+      decision rule 4 (spending causal link) both apply — which wins?;
+      (2) Extend boundary case rule 4 (inflation-fighting → COUNTER)
+      to cover inflation-vs-spending cases, not just inflation-vs-
+      deficit; (3) Add tight/loose coupling test to decision rule 4
+      (distinguish "tax enacted BECAUSE of spending program" from
+      "tax with structural purpose whose revenues are earmarked");
+      (4) Add multi-motivation single-label convention: when multiple
+      motivations detected, default to endogenous category for
+      single-label output. Lower priority: return-to-normal still too
+      literal (acts 21, 23), push-above-normal gap (act 34),
+      cross-act consistency (act 30 — structural, don't redesign).
+      C-category acts (25, 32, 38) are corpus/pipeline issues — not
+      addressable via codebook. Consider augmenting corpus with
+      congressional committee reports for acts 20, 25, 32, 38.
+      Before rerunning S2/S3 after codebook fixes, verify regressions
+      (acts 2, 4, 11, 24) flip back to A without breaking the 6
+      improvements (acts 7, 9, 13, 17, 19, 22).

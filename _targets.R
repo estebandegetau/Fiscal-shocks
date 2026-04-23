@@ -505,6 +505,34 @@ list(
   tar_quarto(
     verify_c1,
     "notebooks/c1_measure_id.qmd"
+  ),
+
+  # =============================================================================
+  # Iteration Log Parsing (cross-codebook development history)
+  # =============================================================================
+  tar_target(
+    c1_iteration_log_file,
+    here::here("prompts", "iterations", "c1.yml"),
+    format = "file"
+  ),
+  tar_target(
+    c2a_iteration_log_file,
+    here::here("prompts", "iterations", "c2a.yml"),
+    format = "file"
+  ),
+  tar_target(
+    c2b_iteration_log_file,
+    here::here("prompts", "iterations", "c2b.yml"),
+    format = "file"
+  ),
+  tar_target(
+    iteration_logs,
+    parse_all_iteration_logs(c(
+      c1 = c1_iteration_log_file,
+      c2a = c2a_iteration_log_file,
+      c2b = c2b_iteration_log_file
+    )),
+    packages = c("tidyverse", "yaml")
   )
 
   # =============================================================================

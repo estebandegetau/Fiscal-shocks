@@ -1,0 +1,261 @@
+---
+title: "Codebook Development History"
+subtitle: "Cross-codebook iteration summary with H&K-style reporting"
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+library(targets)
+library(tidyverse)
+library(gt)
+library(here)
+
+here::i_am("notebooks/iteration_summary.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/gt_theme.R"))
+source(here("R/iteration_reporting.R"))
+
+il <- tar_read(iteration_logs)
+```
+
+## Iteration Timeline
+
+```{r}
+#| label: tbl-timeline
+
+il$meta |>
+  select(codebook, iteration, codebook_version, date, model, stage) |>
+  mutate(
+    model_short = case_when(
+      is.na(model) ~ "---",
+      grepl("haiku", model) ~ "Haiku",
+      grepl("sonnet", model) ~ "Sonnet",
+      grepl("qwen", model) ~ "Qwen 72B",
+      grepl("llama", model) ~ "Llama 70B",
+      grepl("gemini-2.5-flash", model) ~ "Gemini 2.5 Flash",
+      grepl("gemini-3.1-flash-lite", model) ~ "Gemini 3.1 Flash Lite",
+      TRUE ~ model
+    )
+  ) |>
+  select(-model) |>
+  rename(model = model_short) |>
+  gt() |>
+  cols_label(
+    codebook = "CB", iteration = "Iter", codebook_version = "Version",
+    date = "Date", model = "Model", stage = "Stage"
+  ) |>
+  gt_theme_report()
+```
+
+## S1: Behavioral Tests {#sec-s1}
+
+S1 results for the latest formal (Haiku/Sonnet) run per codebook, following H&K Figure 3.
+
+```{r}
+#| label: fig-s1-behavioral
+#| fig-cap: "S1 behavioral test results. For Tests I--III, higher is better. For Test IV, Fleiss' Kappa shown."
+#| fig-height: 6
+
+# Latest formal S1 per codebook
+latest_s1 <- il$s1 |>
+  filter(grepl("^claude-", model)) |>
+  group_by(codebook) |>
+  filter(iteration == max(iteration)) |>
+  ungroup()
+
+plot_s1_behavioral(latest_s1)
+```
+
+```{r}
+#| label: tbl-s1-summary
+
+latest_s1 |>
+  mutate(
+    test_label = case_when(
+      grepl("^I_", test) ~ "I: Legal Labels",
+      grepl("^II_", test) ~ "II: Definition Recovery",
+      grepl("^III_", test) ~ "III: Example Recovery",
+      grepl("^IV_", test) ~ "IV: Order Invariance"
+    ),
+    value_fmt = case_when(
+      skipped ~ "skipped",
+      grepl("IV", test) ~ sprintf("%.1f%% (k=%.2f)", value * 100,
+                                   coalesce(fleiss_kappa, NA_real_)),
+      TRUE ~ sprintf("%.0f%%", value * 100)
+    ),
+    threshold_fmt = case_when(
+      grepl("IV", test) ~ "< 5%",
+      TRUE ~ sprintf(">= %.0f%%", threshold * 100)
+    ),
+    status = if_else(pass, "Pass", "Fail")
+  ) |>
+  select(codebook, test_label, value_fmt, threshold_fmt, status) |>
+  gt() |>
+  cols_label(
+    codebook = "CB", test_label = "Test",
+    value_fmt = "Result", threshold_fmt = "Threshold", status = "Status"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#E8F5E9"),
+    locations = cells_body(rows = status == "Pass")
+  ) |>
+  gt_theme_report()
+```
+
+## S2: Zero-Shot Evaluation {#sec-s2}
+
+### C1 Measure Identification
+
+```{r}
+#| label: tbl-c1-s2
+
+# Latest formal C1 S2
+c1_s2_latest <- il$s2 |>
+  filter(codebook == "c1", grepl("^claude-", model)) |>
+  filter(iteration == max(iteration))
+
+gt_s2_metrics_table(c1_s2_latest,
+  title = sprintf("C1 S2 (iteration %d, %s)",
+    c1_s2_latest$iteration[1], c1_s2_latest$model[1]))
+```
+
+### C2b Motivation Classification
+
+```{r}
+#| label: tbl-c2b-s2
+
+# Latest formal C2b S2
+c2b_s2_latest <- il$s2 |>
+  filter(codebook == "c2b", grepl("^claude-", model)) |>
+  filter(iteration == max(iteration))
+
+gt_s2_metrics_table(c2b_s2_latest,
+  title = sprintf("C2b S2 (iteration %d, %s)",
+    c2b_s2_latest$iteration[1], c2b_s2_latest$model[1]))
+```
+
+### C2b Per-Class Performance
+
+```{r}
+#| label: tbl-c2b-perclass
+
+c2b_pc_latest <- il$s2_per_class |>
+  filter(codebook == "c2b") |>
+  filter(iteration == max(iteration))
+
+if (nrow(c2b_pc_latest) > 0) {
+  c2b_pc_latest |>
+    select(class, precision, recall, f1, support) |>
+    gt() |>
+    cols_label(
+      class = "Class", precision = "Precision", recall = "Recall",
+      f1 = "F1", support = "N"
+    ) |>
+    fmt_number(columns = c(precision, recall, f1), decimals = 3) |>
+    gt_theme_report()
+}
+```
+
+### Metric Trajectories
+
+```{r}
+#| label: fig-c1-recall-trajectory
+#| fig-cap: "C1 combined recall across formal (Claude) iterations"
+
+plot_metric_trajectory(il$s2, "combined_recall", codebook_filter = "c1")
+```
+
+```{r}
+#| label: fig-c2b-wf1-trajectory
+#| fig-cap: "C2b weighted F1 across formal (Claude) iterations"
+
+plot_metric_trajectory(il$s2, "weighted_f1", codebook_filter = "c2b")
+```
+
+```{r}
+#| label: fig-c2b-exo-trajectory
+#| fig-cap: "C2b exogenous precision across formal (Claude) iterations"
+
+plot_metric_trajectory(il$s2, "exogenous_precision", codebook_filter = "c2b")
+```
+
+## S3: Error Analysis {#sec-s3}
+
+### S3 Behavioral Tests
+
+```{r}
+#| label: fig-c1-s3
+#| fig-cap: "C1 S3 behavioral tests (latest formal run)"
+
+c1_s3_latest <- il$s3 |>
+  filter(codebook == "c1", grepl("^claude-", model)) |>
+  filter(iteration == max(iteration))
+
+c1_abl_latest <- il$s3_ablation |>
+  filter(codebook == "c1", grepl("^claude-", model)) |>
+  filter(iteration == max(iteration))
+
+plot_s3_behavioral(c1_s3_latest, c1_abl_latest)
+```
+
+```{r}
+#| label: fig-c2b-s3
+#| fig-cap: "C2b S3 behavioral tests (latest formal run)"
+
+c2b_s3_latest <- il$s3 |>
+  filter(codebook == "c2b", grepl("^claude-", model)) |>
+  filter(iteration == max(iteration))
+
+c2b_abl_latest <- il$s3_ablation |>
+  filter(codebook == "c2b", grepl("^claude-", model)) |>
+  filter(iteration == max(iteration))
+
+plot_s3_behavioral(c2b_s3_latest, c2b_abl_latest)
+```
+
+### Ablation Studies
+
+```{r}
+#| label: tbl-c1-ablation
+#| tbl-cap: "C1 ablation (latest formal run)"
+
+gt_ablation_table(c1_abl_latest)
+```
+
+```{r}
+#| label: tbl-c2b-ablation
+#| tbl-cap: "C2b ablation (latest formal run)"
+
+gt_ablation_table(c2b_abl_latest)
+```
+
+### Manual Error Analysis
+
+```{r}
+#| label: tbl-c1-manual
+#| tbl-cap: "C1 manual error analysis (latest)"
+
+c1_manual_latest <- il$s3_manual |>
+  filter(codebook == "c1") |>
+  filter(iteration == max(iteration))
+
+gt_manual_analysis_table(c1_manual_latest)
+```
+
+```{r}
+#| label: tbl-c2b-manual
+#| tbl-cap: "C2b manual error analysis"
+
+c2b_manual <- il$s3_manual |>
+  filter(codebook == "c2b")
+
+if (nrow(c2b_manual) > 0) {
+  c2b_manual_latest <- c2b_manual |>
+    filter(iteration == max(iteration))
+  gt_manual_analysis_table(c2b_manual_latest)
+} else {
+  cat("No C2b manual analysis data available yet.")
+}
+```
