@@ -52,7 +52,7 @@ min_year <- 1946
 
 # LLM configuration is hardcoded per target (not shared globals) so that
 # changing one codebook/stage's model never invalidates another's cache.
-# C1 targets: Haiku (validated). C2a: Haiku (extraction). C2b: Sonnet (classification).
+# C1 targets: Haiku (validated). C2a: Haiku (extraction). C2b: Haiku (classification, v0.5.0 test).
 
 list(
   tar_target(
@@ -287,7 +287,7 @@ list(
     c2b_s1_results,
     run_c2b_behavioral_tests_s1(
       c2b_codebook,
-      model = "claude-sonnet-4-20250514",
+      model = "claude-haiku-4-5-20251001",
       max_tokens = 1024,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
@@ -351,7 +351,7 @@ list(
       c2b_codebook,
       c2b_inputs |> dplyr::filter(discusses_motivation == TRUE),
       c2_s2_test_set,
-      model = "claude-sonnet-4-20250514",
+      model = "claude-haiku-4-5-20251001",
       max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
@@ -373,7 +373,7 @@ list(
       c2b_codebook,
       c2b_inputs,
       c2_s2_sensitivity_test_set,
-      model = "claude-sonnet-4-20250514",
+      model = "claude-haiku-4-5-20251001",
       max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
@@ -393,7 +393,7 @@ list(
     c2_s3_results,
     run_c2_error_analysis(
       c2b_codebook, c2_s2_results,
-      model = "claude-sonnet-4-20250514",
+      model = "claude-haiku-4-5-20251001",
       max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
