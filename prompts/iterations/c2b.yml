@@ -2695,3 +2695,62 @@ iterations:
       Before rerunning S2/S3 after codebook fixes, verify regressions
       (acts 2, 4, 11, 24) flip back to A without breaking the 6
       improvements (acts 7, 9, 13, 17, 19, 22).
+
+  - iteration: 26
+    codebook_version: "0.5.0"
+    date: "2026-04-24"
+    git_commit: "1747a8f"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      Codebook v0.5.0 (commit 2ca1af2): rewrote instructions to be
+      label-agnostic — decision rules, boundary cases, and exogeneity
+      logic now reference class definitions and motivation semantics
+      rather than class label strings. Purpose: fix Test VII bug
+      discovered in iteration 24, where label-swap ablation left
+      instructions referencing original labels, invalidating the
+      prior S3 swapped-labels result. Model switched from Sonnet back
+      to Haiku for this iteration (commit 1747a8f) to re-establish
+      the S1 gate on Haiku under v0.5.0 before running S2 on Haiku.
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+          change_rate_reversed: 0.0000
+          change_rate_shuffled: 0.0000
+          fleiss_kappa: 1.0000
+          kappa_interpretation: "Near-perfect agreement"
+          change_rate_categories: 0.0000
+          change_rate_exogenous: 0.0000
+    interpretation: >
+      Codebook version passed S1 on Haiku as expected. No regressions
+      from the label-agnostic rewrite: all 4 synthetic evidence sets
+      classified correctly across original, reversed, and shuffled
+      class orderings (kappa=1.0). Matches prior S1 PASS runs on Haiku
+      v0.3.0 (iter 17) and Sonnet v0.4.0 (iter 22). S1 confirms the
+      v0.5.0 instructions produce legal JSON, recover class definitions,
+      and remain order-invariant on Haiku. S1 is structurally blind to
+      the Test VII label-swap bug and to the 10 F-category errors
+      identified in iter 25 manual analysis — both are S3 concerns.
+    decision: >
+      Proceed to S2. Run c2_s2_eval on Haiku v0.5.0 (primary condition:
+      discusses_motivation == TRUE). Compare against iter 25 Sonnet
+      v0.4.0 baseline (bias-corrected accuracy 71.4%) and iter 18
+      Haiku v0.3.0 baseline (wF1=0.631, exo_prec=0.824) to isolate the
+      label-agnostic rewrite's effect on classification accuracy.
