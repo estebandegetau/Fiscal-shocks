@@ -2754,3 +2754,202 @@ iterations:
       v0.4.0 baseline (bias-corrected accuracy 71.4%) and iter 18
       Haiku v0.3.0 baseline (wF1=0.631, exo_prec=0.824) to isolate the
       label-agnostic rewrite's effect on classification accuracy.
+  - iteration: 27
+    codebook_version: "0.5.0"
+    date: "2026-04-24"
+    git_commit: "39961c2"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "primary (discusses_motivation == TRUE chunks only)"
+    changes: >
+      No codebook changes from v0.5.0. First S2 run of the label-agnostic
+      instructions on Haiku primary (c2b_inputs filtered to
+      discusses_motivation == TRUE). Compares directly with iter 20
+      (Haiku v0.4.0 primary: wF1=0.6310, exo_prec=0.8235) to isolate the
+      label-agnostic rewrite's effect on zero-shot performance. Pipeline
+      ran c2_s2_results and c2_s2_eval on 39 acts; 38/39 produced valid
+      predictions (one run-level NA for Tax Reform Act of 1976 —
+      c2b_raw_response absent).
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 38
+      quality_flags:
+        n_c2a_failures_total: 0
+        n_multiple_dominant: 4
+        n_no_dominant: 0
+        n_exo_inconsistent: 0
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.6190
+          ci_lower: 0.4521
+          ci_upper: 0.7816
+          target: 0.7000
+          pass: false
+        - metric: "macro_f1"
+          value: 0.6416
+          ci_lower: 0.4785
+          ci_upper: 0.7781
+        - metric: "accuracy"
+          value: 0.6316
+          ci_lower: 0.4737
+          ci_upper: 0.7895
+        - metric: "exogenous_precision"
+          value: 0.8125
+          ci_lower: 0.6000
+          ci_upper: 1.0000
+          target: 0.8500
+          pass: false
+        - metric: "exogenous_recall"
+          value: 0.5909
+          ci_lower: 0.3913
+          ci_upper: 0.8000
+        - metric: "exogenous_f1"
+          value: 0.6842
+          ci_lower: 0.5000
+          ci_upper: 0.8400
+        - metric: "exogenous_accuracy"
+          value: 0.6842
+      per_class:
+        - class: "SPENDING_DRIVEN"
+          precision: 0.7500
+          recall: 0.6000
+          f1: 0.6667
+          support: 10
+        - class: "COUNTERCYCLICAL"
+          precision: 0.4286
+          recall: 1.0000
+          f1: 0.6000
+          support: 6
+        - class: "DEFICIT_DRIVEN"
+          precision: 0.7778
+          recall: 0.8750
+          f1: 0.8235
+          support: 8
+        - class: "LONG_RUN"
+          precision: 0.7143
+          recall: 0.3571
+          f1: 0.4762
+          support: 14
+      dominant_confusion:
+        pattern: "LONG_RUN misclassified as COUNTERCYCLICAL"
+        count: 7
+        fraction_of_class: 0.5000
+        acts:
+          - "Crude Oil Windfall Profit Tax Act of 1980"
+          - "Public Law 90-26 (Restoration of the Investment Tax Credit)"
+          - "Revenue Act of 1964"
+          - "Revenue Act of 1971"
+          - "Revenue Act of 1978"
+          - "Tax Rate Extension Act of 1958"
+          - "Tax Reduction and Simplification Act of 1977"
+    interpretation: >
+      Performance is close to past iterations — no regressions from the
+      label-agnostic rewrite. Primary wF1 0.619 vs iter 20 Haiku v0.4.0
+      primary wF1 0.631 (delta -0.012, well inside the bootstrap CI
+      [0.452, 0.782]); exogenous precision 0.812 vs 0.824 (delta -0.012,
+      CI [0.60, 1.00]). Both primary targets still fail (wF1 ≥0.70 by
+      ~0.08; exo_prec ≥0.85 by ~0.04). The dominant error signature is
+      unchanged: LONG_RUN leaks to COUNTERCYCLICAL at 50% of the LONG_RUN
+      class support, with COUNTERCYCLICAL acting as a sink (recall 1.0,
+      precision 0.43). The label-agnostic rewrite neither helped nor hurt
+      the S2 metrics, as expected — it was an S1/S3 hygiene fix.
+    decision: >
+      Proceed to S3 to test whether the Test VII label-swap bug
+      (discovered in iter 24) has been fixed by the v0.5.0 label-agnostic
+      instructions. S3 is the primary value delivered by v0.5.0; S2
+      parity was the necessary precondition and has been confirmed.
+  - iteration: 28
+    codebook_version: "0.5.0"
+    date: "2026-04-24"
+    git_commit: "39961c2"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "sensitivity (all FISCAL_MEASURE chunks, no discusses_motivation filter)"
+    changes: >
+      No codebook changes from v0.5.0. Sensitivity run companion to iter
+      27: C2b evidence includes all 606 c2b_inputs rows (not filtered to
+      discusses_motivation == TRUE), testing whether C1's
+      discusses_motivation flag is removing motivation-relevant chunks.
+      39/39 produced valid predictions.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 39
+      quality_flags:
+        n_c2a_failures_total: 0
+        n_multiple_dominant: 4
+        n_no_dominant: 0
+        n_exo_inconsistent: 0
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.6364
+          ci_lower: 0.4720
+          ci_upper: 0.7885
+          target: 0.7000
+          pass: false
+        - metric: "macro_f1"
+          value: 0.6488
+          ci_lower: 0.4999
+          ci_upper: 0.7846
+        - metric: "accuracy"
+          value: 0.6410
+          ci_lower: 0.4872
+          ci_upper: 0.7949
+        - metric: "exogenous_precision"
+          value: 0.8333
+          ci_lower: 0.6471
+          ci_upper: 1.0000
+          target: 0.8500
+          pass: false
+        - metric: "exogenous_recall"
+          value: 0.6522
+          ci_lower: 0.4736
+          ci_upper: 0.8462
+        - metric: "exogenous_f1"
+          value: 0.7317
+          ci_lower: 0.5789
+          ci_upper: 0.8696
+        - metric: "exogenous_accuracy"
+          value: 0.7179
+      per_class:
+        - class: "SPENDING_DRIVEN"
+          precision: 0.7143
+          recall: 0.5000
+          f1: 0.5882
+          support: 10
+        - class: "COUNTERCYCLICAL"
+          precision: 0.4286
+          recall: 1.0000
+          f1: 0.6000
+          support: 6
+        - class: "DEFICIT_DRIVEN"
+          precision: 0.7778
+          recall: 0.8750
+          f1: 0.8235
+          support: 8
+        - class: "LONG_RUN"
+          precision: 0.7778
+          recall: 0.4667
+          f1: 0.5833
+          support: 15
+      primary_vs_sensitivity:
+        weighted_f1_gap: 0.0174
+        exogenous_precision_gap: 0.0208
+        interpretation: "Sensitivity marginally above primary; gap is inside bootstrap CIs (not decisive for relaxing C1's discusses_motivation filter)."
+    interpretation: >
+      Sensitivity condition performs marginally better than primary
+      (wF1 +0.017, exo_prec +0.021, exo_recall +0.061) but the gaps sit
+      well inside the bootstrap CIs on both metrics, so this is
+      suggestive at best. The LONG_RUN sink-class pattern persists
+      (recall 0.47, precision 0.78). The C1 discusses_motivation filter
+      is not decisively hurting C2 performance. No regressions from iter
+      19 (Haiku v0.3.0 sensitivity wF1=0.564, exo_prec=0.667) or iter 21
+      (Haiku v0.4.0 — not directly logged but inferred from iter 23
+      Sonnet sensitivity W-F1≈0.66); roughly flat across codebook
+      versions on sensitivity as well.
+    decision: >
+      Proceed to S3 alongside the primary condition (iter 27). Re-evaluate
+      the C1 filter question only if S3 error analysis identifies
+      specific acts where motivation evidence was excluded by the
+      discusses_motivation flag.
