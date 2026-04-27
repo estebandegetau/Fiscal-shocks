@@ -3070,3 +3070,462 @@ iterations:
       should freeze the codebook and move to interpretation. Defer the
       single-NA-row investigation (act 33) until the manual analysis
       surfaces it.
+  - iteration: 30
+    codebook_version: "0.5.0"
+    date: "2026-04-25"
+    git_commit: "77c560a"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3_manual_analysis"
+    changes: >
+      Manual error analysis of S2 baseline predictions (38 acts, Haiku
+      v0.5.0, iter 27 primary) using H&K 6-category framework (A-F).
+      Efficient review: inherited prior iteration 25 categories for 27
+      acts whose predicted label matched the prior Sonnet v0.4.0 run;
+      auto-assigned A for 3 acts fixed in this run (prior wrong, now
+      correct: EGTRRA 2001, REC 1968, Tax Reform 1969); individually
+      reviewed 8 acts with deviations (4 regressions from A, 3 different
+      error modes, 1 new act not in iter 25). R&R concluding arguments
+      and codebook rules consulted for each reviewed act; c2b input
+      evidence inspected for sufficiency on acts 7, 18, 20, 33.
+      Test set differs from iter 25 by one act: iter 23 (Sonnet)
+      produced NA for OBRA 1990; iter 27 (Haiku) produces NA for
+      Tax Reform Act of 1976. The OBRA 1990 NA in iter 23 was
+      diagnosed (post-hoc) as Sonnet output-length truncation on the
+      77-evidence-item act under max_tokens_c2b=4096; Haiku's more
+      compact JSON output fits within the same budget. No re-run
+      needed — iter 27 classifies OBRA 1990 cleanly as DEFICIT_DRIVEN.
+    results:
+      n_inspected: 38
+      category_distribution:
+        - category: "A_llm_correct"
+          count: 24
+          pct: 63.2
+        - category: "B_incorrect_gold"
+          count: 0
+          pct: 0.0
+        - category: "C_document_error"
+          count: 4
+          pct: 10.5
+        - category: "D_non_compliance"
+          count: 0
+          pct: 0.0
+        - category: "E_semantics_reasoning"
+          count: 1
+          pct: 2.6
+        - category: "F_other"
+          count: 9
+          pct: 23.7
+      bias_corrected_metrics:
+        effective_n: 34
+        accuracy: 0.7059
+        excluded_categories: ["B", "C"]
+      comparison_with_iter_25:
+        prior_iter: 25
+        prior_model: "claude-sonnet-4-20250514"
+        prior_codebook_version: "0.4.0"
+        a_count_delta: -1
+        c_count_delta: 1
+        e_count_delta: 1
+        f_count_delta: -1
+        bias_corrected_accuracy_delta: -0.0084
+        net_judgment: >
+          Haiku v0.5.0 produces an essentially equivalent error mix to
+          Sonnet v0.4.0. 0.8pp difference in bias-corrected accuracy is
+          within sampling noise. Three fixes balanced by four
+          regressions, one of which (act 20) is a corpus gap rather
+          than a model error.
+      act_judgments:
+        - act_id: 1
+          act_name: "Changes in Depreciation Guidelines and Revenue Act of 1962"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 2
+          act_name: "Crude Oil Windfall Profit Tax Act of 1980"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            DIFFERENT ERROR MODE from iter 25 (was F=SPENDING_DRIVEN, now
+            F=COUNTERCYCLICAL). Same root cause family as act 7: rule-
+            priority gap. Codebook has BCR4 (inflation-fighting →
+            COUNTERCYCLICAL) and DR1 + LONG_RUN clarifications
+            (permanent structural changes outweigh cyclical rhetoric);
+            both rules apply to this act (windfall tax tied to
+            structural decontrol policy with inflation framing); codebook
+            does not specify priority. Model picked BCR4; R&R logic
+            requires DR1. Iter 25's "lacks tight/loose coupling test"
+            note still applies — the codebook needs general rule-
+            priority guidance for multi-trigger cases.
+        - act_id: 3
+          act_name: "Deficit Reduction Act of 1984"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 4
+          act_name: "Economic Growth and Tax Relief Reconciliation Act of 2001"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: >
+            FIXED from iter 25's F. Prior issue was the gold label
+            convention (default to endogenous when multi-motivation),
+            which doesn't fit cleanly in the codebook. Haiku v0.5.0
+            now lands on COUNTERCYCLICAL, matching the gold label
+            convention by happenstance rather than by codebook rule.
+        - act_id: 5
+          act_name: "Economic Recovery Tax Act of 1981"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 6
+          act_name: "Excess Profits Tax Act of 1950"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 7
+          act_name: "Excise Tax Reduction Act of 1954"
+          true: "SPENDING_DRIVEN"
+          pred: "LONG_RUN"
+          category: "F"
+          notes: >
+            REGRESSION from iter 25 A. Sufficient evidence (74 items
+            including the canonical R&R quote: "justified only because
+            of reductions in proposed expenditures"). The codebook has
+            both DR4 (spending causal link → SPENDING_DRIVEN, with
+            this exact quote as worked example) and DR1 (provision
+            structure → LONG_RUN). When BOTH conditions apply,
+            codebook does not specify which wins. Model applied DR1;
+            R&R logic requires DR4. Sonnet v0.4.0 navigated the
+            implicit priority correctly; Haiku v0.5.0 does not. This
+            is the same DR1 vs DR4 priority gap iter 25 noted for
+            acts 18 and 24. Priority codebook fix.
+        - act_id: 8
+          act_name: "Excise Tax Reduction Act of 1965"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 9
+          act_name: "Expiration of Excess Profits Tax and of Temporary Income Tax Increases"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 10
+          act_name: "Federal-Aid Highway Act of 1956"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 11
+          act_name: "Federal-Aid Highway Act of 1959"
+          true: "DEFICIT_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "F"
+          notes: "Inherited from iteration 25 (same prediction, F)."
+        - act_id: 12
+          act_name: "Job Creation and Worker Assistance Act of 2002"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 13
+          act_name: "Jobs and Growth Tax Relief Reconciliation Act of 2003"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 14
+          act_name: "Omnibus Budget Reconciliation Act of 1987"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 15
+          act_name: "Omnibus Budget Reconciliation Act of 1990"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: >
+            NEW ACT — not in iter 25 due to Sonnet output-length
+            truncation NA. Clean DEFICIT_DRIVEN classification on
+            Haiku v0.5.0; canonical inherited-deficit reduction
+            package with $500B / 5-year deficit reduction goal.
+            Sound reasoning, no flags.
+        - act_id: 16
+          act_name: "Omnibus Budget Reconciliation Act of 1993"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 17
+          act_name: "Public Law 89-800 (Suspension of Investment Tax Credit)"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 18
+          act_name: "Public Law 90-26 (Restoration of the Investment Tax Credit)"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "E"
+          notes: >
+            REGRESSION from iter 25 A. BCR1(b) literally names this
+            case verbatim ("reinstating a suspended tax provision...
+            belongs in structural-reform category... regardless of
+            how it is framed"). Model quoted the smoking-gun evidence
+            ("integral part of the permanent tax structure") and then
+            interpreted it as supporting COUNTERCYCLICAL rather than
+            triggering BCR1(b). Sonnet v0.4.0 applied BCR1(b)
+            correctly; Haiku v0.5.0 does not. Codebook rule is clear
+            (sub-bullets are exceptions to the main BCR1 rule), so
+            this is a model reasoning gap, not a codebook ambiguity.
+            Distinguishes from F-cluster: codebook content is
+            sufficient; model failed to apply available rule.
+        - act_id: 19
+          act_name: "Revenue Act of 1945"
+          true: "SPENDING_DRIVEN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            DIFFERENT ERROR MODE from iter 25 (was F=LONG_RUN, now
+            F=COUNTERCYCLICAL). Three rule gaps stack: (a)
+            SPENDING_DRIVEN clarifications skew toward "tax to
+            finance spending increase" rather than "tax to offset
+            spending decrease" — model rejected SPENDING_DRIVEN on
+            this narrow reading; (b) BCR3 (offsetting exogenous
+            changes) scoped narrowly and not invoked by model;
+            (c) DR1 vs DR4 priority gap (iter 25's noted issue).
+            Error mode unstable across iterations because codebook
+            doesn't strongly point anywhere; model lands on whichever
+            non-SPENDING_DRIVEN rule trips first. Substantive content
+            gap, not a refactoring artifact. Priority codebook fix
+            cluster with acts 7, 24, 30.
+        - act_id: 20
+          act_name: "Revenue Act of 1948"
+          true: "LONG_RUN"
+          pred: "DEFICIT_DRIVEN"
+          category: "C"
+          notes: >
+            REGRESSION from iter 25 A, but reclassified as C (corpus
+            gap) on inspection. Tax cut enacted by Congress over
+            Truman's veto. Corpus contains executive-branch
+            documents showing the Administration's opposition
+            reasoning (deficit/inflation), but does not contain
+            congressional debate documents showing the enacting
+            Congress's motivation (postwar structural adjustment).
+            Model conflated the Administration's reasons for
+            opposing with the enacted measure's motivation. Sonnet
+            v0.4.0 successfully inferred from the smoking-gun
+            quote "intended as a permanent one, reflecting the
+            postwar decline of military expenditures" — but with
+            congressional motivation evidence absent from the
+            corpus, this is fundamentally a data gap. No codebook
+            fix can recover the missing congressional-debate
+            documents.
+        - act_id: 21
+          act_name: "Revenue Act of 1950"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 22
+          act_name: "Revenue Act of 1964"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: "Inherited from iteration 25 (same prediction, F). Classic Kennedy boundary case."
+        - act_id: 23
+          act_name: "Revenue Act of 1971"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: >
+            REGRESSION from iter 25 A. multiple_dominant=TRUE: model
+            returned both COUNTERCYCLICAL and LONG_RUN as "dominant"
+            (failed to apply DR3's "indicate which is dominant by
+            share of fiscal impact" instruction). Collapse logic
+            picked first-in-array (COUNTERCYCLICAL); had array order
+            been reversed, this would have appeared correct.
+            Codebook DR3 lacks tiebreaker rule for genuine fiscal-
+            impact ties (individual tax cuts vs investment credit/
+            DISC bundle are both billion-dollar provisions). Sonnet
+            v0.4.0 made the share judgment correctly without explicit
+            tiebreaker; Haiku v0.5.0 hedged. Same family as act 7's
+            rule-priority gap. Adding a tiebreaker rule (e.g.,
+            "when fiscal-impact shares are comparable, structural-
+            reform takes precedence over cyclical") would resolve
+            this and possibly the broader LONG_RUN→COUNTERCYCLICAL
+            pattern.
+        - act_id: 24
+          act_name: "Revenue Act of 1978"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: "Inherited from iteration 25 (same prediction, F). Same return-to-normal pattern as act 22."
+        - act_id: 25
+          act_name: "Revenue and Expenditure Control Act of 1968"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: >
+            FIXED from iter 25's F (was SPENDING_DRIVEN regression).
+            Iter 25 noted DR4 over-application. Haiku v0.5.0 applies
+            BCR4 (inflation-fighting) instead and lands on
+            COUNTERCYCLICAL, matching gold. Codebook rule-priority
+            gap is not actually resolved; this is matching by chance
+            rather than by improved disambiguation.
+        - act_id: 26
+          act_name: "Social Security Amendments of 1950"
+          true: "SPENDING_DRIVEN"
+          pred: "LONG_RUN"
+          category: "C"
+          notes: "Inherited from iteration 25 (same prediction, C). Persistent zero-evidence data gap."
+        - act_id: 27
+          act_name: "Social Security Amendments of 1954"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 28
+          act_name: "Social Security Amendments of 1965"
+          true: "SPENDING_DRIVEN"
+          pred: "SPENDING_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 29
+          act_name: "Social Security Amendments of 1977"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 30
+          act_name: "Social Security Amendments of 1983"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 31
+          act_name: "Tax Adjustment Act of 1966"
+          true: "LONG_RUN"
+          pred: "SPENDING_DRIVEN"
+          category: "F"
+          notes: "Inherited from iteration 25 (same prediction, F). Cross-act consistency gap."
+        - act_id: 32
+          act_name: "Tax Equity and Fiscal Responsibility Act of 1982"
+          true: "DEFICIT_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 33
+          act_name: "Tax Rate Extension Act of 1958"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "C"
+          notes: >
+            DIFFERENT ERROR MODE from iter 25 (was C=SPENDING_DRIVEN,
+            now C=COUNTERCYCLICAL). Same data gap: 8 evidence items
+            in 2 chunks, ZERO references to the freight excise repeal
+            for railroads (R&R's entire basis for LONG_RUN).
+            Error mode unstable because limited evidence doesn't
+            strongly point anywhere — model lands on whichever rule
+            trips first (BCR4 inflation-fighting in iter 27, DR4
+            spending-link in iter 25). No codebook fix can recover
+            the missing provision evidence.
+        - act_id: 34
+          act_name: "Tax Reduction Act of 1975"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 35
+          act_name: "Tax Reduction and Simplification Act of 1977"
+          true: "LONG_RUN"
+          pred: "COUNTERCYCLICAL"
+          category: "F"
+          notes: "Inherited from iteration 25 (same prediction, F). Same return-to-normal pattern as acts 22, 24."
+        - act_id: 36
+          act_name: "Tax Reform Act of 1969"
+          true: "COUNTERCYCLICAL"
+          pred: "COUNTERCYCLICAL"
+          category: "A"
+          notes: >
+            FIXED from iter 25's F. Haiku v0.5.0 lands correctly on
+            COUNTERCYCLICAL; iter 25 had Sonnet picking LONG_RUN.
+        - act_id: 37
+          act_name: "Tax Reform Act of 1986"
+          true: "LONG_RUN"
+          pred: "LONG_RUN"
+          category: "A"
+          notes: "Inherited from iteration 25 (same prediction)."
+        - act_id: 38
+          act_name: "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997"
+          true: "SPENDING_DRIVEN"
+          pred: "DEFICIT_DRIVEN"
+          category: "C"
+          notes: "Inherited from iteration 25 (same prediction, C)."
+      f_cluster_diagnosis:
+        cluster_name: "rule_priority_gaps"
+        affected_acts: [2, 7, 11, 19, 22, 23, 24, 31, 35]
+        n_acts: 9
+        common_root_cause: >
+          Codebook lacks explicit priority rules for cases where
+          multiple decision rules or boundary case rules apply
+          simultaneously. Specific gaps observed: (a) DR1 (provision
+          structure → LONG_RUN) vs DR4 (spending causal link →
+          SPENDING_DRIVEN) — acts 7, 19; (b) DR1 vs BCR4 (inflation-
+          fighting → COUNTERCYCLICAL) — act 2; (c) DR3 lacks
+          tiebreaker for multi-dominant fiscal-impact ties — act 23;
+          (d) BCR3 scoped to block COUNTER only, not LONG_RUN —
+          act 19; (e) SPENDING_DRIVEN clarifications skew toward
+          "financing increases" rather than "offsetting decreases"
+          — act 19; (f) general "return-to-normal" misapplication
+          on classic Kennedy-era LONG_RUN cases — acts 22, 24, 35.
+        proposed_fix_strategy: >
+          A multi-component overhaul of decision rules + boundary
+          case rules with explicit priority guidance, rather than
+          single-clarification edits. Per iter 29's ablation finding
+          (individual components have Δ wF1 < 0.02, all components
+          removed gives Δ wF1 = 0.057), single-clarification tweaks
+          are unlikely to break the wF1 ceiling. The F-cluster
+          (9 acts, 23.7%) is the lever — addressing rule-priority
+          gaps systematically could close several errors at once.
+    interpretation: >
+      Manual analysis confirms iter 29's ablation finding: the codebook
+      is at its current ceiling on the F-cluster (rule-priority gaps).
+      Bias-corrected accuracy 70.6% on Haiku v0.5.0 is essentially
+      tied with iter 25's 71.4% on Sonnet v0.4.0 — the label-agnostic
+      refactor preserved Sonnet-equivalent classification quality on
+      Haiku. The error mix shifted slightly (more acts mis-routed
+      through BCR4 inflation-fighting; one act now an E rather than
+      an F), but the dominant signal is unchanged. F-cluster (9 acts,
+      23.7%) is the same set of rule-priority gaps iter 25 already
+      identified, plus newly-surfaced clarity issues for SPENDING_
+      DRIVEN scope and DR3 multi-dominant tiebreaking. C-cluster (4
+      acts, 10.5%) is corpus-completeness — congressional debate
+      documents missing for Revenue Act 1948 (newly identified) and
+      freight-excise-repeal evidence missing for Tax Rate Extension
+      Act 1958 (persistent). Single E (PL 90-26) is a Haiku-specific
+      reasoning gap on a clearly-stated codebook rule (BCR1(b)) — not
+      a codebook revision target. Sidebar finding from research agent:
+      iter 23's NA for OBRA 1990 was Sonnet output-length truncation
+      on a 77-evidence-item act under max_tokens_c2b=4096; Haiku's
+      more compact JSON output handles the same input within budget.
+    decision: >
+      Decide whether to (a) freeze v0.5.0 and proceed to interpretation,
+      treating the F-cluster as the codebook ceiling, or (b) attempt a
+      multi-component v0.6.0 overhaul targeting the rule-priority gaps
+      systematically (DR1/DR4 priority, DR3 tiebreaker, BCR3 scope,
+      SPENDING_DRIVEN scope, return-to-normal misapplication). Path (b)
+      requires committing to a major rewrite of the decision rules and
+      boundary case rules sections together, not single-clarification
+      edits. Per iter 29's ablation finding, single edits are unlikely
+      to move the needle. If choosing (a), the next step is C2
+      strategy-sync to reconcile S2/S3 results with strategy.md and
+      decide gate criteria. If choosing (b), the next step is a
+      codebook-developer session targeting the F-cluster as a unit.
