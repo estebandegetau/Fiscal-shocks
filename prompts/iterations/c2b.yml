@@ -2953,3 +2953,120 @@ iterations:
       the C1 filter question only if S3 error analysis identifies
       specific acts where motivation evidence was excluded by the
       discusses_motivation flag.
+  - iteration: 29
+    codebook_version: "0.5.0"
+    date: "2026-04-25"
+    git_commit: "7453870"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3"
+    changes: >
+      No codebook changes from v0.5.0. First S3 run on Haiku v0.5.0
+      following S1 PASS (iter 26) and S2 parity (iter 27 primary, iter 28
+      sensitivity). Tests V/VI/VII + 4-condition ablation against the
+      baseline c2_s2_results from iter 27 (38/38 valid acts). Primary
+      goal: verify whether v0.5.0's label-agnostic instruction rewrite
+      fixes the Test VII bug discovered in iter 24 (Sonnet v0.4.0
+      follows_definitions_rate = 0.0000, follows_names_rate = 0.9737)
+      and reaffirmed in iter 21 (Haiku v0.4.0 follows_definitions_rate
+      = 0.2051, follows_names_rate = 0.7692).
+    results:
+      n_acts: 38
+      metrics:
+        - test: "V_exclusion_criteria"
+          overall_consistency: 0.7632
+          override_label: "LONG_RUN"
+          combos:
+            - combo: "normal_ev_normal_cb"
+              n_correct: 38
+              n_total: 38
+              accuracy: 1.0000
+            - combo: "modified_ev_normal_cb"
+              n_correct: 35
+              n_total: 38
+              accuracy: 0.9211
+            - combo: "normal_ev_modified_cb"
+              n_correct: 36
+              n_total: 38
+              accuracy: 0.9474
+            - combo: "modified_ev_modified_cb"
+              n_correct: 7
+              n_total: 38
+              accuracy: 0.1842
+        - test: "VI_generic_labels"
+          original_accuracy: 0.6316
+          generic_accuracy: 0.6111
+          accuracy_difference: 0.0205
+          change_rate: 0.0556
+          original_weighted_f1: 0.6190
+          generic_weighted_f1: 0.6023
+          f1_difference: 0.0166
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.8649
+          follows_names_rate: 0.0811
+          swapped_weighted_f1: 0.0390
+          swapped_accuracy: 0.0526
+          interpretation: "Model appears to follow definitions rather than label names"
+      ablation:
+        - condition: "full"
+          accuracy: 0.6316
+          weighted_f1: 0.6190
+          macro_f1: 0.6416
+          weighted_f1_drop: 0.0000
+        - condition: "no_label_def"
+          accuracy: 0.6316
+          weighted_f1: 0.6302
+          macro_f1: 0.6450
+          weighted_f1_drop: -0.0112
+        - condition: "no_clarifications"
+          accuracy: 0.6316
+          weighted_f1: 0.6328
+          macro_f1: 0.6553
+          weighted_f1_drop: -0.0138
+        - condition: "all_removed"
+          accuracy: 0.5789
+          weighted_f1: 0.5622
+          macro_f1: 0.5944
+          weighted_f1_drop: 0.0568
+      test_vii_progression:
+        prior_iter_18_v0.3.0_haiku:
+          follows_definitions_rate: 0.0000
+          follows_names_rate: 1.0000
+        prior_iter_21_v0.4.0_haiku:
+          follows_definitions_rate: 0.2051
+          follows_names_rate: 0.7692
+        prior_iter_24_v0.4.0_sonnet:
+          follows_definitions_rate: 0.0000
+          follows_names_rate: 0.9737
+        current_iter_29_v0.5.0_haiku:
+          follows_definitions_rate: 0.8649
+          follows_names_rate: 0.0811
+    interpretation: >
+      v0.5.0 succeeded in fixing the Test VII bug. Haiku CAN follow
+      instructions when the codebook's instructions are label-agnostic:
+      follows_definitions_rate jumped from 0.205 (iter 21 Haiku v0.4.0)
+      to 0.865 (current), and follows_names_rate dropped from 0.769 to
+      0.081 — an order-of-magnitude shift in both directions. Test VI
+      (generic labels, change_rate 5.6%) corroborates this independently:
+      the codebook leans on definitions, not label-name semantics. Test V
+      and the substantive S2 metrics are stable, as expected for a
+      label-agnostic refactor that does not change content. The ablation
+      result is the diagnostic for *future* iteration strategy: removing
+      label_definition alone (Δ wF1 -0.011) or clarifications alone
+      (Δ wF1 -0.014) is within noise, while removing all five sections
+      drops wF1 by 5.7pp. Codebook components are individually
+      redundant — further substantial improvements will require either
+      a major overhaul of multiple components together (instructions and
+      clarifications jointly) or a change in the input architecture
+      (c2a evidence quality). Single-clarification tweaks are unlikely
+      to break the ~0.62 wF1 ceiling.
+    decision: >
+      Proceed to manual error analysis on the iter 27 baseline (Haiku
+      v0.5.0 primary, 38 valid acts) using the H&K 6-category framework
+      (A-F), parallel to iter 25's analysis of the v0.4.0 Sonnet run.
+      The manual analysis will identify specifically which residual
+      errors are codebook-fixable (E: semantics/reasoning) versus
+      genuinely ambiguous ground truth (F), and inform whether a
+      multi-component overhaul is worth the investment or the project
+      should freeze the codebook and move to interpretation. Defer the
+      single-NA-row investigation (act 33) until the manual analysis
+      surfaces it.
