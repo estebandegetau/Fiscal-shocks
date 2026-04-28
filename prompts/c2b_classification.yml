@@ -1,6 +1,6 @@
 codebook:
   name: "C2b: Motivation Classification"
-  version: "0.5.0"
+  version: "0.6.0"
   instructions: >
     You are an expert in fiscal policy analysis classifying the primary motivation for
     a fiscal measure. You will receive the act name, year of passage, and an array of
@@ -35,6 +35,16 @@ codebook:
     Most acts have a single motivation — use multiple entries only when distinct provisions
     genuinely serve different purposes.
 
+    **Tiebreaker for comparable shares:** When two or more components have fiscal-impact
+    shares that cannot be ranked from the available evidence, apply this tiebreaker
+    hierarchy and assign a single "dominant" component: LONG_RUN > DEFICIT_DRIVEN >
+    COUNTERCYCLICAL > SPENDING_DRIVEN. The hierarchy errs toward exogenous classification
+    when shares are not clearly distinguishable, on the asymmetric-error principle that
+    mis-inclusion in the exogenous shock series is more recoverable than mis-exclusion.
+    The rule fires only on genuine ties; do not invoke when one component's fiscal-impact
+    share can be ranked as larger from the evidence. Do not return multiple components
+    with share="dominant" — return exactly one, breaking ties via this rule.
+
     4. When evidence contains an explicit causal link between a specific spending change and
     the fiscal measure (e.g., "this tax increase was enacted to pay for" a named spending
     program, or tax reductions "justified only because of reductions in proposed expenditures"),
@@ -45,8 +55,21 @@ codebook:
 
     **Boundary case rules (apply these precisely):**
 
-    1. Cyclical-stabilization vs. structural-reform — the "return to normal" test: If the
-    primary policy goal is to return output growth to its normal level through temporary
+    1. Cyclical-stabilization vs. structural-reform — the "return to normal" test.
+
+    **Stated-goal-first test:** When the act's stated goal is to raise the economy's
+    structural capacity, potential output, or long-run growth — not merely to restore
+    current output to its prior trend — classify in the structural-reform category. A
+    permanent change to the structure of the fiscal instrument (e.g., a permanent rate
+    or threshold change, an investment incentive, a coverage or base broadening, or
+    other supply-side reform) is strong corroborating evidence of this goal but does
+    not independently determine the classification — the *stated goal*, judged against
+    the act's dominant fiscal-impact provision per DR3, is the determinative test. Do
+    NOT classify a permanent structural fiscal change in the cyclical-stabilization
+    category merely because policymakers cite cyclical conditions or output-gap
+    language: read through rhetorical framing to the underlying provision-level intent.
+
+    If the primary policy goal is to return output growth to its normal level through temporary
     demand management (e.g., responding to rising unemployment or falling output with
     temporary tax cuts or spending), classify in the cyclical-stabilization category. If
     the primary policy goal is to raise growth above its normal level, improve the economy's
@@ -77,11 +100,20 @@ codebook:
     change and the fiscal measure cannot be determined from the evidence, note this
     uncertainty in your reasoning.
 
-    3. Offsetting exogenous changes: When a fiscal measure offsets a previous exogenous
-    change because economic conditions have weakened, classify the offsetting measure with
-    the same motivation as the original change, not in the cyclical-stabilization category.
-    This avoids identifying two changes of different motivations when liabilities did not
-    actually change.
+    3. Offsetting exogenous changes: When a fiscal measure offsets a prior exogenous
+    fiscal change — meaning the measure explicitly reverses or partially reverses a prior
+    fiscal action, with documentary evidence of the reversal relationship — classify the
+    offsetting measure with the same motivation as the original change. This rule applies
+    symmetrically: it blocks both cyclical-stabilization and structural-reform
+    re-classification when an offset relationship is established by the evidence,
+    regardless of the macroeconomic conditions at the time of the offsetting measure. The
+    rationale is liability-accounting: when liabilities did not actually change in net
+    terms, the offsetting measure should not introduce a different motivation into the
+    shock series. Required to invoke this rule: the evidence must contain explicit
+    contemporaneous documentation that the measure is reversing the prior change (e.g.,
+    the act's stated rationale or legislative history references the prior change as the
+    reason for the reversal). Mere co-occurrence with a prior fiscal change is
+    insufficient.
 
     4. Inflation-fighting fiscal restraint vs. deficit reduction: When a fiscal measure
     restrains fiscal policy to combat current inflation or economic overheating, classify in
@@ -105,10 +137,11 @@ codebook:
     - label: "SPENDING_DRIVEN"
       label_definition: >
         A fiscal measure whose primary stated purpose is to finance, offset, or accompany
-        a specific contemporaneous change in government spending.
+        a specific contemporaneous change in government spending, whether that spending
+        change is an increase or a decrease.
 
       clarification:
-        - "The evidence consistently describes the measure as financing or paying for a specific spending program or commitment that is being enacted or expanded at the same time"
+        - "The evidence consistently describes the measure as financing, paying for, or offsetting a specific contemporaneous spending change — covering both spending increases (financing a new or expanded program) and spending decreases (a tax change explicitly tied to the termination, expiration, or legislated reduction of a major spending commitment)"
         - "The spending change and the fiscal measure are described as a package — the fiscal measure exists because of the spending decision"
         - "The temporal link between the spending change and the fiscal measure is within one year"
         - "When an explicit causal link between a spending change and the fiscal measure is present (e.g., the fiscal change would not have occurred absent the associated spending decision), this direct causal chain is strong evidence for this category even if other-category language (cyclical, structural, deficit) appears more frequently in the evidence"
