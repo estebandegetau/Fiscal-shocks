@@ -1,6 +1,6 @@
 codebook:
   name: "C2b: Motivation Classification"
-  version: "0.6.0"
+  version: "0.6.1"
   instructions: >
     You are an expert in fiscal policy analysis classifying the primary motivation for
     a fiscal measure. You will receive the act name, year of passage, and an array of
@@ -37,13 +37,19 @@ codebook:
 
     **Tiebreaker for comparable shares:** When two or more components have fiscal-impact
     shares that cannot be ranked from the available evidence, apply this tiebreaker
-    hierarchy and assign a single "dominant" component: LONG_RUN > DEFICIT_DRIVEN >
-    COUNTERCYCLICAL > SPENDING_DRIVEN. The hierarchy errs toward exogenous classification
-    when shares are not clearly distinguishable, on the asymmetric-error principle that
-    mis-inclusion in the exogenous shock series is more recoverable than mis-exclusion.
-    The rule fires only on genuine ties; do not invoke when one component's fiscal-impact
-    share can be ranked as larger from the evidence. Do not return multiple components
-    with share="dominant" — return exactly one, breaking ties via this rule.
+    hierarchy and assign a single "dominant" component, in this order of preference:
+    (1) the structural-reform category, (2) the inherited-deficit-reduction category,
+    (3) the cyclical-stabilization category, (4) the spending-driven category. The
+    hierarchy errs toward exogenous classification on the project-specific principle
+    that mis-exclusion permanently removes an act from the shock series, while
+    mis-inclusion can be corrected during downstream manual review. Note: this is the
+    project's tiebreaker preference; the underlying methodology itself prefers
+    conservative exclusion under uncertainty. The hierarchy is calibrated to the
+    asymmetric reviewability of the two error types in this pipeline, not to a base-rate
+    frequency claim. The rule fires only on genuine ties; do not invoke when one
+    component's fiscal-impact share can be ranked as larger from the evidence. Do not
+    return multiple components with share="dominant" — return exactly one, breaking
+    ties via this rule.
 
     4. When evidence contains an explicit causal link between a specific spending change and
     the fiscal measure (e.g., "this tax increase was enacted to pay for" a named spending
@@ -61,13 +67,15 @@ codebook:
     structural capacity, potential output, or long-run growth — not merely to restore
     current output to its prior trend — classify in the structural-reform category. A
     permanent change to the structure of the fiscal instrument (e.g., a permanent rate
-    or threshold change, an investment incentive, a coverage or base broadening, or
-    other supply-side reform) is strong corroborating evidence of this goal but does
-    not independently determine the classification — the *stated goal*, judged against
+    change, a new investment incentive, a broadening of the tax base, a modernization
+    of the revenue schedule, or any lasting structural modification to who, what, or
+    how much is taxed) is strong corroborating evidence of this goal but does not
+    independently determine the classification — the *stated goal*, judged against
     the act's dominant fiscal-impact provision per DR3, is the determinative test. Do
     NOT classify a permanent structural fiscal change in the cyclical-stabilization
-    category merely because policymakers cite cyclical conditions or output-gap
-    language: read through rhetorical framing to the underlying provision-level intent.
+    category merely because policymakers cite cyclical conditions or short-run
+    macroeconomic-stabilization language: read through rhetorical framing to the
+    underlying design of the fiscal instrument.
 
     If the primary policy goal is to return output growth to its normal level through temporary
     demand management (e.g., responding to rising unemployment or falling output with
@@ -76,16 +84,19 @@ codebook:
     structural capacity, or achieve permanent reform, classify in the structural-reform
     category — even if enacted during a downturn and even if policymakers use cyclical
     language to justify it politically. Read through rhetorical framing to the underlying
-    provision-level intent: (a) closing an output gap via structural reform (permanent rate
-    reductions, investment incentives, supply-side measures) belongs in the structural-reform
-    category, not the cyclical-stabilization category, because the mechanism targets the
-    economy's structural capacity rather than aggregate demand; (b) restoring a pre-existing
-    structural policy to its baseline (e.g., reinstating a suspended tax provision or
-    extending a structural program) belongs in the structural-reform category because the
-    mechanism is structural, not demand management, regardless of how it is framed;
-    (c) deliberately pushing growth above normal to reduce unemployment belongs in the
-    structural-reform category — the goal exceeds returning to the prior trend and instead
-    targets a structurally higher level of output. Do not take policymaker language at face
+    design of the fiscal instrument: (a) closing an output gap via structural reform
+    (permanent rate reductions, investment incentives, or other lasting structural
+    modifications to the fiscal instrument) belongs in the structural-reform category,
+    not the cyclical-stabilization category, because
+    the mechanism targets the economy's structural capacity rather than aggregate demand;
+    (b) restoring a pre-existing structural policy to its baseline (e.g., reinstating a
+    suspended tax provision or extending a structural program) belongs in the
+    structural-reform category because the mechanism is structural, not demand
+    management, regardless of how it is framed; (c) deliberately raising the structural
+    growth path of the economy belongs in the structural-reform category — the goal
+    exceeds returning to a prior trend and instead targets a structurally higher level
+    of output (e.g., faster industrialization, productivity growth, broader labor-force
+    participation, or other lasting capacity-side gains). Do not take policymaker language at face
     value when the provision structure contradicts the stated framing. If the measure was
     proposed when the economy was growing normally but motivated by a desire for faster
     growth, classify in the structural-reform category even if the economy weakened by the
@@ -111,7 +122,8 @@ codebook:
     terms, the offsetting measure should not introduce a different motivation into the
     shock series. Required to invoke this rule: the evidence must contain explicit
     contemporaneous documentation that the measure is reversing the prior change (e.g.,
-    the act's stated rationale or legislative history references the prior change as the
+    the act's stated rationale, legislative history, ministerial explanatory memorandum,
+    or other official contemporaneous documentation references the prior change as the
     reason for the reversal). Mere co-occurrence with a prior fiscal change is
     insufficient.
 
@@ -141,7 +153,7 @@ codebook:
         change is an increase or a decrease.
 
       clarification:
-        - "The evidence consistently describes the measure as financing, paying for, or offsetting a specific contemporaneous spending change — covering both spending increases (financing a new or expanded program) and spending decreases (a tax change explicitly tied to the termination, expiration, or legislated reduction of a major spending commitment)"
+        - "The evidence consistently describes the measure as financing, paying for, or offsetting a specific contemporaneous spending change — covering both spending increases (financing a new or expanded program) and spending decreases (a tax change explicitly tied to a documented reduction or end of a major spending commitment, whether by legislation, executive budget decision, administrative reprogramming, or other official mechanism)"
         - "The spending change and the fiscal measure are described as a package — the fiscal measure exists because of the spending decision"
         - "The temporal link between the spending change and the fiscal measure is within one year"
         - "When an explicit causal link between a spending change and the fiscal measure is present (e.g., the fiscal change would not have occurred absent the associated spending decision), this direct causal chain is strong evidence for this category even if other-category language (cyclical, structural, deficit) appears more frequently in the evidence"
@@ -166,7 +178,7 @@ codebook:
         - "Do not use this category merely because the economy is weak at the time of passage; if the stated aim is structural reform, improved efficiency, or raising long-run potential, use the structural-reform category"
         - "Do not use this category when the evidence uses words like 'stimulate' or 'growth' but the full context shows the goal is to raise growth above its normal level — apply the 'return to normal' test"
         - "If the measure was proposed during normal economic conditions but motivated by faster growth, use the structural-reform category even if the economy weakened by passage"
-        - "Do not use this category when the measure's provisions are permanent, structural, or supply-side in character (e.g., permanent rate reductions, investment incentives, structural reform) — use the structural-reform category even if policymakers cite economic weakness as a reason for acting. The character of the provisions outweighs cyclical rhetoric when they conflict."
+        - "Do not use this category when the measure's provisions are permanent or structural in character (e.g., permanent rate reductions, investment incentives, structural reform of the fiscal instrument) — use the structural-reform category even if policymakers cite economic weakness as a reason for acting. The character of the provisions outweighs cyclical rhetoric when they conflict."
 
     - label: "DEFICIT_DRIVEN"
       label_definition: >
@@ -195,7 +207,7 @@ codebook:
         - "The evidence consistently describes structural goals: fairness, efficiency, simplification, smaller government, improved incentives, raising potential output, or promoting long-run growth"
         - "The stated aim is to raise growth above its current normal level, not to restore growth to a prior normal level"
         - "The measure is framed as a permanent structural change rather than a temporary cyclical response"
-        - "Permanent rate changes, investment incentives, supply-side reforms, and structural tax simplification are strong evidence for this category even when enacted during economic weakness or justified with cyclical language — the structural character of the provisions outweighs the timing or rhetorical context"
+        - "Permanent rate changes, investment incentives, structural reforms of the fiscal instrument, and structural tax simplification are strong evidence for this category even when enacted during economic weakness or justified with cyclical language — the structural character of the provisions outweighs the timing or rhetorical context"
 
       negative_clarification:
         - "Do not use this category merely because the passage mentions growth; if the goal is to restore growth to its prior normal level during a downturn, use the cyclical-stabilization category"
