@@ -3595,3 +3595,150 @@ iterations:
       changes typically yield Δ wF1 < 0.02; v0.6.0/v0.6.1 is the
       planned multi-component change, so this S2 run is the
       decisive test of path (b).
+  - iteration: 32
+    codebook_version: "0.6.1"
+    date: "2026-04-29"
+    git_commit: "7c4a77c"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "primary (discusses_motivation == TRUE chunks only)"
+    changes: >
+      No codebook changes since iter 31 S1 run. This is the decisive
+      S2 evaluation of the v0.6.0/v0.6.1 multi-component overhaul
+      (stated-goal-first decision rule, DR3 multi-dominant tiebreaker,
+      bidirectional SPENDING_DRIVEN scope, BCR3 return-to-normal
+      re-scoping, plus v0.6.1 leakage and country-agnostic phrasing
+      followups). Compared head-to-head with iter 27 (v0.5.0, Haiku)
+      to test whether the rewrite moved the wF1 ceiling beyond the
+      +0.057 ablation noise floor identified in iter 29.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 37
+      n_bootstrap: 1000
+      ci_level: 0.95
+      metrics:
+        - metric: "weighted_f1"
+          value: 0.6610
+          ci_lower: 0.5028
+          ci_upper: 0.8120
+          target: 0.7000
+          pass: false
+        - metric: "exogenous_precision"
+          value: 0.8125
+          ci_lower: 0.6111
+          ci_upper: 1.0000
+          target: 0.8500
+          pass: false
+        - metric: "macro_f1"
+          value: 0.6818
+          ci_lower: 0.5267
+          ci_upper: 0.8112
+        - metric: "motivation_accuracy"
+          value: 0.6757
+          ci_lower: 0.5405
+          ci_upper: 0.8108
+        - metric: "exogenous_recall"
+          value: 0.6190
+          ci_lower: 0.4137
+          ci_upper: 0.8095
+        - metric: "exogenous_f1"
+          value: 0.7027
+          ci_lower: 0.5161
+          ci_upper: 0.8500
+        - metric: "exogenous_accuracy"
+          value: 0.7027
+      per_class_motivation:
+        - class: "SPENDING_DRIVEN"
+          precision: 0.7780
+          recall: 0.7000
+          f1: 0.7370
+          support: 10
+        - class: "COUNTERCYCLICAL"
+          precision: 0.5000
+          recall: 1.0000
+          f1: 0.6670
+          support: 6
+        - class: "DEFICIT_DRIVEN"
+          precision: 0.7780
+          recall: 0.8750
+          f1: 0.8240
+          support: 8
+        - class: "LONG_RUN"
+          precision: 0.7140
+          recall: 0.3850
+          f1: 0.5000
+          support: 13
+      quality_flags:
+        n_c2a_failures_total: 0
+        n_multiple_dominant: 0
+        n_no_dominant: 0
+        n_exo_inconsistent: 0
+      comparison_with_iter_27:
+        weighted_f1_delta: 0.0420
+        macro_f1_delta: 0.0400
+        accuracy_delta: 0.0440
+        exogenous_precision_delta: 0.0000
+        exogenous_recall_delta: 0.0280
+        ablation_noise_floor_iter_29: 0.0570
+        verdict: >
+          +0.04 wF1 gain is below the +0.057 all-components-removed
+          ablation noise floor; not statistically distinguishable
+          from v0.5.0 baseline. Exogenous precision unchanged at
+          0.8125. Multi-component overhaul did not break the ceiling.
+      dominant_error_pattern:
+        pattern: "LONG_RUN -> COUNTERCYCLICAL"
+        count: 6
+        pct_of_errors: 50.0
+        affected_acts:
+          - "Crude Oil Windfall Profit Tax Act of 1980"
+          - "Public Law 90-26 (Restoration of the Investment Tax Credit) 1967"
+          - "Revenue Act of 1964"
+          - "Revenue Act of 1971"
+          - "Tax Rate Extension Act of 1958"
+          - "Tax Reduction and Simplification Act of 1977"
+        smoking_gun_quote: >
+          From model reasoning on Revenue Act of 1964: "the dominant
+          fiscal-impact provisions—permanent reductions in individual
+          income tax rates from 20-91% to 14-65% and corporate rate
+          cuts—must be evaluated against the *stated goal* of the
+          measure. The evidence overwhelmingly frames..." Model
+          recognizes permanent rate cuts (LONG_RUN signature) but
+          defers to stated-goal framing of growth/stimulus and routes
+          to COUNTERCYCLICAL.
+        diagnosis: >
+          The v0.6.0 stated-goal-first decision rule is over-routing
+          classic Kennedy/Reagan-era LONG_RUN acts to COUNTERCYCLICAL
+          when their political framing mentions growth, unemployment,
+          or inflation. This is the OPPOSITE failure mode of v0.5.0
+          (where DR1 provision-structure routed too many to LONG_RUN).
+          The overhaul flipped the priority but did not resolve the
+          underlying ambiguity — same set of acts, opposite mistake.
+    interpretation: >
+      v0.6.0/v0.6.1 upgrades did not yield the expected improvement
+      in the historically dominant source of failure (LONG_RUN ->
+      COUNTERCYCLICAL). The smoking gun is clear evidence of why:
+      Revenue Act of 1964's reasoning explicitly recognizes the
+      permanent rate-cut structure but defers to stated-goal framing
+      under DR1's new "stated-goal-first" priority. The overhaul
+      moved the codebook from one side of the LONG_RUN/COUNTERCYCLICAL
+      ambiguity to the other rather than resolving it. The +0.04 wF1
+      gain falls below iter 29's +0.057 ablation noise floor — not a
+      meaningful change. Per-class F1 reveals LONG_RUN as the weakest
+      class (F1=0.50, recall=0.385): only 5 of 13 LONG_RUN acts are
+      correctly identified, with 6 routed to COUNTERCYCLICAL. The
+      structural question is now whether this is a fundamental ceiling
+      of the 4-class taxonomy under any rule ordering, or whether
+      additional codebook (or model) work could close the gap.
+    decision: >
+      Proceed to S3 (c2_s3_results) and manual analysis to determine
+      how structural the apparent ceiling is, and whether codebook
+      or model improvements are warranted. S3 ablation will quantify
+      whether any individual v0.6.0 component contributed
+      asymmetrically to the LONG_RUN -> COUNTERCYCLICAL flip pattern;
+      manual analysis (per iter 30 method) will bias-correct the
+      accuracy estimate and surface F-cluster vs E-cluster vs A/B
+      shifts relative to iter 30. If bias-corrected accuracy lands
+      near iter 30's 70.6%, that is decisive evidence the wF1 ceiling
+      is structural to the taxonomy and the deliverable should accept
+      v0.6.1 as the codebook ceiling for C2.
