@@ -3529,3 +3529,69 @@ iterations:
       strategy-sync to reconcile S2/S3 results with strategy.md and
       decide gate criteria. If choosing (b), the next step is a
       codebook-developer session targeting the F-cluster as a unit.
+  - iteration: 31
+    codebook_version: "0.6.1"
+    date: "2026-04-29"
+    git_commit: "794bffc"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      v0.6.0 (commit 65a1c97) — multi-component overhaul of decision
+      rules + boundary case rules targeting the F-cluster identified
+      in iter 30 manual analysis (path (b)): added stated-goal-first
+      test as the primary decision-rule entry, added DR3 tiebreaker
+      for multi-dominant fiscal-impact ties, made SPENDING_DRIVEN
+      bidirectional (financing increases AND offsetting decreases),
+      and re-scoped BCR3 to handle return-to-normal misapplication.
+      v0.6.1 (commit 794bffc) — followups: removed residual Test VII
+      label leakage, corrected R&R fidelity in clarifications, and
+      moved phrasing to country-agnostic language for cross-country
+      transfer (Phase 2 prep). S1 re-run on Haiku to re-establish
+      the gate before paying for S2 on the rewritten codebook.
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+          change_rate_reversed: 0.0000
+          change_rate_shuffled: 0.0000
+          fleiss_kappa: 1.0000
+          kappa_interpretation: "Near-perfect agreement"
+          change_rate_categories: 0.0000
+          change_rate_exogenous: 0.0000
+    interpretation: >
+      S1 passed as expected. The multi-component overhaul (v0.6.0
+      decision-rule + BCR rewrite, plus v0.6.1 leakage/fidelity
+      followups) preserved S1 behavior on Haiku: all 4 synthetic
+      evidence sets classified correctly across original, reversed,
+      and shuffled class orderings (kappa=1.0). Matches iter 26
+      (v0.5.0, Haiku) and iter 22 (v0.4.0, Sonnet) — no regression
+      from the rewrite. S1 is structurally blind to the F-cluster
+      rule-priority errors that motivated v0.6.0/v0.6.1, so a clean
+      pass here is necessary but not sufficient evidence that the
+      overhaul closed those gaps; the relevant signal is at S2/S3.
+    decision: >
+      Proceed to S2. Run c2_s2_eval on Haiku v0.6.1 (primary
+      condition: discusses_motivation == TRUE). Compare against
+      iter 27 Haiku v0.5.0 baseline (wF1=0.62, exo_prec=0.81) and
+      iter 30 manual-analysis bias-corrected accuracy (70.6%) to
+      measure whether the v0.6.0/v0.6.1 multi-component overhaul
+      moved the wF1 ceiling. Per iter 29 ablation, single-edit
+      changes typically yield Δ wF1 < 0.02; v0.6.0/v0.6.1 is the
+      planned multi-component change, so this S2 run is the
+      decisive test of path (b).
