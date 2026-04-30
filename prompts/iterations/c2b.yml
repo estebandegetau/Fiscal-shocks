@@ -3742,3 +3742,114 @@ iterations:
       near iter 30's 70.6%, that is decisive evidence the wF1 ceiling
       is structural to the taxonomy and the deliverable should accept
       v0.6.1 as the codebook ceiling for C2.
+  - iteration: 33
+    codebook_version: "0.6.1"
+    date: "2026-04-29"
+    git_commit: "b702aaf"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3"
+    changes: >
+      No codebook changes from v0.6.1 (matches iter 31 S1 and iter 32 S2).
+      First S3 run on Haiku v0.6.1 following the v0.6.0/v0.6.1 multi-component
+      overhaul. Tests V/VI/VII + 4-condition ablation against the baseline
+      c2_s2_results from iter 32 (37/39 valid acts). Primary goal: verify
+      Test VII still holds after the substantive rule additions, and quantify
+      whether any single component of the overhaul drives the +0.042 wF1
+      gain over v0.5.0 (iter 27).
+    results:
+      n_acts: 37
+      metrics:
+        - test: "V_exclusion_criteria"
+          overall_consistency: 0.7635
+          override_label: "LONG_RUN"
+          combos:
+            - combo: "normal_ev_normal_cb"
+              n_correct: 37
+              n_total: 37
+              accuracy: 1.0000
+            - combo: "modified_ev_normal_cb"
+              n_correct: 35
+              n_total: 37
+              accuracy: 0.9459
+            - combo: "normal_ev_modified_cb"
+              n_correct: 35
+              n_total: 37
+              accuracy: 0.9459
+            - combo: "modified_ev_modified_cb"
+              n_correct: 6
+              n_total: 37
+              accuracy: 0.1622
+        - test: "VI_generic_labels"
+          original_accuracy: 0.6757
+          generic_accuracy: 0.6000
+          accuracy_difference: 0.0757
+          change_rate: 0.1143
+          original_weighted_f1: 0.6610
+          generic_weighted_f1: 0.5780
+          f1_difference: 0.0830
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.8857
+          follows_names_rate: 0.0857
+          interpretation: "Model appears to follow definitions rather than label names"
+      ablation:
+        - condition: "full"
+          accuracy: 0.6757
+          weighted_f1: 0.6610
+          macro_f1: 0.6818
+          weighted_f1_drop: 0.0000
+        - condition: "no_label_def"
+          accuracy: 0.6216
+          weighted_f1: 0.6540
+          macro_f1: 0.6740
+          weighted_f1_drop: -0.0066
+        - condition: "no_clarifications"
+          accuracy: 0.6216
+          weighted_f1: 0.6270
+          macro_f1: 0.6480
+          weighted_f1_drop: 0.0340
+        - condition: "all_removed"
+          accuracy: 0.5405
+          weighted_f1: 0.5370
+          macro_f1: 0.5660
+          weighted_f1_drop: 0.1240
+      comparison_with_iter_29:
+        test_v_combo4_delta: -0.0220
+        test_v_overall_consistency_delta: 0.0003
+        test_vi_change_rate_delta: 0.0587
+        test_vi_f1_difference_delta: 0.0664
+        test_vii_follows_definitions_delta: 0.0208
+        test_vii_follows_names_delta: 0.0046
+        ablation_full_wf1_delta: 0.0420
+        ablation_all_removed_drop_delta: 0.0670
+        ablation_no_clarifications_drop_delta: 0.0480
+        verdict: >
+          Test VII bug stays fixed (88.6% follows_definitions, up from
+          86.5%). Codebook content is now substantially more load-bearing:
+          all_removed wF1 drop more than doubled from 0.057 to 0.124,
+          confirming the v0.6.0/v0.6.1 rule additions actually inform
+          the model's outputs. Test VI generic-label sensitivity grew
+          (change_rate 5.6% -> 11.4%, F1 difference 0.017 -> 0.083),
+          but Test VII confirms this is not label-name reliance — most
+          plausibly a consequence of richer rule text implicitly coupling
+          definitions and label tokens. Test V combo 4 unchanged (16.2%
+          vs 18.4%) — exclusion-criteria override remains a model-level
+          limit, not a codebook-fixable defect.
+    interpretation: >
+      Changes did not break or improve performance greatly. v0.6.1 keeps
+      the Test VII fix intact and makes individual codebook components
+      meaningfully more load-bearing (all_removed drop 0.057 -> 0.124),
+      but the +0.042 wF1 gain over v0.5.0 (iter 27 -> iter 32) sits below
+      the new v0.6.1 ablation noise floor of 0.124 — the rewrite did not
+      break the wF1 ceiling. No individual component (label_definition,
+      clarifications) drives the gain asymmetrically; no_label_def is
+      negligible (-0.007) and no_clarifications is modest (0.034). The
+      structural conclusion from iter 32 stands: the LONG_RUN ->
+      COUNTERCYCLICAL error pattern lives in the composition of decision
+      rules, not in any removable section, so single-component edits
+      cannot close the gap to wF1 0.70.
+    decision: >
+      Proceed to manual analysis of c2_s2_results (iter 32) using the
+      iter 30 method to obtain a bias-corrected accuracy estimate and
+      F-cluster vs E-cluster decomposition versus iter 30. The manual
+      analysis is the decision point on whether to freeze v0.6.1 as the
+      C2 deliverable ceiling or attempt further work.
