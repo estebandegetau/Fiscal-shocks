@@ -3853,3 +3853,124 @@ iterations:
       F-cluster vs E-cluster decomposition versus iter 30. The manual
       analysis is the decision point on whether to freeze v0.6.1 as the
       C2 deliverable ceiling or attempt further work.
+
+  - iteration: 34
+    codebook_version: "0.6.1"
+    date: "2026-04-30"
+    git_commit: "5c0ad8a"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2_filter_analysis"
+    changes: >
+      No new pipeline run. Meta-analysis of the C1 discusses_motivation
+      filter question, comparing iter 27 (v0.5.0 primary, filter on)
+      against iter 28 (v0.5.0 sensitivity, filter off) on the same
+      Haiku model and same git commit (39961c2). v0.6.1 sensitivity
+      not re-run; current c2_s2_sensitivity_* targets remain stale at
+      v0.5.0 (last touched 2026-04-24) and tar_outdated() flags both.
+      The v0.5.0 comparison is the cleanest available apples-to-apples
+      because primary and sensitivity were run together that day.
+    results:
+      reference_iterations:
+        primary: 27
+        sensitivity: 28
+      side_by_side:
+        - metric: "n_valid"
+          primary: 38
+          sensitivity: 39
+          delta: 1
+          notes: "Sensitivity recovers Tax Reform Act 1976 (run-level NA in primary)."
+        - metric: "weighted_f1"
+          primary: 0.6190
+          primary_ci: [0.4521, 0.7816]
+          sensitivity: 0.6364
+          sensitivity_ci: [0.4720, 0.7885]
+          delta: 0.0174
+          ci_overlap: true
+          target: 0.7000
+        - metric: "macro_f1"
+          primary: 0.6416
+          sensitivity: 0.6488
+          delta: 0.0072
+          ci_overlap: true
+        - metric: "accuracy_motivation"
+          primary: 0.6316
+          sensitivity: 0.6410
+          delta: 0.0094
+          ci_overlap: true
+        - metric: "exogenous_precision"
+          primary: 0.8125
+          primary_ci: [0.6000, 1.0000]
+          sensitivity: 0.8333
+          sensitivity_ci: [0.6471, 1.0000]
+          delta: 0.0208
+          ci_overlap: true
+          target: 0.8500
+        - metric: "exogenous_recall"
+          primary: 0.5909
+          sensitivity: 0.6522
+          delta: 0.0613
+          ci_overlap: true
+        - metric: "exogenous_f1"
+          primary: 0.6842
+          sensitivity: 0.7317
+          delta: 0.0475
+          ci_overlap: true
+      quality_flags:
+        primary:
+          n_c2a_failures_total: 0
+          n_multiple_dominant: 4
+          n_no_dominant: 0
+          n_exo_inconsistent: 0
+        sensitivity:
+          n_c2a_failures_total: 0
+          n_multiple_dominant: 4
+          n_no_dominant: 0
+          n_exo_inconsistent: 0
+      per_class_f1_delta:
+        - class: "SPENDING_DRIVEN"
+          primary: 0.6667
+          sensitivity: 0.5882
+          delta: -0.0785
+        - class: "COUNTERCYCLICAL"
+          primary: 0.6000
+          sensitivity: 0.6000
+          delta: 0.0000
+        - class: "DEFICIT_DRIVEN"
+          primary: 0.8235
+          sensitivity: 0.8235
+          delta: 0.0000
+        - class: "LONG_RUN"
+          primary: 0.4762
+          sensitivity: 0.5833
+          delta: 0.1071
+      shared_dominant_error:
+        pattern: "LONG_RUN misclassified as COUNTERCYCLICAL"
+        primary_count: 7
+        sensitivity_count: 6
+        notes: "Same load-bearing failure mode in both conditions."
+    interpretation: >
+      Sensitivity is uniformly above primary on every aggregate metric
+      (wF1 +0.017, exo_prec +0.021, exo_recall +0.061), but every gap
+      sits inside its bootstrap CI; the comparison is directional, not
+      decisive. Quality flags are identical (4 multiple_dominant in
+      both). Per-class movement is concentrated in two opposing shifts:
+      LONG_RUN F1 +0.107 (sensitivity recovers more LONG_RUN cases,
+      including the Tax Reform 1976 NA primary lost) and SPENDING_DRIVEN
+      F1 -0.079 (non-motivation chunks add countercyclical-flavored
+      noise that pulls one SPENDING_DRIVEN case off-class). The
+      dominant LONG_RUN -> COUNTERCYCLICAL leak persists at similar
+      magnitude in both (7 vs 6 cases) — sensitivity does not address
+      it. Iter 28's own conclusion ("not decisive for relaxing C1's
+      discusses_motivation filter") still holds. The filter is approximately
+      neutral and is not the load-bearing constraint on C2 performance.
+    decision: >
+      Accept the v0.6.1 primary path (filter on) as the C2 deliverable
+      and do not re-run sensitivity on v0.6.1. Rationale: (1) v0.5.0
+      gaps are inside CIs and the same conclusion is unlikely to flip
+      under v0.6.1; (2) the load-bearing failure (LONG_RUN -> COUNTERCYCLICAL,
+      DR1 vs DR4 priority) is a codebook-composition problem unaffected
+      by the filter; (3) API spend is better directed at iter 33's
+      manual analysis of v0.6.1 primary, which is the actual decision
+      point on freezing v0.6.1. Document the staleness of
+      c2_s2_sensitivity_* in docs/deltas.md so future readers know the
+      filter question was settled at v0.5.0 and not refreshed.
