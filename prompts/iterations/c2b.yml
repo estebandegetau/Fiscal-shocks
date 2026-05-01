@@ -4711,3 +4711,146 @@ iterations:
       Haiku. Re-run c2b_evidence_shuffle_diagnostic with the
       auto-detecting fingerprint in parallel to test the iter 36
       overfit hypothesis under the lower-rule-density v0.7.0 prompt.
+  - iteration: 39
+    codebook_version: "0.7.0"
+    date: "2026-05-01"
+    git_commit: "450cca0"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "primary (discusses_motivation == TRUE chunks only)"
+    changes: >
+      No codebook changes since iter 37 (v0.7.0 redesign) and iter 38
+      (S1 regression check passed). First S2 zero-shot evaluation of
+      the Das-et-al.-adapted minimal prompt on the 39-act test set,
+      head-to-head against iter 32's v0.6.1 baseline (exogenous
+      precision 0.8125, primary condition). Headline metrics shifted
+      to {exogenous_precision, sign_accuracy_on_true_exo} per the
+      iter 37 redesign; weighted_f1 / motivation_accuracy no longer
+      reported because v0.7.0 has no `classes` block. The fresh
+      c2_s2_eval was rebuilt after the c2_s2_results target completed
+      to refresh the iter-32-era cached metrics.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 37
+      n_bootstrap: 1000
+      ci_level: 0.95
+      metrics:
+        - metric: "exogenous_precision"
+          value: 0.5000
+          ci_lower: 0.2143
+          ci_upper: 0.8000
+          target: 0.8500
+          floor: 0.8100
+          pass: false
+          floor_pass: false
+        - metric: "exogenous_recall"
+          value: 0.2857
+          ci_lower: 0.1053
+          ci_upper: 0.5000
+        - metric: "exogenous_f1"
+          value: 0.3636
+          ci_lower: 0.1481
+          ci_upper: 0.5625
+        - metric: "exogenous_accuracy"
+          value: 0.4324
+        - metric: "sign_accuracy_on_true_exo"
+          value: 0.9565
+          ci_lower: 0.8571
+          ci_upper: 1.0000
+          target: 0.9000
+          floor: 0.8500
+          pass: true
+          floor_pass: true
+          n_true_exo: 23
+        - metric: "signed_exo_precision"
+          value: 0.2609
+          ci_lower: 0.0909
+          ci_upper: 0.4583
+      confusion_exogenous:
+        TP: 6
+        FP: 6
+        FN: 15
+        TN: 10
+        n_unclear: 2
+      sign_confusion_on_true_exo:
+        plus_correct: 12
+        minus_correct: 10
+        plus_predicted_when_minus: 1
+        n_na_or_unclear: 0
+      error_patterns:
+        false_negatives_n: 15
+        false_negatives_dominant_class: "LONG_RUN"
+        false_negatives_pattern: >
+          Acts with cyclical-context language in evidence (e.g., Crude
+          Oil Windfall Profit Tax 1980, Economic Recovery Tax Act 1981,
+          Excise Tax Reduction Act 1965, Revenue Act of 1964/1971/1978,
+          Tax Adjustment Act 1966, TEFRA 1982, Tax Reduction and
+          Simplification 1977). Reasoning text explicitly cites
+          "current macroeconomic conditions" as decisive despite
+          long-run structural rationale being present. The Das clarifier
+          ("acknowledging current conditions does not by itself imply
+          endogeneity") is failing to override pattern-matching on
+          cyclical language.
+        false_positives_n: 6
+        false_positives_dominant_class: "SPENDING_DRIVEN"
+        false_positives_pattern: >
+          Acts: Social Security Amendments 1950/1954/1965, Federal-Aid
+          Highway Act 1956, Excise Tax Reduction Act 1954, Taxpayer
+          Relief Act 1997. Model classifies them as exogenous because
+          v0.7.0's exogenous definition lists "structural reform"
+          without excluding spending-side fiscal policy. v0.6.x's
+          bidirectional SPENDING_DRIVEN scope (BCR3) carved this out;
+          dropping the classes block removed that guardrail.
+        unclear_n: 2
+        unclear_acts: ["Federal-Aid Highway Act of 1959", "Tax Reform Act of 1976"]
+      regression_vs_iter_32:
+        exogenous_precision_v0_6_1: 0.8125
+        exogenous_precision_v0_7_0: 0.5000
+        delta: -0.3125
+        ci_overlap_with_target_0_85: false
+    interpretation: >
+      v0.7.0 underperforms v0.6.1 sharply on the headline exogenous-
+      precision metric (0.500 vs 0.812; Δ −0.312; 95% CI [0.214, 0.800]
+      strictly below the 0.85 target). The regression is large enough
+      that it is unlikely to be sampling noise on this 39-act test set.
+      Sign accuracy on true-exogenous remains strong at 0.957 (target
+      0.90) — the model can still read the direction of the shock; the
+      damage is concentrated on the exogenous/endogenous binary.
+
+      Two competing hypotheses for the precision drop:
+
+      (1) v0.7.0 is genuinely under-specified: dropping the classes
+      block removed two distinctions that v0.6.x kept clean — LONG_RUN
+      (exo) vs COUNTERCYCLICAL (endo), and structural reform (exo) vs
+      SPENDING_DRIVEN (endo). The error pattern matches: 15 FNs on
+      LONG_RUN acts with cyclical context, 6 FPs on SPENDING_DRIVEN
+      acts the model maps to "structural reform". This would imply
+      v0.6.x's rules were doing real work, not over-fitting.
+
+      (2) v0.6.x was over-fitting to the 39-act test set, and v0.7.0's
+      lower precision reflects what the prompt actually generalizes to.
+      The iter 36 evidence-shuffle diagnostic produced an F-A median
+      stability gap of −0.333 on v0.6.1, which crossed the −0.10
+      pre-registered overfit threshold. If v0.7.0's lower rule density
+      yields a smaller F-A gap, that supports hypothesis (2) and
+      reframes the precision regression as a stability/generalization
+      tradeoff rather than a redesign failure.
+
+      The diagnostic to discriminate these hypotheses is the
+      evidence-shuffle (order-shuffling) test on v0.7.0.
+    decision: >
+      Proceed to the evidence-shuffle diagnostic
+      (c2b_evidence_shuffle_diagnostic) on v0.7.0 to test whether the
+      precision regression is offset by improved generalization (lower
+      F-A median stability gap than v0.6.1's −0.333 at iter 36). If
+      v0.7.0's gap is materially smaller than the −0.10 pre-registered
+      overfit threshold, the precision regression is interpretable as
+      a generalization/specificity tradeoff and a v0.7.x with targeted
+      SPENDING_DRIVEN and cyclical-context rules can be motivated
+      without re-introducing the v0.6.x overfit. If v0.7.0's gap is
+      similar to v0.6.1's, hypothesis (2) is rejected and v0.7.0 is
+      simply under-specified — proceed to v0.7.1 with the two carve-
+      outs identified in the error analysis (SPENDING_DRIVEN exclusion
+      from "structural reform"; strengthened cyclical-context
+      clarifier with worked counter-example).
