@@ -4390,3 +4390,154 @@ iterations:
       Haiku-capacity-structural; (d) reconsider the 4-class taxonomy
       for taxonomic ambiguity in the LONG_RUN/COUNTERCYCLICAL boundary
       (the dominant error path).
+  - iteration: 36
+    codebook_version: "0.6.1"
+    date: "2026-05-01"
+    git_commit: "c2e0bfd"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3_leakage_diagnostic"
+    changes: >
+      First run of the F+A cluster evidence-shuffle leakage diagnostic
+      added at commit c2e0bfd (Phase 3 of iter 31's plan). New R file
+      R/c2b_evidence_perturbation.R exports build_s3_act_clusters() and
+      test_c2b_evidence_shuffle(); new _targets.R targets c2b_iterations_log,
+      s3_act_clusters, c2b_evidence_shuffle_diagnostic. Diagnostic
+      classifies each iter-30 F+A act with the original C2a evidence
+      ordering plus k=3 deterministic permutations (seed 42L+i per act).
+      Per-act stability is the fraction of permuted runs whose
+      {sorted-categories|exogenous} fingerprint matches the original.
+      Compares F-cluster (rule-priority gaps that motivated v0.6.0/v0.6.1)
+      against A-cluster (correctly-classified) median stability; the
+      F-A gap is the overfit signal. No codebook changes from iter 35.
+    results:
+      overall_pass: false
+      verdict: "fail (overfit)"
+      n_acts_total: 33
+      k_shuffles: 3
+      seed: 42
+      f_minus_a_gap: -0.3333
+      summary_by_cluster:
+        - cluster: "A"
+          n_acts: 24
+          median_stability: 1.0000
+          mean_stability: 0.8611
+          fleiss_kappa: 0.7944
+          kappa_interpretation: "Substantial agreement"
+        - cluster: "F"
+          n_acts: 9
+          median_stability: 0.6667
+          mean_stability: 0.7037
+          fleiss_kappa: 0.5301
+          kappa_interpretation: "Moderate agreement"
+      filtered_n_evidence_ge_2:
+        - cluster: "A"
+          n_acts: 19
+          median_stability: 1.0000
+          mean_stability: 0.8246
+        - cluster: "F"
+          n_acts: 7
+          median_stability: 0.6667
+          mean_stability: 0.6190
+        - f_minus_a_gap: -0.3333
+      decision_rule:
+        threshold_gap: -0.10
+        threshold_pass_median: 0.80
+        rule: "gap < -0.10 -> fail (overfit); both medians < 0.80 -> structural_issue; both >= 0.80 -> pass"
+      f_cluster_per_act:
+        - act_name: "Crude Oil Windfall Profit Tax Act of 1980"
+          n_evidence: 5
+          stability_rate: 0.6667
+          fingerprint_original: "COUNTERCYCLICAL|FALSE"
+        - act_name: "Excise Tax Reduction Act of 1954"
+          n_evidence: 0
+          stability_rate: 1.0000
+          fingerprint_original: "LONG_RUN|TRUE"
+          notes: "Trivial: C2a extracted no evidence; LLM classifies from act name alone."
+        - act_name: "Federal-Aid Highway Act of 1959"
+          n_evidence: 8
+          stability_rate: 0.3333
+        - act_name: "Revenue Act of 1945"
+          n_evidence: 5
+          stability_rate: 1.0000
+          fingerprint_original: "SPENDING_DRIVEN|FALSE"
+        - act_name: "Revenue Act of 1964"
+          n_evidence: 15
+          stability_rate: 0.6667
+          fingerprint_original: "COUNTERCYCLICAL|FALSE"
+        - act_name: "Revenue Act of 1971"
+          n_evidence: 0
+          stability_rate: 1.0000
+          notes: "Trivial: C2a extracted no evidence."
+        - act_name: "Revenue Act of 1978"
+          n_evidence: 15
+          stability_rate: 0.3333
+          fingerprint_original: "COUNTERCYCLICAL+LONG_RUN"
+        - act_name: "Tax Adjustment Act of 1966"
+          n_evidence: 16
+          stability_rate: 0.3333
+          fingerprint_original: "COUNTERCYCLICAL+SPENDING_DRIVEN"
+        - act_name: "Tax Reduction and Simplification Act of 1977"
+          n_evidence: 4
+          stability_rate: 1.0000
+          fingerprint_original: "COUNTERCYCLICAL|FALSE"
+      a_cluster_unstable_acts:
+        - act_name: "Excise Tax Reduction Act of 1965"
+          n_evidence: 8
+          stability_rate: 0.0000
+          fingerprint_original: "LONG_RUN|TRUE"
+          notes: "Fully unstable A-cluster act: every shuffle disagrees with the original prediction."
+        - act_name: "Jobs and Growth Tax Relief Reconciliation Act of 2003"
+          n_evidence: 10
+          stability_rate: 0.3333
+        - act_name: "Social Security Amendments of 1977"
+          n_evidence: 3
+          stability_rate: 0.3333
+        - act_name: "Job Creation and Worker Assistance Act of 2002"
+          n_evidence: 23
+          stability_rate: 0.6667
+        - act_name: "Revenue Act of 1950"
+          n_evidence: 12
+          stability_rate: 0.6667
+        - act_name: "Revenue and Expenditure Control Act of 1968"
+          n_evidence: 6
+          stability_rate: 0.6667
+      caveats:
+        - "Trivial-shuffle bias: 5 A-cluster + 2 F-cluster acts have n_evidence <= 1, so shuffling is a no-op and stability is trivially 1.0. Filtering to n_evidence >= 2 widens A-cluster mean (0.825 -> 0.825) but tightens F-cluster mean from 0.704 to 0.619 (gap unchanged at -0.333)."
+        - "No v0.5.0 baseline shuffle: this run cannot attribute the F-cluster instability to v0.6.1 specifically vs. pre-existing C2b structural fragility. The A-cluster's own ~25% instability rate (6/24 acts at stability <= 0.667) suggests a baseline ordering-fragility issue underneath, independent of v0.6.1's rule additions."
+        - "Fingerprint granularity: stability is computed over {sorted-categories | exogenous}; a flip in just the exogenous flag counts the same as a full category flip. The diagnostic does not currently break out which field moves."
+    interpretation: >
+      Decisive overfit signal at the project's pre-registered -0.10
+      threshold (gap = -0.333). Of the 9 F-cluster acts that motivated
+      v0.6.0/v0.6.1's rule additions, only ~1 of 9 is fully order-stable
+      on a non-trivial evidence array (Tax Reduction & Simplification
+      1977, n=4) — the other 8 are either order-fragile (4 acts at
+      stability 0.333-0.667) or have no evidence to shuffle. F-cluster
+      Fleiss kappa (0.530) confirms moderate-only agreement across the
+      4 runs per act. However, the A-cluster is also non-uniformly
+      stable (kappa 0.794 substantial, but 6/24 acts below 0.80
+      stability and one act at 0.0), suggesting C2b has a baseline
+      ordering-fragility problem that v0.6.1's rule additions amplify
+      on the F-cluster they were authored against. The diagnostic
+      cannot, on its own, distinguish "v0.6.1 introduced the overfit"
+      from "C2b is structurally fragile and v0.6.1 made the F-cluster
+      worse." A v0.5.0 baseline shuffle is the cheapest way to
+      attribute. This finding is independent of, and complementary to,
+      iter 35's structural-ceiling diagnosis: iter 35 says the wF1
+      ceiling is taxonomy-or-model-level rather than codebook-level;
+      iter 36 adds that the codebook itself is order-fragile on
+      precisely the acts where its rules are supposed to fire.
+    decision: >
+      Run the same diagnostic against the v0.5.0 codebook to establish
+      whether the F-cluster instability originated with v0.6.0/v0.6.1's
+      rule additions or pre-dates them. If v0.5.0 shows comparable
+      F-cluster fragility, the issue is structural (C2b is generally
+      order-fragile) and v0.6.1 is not the source of the overfit signal
+      — strengthens iter 35's case to freeze v0.6.1 and reframe the
+      paper around the structural ceiling. If v0.5.0 shows higher
+      F-cluster stability, v0.6.1's rule additions are the proximal
+      cause of the overfit and the candidate next steps tilt toward
+      revert-or-redesign rather than freeze. Implementation: parameterize
+      c2b_evidence_shuffle_diagnostic to accept a codebook path argument,
+      add a v0.5.0 variant target reading the codebook at git hash
+      2ca1af2 (last v0.5.0 commit), then compare the two runs side by
+      side. Cost: ~132 additional Haiku calls (~$5-10).
