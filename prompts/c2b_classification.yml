@@ -1,260 +1,190 @@
 codebook:
   name: "C2b: Motivation Classification"
-  version: "0.6.1"
+  version: "0.7.0"
   instructions: >
-    You are an expert in fiscal policy analysis classifying the primary motivation for
-    a fiscal measure. You will receive the act name, year of passage, and an array of
-    evidence records extracted from multiple document chunks. Each evidence record contains
-    a direct quote and a signal description.
+    You are an expert in fiscal policy analysis classifying a fiscal measure as
+    exogenous or endogenous and determining the direction of its effect on
+    fiscal liabilities. You will receive the act name, year of passage, an
+    array of evidence records (each with a direct quote and a signal
+    description), and an array of enacted-status signals.
 
 
-    Your task is to weigh all evidence, resolve any conflicts, and classify the act's
-    motivation. You will also receive enacted-status signals to determine whether the
-    measure became law. You must evaluate the evidence using the category definitions and
-    decision rules below.
+    Your task is to read all evidence and return four judgements: (1) whether
+    the measure became law; (2) whether the stated motivation is exogenous
+    (unrelated to short-term macroeconomic conditions) or endogenous (a
+    response to current or projected macroeconomic conditions); (3) the
+    directional effect on fiscal liabilities (an increase in liabilities, a
+    decrease in liabilities, or no net effect); (4) your confidence and a
+    brief reasoning.
 
 
-    **Decision rules for resolving conflicting evidence:**
-
-    1. Weigh both stated framing and provision structure when classifying motivation.
-    When the character of a measure's provisions (e.g., permanent rate changes, investment
-    incentives, structural reforms) conflicts with the volume of stated framing language,
-    provision structure is the stronger signal. Cyclical language often fills more space in
-    budget documents even when the underlying policy is structural; do not let volume of
-    rhetorical framing override the structural character of the provisions themselves.
-    When provision structure does not clearly distinguish categories, fall back to the
-    motivation most frequently and consistently cited across all evidence records.
-
-    2. If the stated motivation changed during deliberations, use the prevailing motivation
-    at the time of passage, not earlier proposals.
-
-    3. When evidence genuinely supports multiple categories with distinct measure components
-    (e.g., one provision is countercyclical while another is structural), return separate
-    motivation entries for each component. Identify each component, assign its motivation
-    category, and indicate which is dominant by share of the measure's overall fiscal impact.
-    Most acts have a single motivation — use multiple entries only when distinct provisions
-    genuinely serve different purposes.
-
-    **Tiebreaker for comparable shares:** When two or more components have fiscal-impact
-    shares that cannot be ranked from the available evidence, apply this tiebreaker
-    hierarchy and assign a single "dominant" component, in this order of preference:
-    (1) the structural-reform category, (2) the inherited-deficit-reduction category,
-    (3) the cyclical-stabilization category, (4) the spending-driven category. The
-    hierarchy errs toward exogenous classification on the project-specific principle
-    that mis-exclusion permanently removes an act from the shock series, while
-    mis-inclusion can be corrected during downstream manual review. Note: this is the
-    project's tiebreaker preference; the underlying methodology itself prefers
-    conservative exclusion under uncertainty. The hierarchy is calibrated to the
-    asymmetric reviewability of the two error types in this pipeline, not to a base-rate
-    frequency claim. The rule fires only on genuine ties; do not invoke when one
-    component's fiscal-impact share can be ranked as larger from the evidence. Do not
-    return multiple components with share="dominant" — return exactly one, breaking
-    ties via this rule.
-
-    4. When evidence contains an explicit causal link between a specific spending change and
-    the fiscal measure (e.g., "this tax increase was enacted to pay for" a named spending
-    program, or tax reductions "justified only because of reductions in proposed expenditures"),
-    this direct causal chain takes precedence over volume of language from other categories.
-    A clear spending-driven causal link should not be overridden merely because countercyclical
-    or structural language appears more frequently in the evidence.
+    **Definition of exogenous.** Classify the motivation as exogenous only if
+    its stated motivation is clearly unrelated to short-term macroeconomic
+    developments. Typical non-cyclical motives include long-run growth or
+    structural reform objectives (efficiency, simplification, fairness,
+    raising potential output), reduction of an inherited fiscal imbalance or
+    deficit accumulated over multiple years, structural reforms of the fiscal
+    instrument, or compliance with a law, treaty, or supranational rule.
 
 
-    **Boundary case rules (apply these precisely):**
-
-    1. Cyclical-stabilization vs. structural-reform — the "return to normal" test.
-
-    **Stated-goal-first test:** When the act's stated goal is to raise the economy's
-    structural capacity, potential output, or long-run growth — not merely to restore
-    current output to its prior trend — classify in the structural-reform category. A
-    permanent change to the structure of the fiscal instrument (e.g., a permanent rate
-    change, a new investment incentive, a broadening of the tax base, a modernization
-    of the revenue schedule, or any lasting structural modification to who, what, or
-    how much is taxed) is strong corroborating evidence of this goal but does not
-    independently determine the classification — the *stated goal*, judged against
-    the act's dominant fiscal-impact provision per DR3, is the determinative test. Do
-    NOT classify a permanent structural fiscal change in the cyclical-stabilization
-    category merely because policymakers cite cyclical conditions or short-run
-    macroeconomic-stabilization language: read through rhetorical framing to the
-    underlying design of the fiscal instrument.
-
-    If the primary policy goal is to return output growth to its normal level through temporary
-    demand management (e.g., responding to rising unemployment or falling output with
-    temporary tax cuts or spending), classify in the cyclical-stabilization category. If
-    the primary policy goal is to raise growth above its normal level, improve the economy's
-    structural capacity, or achieve permanent reform, classify in the structural-reform
-    category — even if enacted during a downturn and even if policymakers use cyclical
-    language to justify it politically. Read through rhetorical framing to the underlying
-    design of the fiscal instrument: (a) closing an output gap via structural reform
-    (permanent rate reductions, investment incentives, or other lasting structural
-    modifications to the fiscal instrument) belongs in the structural-reform category,
-    not the cyclical-stabilization category, because
-    the mechanism targets the economy's structural capacity rather than aggregate demand;
-    (b) restoring a pre-existing structural policy to its baseline (e.g., reinstating a
-    suspended tax provision or extending a structural program) belongs in the
-    structural-reform category because the mechanism is structural, not demand
-    management, regardless of how it is framed; (c) deliberately raising the structural
-    growth path of the economy belongs in the structural-reform category — the goal
-    exceeds returning to a prior trend and instead targets a structurally higher level
-    of output (e.g., faster industrialization, productivity growth, broader labor-force
-    participation, or other lasting capacity-side gains). Do not take policymaker language at face
-    value when the provision structure contradicts the stated framing. If the measure was
-    proposed when the economy was growing normally but motivated by a desire for faster
-    growth, classify in the structural-reform category even if the economy weakened by the
-    time of passage.
-
-    2. Spending-offset vs. inherited-deficit — the 1-year temporal rule: If a fiscal
-    measure pays for a spending increase that occurred within the past year, classify in
-    the spending-offset category. If a fiscal measure addresses a deficit that resulted
-    from spending decisions made more than one year prior, classify in the inherited-deficit
-    category. The key question is whether the spending change is contemporaneous (within
-    1 year) or inherited (beyond 1 year). If the temporal relationship between the spending
-    change and the fiscal measure cannot be determined from the evidence, note this
-    uncertainty in your reasoning.
-
-    3. Offsetting exogenous changes: When a fiscal measure offsets a prior exogenous
-    fiscal change — meaning the measure explicitly reverses or partially reverses a prior
-    fiscal action, with documentary evidence of the reversal relationship — classify the
-    offsetting measure with the same motivation as the original change. This rule applies
-    symmetrically: it blocks both cyclical-stabilization and structural-reform
-    re-classification when an offset relationship is established by the evidence,
-    regardless of the macroeconomic conditions at the time of the offsetting measure. The
-    rationale is liability-accounting: when liabilities did not actually change in net
-    terms, the offsetting measure should not introduce a different motivation into the
-    shock series. Required to invoke this rule: the evidence must contain explicit
-    contemporaneous documentation that the measure is reversing the prior change (e.g.,
-    the act's stated rationale, legislative history, ministerial explanatory memorandum,
-    or other official contemporaneous documentation references the prior change as the
-    reason for the reversal). Mere co-occurrence with a prior fiscal change is
-    insufficient.
-
-    4. Inflation-fighting fiscal restraint vs. deficit reduction: When a fiscal measure
-    restrains fiscal policy to combat current inflation or economic overheating, classify in
-    the cyclical-stabilization category — the measure responds to current macroeconomic
-    conditions (inflation is a cyclical phenomenon). Do not use the inherited-deficit
-    category merely because deficit language accompanies the inflation-fighting rationale.
-    The 1-year temporal rule (boundary case rule 2) applies to spending-offset vs.
-    inherited-deficit distinctions, not to inflation vs. deficit distinctions.
+    **Definition of endogenous.** Classify the motivation as endogenous if the
+    text states the action is undertaken to counter a recession or slowing
+    growth, reduce unemployment, cool overheating, respond to current
+    inflation, address exchange-rate or financing pressure, or finance or
+    offset a contemporaneous spending change (within roughly one year of the
+    measure). Endogenous motivations are responses to current or projected
+    macroeconomic conditions or to a near-term spending decision.
 
 
-    **Enacted-status determination:** Based on the enacted-status signals extracted from the
-    evidence records, determine whether the fiscal measure was enacted into law. If evidence
-    indicates the measure was signed, became law, or took legal effect (including executive
-    orders, administrative actions, or ministerial decrees), set enacted to true. If evidence
-    indicates the measure was defeated, withdrawn, vetoed, or remained a proposal,
-    set enacted to false. If enacted-status evidence is absent or ambiguous, set enacted to
-    true and note the uncertainty in reasoning — the default assumption is that measures
-    discussed substantively in official government documents were enacted.
+    **Critical clarifier.** Acknowledging current economic conditions does not
+    by itself imply endogeneity if the stated motive is explicitly
+    non-cyclical. Read for the stated reason for acting, not for what economic
+    conditions happen to prevail at the time of passage.
 
-  classes:
-    - label: "SPENDING_DRIVEN"
-      label_definition: >
-        A fiscal measure whose primary stated purpose is to finance, offset, or accompany
-        a specific contemporaneous change in government spending, whether that spending
-        change is an increase or a decrease.
 
-      clarification:
-        - "The evidence consistently describes the measure as financing, paying for, or offsetting a specific contemporaneous spending change — covering both spending increases (financing a new or expanded program) and spending decreases (a tax change explicitly tied to a documented reduction or end of a major spending commitment, whether by legislation, executive budget decision, administrative reprogramming, or other official mechanism)"
-        - "The spending change and the fiscal measure are described as a package — the fiscal measure exists because of the spending decision"
-        - "The temporal link between the spending change and the fiscal measure is within one year"
-        - "When an explicit causal link between a spending change and the fiscal measure is present (e.g., the fiscal change would not have occurred absent the associated spending decision), this direct causal chain is strong evidence for this category even if other-category language (cyclical, structural, deficit) appears more frequently in the evidence"
+    **Mixed-component conservative rule.** If different provisions of the
+    measure are clearly exogenous and clearly endogenous in roughly comparable
+    fiscal weight, and the evidence does not support ranking one as dominant,
+    return `exogenous: UNCLEAR`. Do not infer relative magnitudes when they
+    are not explicitly stated. Only when one motivation is clearly dominant
+    by share of fiscal impact should you classify the measure with that
+    motivation.
 
-      negative_clarification:
-        - "Do not use this category if the fiscal measure addresses a deficit caused by spending decisions made more than one year prior — use the inherited-deficit category instead"
-        - "Do not use this category merely because spending is mentioned in the evidence; the spending change must be the stated reason for the fiscal measure"
-        - "Do not use this category when deficit reduction is the primary stated goal, even if the deficit was originally caused by a spending increase — apply the 1-year temporal rule"
 
-    - label: "COUNTERCYCLICAL"
-      label_definition: >
-        A fiscal measure whose primary stated purpose is to return output growth to its
-        normal level in response to a current or projected economic downturn.
+    **Sign of effect on fiscal liabilities.** Determine whether the measure
+    increases liabilities ("+"), decreases liabilities ("-"), or has no net
+    effect ("0"). The sign refers to the change in fiscal liabilities owed by
+    taxpayers (or recipients of equivalent fiscal obligations), not to the
+    change in government revenue or deficit. A tax increase or new revenue
+    measure is "+"; a tax cut, credit, or relief is "-". When the evidence
+    or act name does not clearly indicate direction, return `sign: UNCLEAR`.
 
-      clarification:
-        - "The evidence consistently describes the goal as restoring economic growth to its prior trend or normal level, not raising it above normal"
-        - "Policymakers cite current or projected economic weakness — rising unemployment, falling output, recession — as the reason for acting"
-        - "The measure is explicitly framed as temporary or responsive to cyclical conditions"
-        - "Fiscal restraint enacted to combat current inflation or economic overheating belongs in this category — responding to inflation is responding to current macroeconomic conditions, even if deficit reduction language accompanies the inflation rationale"
 
-      negative_clarification:
-        - "Do not use this category merely because the economy is weak at the time of passage; if the stated aim is structural reform, improved efficiency, or raising long-run potential, use the structural-reform category"
-        - "Do not use this category when the evidence uses words like 'stimulate' or 'growth' but the full context shows the goal is to raise growth above its normal level — apply the 'return to normal' test"
-        - "If the measure was proposed during normal economic conditions but motivated by faster growth, use the structural-reform category even if the economy weakened by passage"
-        - "Do not use this category when the measure's provisions are permanent or structural in character (e.g., permanent rate reductions, investment incentives, structural reform of the fiscal instrument) — use the structural-reform category even if policymakers cite economic weakness as a reason for acting. The character of the provisions outweighs cyclical rhetoric when they conflict."
+    **Enacted-status determination.** Based on the enacted-status signals, set
+    `enacted: true` if the measure was signed into law, took legal effect,
+    or was implemented by executive or administrative action. Set
+    `enacted: false` if the measure was defeated, withdrawn, vetoed, or
+    remained a proposal. If enacted-status evidence is absent or ambiguous,
+    default to `true` (the prior assumption is that measures discussed
+    substantively in official government documents were enacted) and note
+    the uncertainty in reasoning.
 
-    - label: "DEFICIT_DRIVEN"
-      label_definition: >
-        A fiscal measure whose primary stated purpose is to reduce a budget deficit
-        inherited from previous policy decisions rather than caused by a contemporaneous
-        spending change.
 
-      clarification:
-        - "The evidence consistently describes the deficit as inherited, pre-existing, or resulting from past decisions rather than from a recent spending increase"
-        - "Policymakers cite fiscal prudence, actuarial soundness, social insurance fund or pension reserve solvency, or restoring fiscal balance as the reason for acting"
-        - "The deficit being addressed predates the fiscal measure by more than one year, or is described as a structural rather than cyclical problem"
+    Base every judgement strictly on the provided evidence. Do not infer
+    motives or directions that are not supported by the text.
 
-      negative_clarification:
-        - "Do not use this category merely because the word 'deficit' appears in the evidence; the deficit must be described as inherited or structural, not as a consequence of a spending increase within the past year"
-        - "If the deficit results from a spending increase that occurred within the past year, use the spending-offset category — the 1-year temporal rule takes precedence"
-        - "Do not use this category when the primary stated goal is structural economic reform or growth improvement — that belongs in the structural-reform category, even if deficit reduction is a secondary benefit"
-        - "Do not use this category when the primary motivation is fiscal restraint to combat current inflation or economic overheating — that belongs in the cyclical-stabilization category, even if deficit language is used alongside the inflation-fighting rationale"
+  examples:
+    - input:
+        act_name: "Example Long-Run Reform Act"
+        year: 1986
+        evidence:
+          - quote: "By broadening the tax base and lowering marginal rates, we can improve economic efficiency and raise long-run growth."
+            signal: "Stated goal of structural reform aimed at raising potential output"
+          - quote: "The reform simplifies the tax code to improve incentives for investment."
+            signal: "Permanent structural change to the fiscal instrument"
+        enacted_signals:
+          - quote: "The act was signed into law on October 22, 1986."
+            signal: "Signed into law"
+      output:
+        enacted: true
+        exogenous: "TRUE"
+        sign: "-"
+        confidence: "HIGH"
+        reasoning: "Stated motive is structural reform to raise long-run growth and improve efficiency — a non-cyclical, long-run objective. Evidence describes lowering marginal rates and base broadening, indicating a net reduction in fiscal liabilities."
 
-    - label: "LONG_RUN"
-      label_definition: >
-        A fiscal measure whose primary stated purpose is to raise long-run economic growth,
-        improve economic efficiency, or achieve structural goals unrelated to the current
-        business cycle, distinct from restoring growth to a prior normal level.
+    - input:
+        act_name: "Example Recession Relief Act"
+        year: 2009
+        evidence:
+          - quote: "With unemployment rising sharply and GDP contracting, the government enacted emergency tax relief."
+            signal: "Response to economic downturn, goal of restoring growth to normal"
+          - quote: "These temporary measures will expire once economic conditions normalize."
+            signal: "Temporary nature tied to cyclical conditions"
+        enacted_signals:
+          - quote: "The President signed the relief package on February 17, 2009."
+            signal: "Signed into law"
+      output:
+        enacted: true
+        exogenous: "FALSE"
+        sign: "-"
+        confidence: "HIGH"
+        reasoning: "Stated motive is to counteract the recession and restore growth — an explicit response to current macroeconomic conditions, hence endogenous. Tax relief reduces fiscal liabilities."
 
-      clarification:
-        - "The evidence consistently describes structural goals: fairness, efficiency, simplification, smaller government, improved incentives, raising potential output, or promoting long-run growth"
-        - "The stated aim is to raise growth above its current normal level, not to restore growth to a prior normal level"
-        - "The measure is framed as a permanent structural change rather than a temporary cyclical response"
-        - "Permanent rate changes, investment incentives, structural reforms of the fiscal instrument, and structural tax simplification are strong evidence for this category even when enacted during economic weakness or justified with cyclical language — the structural character of the provisions outweighs the timing or rhetorical context"
+    - input:
+        act_name: "Example Defense Financing Revenue Act"
+        year: 1951
+        evidence:
+          - quote: "The Congress recognized the need for substantially increased revenues to meet the rising costs of national defense."
+            signal: "Revenue measure motivated by financing increased defense spending"
+          - quote: "We must pay for the increased defense effort through higher taxes rather than through borrowing."
+            signal: "Stated goal of financing contemporaneous spending"
+        enacted_signals:
+          - quote: "The act was signed into law on October 20, 1951."
+            signal: "Signed into law"
+      output:
+        enacted: true
+        exogenous: "FALSE"
+        sign: "+"
+        confidence: "HIGH"
+        reasoning: "Stated motive is financing a contemporaneous spending increase (defense), within a one-year window — endogenous to a near-term spending decision. Higher taxes increase fiscal liabilities."
 
-      negative_clarification:
-        - "Do not use this category merely because the passage mentions growth; if the goal is to restore growth to its prior normal level during a downturn, use the cyclical-stabilization category"
-        - "Do not use this category when the primary stated purpose is deficit reduction or fiscal prudence — that belongs in the inherited-deficit category"
-        - "The key distinction from the cyclical-stabilization category is direction: this category raises growth above normal; the cyclical-stabilization category returns growth to normal from below"
+    - input:
+        act_name: "Example Inherited Deficit Reduction Act"
+        year: 1993
+        evidence:
+          - quote: "The deficit, accumulated over many years of past policy decisions, threatens long-term fiscal stability."
+            signal: "Deficit described as inherited from past decisions"
+          - quote: "The primary purpose of this act is to restore fiscal balance and reduce the structural deficit."
+            signal: "Stated goal of deficit reduction and fiscal prudence"
+        enacted_signals:
+          - quote: "The act was enacted on August 10, 1993."
+            signal: "Enacted into law"
+      output:
+        enacted: true
+        exogenous: "TRUE"
+        sign: "+"
+        confidence: "HIGH"
+        reasoning: "Stated motive is reducing an inherited deficit accumulated over multiple prior years, not financing a contemporaneous spending change and not a response to current cyclical conditions — exogenous. Deficit reduction by raising revenues increases fiscal liabilities."
 
   output_instructions: >
-    Determine the act's motivation and enacted status based on the synthesized evidence.
-
-
-    For most acts, there is a single dominant motivation. When distinct provisions of
-    the act genuinely serve different purposes, return a separate entry for each component.
-
-
-    Valid motivation categories: SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN.
+    Determine enacted status, exogeneity, and sign of effect on fiscal
+    liabilities from the synthesized evidence.
 
 
     Return your answer as JSON:
 
     {
       "enacted": true,
-      "motivations": [
-        {
-          "category": "LONG_RUN",
-          "component": "Description of the provision or component",
-          "share": "dominant"
-        }
-      ],
-      "exogenous": true,
+      "exogenous": "TRUE",
+      "sign": "+",
       "confidence": "HIGH",
-      "reasoning": "Synthesis of evidence citing specific records and decision rules applied"
+      "reasoning": "Brief synthesis citing specific evidence records and the stated motive."
     }
 
 
     Field definitions:
 
-    - enacted: true if the measure became law; false if defeated, withdrawn, or never
-      passed. Default to true if enacted-status evidence is absent.
+    - enacted: true if the measure became law; false if defeated, withdrawn,
+      or never passed. Default to true if enacted-status evidence is absent.
 
-    - motivations: Array of one or more entries. Each has category (one of the four
-      labels), component (brief description of the provision), and share ("dominant",
-      "minor", or "sole" if only one entry).
+    - exogenous: "TRUE" if the stated motivation is clearly non-cyclical
+      (long-run, structural, inherited deficit, treaty/rule compliance);
+      "FALSE" if the stated motivation responds to current or projected
+      macroeconomic conditions or to a contemporaneous spending change;
+      "UNCLEAR" if the act has roughly comparable exogenous and endogenous
+      components without a clearly dominant motivation, or if the evidence
+      does not support a determination.
 
-    - exogenous: true if the dominant motivation is DEFICIT_DRIVEN or LONG_RUN; false
-      if SPENDING_DRIVEN or COUNTERCYCLICAL.
+    - sign: "+" if the measure increases fiscal liabilities (tax increase,
+      new revenue measure); "-" if the measure decreases fiscal liabilities
+      (tax cut, credit, or relief); "0" if the measure has no net effect on
+      liabilities; "UNCLEAR" if direction cannot be determined from the
+      evidence or act name.
 
-    - confidence: HIGH if evidence is consistent and clearly points to one category,
-      MEDIUM if somewhat ambiguous but one category dominates, LOW if conflicting or sparse.
+    - confidence: HIGH if the evidence consistently supports a single
+      determination; MEDIUM if somewhat ambiguous but one reading dominates;
+      LOW if conflicting or sparse.
 
-    - reasoning: Must cite specific evidence records and name the decision rules applied.
+    - reasoning: Brief synthesis citing specific evidence records and the
+      stated motive. State which evidence supported the exogeneity judgement
+      and which supported the sign judgement.

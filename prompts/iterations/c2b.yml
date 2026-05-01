@@ -4541,3 +4541,101 @@ iterations:
       add a v0.5.0 variant target reading the codebook at git hash
       2ca1af2 (last v0.5.0 commit), then compare the two runs side by
       side. Cost: ~132 additional Haiku calls (~$5-10).
+  - iteration: 37
+    codebook_version: "0.7.0"
+    date: "2026-05-01"
+    git_commit: "9ab296d"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s0_redesign"
+    changes: >
+      Full c2b rewrite adapted from Das et al. (2026, IMF WP/26/43)
+      Section 2.3. Drops the entire `classes` block (DR1-DR4, BCR1-BCR4,
+      4 class definitions, motivations[] array, share/dominant
+      tiebreaker, all US-specific worked examples). New output schema:
+      {enacted, exogenous: TRUE|FALSE|UNCLEAR, sign: +|-|0|UNCLEAR,
+      confidence, reasoning}. New instructions block (~30 lines):
+      one-paragraph task; definition of exogenous (long-run growth /
+      structural reform / inherited deficit / treaty/rule compliance);
+      definition of endogenous (response to current macro conditions or
+      contemporaneous spending); the Das et al. critical clarifier
+      verbatim ("Acknowledging current conditions does not by itself
+      imply endogeneity if the stated motive is explicitly
+      non-cyclical"); conservative aggregation rule for mixed-component
+      acts (return exogenous: UNCLEAR rather than ranking shares); sign
+      convention (change in fiscal liabilities); enacted-status
+      determination rule. Four short illustrative examples covering the
+      four corners of the {exogenous, sign} schema (no US-specific
+      worked examples). Parsed prompt is 119 lines (vs v0.6.1's
+      multi-hundred-line generated prompt).
+
+
+      Co-changes (same commit set, this iteration's S0 work):
+
+      - prompts/c2b_classification.yml: full rewrite to v0.7.0.
+
+      - R/c2_behavioral_tests.R: validate_c2b_output rewritten for the
+      new schema (drops motivations[] validation, adds enum checks for
+      exogenous and sign). test_c2b_legal_outputs diagnostic columns
+      changed from pred_category/exogenous to pred_exogenous/pred_sign.
+      test_c2b_definition_recovery replaced by test_c2b_schema_recovery
+      (synthetic evidence sets keyed by expected (exogenous, sign);
+      replaces 4-class definition recovery). test_c2b_order_invariance
+      gains an early-return when codebook has no classes (degenerate).
+
+      - R/c2_codebook_stage_1.R: generate_c2b_test_evidence now carries
+      expected_exogenous and expected_sign per case (4 corners covered).
+      run_c2b_behavioral_tests_s1 calls test_c2b_schema_recovery and
+      handles the Test IV skipped case.
+
+      - R/c2_codebook_stage_2.R: assemble_c2_s2_test_set derives
+      true_sign from sign(magnitude_billions) in aligned_data.
+      run_c2b_classification parses the new schema (drops the entire
+      motivations[] collapse block, multiple_dominant/no_dominant flags
+      removed). evaluate_c2_classification rewritten: drops 4-class
+      block, adds compute_sign_metrics_on_true_exo helper, two co-equal
+      headline metrics (exogenous_precision and
+      sign_accuracy_on_true_exo) with bootstrap CIs, plus diagnostic
+      signed_exo_precision = P(pred_exo == TRUE AND correct sign | true
+      exogenous). compute_multiclass_metrics preserved as dead helper.
+
+      - R/c2_codebook_stage_3.R: run_c2_error_analysis early-returns a
+      "skipped" structure when codebook has no classes (Tests V-VII and
+      ablation are degenerate without per-class clarifications).
+
+      - R/c2b_evidence_perturbation.R: shuffle fingerprint auto-detects
+      codebook generation. v0.7.0+: "{exogenous}|{sign}". Legacy
+      4-class: "{sorted-categories}|{exogenous}". F-A median-stability
+      gap remains the overfit signal across versions.
+
+      - docs/strategy.md: success criteria table replaced (wF1 dropped;
+      Sign Accuracy on True-Exogenous ≥90% added). C2 Blueprint
+      substantially rewritten with v0.7.0 design rationale citing Das
+      et al. and iter 35/36 findings.
+
+      - CLAUDE.md: C2 status block + success criteria updated.
+
+      - docs/literature_review.md Section 1.3: 4-class table annotated
+      as diagnostic context, not codebook content.
+
+      - docs/deltas.md: new entry recording the v0.7.0 redesign.
+    results: ~  # populated by iter 38 s2 zero-shot run
+    interpretation: ~  # populated by iter 38
+    decision: >
+      Pending S2 zero-shot run on the same 39-act test set with the
+      cached c2a_evidence (no C2a re-run; estimated cost ~$0.50 on
+      Haiku). Decision rule (both metrics evaluated independently):
+      (a) exogenous_precision ≥ 0.81 (v0.6.1 baseline) is the floor;
+      ≥ 0.85 hits the strategy target. (b) sign_accuracy_on_true_exo
+      ≥ 0.85 is the floor (matches Das et al.'s lower-bound on RR19
+      stance); ≥ 0.90 hits target. If both metrics meet floors,
+      v0.7.0 is the new primary path. If exogenous_precision drops
+      below 0.81, investigate per-act regressions in per_act_results
+      and consider folding back one specific clarifier at a time
+      (preserving the minimalism principle). If sign_accuracy < 0.85,
+      add a direction_signals array to C2a v0.5.0 in v0.7.1 (sign
+      extraction is the obvious gap; c2a currently extracts only
+      motivation evidence and enacted_signals). Re-run the
+      c2b_evidence_shuffle_diagnostic with the auto-detecting
+      fingerprint to verify the F-A median-stability gap narrows toward
+      zero, supporting the iter 36 hypothesis that rule density was the
+      source of overfit.

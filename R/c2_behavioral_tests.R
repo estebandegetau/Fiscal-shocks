@@ -148,13 +148,17 @@ validate_c2a_output <- function(parsed) {
 }
 
 
-#' Validate C2b output schema
+#' Validate C2b output schema (v0.7.0)
+#'
+#' Validates the minimal Das-et-al.-adapted schema:
+#' {enacted: bool, exogenous: "TRUE"|"FALSE"|"UNCLEAR",
+#'  sign: "+"|"-"|"0"|"UNCLEAR", confidence: str, reasoning: str}.
 #'
 #' @param parsed List from parse_json_response()
-#' @param valid_categories Character vector of valid category labels
+#' @param valid_categories Unused (kept for backward-compatible signature).
 #' @return List with $valid (logical) and $reason (character, NA if valid)
 #' @keywords internal
-validate_c2b_output <- function(parsed, valid_categories) {
+validate_c2b_output <- function(parsed, valid_categories = NULL) {
   if (!is.null(parsed$error)) {
     return(list(valid = FALSE, reason = paste("JSON parse error:", parsed$error)))
   }
@@ -164,33 +168,24 @@ validate_c2b_output <- function(parsed, valid_categories) {
     return(list(valid = FALSE, reason = "Missing or non-logical 'enacted' field"))
   }
 
-  # motivations must be a non-empty list
-  if (is.null(parsed$motivations) || !is.list(parsed$motivations) ||
-      length(parsed$motivations) == 0) {
-    return(list(valid = FALSE, reason = "Missing, non-list, or empty 'motivations' field"))
+  # exogenous must be character with valid value
+  valid_exo <- c("TRUE", "FALSE", "UNCLEAR")
+  if (is.null(parsed$exogenous) || !is.character(parsed$exogenous) ||
+      !parsed$exogenous %in% valid_exo) {
+    return(list(valid = FALSE,
+                reason = sprintf("Invalid 'exogenous' field: '%s' (must be one of %s)",
+                                 parsed$exogenous %||% "NULL",
+                                 paste(valid_exo, collapse = "/"))))
   }
 
-  # Validate each motivation entry
-  for (i in seq_along(parsed$motivations)) {
-    item <- parsed$motivations[[i]]
-    if (is.null(item$category) || !item$category %in% valid_categories) {
-      return(list(valid = FALSE,
-                  reason = sprintf("motivations[%d]: invalid category '%s'",
-                                   i, item$category %||% "NULL")))
-    }
-    if (is.null(item$component) || !is.character(item$component)) {
-      return(list(valid = FALSE,
-                  reason = sprintf("motivations[%d]: missing or non-character 'component'", i)))
-    }
-    if (is.null(item$share) || !is.character(item$share)) {
-      return(list(valid = FALSE,
-                  reason = sprintf("motivations[%d]: missing or non-character 'share'", i)))
-    }
-  }
-
-  # exogenous must be logical
-  if (is.null(parsed$exogenous) || !is.logical(parsed$exogenous)) {
-    return(list(valid = FALSE, reason = "Missing or non-logical 'exogenous' field"))
+  # sign must be character with valid value
+  valid_sign <- c("+", "-", "0", "UNCLEAR")
+  if (is.null(parsed$sign) || !is.character(parsed$sign) ||
+      !parsed$sign %in% valid_sign) {
+    return(list(valid = FALSE,
+                reason = sprintf("Invalid 'sign' field: '%s' (must be one of %s)",
+                                 parsed$sign %||% "NULL",
+                                 paste(valid_sign, collapse = "/"))))
   }
 
   # confidence must be character
@@ -614,20 +609,13 @@ test_c2b_legal_outputs <- function(codebook,
 
     validation <- validate_c2b_output(parsed, valid_categories)
 
-    # Extract predicted category for diagnostics
-    pred_category <- if (validation$valid && length(parsed$motivations) > 0) {
-      parsed$motivations[[1]]$category
-    } else {
-      NA_character_
-    }
-
     tibble::tibble(
       text_id = i,
       act_name = es$act_name,
       valid = validation$valid,
       reason = validation$reason,
-      pred_category = pred_category,
-      exogenous = parsed$exogenous %||% NA,
+      pred_exogenous = parsed$exogenous %||% NA_character_,
+      pred_sign = parsed$sign %||% NA_character_,
       confidence = parsed$confidence %||% NA_character_,
       raw_response = parsed$raw_response %||% NA_character_
     )
@@ -648,13 +636,17 @@ test_c2b_legal_outputs <- function(codebook,
 }
 
 
-#' Test II: C2b Definition Recovery
+#' Test II: C2b Schema Recovery (v0.7.0)
 #'
-#' For each class, constructs a synthetic evidence array whose signal
-#' matches the class definition. Verifies C2b returns the correct
-#' motivation category.
+#' For each synthetic evidence set with known expected `exogenous` and
+#' `sign` values, verifies that C2b returns the expected outputs. Replaces
+#' the prior 4-class definition-recovery test under the v0.7.0 minimal
+#' codebook (no class definitions to recover).
 #'
 #' @param codebook A validated C2b codebook object
+#' @param test_evidence_sets List of evidence set lists from
+#'   generate_c2b_test_evidence(); each must include `expected_exogenous`
+#'   and `expected_sign` fields.
 #' @param model Character model ID
 #' @param max_tokens Integer max output tokens
 #' @param provider Character provider name
@@ -662,39 +654,26 @@ test_c2b_legal_outputs <- function(codebook,
 #' @param api_key Optional API key
 #' @return List with pass, n_correct, n_total, rate, threshold, details
 #' @export
-test_c2b_definition_recovery <- function(codebook,
-                                         model = "claude-haiku-4-5-20251001",
-                                         max_tokens = 1024,
-                                         provider = "anthropic",
-                                         base_url = NULL,
-                                         api_key = NULL) {
-  valid_categories <- get_valid_labels(codebook)
+test_c2b_schema_recovery <- function(codebook,
+                                     test_evidence_sets,
+                                     model = "claude-haiku-4-5-20251001",
+                                     max_tokens = 1024,
+                                     provider = "anthropic",
+                                     base_url = NULL,
+                                     api_key = NULL) {
   system_prompt <- construct_codebook_prompt(codebook)
 
-  results <- purrr::map(codebook$classes, function(cls) {
-    # Build synthetic evidence with the class definition as the signal
-    evidence <- list(
-      list(
-        quote = paste(
-          "The fiscal measure was enacted for the following reason:",
-          trimws(cls$label_definition)
-        ),
-        signal = trimws(cls$label_definition)
-      )
-    )
-
-    enacted_signals <- list(
-      list(
-        quote = "The act was signed into law.",
-        signal = "Enacted"
-      )
-    )
+  results <- purrr::map(seq_along(test_evidence_sets), function(i) {
+    es <- test_evidence_sets[[i]]
+    if (is.null(es$expected_exogenous) || is.null(es$expected_sign)) {
+      stop(sprintf(
+        "test_evidence_sets[[%d]] missing expected_exogenous/expected_sign fields",
+        i
+      ))
+    }
 
     user_msg <- format_c2b_input(
-      act_name = paste("Test", cls$label, "Act"),
-      year = 2000,
-      evidence = evidence,
-      enacted_signals = enacted_signals
+      es$act_name, es$year, es$evidence, es$enacted_signals
     )
 
     parsed <- tryCatch({
@@ -713,18 +692,21 @@ test_c2b_definition_recovery <- function(codebook,
       list(error = e$message, raw_response = NA_character_)
     })
 
-    validation <- validate_c2b_output(parsed, valid_categories)
+    validation <- validate_c2b_output(parsed)
 
-    pred_category <- if (validation$valid && length(parsed$motivations) > 0) {
-      parsed$motivations[[1]]$category
-    } else {
-      NA_character_
-    }
+    pred_exo <- if (validation$valid) parsed$exogenous else NA_character_
+    pred_sign <- if (validation$valid) parsed$sign else NA_character_
 
     tibble::tibble(
-      true_label = cls$label,
-      pred_label = pred_category,
-      correct = identical(pred_category, cls$label)
+      act_name = es$act_name,
+      expected_exogenous = es$expected_exogenous,
+      expected_sign = es$expected_sign,
+      pred_exogenous = pred_exo,
+      pred_sign = pred_sign,
+      exo_correct = identical(pred_exo, es$expected_exogenous),
+      sign_correct = identical(pred_sign, es$expected_sign),
+      correct = identical(pred_exo, es$expected_exogenous) &&
+        identical(pred_sign, es$expected_sign)
     )
   })
 
@@ -732,7 +714,7 @@ test_c2b_definition_recovery <- function(codebook,
   n_correct <- sum(details$correct, na.rm = TRUE)
 
   list(
-    test = "II_definition_recovery",
+    test = "II_schema_recovery",
     pass = n_correct == nrow(details),
     n_correct = n_correct,
     n_total = nrow(details),
@@ -766,6 +748,29 @@ test_c2b_order_invariance <- function(codebook,
                                       provider = "anthropic",
                                       base_url = NULL,
                                       api_key = NULL) {
+  # Skip when codebook has no classes (v0.7.0+ minimal classification codebooks).
+  # Order invariance over class definitions is degenerate; legal-output stability
+  # is covered by Test I.
+  if (is.null(codebook$classes) || length(codebook$classes) == 0) {
+    return(list(
+      test = "IV_order_invariance",
+      pass = TRUE,
+      change_rate = NA_real_,
+      change_rate_reversed = NA_real_,
+      change_rate_shuffled = NA_real_,
+      change_rate_categories = NA_real_,
+      change_rate_exogenous = NA_real_,
+      n_changed_reversed = NA_integer_,
+      n_changed_shuffled = NA_integer_,
+      n_total = length(test_evidence_sets),
+      threshold = 0.05,
+      fleiss_kappa = NA_real_,
+      kappa_interpretation = NA_character_,
+      details = tibble::tibble(),
+      skipped = TRUE
+    ))
+  }
+
   n_classes <- length(codebook$classes)
   original_order <- seq_len(n_classes)
   reversed_order <- rev(original_order)

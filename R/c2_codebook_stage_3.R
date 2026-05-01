@@ -647,6 +647,35 @@ run_c2_error_analysis <- function(c2b_codebook,
 
   message("Running C2 S3 error analysis...")
 
+  # --- v0.7.0+ guard: Tests V-VII depend on the 4-class structure ---
+  # The minimal Das-et-al.-style codebook has no classes, no per-class
+  # negative_clarification fields to ablate, and no semantically loaded
+  # label names to swap. The shuffle diagnostic
+  # (c2b_evidence_shuffle_diagnostic target) supersedes Tests V-VII for
+  # v0.7.0+ codebooks.
+  if (is.null(c2b_codebook$classes) || length(c2b_codebook$classes) == 0) {
+    message("  SKIPPED: codebook has no classes; ",
+            "Tests V-VII and ablation are degenerate. ",
+            "Use c2b_evidence_shuffle_diagnostic for v0.7.0+ stability checks.")
+    return(list(
+      baseline_preds = character(0),
+      true_labels = character(0),
+      test_v = list(skipped = TRUE,
+                    reason = "No classes in v0.7.0+ codebook"),
+      test_vi = list(skipped = TRUE,
+                     reason = "No classes in v0.7.0+ codebook"),
+      test_vii = list(skipped = TRUE,
+                      reason = "No classes in v0.7.0+ codebook"),
+      ablation = list(skipped = TRUE,
+                      reason = "No per-class clarifications to ablate"),
+      model = model,
+      n_acts = 0L,
+      codebook_version = c2b_codebook$version %||% NA_character_,
+      timestamp = Sys.time(),
+      skipped = TRUE
+    ))
+  }
+
   # --- Extract baseline from c2_s2_results ---
   valid <- c2_s2_results |>
     dplyr::filter(!is.na(pred_motivation))

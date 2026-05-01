@@ -52,14 +52,22 @@ assemble_c2_s2_sensitivity_data <- function(c1_classified_chunks) {
 
 #' Assemble C2 S2 test set (act-level with nested chunks)
 #'
-#' Groups C2 input chunks by act and joins ground truth labels from aligned_data.
-#' Maps label formats from aligned_data (e.g., "Spending-driven") to codebook
-#' format (e.g., "SPENDING_DRIVEN") for direct comparison with predictions.
+#' Groups C2 input chunks by act and joins ground truth from aligned_data.
+#' Carries the v0.7.0 ground-truth fields (`true_exogenous`, `true_sign`)
+#' alongside the legacy 4-class label (`true_motivation`) for diagnostic
+#' compatibility. The 4-class label is no longer used by `evaluate_c2_classification()`
+#' under v0.7.0+, but it is kept on the test-set tibble so error analysis can
+#' still group by R&R category.
+#'
+#' Sign convention: `true_sign` is "+" when ground-truth `magnitude_billions`
+#' is positive (tax increase / fiscal liabilities up), "-" when negative
+#' (tax cut / liabilities down), "0" when zero, NA when missing.
 #'
 #' @param c2_data Tibble from assemble_c2_input_data() or assemble_c2_s2_sensitivity_data()
 #' @param aligned_data Tibble from align_labels_shocks() with act-level labels
+#'   and `magnitude_billions` (sign-bearing).
 #' @return Tibble with one row per act: act_name, year, true_motivation,
-#'   true_exogenous, chunks (list-column), n_chunks
+#'   true_exogenous, true_sign, chunks (list-column), n_chunks
 #' @export
 assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
 
@@ -72,13 +80,28 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
 
   exo_map <- c("Exogenous" = TRUE, "Endogenous" = FALSE)
 
-  # Canonical ground truth from aligned_data
+  if (!"magnitude_billions" %in% names(aligned_data)) {
+    stop("aligned_data is missing 'magnitude_billions' column required for true_sign")
+  }
+
+  derive_sign <- function(x) {
+    dplyr::case_when(
+      is.na(x)  ~ NA_character_,
+      x  >  0   ~ "+",
+      x  <  0   ~ "-",
+      TRUE      ~ "0"
+    )
+  }
+
+  # Canonical ground truth from aligned_data (one row per act)
   labels <- aligned_data |>
-    dplyr::select(act_name, motivation_category, exogenous_flag) |>
-    dplyr::distinct() |>
+    dplyr::select(act_name, motivation_category, exogenous_flag,
+                  magnitude_billions) |>
+    dplyr::distinct(act_name, .keep_all = TRUE) |>
     dplyr::mutate(
       true_motivation = motivation_map[motivation_category],
-      true_exogenous = exo_map[exogenous_flag]
+      true_exogenous = exo_map[exogenous_flag],
+      true_sign = derive_sign(magnitude_billions)
     )
 
   # Validate mapping completeness
@@ -87,6 +110,14 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
     stop(sprintf(
       "Unmapped motivation categories: %s",
       paste(unique(unmapped$motivation_category), collapse = ", ")
+    ))
+  }
+
+  n_missing_sign <- sum(is.na(labels$true_sign))
+  if (n_missing_sign > 0) {
+    warning(sprintf(
+      "C2 S2 test set: %d act(s) have NA true_sign (missing magnitude_billions)",
+      n_missing_sign
     ))
   }
 
@@ -110,7 +141,7 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
   # Join ground truth
   result <- nested |>
     dplyr::inner_join(
-      labels |> dplyr::select(act_name, true_motivation, true_exogenous),
+      labels |> dplyr::select(act_name, true_motivation, true_exogenous, true_sign),
       by = "act_name"
     )
 
@@ -132,7 +163,7 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
   ))
 
   result |>
-    dplyr::select(act_name, year, true_motivation, true_exogenous,
+    dplyr::select(act_name, year, true_motivation, true_exogenous, true_sign,
                   chunks, n_chunks)
 }
 
@@ -312,7 +343,6 @@ run_c2b_classification <- function(c2b_codebook,
                                    api_key = NULL) {
 
   c2b_system <- construct_codebook_prompt(c2b_codebook)
-  c2b_labels <- get_valid_labels(c2b_codebook)
 
   # Aggregate C2a evidence by act
   act_evidence <- c2a_results |>
@@ -328,7 +358,8 @@ run_c2b_classification <- function(c2b_codebook,
   # Join ground truth from test_set (only acts present in both)
   combined <- act_evidence |>
     dplyr::inner_join(
-      test_set |> dplyr::select(act_name, true_motivation, true_exogenous),
+      test_set |> dplyr::select(act_name, dplyr::any_of("true_motivation"),
+                                true_exogenous, true_sign),
       by = "act_name"
     )
 
@@ -370,7 +401,7 @@ run_c2b_classification <- function(c2b_codebook,
           base_url = base_url,
           api_key = api_key
         )
-        validation <- validate_c2b_output(parsed, c2b_labels)
+        validation <- validate_c2b_output(parsed)
         if (!validation$valid) {
           list(valid = FALSE, reason = validation$reason, parsed = parsed)
         } else {
@@ -395,82 +426,56 @@ run_c2b_classification <- function(c2b_codebook,
       ))
     }
 
-    # ------ Collapse motivations[] to single label ------
-    pred_motivation <- NA_character_
-    pred_exogenous <- NA
+    # ------ Extract v0.7.0 schema fields ------
+    pred_exogenous_str <- NA_character_
+    pred_exogenous <- NA  # logical — TRUE only when exogenous == "TRUE"
+    pred_sign <- NA_character_
     enacted <- NA
     confidence <- NA_character_
     reasoning <- NA_character_
-    motivations_raw <- list(NULL)
-    multiple_dominant <- FALSE
-    no_dominant <- FALSE
 
     if (c2b_valid && !is.null(c2b_parsed)) {
-      motivations <- c2b_parsed$motivations %||% list()
-      motivations_raw <- list(motivations)
       enacted <- c2b_parsed$enacted %||% NA
-      pred_exogenous <- c2b_parsed$exogenous %||% NA
+      pred_exogenous_str <- c2b_parsed$exogenous %||% NA_character_
+      pred_sign <- c2b_parsed$sign %||% NA_character_
       confidence <- c2b_parsed$confidence %||% NA_character_
       reasoning <- c2b_parsed$reasoning %||% NA_character_
 
-      if (length(motivations) > 0) {
-        shares <- vapply(motivations, function(m) m$share %||% "", character(1))
-
-        sole_idx <- which(shares == "sole")
-        dominant_idx <- which(shares == "dominant")
-
-        if (length(sole_idx) >= 1) {
-          pred_motivation <- motivations[[sole_idx[1]]]$category
-        } else if (length(dominant_idx) == 1) {
-          pred_motivation <- motivations[[dominant_idx[1]]]$category
-        } else if (length(dominant_idx) > 1) {
-          multiple_dominant <- TRUE
-          pred_motivation <- motivations[[dominant_idx[1]]]$category
-          warning(sprintf(
-            "Multiple 'dominant' motivations for [%s]: %s",
-            act$act_name,
-            paste(vapply(motivations[dominant_idx],
-                         function(m) m$category, character(1)),
-                  collapse = ", ")
-          ))
-        } else {
-          no_dominant <- TRUE
-          pred_motivation <- motivations[[1]]$category
-          warning(sprintf(
-            "No 'dominant' or 'sole' motivation for [%s], using first: %s",
-            act$act_name, pred_motivation
-          ))
-        }
-      }
+      pred_exogenous <- dplyr::case_when(
+        identical(pred_exogenous_str, "TRUE")  ~ TRUE,
+        identical(pred_exogenous_str, "FALSE") ~ FALSE,
+        TRUE ~ NA  # UNCLEAR or anything else → NA
+      )
     }
 
     tibble::tibble(
       act_name = act$act_name,
       year = act$year,
-      true_motivation = act$true_motivation,
+      true_motivation = act$true_motivation %||% NA_character_,
       true_exogenous = act$true_exogenous,
-      pred_motivation = pred_motivation,
+      true_sign = act$true_sign,
       pred_exogenous = pred_exogenous,
+      pred_exogenous_raw = pred_exogenous_str,
+      pred_sign = pred_sign,
       enacted = enacted,
       confidence = confidence,
-      motivations_raw = motivations_raw,
       evidence_raw = list(all_evidence),
       enacted_signals_raw = list(all_enacted),
       c2b_raw_response = if (c2b_valid) c2b_parsed$raw_response else NA_character_,
       reasoning = reasoning,
       n_chunks = act$n_chunks,
       n_evidence_items = length(all_evidence),
-      n_c2a_failures = act$n_c2a_failures,
-      multiple_dominant = multiple_dominant,
-      no_dominant = no_dominant
+      n_c2a_failures = act$n_c2a_failures
     )
   })
 
   message(sprintf(
-    "\nC2b classification complete: %d acts, %d valid predictions, %d NA predictions",
+    paste0("\nC2b classification complete: %d acts, %d valid predictions, ",
+           "%d UNCLEAR/NA exogenous, %d UNCLEAR/NA sign"),
     nrow(results),
-    sum(!is.na(results$pred_motivation)),
-    sum(is.na(results$pred_motivation))
+    sum(!is.na(results$pred_exogenous)),
+    sum(is.na(results$pred_exogenous)),
+    sum(is.na(results$pred_sign) | results$pred_sign == "UNCLEAR")
   ))
 
   results
@@ -744,52 +749,50 @@ run_c2_zero_shot <- function(c2a_codebook,
 # Evaluation
 # =============================================================================
 
-#' Evaluate C2 motivation classification results
+#' Evaluate C2 motivation classification results (v0.7.0)
 #'
-#' Computes multi-class motivation metrics (4x4 confusion matrix, weighted F1,
-#' per-class precision/recall/F1) and binary exogenous metrics (2x2 confusion
-#' matrix, exogenous precision) with bootstrap CIs.
+#' Computes two co-equal headline metrics for the v0.7.0 binary+sign output:
+#' (a) **exogenous precision** (binary, TRUE-class precision) and
+#' (b) **sign accuracy on true-exogenous acts** (the population whose sign
+#' enters the shock series). Both metrics get bootstrap CIs.
 #'
-#' @param c2_s2_results Tibble from run_c2_zero_shot()
+#' UNCLEAR predictions on the exogenous flag are mapped to NA and excluded
+#' from the precision denominator (treated as abstentions). UNCLEAR sign
+#' predictions count as incorrect when ground truth is exogenous (the model
+#' failed to commit to a direction the shock series requires).
+#'
+#' @param c2_s2_results Tibble from run_c2b_classification(); must include
+#'   columns pred_exogenous (logical), true_exogenous (logical),
+#'   pred_sign (character), true_sign (character).
 #' @param n_bootstrap Integer bootstrap resamples (default 1000)
 #' @param ci_level Numeric confidence level (default 0.95)
-#' @return List with motivation metrics, exogenous metrics, per-act results,
+#' @return List with exogenous metrics, sign metrics, per-act results,
 #'   and quality flags
 #' @export
 evaluate_c2_classification <- function(c2_s2_results,
                                        n_bootstrap = 1000,
                                        ci_level = 0.95) {
 
-  # Filter valid predictions
+  # An act is "valid" for exogenous evaluation if pred_exogenous is non-NA.
+  # UNCLEAR predictions map to NA (per run_c2b_classification) and are
+  # excluded from precision denominators.
   valid <- c2_s2_results |>
-    dplyr::filter(!is.na(pred_motivation))
+    dplyr::filter(!is.na(pred_exogenous))
 
   n_total <- nrow(c2_s2_results)
   n_valid <- nrow(valid)
+  n_unclear_exo <- sum(is.na(c2_s2_results$pred_exogenous))
 
   if (n_valid < n_total) {
     warning(sprintf(
-      "%d/%d acts had NA predictions and were excluded",
+      "%d/%d acts had NA/UNCLEAR pred_exogenous and were excluded from precision",
       n_total - n_valid, n_total
     ))
   }
 
   if (n_valid == 0) {
-    stop("No valid predictions to evaluate")
+    stop("No committed (TRUE/FALSE) exogenous predictions to evaluate")
   }
-
-  # --- Motivation metrics (4-class) ---
-  motivation_levels <- c("SPENDING_DRIVEN", "COUNTERCYCLICAL",
-                         "DEFICIT_DRIVEN", "LONG_RUN")
-
-  motivation_cm <- table(
-    Predicted = factor(valid$pred_motivation, levels = motivation_levels),
-    True = factor(valid$true_motivation, levels = motivation_levels)
-  )
-
-  motivation_point <- compute_multiclass_metrics(
-    valid$pred_motivation, valid$true_motivation, motivation_levels
-  )
 
   # --- Exogenous metrics (binary) ---
   exo_cm <- table(
@@ -799,28 +802,48 @@ evaluate_c2_classification <- function(c2_s2_results,
 
   exo_point <- compute_exo_metrics(valid$pred_exogenous, valid$true_exogenous)
 
-  # --- Exogenous consistency check ---
-  exo_from_motivation <- valid$pred_motivation %in% c("DEFICIT_DRIVEN", "LONG_RUN")
-  exo_inconsistent <- sum(exo_from_motivation != valid$pred_exogenous, na.rm = TRUE)
+  # --- Sign accuracy on true-exogenous acts ---
+  # The deliverable is the signed exogenous shock series. Sign correctness
+  # only matters for acts whose ground truth is exogenous.
+  sign_point <- compute_sign_metrics_on_true_exo(
+    pred_sign = c2_s2_results$pred_sign,
+    true_sign = c2_s2_results$true_sign,
+    true_exo  = c2_s2_results$true_exogenous,
+    pred_exo  = c2_s2_results$pred_exogenous
+  )
 
   # --- Bootstrap CIs ---
+  # Resample over the entire results tibble (not just exo-valid rows) so the
+  # sign metric, which is conditioned on true_exogenous == TRUE, retains the
+  # full denominator. The exo-precision metric still excludes NA predictions
+  # within each resample.
   set.seed(42)
   boot_stats <- replicate(n_bootstrap, {
-    boot_idx <- sample(seq_len(n_valid), n_valid, replace = TRUE)
-    boot_data <- valid[boot_idx, ]
+    boot_idx <- sample(seq_len(n_total), n_total, replace = TRUE)
+    boot_data <- c2_s2_results[boot_idx, ]
+    boot_valid <- boot_data |> dplyr::filter(!is.na(pred_exogenous))
 
-    m <- compute_multiclass_metrics(
-      boot_data$pred_motivation, boot_data$true_motivation, motivation_levels
+    if (nrow(boot_valid) == 0) {
+      e <- list(precision = NA_real_, recall = NA_real_,
+                f1 = NA_real_, accuracy = NA_real_)
+    } else {
+      e <- compute_exo_metrics(boot_valid$pred_exogenous,
+                               boot_valid$true_exogenous)
+    }
+
+    s <- compute_sign_metrics_on_true_exo(
+      pred_sign = boot_data$pred_sign,
+      true_sign = boot_data$true_sign,
+      true_exo  = boot_data$true_exogenous,
+      pred_exo  = boot_data$pred_exogenous
     )
-    e <- compute_exo_metrics(boot_data$pred_exogenous, boot_data$true_exogenous)
 
-    c(weighted_f1 = m$weighted_f1,
-      macro_f1 = m$macro_f1,
-      accuracy = m$accuracy,
-      exo_precision = e$precision,
+    c(exo_precision = e$precision,
       exo_recall = e$recall,
       exo_f1 = e$f1,
-      exo_accuracy = e$accuracy)
+      exo_accuracy = e$accuracy,
+      sign_acc_on_true_exo = s$sign_accuracy,
+      signed_exo_precision = s$signed_exo_precision)
   })
 
   alpha <- 1 - ci_level
@@ -828,45 +851,35 @@ evaluate_c2_classification <- function(c2_s2_results,
   ci_upper <- apply(boot_stats, 1, quantile, probs = 1 - alpha / 2, na.rm = TRUE)
 
   # --- Per-act results ---
-  per_act <- valid |>
+  per_act <- c2_s2_results |>
     dplyr::mutate(
-      correct_motivation = pred_motivation == true_motivation,
-      correct_exogenous = pred_exogenous == true_exogenous
+      correct_exogenous = !is.na(pred_exogenous) &
+        pred_exogenous == true_exogenous,
+      correct_sign_on_true_exo = dplyr::if_else(
+        true_exogenous,
+        !is.na(pred_sign) & pred_sign == true_sign,
+        NA
+      )
     ) |>
     dplyr::select(
-      act_name, year, true_motivation, pred_motivation, correct_motivation,
-      true_exogenous, pred_exogenous, correct_exogenous,
-      confidence, n_chunks, n_evidence_items,
-      n_c2a_failures, multiple_dominant, no_dominant
+      act_name, year,
+      dplyr::any_of("true_motivation"),
+      true_exogenous, pred_exogenous, pred_exogenous_raw, correct_exogenous,
+      true_sign, pred_sign, correct_sign_on_true_exo,
+      confidence, n_chunks, n_evidence_items, n_c2a_failures
     ) |>
-    dplyr::arrange(correct_motivation, correct_exogenous, act_name)
+    dplyr::arrange(correct_exogenous, correct_sign_on_true_exo, act_name)
 
   # --- Quality flags ---
   quality_flags <- list(
-    n_c2a_failures_total = sum(valid$n_c2a_failures),
-    n_multiple_dominant = sum(valid$multiple_dominant),
-    n_no_dominant = sum(valid$no_dominant),
-    n_exo_inconsistent = exo_inconsistent
+    n_c2a_failures_total = sum(c2_s2_results$n_c2a_failures, na.rm = TRUE),
+    n_unclear_exo = n_unclear_exo,
+    n_unclear_sign = sum(c2_s2_results$pred_sign == "UNCLEAR", na.rm = TRUE),
+    n_na_pred_sign = sum(is.na(c2_s2_results$pred_sign))
   )
 
   list(
-    # Motivation metrics
-    motivation_confusion_matrix = motivation_cm,
-    motivation_weighted_f1 = motivation_point$weighted_f1,
-    motivation_weighted_f1_ci = c(
-      lower = ci_lower["weighted_f1"], upper = ci_upper["weighted_f1"]
-    ),
-    motivation_macro_f1 = motivation_point$macro_f1,
-    motivation_macro_f1_ci = c(
-      lower = ci_lower["macro_f1"], upper = ci_upper["macro_f1"]
-    ),
-    motivation_accuracy = motivation_point$accuracy,
-    motivation_accuracy_ci = c(
-      lower = ci_lower["accuracy"], upper = ci_upper["accuracy"]
-    ),
-    motivation_per_class = motivation_point$per_class,
-
-    # Exogenous metrics
+    # Exogenous metrics (binary)
     exogenous_confusion_matrix = exo_cm,
     exogenous_precision = exo_point$precision,
     exogenous_precision_ci = c(
@@ -881,6 +894,22 @@ evaluate_c2_classification <- function(c2_s2_results,
       lower = ci_lower["exo_f1"], upper = ci_upper["exo_f1"]
     ),
     exogenous_accuracy = exo_point$accuracy,
+
+    # Sign metrics (conditional on true_exogenous == TRUE)
+    sign_accuracy_on_true_exo = sign_point$sign_accuracy,
+    sign_accuracy_on_true_exo_ci = c(
+      lower = ci_lower["sign_acc_on_true_exo"],
+      upper = ci_upper["sign_acc_on_true_exo"]
+    ),
+    sign_confusion_matrix_on_true_exo = sign_point$confusion_matrix,
+    n_true_exo = sign_point$n_true_exo,
+
+    # Joint diagnostic: precision of (correct exo flag AND correct sign | true exogenous)
+    signed_exo_precision = sign_point$signed_exo_precision,
+    signed_exo_precision_ci = c(
+      lower = ci_lower["signed_exo_precision"],
+      upper = ci_upper["signed_exo_precision"]
+    ),
 
     # Diagnostics
     per_act_results = per_act,
@@ -954,6 +983,72 @@ compute_multiclass_metrics <- function(pred, true, levels) {
     per_class = per_class
   )
 }
+
+
+#' Compute sign accuracy on true-exogenous acts
+#'
+#' Sign correctness is only meaningful for acts whose ground truth is
+#' exogenous (the population whose sign enters the shock series). Returns
+#' (a) sign accuracy on the true-exogenous subset (denominator counts all
+#' true-exogenous acts; UNCLEAR/NA pred_sign counts as incorrect), and
+#' (b) signed exogenous precision: P(pred_exo == TRUE AND pred_sign matches
+#' true_sign | true_exogenous == TRUE).
+#'
+#' @param pred_sign Character vector of predicted sign in {"+", "-", "0", "UNCLEAR", NA}
+#' @param true_sign Character vector of true sign in {"+", "-", "0", NA}
+#' @param true_exo Logical vector of true exogenous flag
+#' @param pred_exo Logical vector of predicted exogenous flag (NA when UNCLEAR)
+#' @return List with sign_accuracy, signed_exo_precision, confusion_matrix,
+#'   n_true_exo
+#' @keywords internal
+compute_sign_metrics_on_true_exo <- function(pred_sign, true_sign,
+                                             true_exo, pred_exo) {
+  exo_idx <- which(isTRUE_vec(true_exo))
+  n_true_exo <- length(exo_idx)
+
+  if (n_true_exo == 0) {
+    return(list(
+      sign_accuracy = NA_real_,
+      signed_exo_precision = NA_real_,
+      confusion_matrix = NULL,
+      n_true_exo = 0L
+    ))
+  }
+
+  ps <- pred_sign[exo_idx]
+  ts <- true_sign[exo_idx]
+  pe <- pred_exo[exo_idx]
+
+  # Sign accuracy: of acts whose ground truth is exogenous, fraction where
+  # the predicted sign matches the true sign. UNCLEAR/NA pred_sign counts
+  # as incorrect (the model failed to commit on a direction the shock
+  # series requires).
+  sign_correct <- !is.na(ps) & ps != "UNCLEAR" & ps == ts
+  sign_accuracy <- mean(sign_correct, na.rm = FALSE)
+
+  # Signed exogenous precision: of acts whose ground truth is exogenous,
+  # fraction where BOTH pred_exogenous == TRUE AND pred_sign matches true_sign.
+  signed_correct <- isTRUE_vec(pe) & sign_correct
+  signed_exo_precision <- mean(signed_correct, na.rm = FALSE)
+
+  # Confusion matrix: pred_sign x true_sign on the true-exogenous subset
+  sign_levels <- c("+", "-", "0", "UNCLEAR")
+  cm <- table(
+    Predicted = factor(ifelse(is.na(ps), "NA", ps), levels = c(sign_levels, "NA")),
+    True = factor(ts, levels = sign_levels)
+  )
+
+  list(
+    sign_accuracy = sign_accuracy,
+    signed_exo_precision = signed_exo_precision,
+    confusion_matrix = cm,
+    n_true_exo = n_true_exo
+  )
+}
+
+
+# isTRUE-style vectorised helper (TRUE only when value is non-NA TRUE)
+isTRUE_vec <- function(x) !is.na(x) & x
 
 
 #' Compute binary exogenous classification metrics

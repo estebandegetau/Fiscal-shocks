@@ -63,9 +63,11 @@ From R&R companion paper, Section I.B (pp. 4-5) and main paper, Section II.B (pp
 
 ### 1.3 Motivation Classification
 
-From R&R companion paper, Section I.C (pp. 5-8) and main paper, Section II.C-E (pp. 769-774):
+From R&R companion paper, Section I.C (pp. 5-8) and main paper, Section II.C-E (pp. 769-774).
 
-**The four categories:**
+**Note on C2 codebook scope (2026-05-01).** The 4-class taxonomy below is **diagnostic context, not codebook content** under C2 v0.7.0. The C2b codebook outputs a binary exogenous flag plus a sign of effect on fiscal liabilities, following the proxy convention of Das et al. (2026, IMF WP/26/43). The 4-class R&R categories remain the authoritative ground-truth source on `aligned_data` (used to derive `true_exogenous` and to group acts in error analysis), and the boundary cases below remain the conceptual basis for what counts as exogenous. They are no longer encoded as decision rules in the prompt because (a) iter 35 diagnosed a structural ceiling under any v0.5–v0.6.x rule density and (b) iter 36's evidence-shuffle leakage diagnostic showed the dense rules were overfit to F-cluster US edge cases (F–A median-stability gap = −0.333). See `docs/strategy.md` C2 Blueprint for the v0.7.0 design.
+
+**The four categories (diagnostic context):**
 
 | Category | Definition | Exogeneity | Key Evidence Phrases |
 |----------|-----------|------------|---------------------|

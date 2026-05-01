@@ -69,9 +69,15 @@ build_s3_act_clusters <- function(iterations_yaml,
 #'
 #' For each act in target_acts: classify with the original evidence ordering
 #' and with k_shuffles deterministic permutations. Per-act stability is the
-#' fraction of permuted runs whose category|exogenous fingerprint matches
-#' the original. Returns per-cluster medians, Fleiss kappa, F-A gap, and a
-#' three-way verdict (pass / fail-overfit / structural_issue).
+#' fraction of permuted runs whose fingerprint matches the original. Returns
+#' per-cluster medians, Fleiss kappa, F-A gap, and a three-way verdict
+#' (pass / fail-overfit / structural_issue).
+#'
+#' Fingerprint definition (auto-detected from codebook output):
+#'   - v0.7.0+ minimal codebook (no `classes`): "{exogenous}|{sign}".
+#'   - Legacy 4-class codebook: "{sorted-categories}|{exogenous}".
+#' Both fingerprints carry the deliverable-relevant fields so the F-A gap
+#' is comparable across versions.
 #'
 #' @param c2b_codebook Parsed codebook from load_validate_codebook()
 #' @param c2b_inputs Tibble of frozen C2a evidence (data/validated/c2a_evidence.qs);
@@ -124,17 +130,27 @@ test_c2b_evidence_shuffle <- function(c2b_codebook,
 
   system_prompt <- construct_codebook_prompt(c2b_codebook)
 
+  # Detect codebook generation: v0.7.0+ has no classes, outputs {exogenous, sign};
+  # legacy 4-class codebooks output a motivations[] array.
+  is_minimal <- is.null(c2b_codebook$classes) || length(c2b_codebook$classes) == 0
+
   fingerprint <- function(parsed) {
     if (is.null(parsed)) return(NA_character_)
-    cats <- vapply(
-      parsed$motivations %||% list(),
-      function(m) m$category %||% NA_character_,
-      character(1)
-    )
-    cats <- sort(cats[!is.na(cats)])
-    cat_str <- if (length(cats) == 0L) "NONE" else paste(cats, collapse = "+")
-    exo_str <- as.character(parsed$exogenous %||% NA)
-    paste(cat_str, exo_str, sep = "|")
+    if (is_minimal) {
+      exo_str <- as.character(parsed$exogenous %||% NA)
+      sign_str <- as.character(parsed$sign %||% NA)
+      paste(exo_str, sign_str, sep = "|")
+    } else {
+      cats <- vapply(
+        parsed$motivations %||% list(),
+        function(m) m$category %||% NA_character_,
+        character(1)
+      )
+      cats <- sort(cats[!is.na(cats)])
+      cat_str <- if (length(cats) == 0L) "NONE" else paste(cats, collapse = "+")
+      exo_str <- as.character(parsed$exogenous %||% NA)
+      paste(cat_str, exo_str, sep = "|")
+    }
   }
 
   classify_one <- function(act_name, year, evidence, enacted_signals) {

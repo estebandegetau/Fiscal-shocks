@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-05-01: C2b v0.7.0 collapses 4-class output to {exogenous, sign}
+
+**Type:** design-decision
+**Affects:** `docs/strategy.md` > C2 Blueprint (rewritten); `CLAUDE.md` > C2 status block + Success Criteria; `docs/literature_review.md` > Section 1.3 (annotated as diagnostic context); `prompts/iterations/c2b.yml` (iter 37).
+**Detail:** C2b is rewritten as a Das-et-al.-adapted (2026, IMF WP/26/43) minimal prompt that outputs `{enacted, exogenous, sign, confidence, reasoning}`. The 4-class motivation taxonomy (SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN), the `motivations[]` array, and the share/dominant tiebreaker hierarchy (DR3 + boundary-case rules BCR1–BCR4) are dropped from the codebook. The 4-class taxonomy is preserved as ground-truth context on `aligned_data` (used to derive `true_exogenous` and to group acts in error analysis) but is no longer a codebook output. Triggers: iter 35's structural-ceiling diagnosis (wF1 ≈ 0.66 under any v0.5–v0.6.x rule density on Haiku); iter 36's evidence-shuffle leakage diagnostic (F–A median-stability gap = −0.333, well below the −0.10 overfit threshold); Das et al.'s evidence that an off-the-shelf, fixed, ~250-word prompt achieves 87.5–95% direction agreement on RR19. Eval changes: headline metrics shift from {Weighted F1 ≥70%, Exogenous Precision ≥85%} to {Exogenous Precision ≥85% (binary), Sign Accuracy on True-Exogenous ≥90%}. Both metrics get bootstrap 95% CIs. Sign is derived in `assemble_c2_s2_test_set()` from `sign(magnitude_billions)` in `aligned_data`. `compute_multiclass_metrics()` is preserved as a private helper but unused under v0.7.0. S3 Tests V–VII (exclusion criteria, generic labels, swapped labels) skip cleanly when the codebook has no classes; the evidence-shuffle diagnostic supersedes them for v0.7.0+.
+**Suggested edit:** None — strategy.md, CLAUDE.md, and literature_review.md updated as part of this change. Re-read after S2 zero-shot run (iter 38) to incorporate measured exogenous precision and sign accuracy into the C2 status block.
+
 ## 2026-04-12: Frozen c2_input_data pattern decouples C2 from C1 function changes
 
 **Type:** design-decision

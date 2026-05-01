@@ -10,27 +10,33 @@
 
 #' Generate synthetic evidence sets for C2b behavioral tests
 #'
-#' Creates one synthetic evidence set per motivation category. Each set
-#' contains 2-3 evidence items with clear signals pointing to the target
-#' category, plus one enacted-status signal.
+#' Creates four synthetic evidence sets covering the four corners of the
+#' v0.7.0 output schema: exogenous-positive (deficit reduction by tax
+#' increase), exogenous-negative (long-run reform via tax cut),
+#' endogenous-positive (spending-financing tax increase), and
+#' endogenous-negative (countercyclical tax relief). Each set carries
+#' `expected_exogenous` and `expected_sign` fields used by Test II
+#' (schema recovery).
 #'
 #' @param seed Integer random seed (unused currently, reserved for future)
 #' @return List of 4 evidence sets, each with act_name, year, evidence,
-#'   enacted_signals
+#'   enacted_signals, expected_exogenous, expected_sign
 #' @keywords internal
 generate_c2b_test_evidence <- function(seed = 42) {
   list(
     list(
-      act_name = "Synthetic Spending-Driven Act",
+      act_name = "Synthetic Spending-Financing Revenue Act",
       year = 2003,
+      expected_exogenous = "FALSE",
+      expected_sign = "+",
       evidence = list(
         list(
           quote = "The tax increase was enacted to finance the new military operations abroad.",
-          signal = "Revenue measure explicitly linked to financing a spending commitment"
+          signal = "Revenue measure explicitly linked to financing a contemporaneous spending commitment"
         ),
         list(
           quote = "The revenue provisions and the defense appropriations were passed together as a single package.",
-          signal = "Fiscal measure and spending change enacted together"
+          signal = "Fiscal measure and spending change enacted together within the same year"
         )
       ),
       enacted_signals = list(
@@ -41,8 +47,10 @@ generate_c2b_test_evidence <- function(seed = 42) {
       )
     ),
     list(
-      act_name = "Synthetic Countercyclical Act",
+      act_name = "Synthetic Countercyclical Relief Act",
       year = 2009,
+      expected_exogenous = "FALSE",
+      expected_sign = "-",
       evidence = list(
         list(
           quote = "With unemployment rising sharply and GDP contracting, the government enacted emergency tax relief.",
@@ -65,36 +73,40 @@ generate_c2b_test_evidence <- function(seed = 42) {
       )
     ),
     list(
-      act_name = "Synthetic Deficit-Driven Act",
+      act_name = "Synthetic Inherited-Deficit Reduction Act",
       year = 1993,
+      expected_exogenous = "TRUE",
+      expected_sign = "+",
       evidence = list(
         list(
           quote = "The deficit, accumulated over many years of past policy decisions, threatens long-term fiscal stability.",
-          signal = "Deficit described as inherited from past decisions"
+          signal = "Deficit described as inherited from past decisions, not a contemporaneous spending change"
         ),
         list(
-          quote = "The primary purpose of this act is to restore fiscal balance and reduce the structural budget deficit.",
-          signal = "Stated goal of deficit reduction and fiscal prudence"
+          quote = "The primary purpose of this act is to restore fiscal balance through higher revenues and reduce the structural budget deficit.",
+          signal = "Stated goal of deficit reduction by raising revenues"
         )
       ),
       enacted_signals = list(
         list(
-          quote = "The Fiscal Responsibility Act was enacted on August 10, 1993.",
+          quote = "The act was enacted on August 10, 1993.",
           signal = "Enacted into law"
         )
       )
     ),
     list(
-      act_name = "Synthetic Long-Run Act",
+      act_name = "Synthetic Long-Run Reform Act",
       year = 1986,
+      expected_exogenous = "TRUE",
+      expected_sign = "-",
       evidence = list(
         list(
           quote = "By broadening the tax base and lowering marginal rates, we can improve economic efficiency and raise long-run growth.",
-          signal = "Structural reform aimed at raising growth above normal level"
+          signal = "Structural reform aimed at raising potential output, with rate reductions"
         ),
         list(
-          quote = "The reform simplifies the tax code to improve incentives for investment and raise potential output.",
-          signal = "Permanent structural change for efficiency and supply-side improvement"
+          quote = "The reform simplifies the tax code to improve incentives for investment, reducing aggregate liabilities.",
+          signal = "Permanent structural change for efficiency, net reduction in liabilities"
         )
       ),
       enacted_signals = list(
@@ -278,12 +290,12 @@ run_c2b_behavioral_tests_s1 <- function(codebook,
   message(sprintf("    %s (%.0f%% valid)",
                   if (test_i$pass) "PASS" else "FAIL", test_i$rate * 100))
 
-  # Test II: Definition Recovery
-  message("  Test II: Definition Recovery...")
-  test_ii <- test_c2b_definition_recovery(codebook, model,
-                                          max_tokens = max_tokens,
-                                          provider = provider, base_url = base_url,
-                                          api_key = api_key)
+  # Test II: Schema Recovery (v0.7.0+; replaces Definition Recovery)
+  message("  Test II: Schema Recovery...")
+  test_ii <- test_c2b_schema_recovery(codebook, test_evidence_sets, model,
+                                      max_tokens = max_tokens,
+                                      provider = provider, base_url = base_url,
+                                      api_key = api_key)
   message(sprintf("    %s (%d/%d correct)",
                   if (test_ii$pass) "PASS" else "FAIL",
                   test_ii$n_correct, test_ii$n_total))
@@ -310,22 +322,26 @@ run_c2b_behavioral_tests_s1 <- function(codebook,
                                        max_tokens = max_tokens,
                                        provider = provider, base_url = base_url,
                                        api_key = api_key)
-  message(sprintf(
-    "    %s (max change rate: %.1f%% [rev=%.1f%%, shuf=%.1f%%], kappa=%.3f %s)",
-    if (test_iv$pass) "PASS" else "FAIL",
-    test_iv$change_rate * 100,
-    test_iv$change_rate_reversed * 100,
-    test_iv$change_rate_shuffled * 100,
-    test_iv$fleiss_kappa,
-    test_iv$kappa_interpretation
-  ))
-
-  # Additional C2b-specific diagnostics
-  message(sprintf(
-    "    Category change rate: %.1f%%, Exogenous change rate: %.1f%%",
-    test_iv$change_rate_categories * 100,
-    test_iv$change_rate_exogenous * 100
-  ))
+  if (isTRUE(test_iv$skipped)) {
+    message("    SKIPPED (no classes to reorder; v0.7.0+ minimal schema)")
+  } else {
+    message(sprintf(
+      "    %s (max change rate: %.1f%% [rev=%.1f%%, shuf=%.1f%%], kappa=%.3f %s)",
+      if (test_iv$pass) "PASS" else "FAIL",
+      test_iv$change_rate * 100,
+      test_iv$change_rate_reversed * 100,
+      test_iv$change_rate_shuffled * 100,
+      test_iv$fleiss_kappa,
+      test_iv$kappa_interpretation
+    ))
+    if (!is.na(test_iv$change_rate_categories)) {
+      message(sprintf(
+        "    Category change rate: %.1f%%, Exogenous change rate: %.1f%%",
+        test_iv$change_rate_categories * 100,
+        test_iv$change_rate_exogenous * 100
+      ))
+    }
+  }
 
   overall_pass <- test_i$pass && test_ii$pass && test_iii$pass && test_iv$pass
 
@@ -342,10 +358,11 @@ run_c2b_behavioral_tests_s1 <- function(codebook,
     seed = seed,
     timestamp = Sys.time(),
     summary = tibble::tibble(
-      test = c("I_legal_outputs", "II_definition_recovery",
+      test = c("I_legal_outputs", "II_schema_recovery",
                "III_example_recovery", "IV_order_invariance"),
       pass = c(test_i$pass, test_ii$pass, test_iii$pass, test_iv$pass),
-      metric = c(test_i$rate, test_ii$rate, test_iii$rate, test_iv$change_rate),
+      metric = c(test_i$rate, test_ii$rate, test_iii$rate,
+                 test_iv$change_rate %||% NA_real_),
       threshold = c(1.0, 1.0, 1.0, 0.05),
       comparison = c(">=", ">=", ">=", "<")
     )
