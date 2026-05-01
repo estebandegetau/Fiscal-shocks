@@ -403,6 +403,37 @@ list(
     deployment = "main"
   ),
 
+  # C2 S3 leakage diagnostic: per-act evidence-record shuffle on F+A clusters.
+  # Reads iter 30 manual-review per-act notes (authoritative cluster source).
+  tar_target(
+    c2b_iterations_log,
+    here::here("prompts", "iterations", "c2b.yml"),
+    format = "file",
+    packages = "here"
+  ),
+  tar_target(
+    s3_act_clusters,
+    build_s3_act_clusters(c2b_iterations_log, iteration = 30L),
+    packages = c("yaml", "tibble", "dplyr")
+  ),
+  tar_target(
+    c2b_evidence_shuffle_diagnostic,
+    test_c2b_evidence_shuffle(
+      c2b_codebook,
+      c2b_inputs,
+      s3_act_clusters,
+      k_shuffles = 3L,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2b = 4096,
+      seed = 42L,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
   # C1 S0: Track codebook file so YAML edits invalidate downstream targets
   tar_target(
     c1_codebook_file,
