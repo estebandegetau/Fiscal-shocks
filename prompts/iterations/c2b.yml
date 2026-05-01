@@ -4639,3 +4639,75 @@ iterations:
       fingerprint to verify the F-A median-stability gap narrows toward
       zero, supporting the iter 36 hypothesis that rule density was the
       source of overfit.
+  - iteration: 38
+    codebook_version: "0.7.0"
+    date: "2026-05-01"
+    git_commit: "af1ac9b"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      First S1 regression check on the v0.7.0 redesign (no codebook
+      changes since iter 37). S1 test surface narrowed by construction:
+      Test III remains skipped (no examples block in the codebook —
+      illustrative examples in v0.7.0's instructions are not exposed
+      via the `examples` field), and Test IV is now skipped too because
+      v0.7.0 has no `classes` block to permute (test_c2b_order_invariance
+      early-returns when `length(codebook$classes) == 0`). Test II under
+      v0.7.0 is schema_recovery (recovers expected (exogenous, sign) on
+      4 synthetic acts covering the four corners of the schema),
+      replacing the v0.2.0–v0.6.x definition_recovery test.
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_schema_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          n_correct: 4
+          n_total: 4
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+          skip_reason: "no examples block in v0.7.0 codebook"
+        - test: "IV_order_invariance"
+          value: null
+          threshold: 0.0500
+          pass: true
+          skipped: true
+          skip_reason: "no classes block in v0.7.0 codebook (degenerate)"
+      raw_response_notes: >
+        All four Test I responses parsed cleanly as JSON-in-codefence
+        with confidence=HIGH. Reasoning text explicitly invokes the Das
+        et al. clarifier (non-cyclical motive), the inherited-deficit
+        pattern, and the long-run growth pattern — the exact signals
+        v0.7.0's instructions are anchored on. Test II achieved 4/4 on
+        both `exogenous` and `sign` across all four (TRUE/FALSE) ×
+        (+/-) corners; no UNCLEAR returns under unambiguous synthetic
+        inputs.
+    interpretation: >
+      v0.7.0 passed S1. The minimal Das-adapted prompt produces
+      well-formed JSON, recovers the four corners of the
+      (exogenous, sign) schema on synthetic evidence, and Haiku's
+      free-text reasoning shows it is using the new clarifier as
+      intended rather than pattern-matching on removed v0.6.x rules.
+      The redesign did not introduce S1 regressions. Note the
+      narrowed S1 diagnostic value under v0.7.0 — Test IV (order
+      invariance) and Test III (example recovery) are both skipped
+      by construction, so S1 is now mostly a JSON-validity and
+      schema-recovery check. The actual gates for v0.7.0 vs. v0.6.1
+      are S2 (39-act zero-shot, both headline metrics) and the
+      evidence-shuffle diagnostic.
+    decision: >
+      Proceed to S2 zero-shot on the 39-act test set with cached
+      c2a_evidence. Iter 37 decision rule is in force: floors
+      exogenous_precision ≥ 0.81 and sign_accuracy_on_true_exo ≥ 0.85;
+      targets 0.85 and 0.90 respectively. Estimated cost ~$0.50 on
+      Haiku. Re-run c2b_evidence_shuffle_diagnostic with the
+      auto-detecting fingerprint in parallel to test the iter 36
+      overfit hypothesis under the lower-rule-density v0.7.0 prompt.
