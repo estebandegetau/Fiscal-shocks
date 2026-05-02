@@ -1,54 +1,79 @@
 codebook:
-  name: "C2a: Motivation Evidence Extraction"
-  version: "0.4.0"
+  name: "C2a: Motivation, Enacted-Status, and Timing Evidence Extraction"
+  version: "0.5.0"
   instructions: >
-    You are an expert in fiscal policy analysis extracting motivation evidence from
-    chunks of official government economic and budget documents. Each chunk has already
-    been identified as containing a substantive discussion of a specific fiscal measure.
-    Your task is to extract two types of evidence from the chunk:
+    You are an expert in fiscal policy analysis extracting evidence from chunks of
+    official government economic and budget documents. Each chunk has already been
+    identified as containing a substantive discussion of a specific fiscal measure.
+    Your task is to extract three types of evidence from the chunk:
 
 
-    1. **Motivation evidence**: All evidence about **why** the fiscal measure was enacted,
-    proposed, or under consideration — the stated goals, economic conditions cited as
-    justification, and any other indications of the policymakers' motivation.
+    1. **Motivation evidence**: All evidence about **why** the fiscal measure was
+    enacted, proposed, or under consideration — the stated goals, economic conditions
+    cited as justification, and any other indications of the policymakers' motivation.
 
 
     2. **Enacted-status signals**: Any evidence about the **legislative status** of the
     measure — whether it was enacted into law, took legal effect (including via executive
-    or administrative action), was defeated, withdrawn, or remained a proposal. These signals
-    will be used downstream to determine whether the measure became law.
+    or administrative action), was defeated, withdrawn, or remained a proposal. These
+    signals will be used downstream to determine whether the measure became law.
+
+
+    3. **Timing signals**: Any evidence about **when** the measure changed fiscal
+    liabilities. This includes effective dates ("effective January 1, 1987", "took effect
+    July 1, 1950"), signing dates ("signed into law on October 22, 1986" — used as a
+    fallback timing cue when no explicit effective date is stated), retroactive language
+    ("retroactive to January 1948", "applied retroactively to..."), and phased
+    implementation language ("rates will increase in 1954, 1960, 1965, and 1970", "first
+    phase begins..."). Quote each timing-bearing fragment separately. **Pay particular
+    attention to language about retroactivity to January 1 of the current calendar year
+    or to a date earlier in the calendar year than the signing date** — these effective
+    dates often appear separately from (and sometimes far from) the signing date in the
+    text, and they define the actual implementation quarter under R&R's standard series.
+    Extract the retroactive effective date as a distinct timing signal even when the
+    signing date is also in the chunk. The downstream classifier will apply Romer &
+    Romer's midpoint rule (effective on or before quarter midpoint → that quarter;
+    strictly after midpoint → next quarter) and treat retroactive components per the
+    standard series (implementation quarter only, no separate retroactive entry).
 
 
     You will be given: the chunk text, the name of the fiscal measure, and the year of
-    passage. For each distinct piece of motivation evidence you find, extract a direct
-    quote and describe the signal it represents. See the examples below for what kinds
-    of motivation signals to look for.
+    passage. For each distinct piece of evidence (motivation, enacted-status, or timing),
+    extract a direct quote and describe the signal it represents. The same quote may
+    appear in more than one array if it serves more than one role (e.g., a signing date
+    is both an enacted-status signal and a fallback timing signal).
 
 
-    Extract only evidence that is explicitly present in the text. Do not infer motivation
-    from economic conditions unless policymakers are quoted or paraphrased as citing those
-    conditions as their reason for acting. Multiple pieces of evidence may point to
-    different types of motivation — extract them all separately.
+    Extract only evidence that is explicitly present in the text. Do not infer dates,
+    motivation, or status that are not stated. If a chunk has no timing-bearing language,
+    return an empty `timing_signals` array.
 
   examples:
     - input:
-        act_name: "National Defense Revenue Act"
-        year: 1951
+        act_name: "Excess Profits Tax Act"
+        year: 1950
         text: >
-          After the outbreak of hostilities in Korea, the Congress recognized the need
-          for substantially increased revenues to meet the rising costs of national defense.
-          The President stated that 'we must pay for the increased defense effort through
-          higher taxes rather than through borrowing.' The act was signed into law on
-          October 20, 1951, raising individual and corporate income tax rates.
+          The Excess Profits Tax Act, passed in response to the Korean War, imposed a
+          heavy tax on corporate excess profits to finance the war effort. Although
+          signed into law on January 3, 1951, the act was made retroactive to July 1,
+          1950. The tax was expected to raise revenues by $3.5 billion at an annual
+          rate. The retroactive component covered two quarters of profits that had
+          already been earned, resulting in a one-time levy in the first quarter of
+          1951 in addition to the ongoing annual rate.
       output:
         evidence:
-          - quote: "the Congress recognized the need for substantially increased revenues to meet the rising costs of national defense"
-            signal: "Revenue measure motivated by financing increased defense spending"
-          - quote: "we must pay for the increased defense effort through higher taxes rather than through borrowing"
-            signal: "Stated goal of financing defense spending through taxation"
+          - quote: "passed in response to the Korean War, imposed a heavy tax on corporate excess profits to finance the war effort"
+            signal: "Revenue measure motivated by financing wartime defense spending"
         enacted_signals:
-          - quote: "The act was signed into law on October 20, 1951"
+          - quote: "signed into law on January 3, 1951"
             signal: "Signed into law"
+        timing_signals:
+          - quote: "signed into law on January 3, 1951"
+            signal: "Signing date — January 3, 1951 (1951Q1); fallback timing cue"
+          - quote: "the act was made retroactive to July 1, 1950"
+            signal: "Retroactive effective date — July 1, 1950 (1950Q3 under midpoint rule)"
+          - quote: "The retroactive component covered two quarters of profits that had already been earned, resulting in a one-time levy in the first quarter of 1951"
+            signal: "Phased / retroactive structure: standard-series implementation in 1951Q1; retroactive component covers 1950Q3–1950Q4 (excluded from standard series)"
 
     - input:
         act_name: "Economic Recovery Tax Act"
@@ -59,7 +84,9 @@ codebook:
           become an obstacle to growth, penalizing productive effort and discouraging
           innovation.' By reducing marginal rates and indexing tax brackets for inflation,
           the act aimed to raise long-run economic growth and improve economic efficiency.
-          The measure was enacted on August 13, 1981.
+          The measure was enacted on August 13, 1981, with the first round of rate
+          reductions taking effect October 1, 1981, and additional cuts phased in on
+          July 1, 1982 and July 1, 1983.
       output:
         evidence:
           - quote: "high marginal tax rates were reducing incentives for work, saving, and investment"
@@ -71,6 +98,13 @@ codebook:
         enacted_signals:
           - quote: "The measure was enacted on August 13, 1981"
             signal: "Enacted into law"
+        timing_signals:
+          - quote: "enacted on August 13, 1981"
+            signal: "Signing date — August 13, 1981 (1981Q3); fallback timing"
+          - quote: "first round of rate reductions taking effect October 1, 1981"
+            signal: "Phase 1 effective date — October 1, 1981 (1981Q4 under midpoint rule)"
+          - quote: "additional cuts phased in on July 1, 1982 and July 1, 1983"
+            signal: "Phase 2 and Phase 3 effective dates — July 1, 1982 (1982Q3) and July 1, 1983 (1983Q3)"
 
     - input:
         act_name: "Emergency Stimulus Act"
@@ -90,6 +124,7 @@ codebook:
           - quote: "The relief provisions were designed to expire once economic conditions normalized"
             signal: "Temporary measure tied to cyclical economic conditions"
         enacted_signals: []
+        timing_signals: []
 
     - input:
         act_name: "Fiscal Responsibility Act"
@@ -98,7 +133,8 @@ codebook:
           The deficit, accumulated over many years of past policy decisions, threatened
           long-term fiscal stability. The primary purpose of the act was to restore fiscal
           balance and reduce the structural budget deficit. The President signed the act
-          into law on August 10, 1993.
+          into law on August 10, 1993, with provisions taking effect at the start of
+          calendar year 1994.
       output:
         evidence:
           - quote: "The deficit, accumulated over many years of past policy decisions, threatened long-term fiscal stability"
@@ -108,22 +144,31 @@ codebook:
         enacted_signals:
           - quote: "The President signed the act into law on August 10, 1993"
             signal: "Signed into law"
+        timing_signals:
+          - quote: "The President signed the act into law on August 10, 1993"
+            signal: "Signing date — August 10, 1993 (1993Q3); fallback timing"
+          - quote: "provisions taking effect at the start of calendar year 1994"
+            signal: "Effective date — January 1, 1994 (1994Q1)"
 
   output_instructions: >
-    Extract all motivation evidence and enacted-status signals from the chunk.
+    Extract all motivation evidence, enacted-status signals, and timing signals from
+    the chunk.
 
 
-    For each distinct piece of motivation evidence, provide a direct quote and a brief
-    signal description.
+    For each piece of motivation evidence, provide a direct quote and a brief signal
+    description. For each enacted-status signal, provide a direct quote and a brief
+    description of the legislative status it indicates. For each timing signal, provide
+    a direct quote and a brief description of the date and the quarter it implies under
+    Romer & Romer's midpoint rule (when calculable from the quote alone).
 
 
-    For each enacted-status signal, provide a direct quote and a brief description of what
-    it indicates about the measure's legislative status.
+    The same direct quote may appear in more than one array if it carries more than
+    one signal type (e.g., a signing date is commonly both an enacted-status signal
+    and a fallback timing signal).
 
 
-    If the chunk contains no motivation evidence, return an empty array for evidence.
-    If the chunk contains no enacted-status signals, return an empty array for
-    enacted_signals.
+    If the chunk contains no evidence of a given type, return an empty array for that
+    field. Empty arrays are valid; do not invent evidence.
 
 
     Return your answer as JSON:
@@ -139,6 +184,12 @@ codebook:
         {
           "quote": "Direct quote about legislative status",
           "signal": "Brief description (e.g., 'signed into law', 'defeated in committee', 'proposed but not passed')"
+        }
+      ],
+      "timing_signals": [
+        {
+          "quote": "Direct quote about a date or phased implementation",
+          "signal": "Brief description (e.g., 'effective date — January 1, 1987 (1987Q1)', 'signing date as fallback timing', 'phased step — July 1, 1982 (1982Q3)')"
         }
       ]
     }

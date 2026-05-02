@@ -1,96 +1,123 @@
 codebook:
-  name: "C2b: Motivation Classification"
-  version: "0.7.0"
+  name: "C2b: Motivation, Sign, and Timing Classification"
+  version: "0.8.0"
   instructions: >
-    You are an expert in fiscal policy analysis classifying a fiscal measure as
-    exogenous or endogenous and determining the direction of its effect on
-    fiscal liabilities. You will receive the act name, year of passage, an
-    array of evidence records (each with a direct quote and a signal
-    description), and an array of enacted-status signals.
+    You are an expert in fiscal policy analysis classifying a fiscal measure on four
+    dimensions: enacted-status, exogeneity of the stated motivation, direction of effect
+    on fiscal liabilities, and the implementation quarter(s). You will receive the act
+    name, year of passage, an array of motivation-evidence records (each with a direct
+    quote and a signal description), an array of enacted-status signals, and an array
+    of timing signals (effective dates, signing dates, retroactive language, phased
+    implementation language).
 
 
-    Your task is to read all evidence and return four judgements: (1) whether
-    the measure became law; (2) whether the stated motivation is exogenous
-    (unrelated to short-term macroeconomic conditions) or endogenous (a
-    response to current or projected macroeconomic conditions); (3) the
-    directional effect on fiscal liabilities (an increase in liabilities, a
-    decrease in liabilities, or no net effect); (4) your confidence and a
-    brief reasoning.
+    Your task is to read all evidence and return five judgements: (1) whether the measure
+    became law; (2) whether the stated motivation is exogenous (unrelated to short-term
+    macroeconomic conditions) or endogenous (a response to current or projected
+    macroeconomic conditions); (3) the directional effect on fiscal liabilities (increase,
+    decrease, or no net effect); (4) the implementation quarter(s) when fiscal liabilities
+    actually change; (5) your confidence and a brief reasoning.
 
 
-    **Definition of exogenous.** Classify the motivation as exogenous only if
-    its stated motivation is clearly unrelated to short-term macroeconomic
-    developments. Typical non-cyclical motives include long-run growth or
-    structural reform objectives (efficiency, simplification, fairness,
-    raising potential output), reduction of an inherited fiscal imbalance or
-    deficit accumulated over multiple years, structural reforms of the fiscal
-    instrument, or compliance with a law, treaty, or supranational rule.
+    **Definition of exogenous.** Classify the motivation as exogenous only if its stated
+    motivation is clearly unrelated to short-term macroeconomic developments. Typical
+    non-cyclical motives include long-run growth or structural reform objectives
+    (efficiency, simplification, fairness, raising potential output), reduction of an
+    inherited fiscal imbalance or deficit accumulated over multiple years, structural
+    reforms of the fiscal instrument, or compliance with a law, treaty, or supranational
+    rule.
 
 
-    **Definition of endogenous.** Classify the motivation as endogenous if the
-    text states the action is undertaken to counter a recession or slowing
-    growth, reduce unemployment, cool overheating, respond to current
-    inflation, address exchange-rate or financing pressure, or finance or
-    offset a contemporaneous spending change (within roughly one year of the
-    measure). Endogenous motivations are responses to current or projected
-    macroeconomic conditions or to a near-term spending decision.
+    **Definition of endogenous.** Classify the motivation as endogenous if the text
+    states the action is undertaken to counter a recession or slowing growth, reduce
+    unemployment, cool overheating, respond to current inflation, address exchange-rate
+    or financing pressure, or finance or offset a contemporaneous spending change (within
+    roughly one year of the measure). Endogenous motivations are responses to current or
+    projected macroeconomic conditions or to a near-term spending decision.
 
 
-    **Critical clarifier.** Acknowledging current economic conditions does not
-    by itself imply endogeneity if the stated motive is explicitly
-    non-cyclical. Read for the stated reason for acting, not for what economic
-    conditions happen to prevail at the time of passage.
+    **Critical clarifier.** Acknowledging current economic conditions does not by itself
+    imply endogeneity if the stated motive is explicitly non-cyclical. Read for the
+    stated reason for acting, not for what economic conditions happen to prevail at the
+    time of passage.
 
 
-    **Mixed-component conservative rule.** If different provisions of the
-    measure are clearly exogenous and clearly endogenous in roughly comparable
-    fiscal weight, and the evidence does not support ranking one as dominant,
-    return `exogenous: UNCLEAR`. Do not infer relative magnitudes when they
-    are not explicitly stated. Only when one motivation is clearly dominant
-    by share of fiscal impact should you classify the measure with that
-    motivation.
+    **Mixed-component conservative rule.** If different provisions of the measure are
+    clearly exogenous and clearly endogenous in roughly comparable fiscal weight, and
+    the evidence does not support ranking one as dominant, return `exogenous: UNCLEAR`.
+    Do not infer relative magnitudes when they are not explicitly stated. Only when one
+    motivation is clearly dominant by share of fiscal impact should you classify the
+    measure with that motivation.
 
 
-    **Sign of effect on fiscal liabilities.** Determine whether the measure
-    increases liabilities ("+"), decreases liabilities ("-"), or has no net
-    effect ("0"). The sign refers to the change in fiscal liabilities owed by
-    taxpayers (or recipients of equivalent fiscal obligations), not to the
-    change in government revenue or deficit. A tax increase or new revenue
-    measure is "+"; a tax cut, credit, or relief is "-". When the evidence
-    or act name does not clearly indicate direction, return `sign: UNCLEAR`.
+    **Sign of effect on fiscal liabilities.** Determine whether the measure increases
+    liabilities ("+"), decreases liabilities ("-"), or has no net effect ("0"). The
+    sign refers to the change in fiscal liabilities owed by taxpayers (or recipients
+    of equivalent fiscal obligations), not to the change in government revenue or
+    deficit. A tax increase, new revenue measure, or expansion of the coverage base of
+    an existing tax (e.g., raising the maximum earnings subject to payroll tax, or
+    extending coverage to additional workers or categories of income) is "+". A tax
+    cut, credit, relief, or contraction of the coverage base is "-". For acts with
+    retroactive offsets in adjacent quarters (e.g., a retroactive rate cut produces a
+    one-time levy in a passage quarter and an ongoing reduction thereafter), report
+    the dominant act-level direction. When the evidence or act name does not clearly
+    indicate direction, return `sign: UNCLEAR`.
+
+
+    **Implementation quarter(s) — `enacted_quarter[]`.** Determine when fiscal liabilities
+    actually change, expressed as one or more `YYYY-QN` strings. Apply Romer & Romer's
+    midpoint rule: if the effective date falls **on or before** the midpoint of a
+    calendar quarter, assign that quarter; if **strictly after** the midpoint, assign
+    the next quarter. Quarter midpoints are February 15 (Q1), May 15 (Q2), August 15
+    (Q3), and November 15 (Q4). For phased implementation (e.g., Phase 1 effective
+    October 1, 1981; Phase 2 effective July 1, 1982), emit one quarter per phased
+    step. For retroactive components, follow R&R's **standard series**: report only
+    the implementation quarter (when the rate or rule actually takes effect going
+    forward), not the retroactive coverage period. When the evidence names *both* a
+    signing date and an explicit effective date (including retroactive effective dates
+    such as "retroactive to January 1 of the current year"), prefer the effective date.
+    Only when no effective date is anywhere in the evidence should you fall back to
+    the signing date under the midpoint rule. When timing signals are absent or
+    inconsistent, return an empty array and note the uncertainty in reasoning. Do not
+    invent dates that are not supported by the evidence.
 
 
     **Enacted-status determination.** Based on the enacted-status signals, set
-    `enacted: true` if the measure was signed into law, took legal effect,
-    or was implemented by executive or administrative action. Set
-    `enacted: false` if the measure was defeated, withdrawn, vetoed, or
-    remained a proposal. If enacted-status evidence is absent or ambiguous,
-    default to `true` (the prior assumption is that measures discussed
-    substantively in official government documents were enacted) and note
-    the uncertainty in reasoning.
+    `enacted: true` if the measure was signed into law, took legal effect, or was
+    implemented by executive or administrative action. Set `enacted: false` if the
+    measure was defeated, withdrawn, vetoed, or remained a proposal. If enacted-status
+    evidence is absent or ambiguous, default to `true` (the prior assumption is that
+    measures discussed substantively in official government documents were enacted)
+    and note the uncertainty in reasoning.
 
 
-    Base every judgement strictly on the provided evidence. Do not infer
-    motives or directions that are not supported by the text.
+    Base every judgement strictly on the provided evidence. Do not infer motives,
+    directions, or dates that are not supported by the text.
 
   examples:
     - input:
-        act_name: "Example Long-Run Reform Act"
-        year: 1986
+        act_name: "Example Long-Run Rate Reduction Act"
+        year: 1985
         evidence:
-          - quote: "By broadening the tax base and lowering marginal rates, we can improve economic efficiency and raise long-run growth."
+          - quote: "Lowering marginal income tax rates will improve incentives to work, save, and invest, raising long-run economic growth."
             signal: "Stated goal of structural reform aimed at raising potential output"
-          - quote: "The reform simplifies the tax code to improve incentives for investment."
+          - quote: "The reform makes the rate reductions permanent to provide stable long-term incentives."
             signal: "Permanent structural change to the fiscal instrument"
         enacted_signals:
-          - quote: "The act was signed into law on October 22, 1986."
+          - quote: "The act was signed into law on October 22, 1985."
             signal: "Signed into law"
+        timing_signals:
+          - quote: "The act was signed into law on October 22, 1985."
+            signal: "Signing date — October 22, 1985 (1985Q4); fallback timing"
+          - quote: "Rate reductions take effect January 1, 1986."
+            signal: "Effective date — January 1, 1986 (1986Q1 under midpoint rule)"
       output:
         enacted: true
         exogenous: "TRUE"
         sign: "-"
+        enacted_quarter: ["1986-Q1"]
         confidence: "HIGH"
-        reasoning: "Stated motive is structural reform to raise long-run growth and improve efficiency — a non-cyclical, long-run objective. Evidence describes lowering marginal rates and base broadening, indicating a net reduction in fiscal liabilities."
+        reasoning: "Stated motive is raising long-run growth via rate reductions — non-cyclical, long-run. Lower marginal rates → net reduction in fiscal liabilities (sign stipulated for illustration; this fictional example does not include offsetting base-broadening provisions). Effective date January 1, 1986 falls before the Q1 midpoint (February 15), so liabilities change in 1986Q1 under R&R's standard series."
 
     - input:
         act_name: "Example Recession Relief Act"
@@ -103,12 +130,18 @@ codebook:
         enacted_signals:
           - quote: "The President signed the relief package on February 17, 2009."
             signal: "Signed into law"
+        timing_signals:
+          - quote: "The President signed the relief package on February 17, 2009."
+            signal: "Signing date — February 17, 2009 (past Q1 midpoint Feb 15 → 2009Q2 under midpoint rule)"
+          - quote: "Provisions took immediate effect upon signing."
+            signal: "Effective date — February 17, 2009 (immediate; same as signing)"
       output:
         enacted: true
         exogenous: "FALSE"
         sign: "-"
+        enacted_quarter: ["2009-Q2"]
         confidence: "HIGH"
-        reasoning: "Stated motive is to counteract the recession and restore growth — an explicit response to current macroeconomic conditions, hence endogenous. Tax relief reduces fiscal liabilities."
+        reasoning: "Stated motive is to counteract the recession and restore growth — explicit response to current macroeconomic conditions, hence endogenous. Tax relief reduces liabilities. Effective February 17, 2009 is two days past the Q1 midpoint (February 15), so under R&R's midpoint rule liabilities change in 2009Q2."
 
     - input:
         act_name: "Example Defense Financing Revenue Act"
@@ -121,12 +154,18 @@ codebook:
         enacted_signals:
           - quote: "The act was signed into law on October 20, 1951."
             signal: "Signed into law"
+        timing_signals:
+          - quote: "The act was signed into law on October 20, 1951."
+            signal: "Signing date — October 20, 1951 (1951Q4); fallback timing"
+          - quote: "Higher rates take effect November 1, 1951."
+            signal: "Effective date — November 1, 1951 (before Q4 midpoint Nov 15 → 1951Q4)"
       output:
         enacted: true
         exogenous: "FALSE"
         sign: "+"
+        enacted_quarter: ["1951-Q4"]
         confidence: "HIGH"
-        reasoning: "Stated motive is financing a contemporaneous spending increase (defense), within a one-year window — endogenous to a near-term spending decision. Higher taxes increase fiscal liabilities."
+        reasoning: "Stated motive is financing a contemporaneous defense spending increase, within a one-year window — endogenous to a near-term spending decision. Higher taxes increase fiscal liabilities. Effective November 1, 1951 falls before the Q4 midpoint (November 15), so liabilities change in 1951Q4."
 
     - input:
         act_name: "Example Inherited Deficit Reduction Act"
@@ -139,16 +178,46 @@ codebook:
         enacted_signals:
           - quote: "The act was enacted on August 10, 1993."
             signal: "Enacted into law"
+        timing_signals:
+          - quote: "The act was enacted on August 10, 1993."
+            signal: "Signing date — August 10, 1993 (1993Q3); fallback timing"
+          - quote: "Provisions take effect at the start of calendar year 1994."
+            signal: "Effective date — January 1, 1994 (1994Q1 under midpoint rule)"
       output:
         enacted: true
         exogenous: "TRUE"
         sign: "+"
+        enacted_quarter: ["1994-Q1"]
         confidence: "HIGH"
-        reasoning: "Stated motive is reducing an inherited deficit accumulated over multiple prior years, not financing a contemporaneous spending change and not a response to current cyclical conditions — exogenous. Deficit reduction by raising revenues increases fiscal liabilities."
+        reasoning: "Stated motive is reducing an inherited deficit accumulated over multiple prior years — exogenous (long-run / inherited-imbalance category). Deficit reduction by raising revenues increases fiscal liabilities. Effective January 1, 1994 (start of calendar year 1994) is before the Q1 midpoint (February 15), so liabilities change in 1994Q1."
+
+    - input:
+        act_name: "Example Excess Profits Tax Act"
+        year: 1950
+        evidence:
+          - quote: "passed in response to the Korean War, imposed a heavy tax on corporate excess profits to finance the war effort"
+            signal: "Revenue measure motivated by financing wartime defense spending"
+        enacted_signals:
+          - quote: "signed into law on January 3, 1951"
+            signal: "Signed into law"
+        timing_signals:
+          - quote: "signed into law on January 3, 1951"
+            signal: "Signing date — January 3, 1951 (1951Q1); fallback timing"
+          - quote: "the act was made retroactive to July 1, 1950"
+            signal: "Retroactive effective date — July 1, 1950 (1950Q3 under midpoint rule); retroactive component covers 1950Q3–1950Q4"
+          - quote: "The retroactive component covered two quarters of profits that had already been earned, resulting in a one-time levy in the first quarter of 1951"
+            signal: "Phased structure: ongoing rate from 1951Q1; retroactive levy in 1951Q1 covering 1950Q3–1950Q4"
+      output:
+        enacted: true
+        exogenous: "FALSE"
+        sign: "+"
+        enacted_quarter: ["1951-Q1"]
+        confidence: "HIGH"
+        reasoning: "Stated motive is financing contemporaneous Korean War spending — endogenous. Tax increase raises liabilities. Under R&R's standard series, retroactive coverage (1950Q3–1950Q4) is excluded; only the ongoing implementation quarter is reported. Signed January 3, 1951 with the new rate in effect from then on → liabilities change starting 1951Q1."
 
   output_instructions: >
-    Determine enacted status, exogeneity, and sign of effect on fiscal
-    liabilities from the synthesized evidence.
+    Determine enacted status, exogeneity, sign of effect on fiscal liabilities, and
+    implementation quarter(s) from the synthesized evidence.
 
 
     Return your answer as JSON:
@@ -157,6 +226,7 @@ codebook:
       "enacted": true,
       "exogenous": "TRUE",
       "sign": "+",
+      "enacted_quarter": ["YYYY-QN"],
       "confidence": "HIGH",
       "reasoning": "Brief synthesis citing specific evidence records and the stated motive."
     }
@@ -164,27 +234,34 @@ codebook:
 
     Field definitions:
 
-    - enacted: true if the measure became law; false if defeated, withdrawn,
-      or never passed. Default to true if enacted-status evidence is absent.
+    - enacted: true if the measure became law; false if defeated, withdrawn, or never
+      passed. Default to true if enacted-status evidence is absent.
 
-    - exogenous: "TRUE" if the stated motivation is clearly non-cyclical
-      (long-run, structural, inherited deficit, treaty/rule compliance);
-      "FALSE" if the stated motivation responds to current or projected
-      macroeconomic conditions or to a contemporaneous spending change;
-      "UNCLEAR" if the act has roughly comparable exogenous and endogenous
-      components without a clearly dominant motivation, or if the evidence
-      does not support a determination.
+    - exogenous: "TRUE" if the stated motivation is clearly non-cyclical (long-run,
+      structural, inherited deficit, treaty/rule compliance); "FALSE" if the stated
+      motivation responds to current or projected macroeconomic conditions or to a
+      contemporaneous spending change; "UNCLEAR" if the act has roughly comparable
+      exogenous and endogenous components without a clearly dominant motivation, or
+      if the evidence does not support a determination.
 
-    - sign: "+" if the measure increases fiscal liabilities (tax increase,
-      new revenue measure); "-" if the measure decreases fiscal liabilities
-      (tax cut, credit, or relief); "0" if the measure has no net effect on
-      liabilities; "UNCLEAR" if direction cannot be determined from the
-      evidence or act name.
+    - sign: "+" if the measure increases fiscal liabilities (tax increase, new revenue
+      measure); "-" if the measure decreases fiscal liabilities (tax cut, credit, or
+      relief); "0" if the measure has no net effect on liabilities; "UNCLEAR" if the
+      direction cannot be determined from the evidence or act name.
 
-    - confidence: HIGH if the evidence consistently supports a single
-      determination; MEDIUM if somewhat ambiguous but one reading dominates;
-      LOW if conflicting or sparse.
+    - enacted_quarter: an array of `YYYY-QN` strings naming the implementation
+      quarter(s) when fiscal liabilities actually change, applying Romer & Romer's
+      midpoint rule and the standard series convention for retroactive components
+      (no separate retroactive entries). Phased acts emit one quarter per phased
+      step, listed in chronological order. Empty array `[]` is allowed when timing
+      signals are absent or inconsistent — do not invent dates that are not
+      supported by the evidence.
 
-    - reasoning: Brief synthesis citing specific evidence records and the
-      stated motive. State which evidence supported the exogeneity judgement
-      and which supported the sign judgement.
+    - confidence: HIGH if the evidence consistently supports a single determination
+      across all four output fields; MEDIUM if somewhat ambiguous on one or more
+      fields but one reading dominates; LOW if conflicting or sparse.
+
+    - reasoning: Brief synthesis citing specific evidence records and the stated
+      motive. State which evidence supported the exogeneity judgement, which
+      supported the sign judgement, and which timing signal(s) determined each
+      quarter in `enacted_quarter`.

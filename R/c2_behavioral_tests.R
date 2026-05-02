@@ -74,24 +74,31 @@ format_c2a_input <- function(text, act_name, year) {
 }
 
 
-#' Format user message for C2b (motivation classification)
+#' Format user message for C2b (motivation, sign, and timing classification)
 #'
 #' @param act_name Character act name
 #' @param year Integer or character year
-#' @param evidence List of evidence objects (each with quote, signal)
+#' @param evidence List of motivation evidence objects (each with quote, signal)
 #' @param enacted_signals List of enacted-status signal objects (each with quote, signal)
+#' @param timing_signals List of timing signal objects (each with quote, signal).
+#'   Optional for backward compatibility with v0.7.0 cached evidence; defaults
+#'   to an empty list. C2b v0.8.0 expects this array even when empty.
 #' @return Character string formatted for C2b input
 #' @keywords internal
-format_c2b_input <- function(act_name, year, evidence, enacted_signals = list()) {
+format_c2b_input <- function(act_name, year, evidence, enacted_signals = list(),
+                             timing_signals = list()) {
   evidence_json <- jsonlite::toJSON(evidence, auto_unbox = TRUE, pretty = TRUE)
   signals_json <- jsonlite::toJSON(enacted_signals, auto_unbox = TRUE, pretty = TRUE)
+  timing_json <- jsonlite::toJSON(timing_signals, auto_unbox = TRUE, pretty = TRUE)
 
   paste0(
     "Act: ", act_name, "\n",
     "Year: ", year, "\n\n",
-    "Evidence records:\n", evidence_json, "\n\n",
+    "Evidence records (motivation):\n", evidence_json, "\n\n",
     "Enacted-status signals:\n", signals_json, "\n\n",
-    "Classify this act's motivation based on the evidence above."
+    "Timing signals:\n", timing_json, "\n\n",
+    "Classify this act's motivation, sign, and implementation quarter(s) ",
+    "based on the evidence above."
   )
 }
 
@@ -144,15 +151,38 @@ validate_c2a_output <- function(parsed) {
     }
   }
 
+  # timing_signals must exist and be a list (added in C2a v0.5.0)
+  if (is.null(parsed$timing_signals) || !is.list(parsed$timing_signals)) {
+    return(list(valid = FALSE, reason = "Missing or non-list 'timing_signals' field"))
+  }
+
+  # Validate each timing_signal item (if any)
+  for (i in seq_along(parsed$timing_signals)) {
+    item <- parsed$timing_signals[[i]]
+    if (is.null(item$quote) || !is.character(item$quote)) {
+      return(list(valid = FALSE,
+                  reason = sprintf("timing_signals[%d]: missing or non-character 'quote'", i)))
+    }
+    if (is.null(item$signal) || !is.character(item$signal)) {
+      return(list(valid = FALSE,
+                  reason = sprintf("timing_signals[%d]: missing or non-character 'signal'", i)))
+    }
+  }
+
   list(valid = TRUE, reason = NA_character_)
 }
 
 
-#' Validate C2b output schema (v0.7.0)
+#' Validate C2b output schema (v0.8.0)
 #'
-#' Validates the minimal Das-et-al.-adapted schema:
+#' Validates the minimal Das-et-al.-adapted schema with timing extraction:
 #' {enacted: bool, exogenous: "TRUE"|"FALSE"|"UNCLEAR",
-#'  sign: "+"|"-"|"0"|"UNCLEAR", confidence: str, reasoning: str}.
+#'  sign: "+"|"-"|"0"|"UNCLEAR", enacted_quarter: ["YYYY-QN", ...],
+#'  confidence: str, reasoning: str}.
+#'
+#' Quarter strings must match the regex `^[0-9]{4}-Q[1-4]$`. The
+#' `enacted_quarter` array is allowed to be empty when timing evidence is
+#' absent or inconsistent, but the field itself must be present and a list.
 #'
 #' @param parsed List from parse_json_response()
 #' @param valid_categories Unused (kept for backward-compatible signature).
@@ -186,6 +216,29 @@ validate_c2b_output <- function(parsed, valid_categories = NULL) {
                 reason = sprintf("Invalid 'sign' field: '%s' (must be one of %s)",
                                  parsed$sign %||% "NULL",
                                  paste(valid_sign, collapse = "/"))))
+  }
+
+  # enacted_quarter must be present and a list/character vector;
+  # parse_json_response may yield list() or character() depending on jsonlite simplify.
+  # Empty array is valid (no timing evidence).
+  if (is.null(parsed$enacted_quarter)) {
+    return(list(valid = FALSE, reason = "Missing 'enacted_quarter' field"))
+  }
+  q_vec <- parsed$enacted_quarter
+  if (is.list(q_vec)) q_vec <- unlist(q_vec, use.names = FALSE)
+  if (!is.character(q_vec) && length(q_vec) > 0) {
+    return(list(valid = FALSE,
+                reason = "'enacted_quarter' must be an array of strings"))
+  }
+  if (length(q_vec) > 0) {
+    bad_quarter <- !grepl("^[0-9]{4}-Q[1-4]$", q_vec)
+    if (any(bad_quarter)) {
+      return(list(valid = FALSE,
+                  reason = sprintf(
+                    "Invalid 'enacted_quarter' format(s): %s (expected YYYY-QN)",
+                    paste(q_vec[bad_quarter], collapse = ", ")
+                  )))
+    }
   }
 
   # confidence must be character
@@ -588,7 +641,8 @@ test_c2b_legal_outputs <- function(codebook,
   results <- purrr::map(seq_len(n), function(i) {
     es <- test_evidence_sets[[i]]
     user_msg <- format_c2b_input(
-      es$act_name, es$year, es$evidence, es$enacted_signals
+      es$act_name, es$year, es$evidence, es$enacted_signals,
+      timing_signals = es$timing_signals %||% list()
     )
 
     parsed <- tryCatch({
@@ -636,17 +690,22 @@ test_c2b_legal_outputs <- function(codebook,
 }
 
 
-#' Test II: C2b Schema Recovery (v0.7.0)
+#' Test II: C2b Schema Recovery (v0.8.0)
 #'
-#' For each synthetic evidence set with known expected `exogenous` and
-#' `sign` values, verifies that C2b returns the expected outputs. Replaces
-#' the prior 4-class definition-recovery test under the v0.7.0 minimal
-#' codebook (no class definitions to recover).
+#' For each synthetic evidence set with known expected `exogenous`, `sign`,
+#' and `enacted_quarter[]` values, verifies that C2b returns the expected
+#' outputs. Replaces the prior 4-class definition-recovery test under the
+#' v0.7.0+ minimal codebook (no class definitions to recover).
+#'
+#' Quarter equality is checked as a set (sorted unique), since C2b's
+#' `enacted_quarter[]` is naturally a set of unique implementation quarters.
+#' Empty arrays match only when both sides are empty.
 #'
 #' @param codebook A validated C2b codebook object
 #' @param test_evidence_sets List of evidence set lists from
-#'   generate_c2b_test_evidence(); each must include `expected_exogenous`
-#'   and `expected_sign` fields.
+#'   generate_c2b_test_evidence(); each must include `expected_exogenous`,
+#'   `expected_sign`, and `expected_quarters` fields. `timing_signals` is
+#'   optional (defaults to empty for backward compatibility).
 #' @param model Character model ID
 #' @param max_tokens Integer max output tokens
 #' @param provider Character provider name
@@ -663,6 +722,17 @@ test_c2b_schema_recovery <- function(codebook,
                                      api_key = NULL) {
   system_prompt <- construct_codebook_prompt(codebook)
 
+  # Helper: set equality on quarter character vectors
+  quarters_equal <- function(a, b) {
+    a <- if (is.null(a)) character(0) else as.character(a)
+    b <- if (is.null(b)) character(0) else as.character(b)
+    identical(sort(unique(a)), sort(unique(b)))
+  }
+
+  fmt_quarters <- function(x) {
+    if (length(x) == 0) "[]" else paste0("[", paste(x, collapse = ","), "]")
+  }
+
   results <- purrr::map(seq_along(test_evidence_sets), function(i) {
     es <- test_evidence_sets[[i]]
     if (is.null(es$expected_exogenous) || is.null(es$expected_sign)) {
@@ -671,9 +741,16 @@ test_c2b_schema_recovery <- function(codebook,
         i
       ))
     }
+    if (is.null(es$expected_quarters)) {
+      stop(sprintf(
+        "test_evidence_sets[[%d]] missing expected_quarters field (v0.8.0)",
+        i
+      ))
+    }
 
     user_msg <- format_c2b_input(
-      es$act_name, es$year, es$evidence, es$enacted_signals
+      es$act_name, es$year, es$evidence, es$enacted_signals,
+      timing_signals = es$timing_signals %||% list()
     )
 
     parsed <- tryCatch({
@@ -697,16 +774,29 @@ test_c2b_schema_recovery <- function(codebook,
     pred_exo <- if (validation$valid) parsed$exogenous else NA_character_
     pred_sign <- if (validation$valid) parsed$sign else NA_character_
 
+    pred_quarters <- character(0)
+    if (validation$valid && !is.null(parsed$enacted_quarter)) {
+      pq <- parsed$enacted_quarter
+      if (is.list(pq)) pq <- unlist(pq, use.names = FALSE)
+      if (length(pq) > 0) pred_quarters <- as.character(pq)
+    }
+
+    quarter_correct <- quarters_equal(pred_quarters, es$expected_quarters)
+
     tibble::tibble(
       act_name = es$act_name,
       expected_exogenous = es$expected_exogenous,
       expected_sign = es$expected_sign,
+      expected_quarters = fmt_quarters(es$expected_quarters),
       pred_exogenous = pred_exo,
       pred_sign = pred_sign,
+      pred_quarters = fmt_quarters(pred_quarters),
       exo_correct = identical(pred_exo, es$expected_exogenous),
       sign_correct = identical(pred_sign, es$expected_sign),
+      quarter_correct = quarter_correct,
       correct = identical(pred_exo, es$expected_exogenous) &&
-        identical(pred_sign, es$expected_sign)
+        identical(pred_sign, es$expected_sign) &&
+        quarter_correct
     )
   })
 
@@ -817,7 +907,8 @@ test_c2b_order_invariance <- function(codebook,
   results <- purrr::map(seq_len(n), function(i) {
     es <- test_evidence_sets[[i]]
     user_msg <- format_c2b_input(
-      es$act_name, es$year, es$evidence, es$enacted_signals
+      es$act_name, es$year, es$evidence, es$enacted_signals,
+      timing_signals = es$timing_signals %||% list()
     )
 
     classify_one <- function(prompt) {

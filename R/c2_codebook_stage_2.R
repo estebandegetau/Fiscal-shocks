@@ -53,21 +53,28 @@ assemble_c2_s2_sensitivity_data <- function(c1_classified_chunks) {
 #' Assemble C2 S2 test set (act-level with nested chunks)
 #'
 #' Groups C2 input chunks by act and joins ground truth from aligned_data.
-#' Carries the v0.7.0 ground-truth fields (`true_exogenous`, `true_sign`)
-#' alongside the legacy 4-class label (`true_motivation`) for diagnostic
-#' compatibility. The 4-class label is no longer used by `evaluate_c2_classification()`
-#' under v0.7.0+, but it is kept on the test-set tibble so error analysis can
-#' still group by R&R category.
+#' Carries the v0.8.0 ground-truth fields (`true_exogenous`, `true_sign`,
+#' `true_quarters`) alongside the legacy 4-class label (`true_motivation`) for
+#' diagnostic compatibility. The 4-class label is no longer used by
+#' `evaluate_c2_classification()` under v0.7.0+, but it is kept on the
+#' test-set tibble so error analysis can still group by R&R category.
 #'
 #' Sign convention: `true_sign` is "+" when ground-truth `magnitude_billions`
 #' is positive (tax increase / fiscal liabilities up), "-" when negative
 #' (tax cut / liabilities down), "0" when zero, NA when missing.
 #'
+#' Quarter convention: `true_quarters` is a list-column of `YYYY-QN` character
+#' vectors derived from `aligned_data$ground_truth_quarters` via
+#' `normalize_ground_truth_quarters()`. R&R's `YYYY-MM` format is converted to
+#' `YYYY-QN` (Q = ceiling(month / 3)) and same-quarter duplicates within an
+#' act are de-duplicated, matching C2b's `enacted_quarter[]` set semantics.
+#'
 #' @param c2_data Tibble from assemble_c2_input_data() or assemble_c2_s2_sensitivity_data()
-#' @param aligned_data Tibble from align_labels_shocks() with act-level labels
-#'   and `magnitude_billions` (sign-bearing).
+#' @param aligned_data Tibble from align_labels_shocks() with act-level labels,
+#'   `magnitude_billions` (sign-bearing), and `ground_truth_quarters` (list-col).
 #' @return Tibble with one row per act: act_name, year, true_motivation,
-#'   true_exogenous, true_sign, chunks (list-column), n_chunks
+#'   true_exogenous, true_sign, true_quarters (list-col of YYYY-QN strings),
+#'   chunks (list-column), n_chunks
 #' @export
 assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
 
@@ -84,6 +91,10 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
     stop("aligned_data is missing 'magnitude_billions' column required for true_sign")
   }
 
+  if (!"ground_truth_quarters" %in% names(aligned_data)) {
+    stop("aligned_data is missing 'ground_truth_quarters' list-column required for true_quarters")
+  }
+
   derive_sign <- function(x) {
     dplyr::case_when(
       is.na(x)  ~ NA_character_,
@@ -96,12 +107,14 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
   # Canonical ground truth from aligned_data (one row per act)
   labels <- aligned_data |>
     dplyr::select(act_name, motivation_category, exogenous_flag,
-                  magnitude_billions) |>
+                  magnitude_billions, ground_truth_quarters) |>
     dplyr::distinct(act_name, .keep_all = TRUE) |>
     dplyr::mutate(
       true_motivation = motivation_map[motivation_category],
       true_exogenous = exo_map[exogenous_flag],
-      true_sign = derive_sign(magnitude_billions)
+      true_sign = derive_sign(magnitude_billions),
+      true_quarters = purrr::map(ground_truth_quarters,
+                                 normalize_ground_truth_quarters)
     )
 
   # Validate mapping completeness
@@ -141,7 +154,8 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
   # Join ground truth
   result <- nested |>
     dplyr::inner_join(
-      labels |> dplyr::select(act_name, true_motivation, true_exogenous, true_sign),
+      labels |> dplyr::select(act_name, true_motivation, true_exogenous,
+                              true_sign, true_quarters),
       by = "act_name"
     )
 
@@ -164,7 +178,70 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
 
   result |>
     dplyr::select(act_name, year, true_motivation, true_exogenous, true_sign,
-                  chunks, n_chunks)
+                  true_quarters, chunks, n_chunks)
+}
+
+
+#' Convert R&R quarter rows to a deduplicated set of `YYYY-QN` strings
+#'
+#' R&R's `us_shocks.csv` carries quarter assignments that `align_labels_shocks()`
+#' surfaces in `aligned_data$ground_truth_quarters$change_in_liabilities_quarter`
+#' as `<Date>` values pointing to the first day of the month (e.g.,
+#' `1946-01-01` for 1946Q1). The same column may also appear as a character
+#' `YYYY-MM` string in fresh CSV reads. R&R may record multiple rows per
+#' quarter when an act has distinct provisions taking effect together (e.g.,
+#' Tax Reform Act of 1969: two rows in `1971-01-01` from separate provisions).
+#' C2b's `enacted_quarter[]` is naturally a set of unique quarters, so we
+#' convert month → quarter and de-duplicate before any quarter-set comparison.
+#'
+#' @param gtq Tibble (one row per ground-truth quarter for an act) or a vector
+#'   of quarter values directly. NULL is treated as empty. Accepted formats
+#'   for `change_in_liabilities_quarter` (or for the vector itself):
+#'   `<Date>`, `YYYY-MM` strings, or already-normalized `YYYY-QN` strings.
+#' @return Character vector of unique `YYYY-QN` strings, sorted chronologically.
+#'   Returns `character(0)` when input is NULL, empty, or all-NA.
+#' @keywords internal
+normalize_ground_truth_quarters <- function(gtq) {
+  if (is.null(gtq)) return(character(0))
+  if (is.data.frame(gtq)) {
+    if (!"change_in_liabilities_quarter" %in% names(gtq)) return(character(0))
+    raw <- gtq$change_in_liabilities_quarter
+  } else {
+    raw <- gtq
+  }
+  if (length(raw) == 0) return(character(0))
+
+  # Date input: convert via month/year arithmetic.
+  if (inherits(raw, "Date") || inherits(raw, "POSIXt")) {
+    raw <- raw[!is.na(raw)]
+    if (length(raw) == 0) return(character(0))
+    yy <- as.integer(format(raw, "%Y"))
+    mm <- as.integer(format(raw, "%m"))
+    q <- ceiling(mm / 3)
+    converted <- sprintf("%04d-Q%d", yy, q)
+    return(sort(unique(converted)))
+  }
+
+  # Character input: handle YYYY-QN passthrough, YYYY-MM, and YYYY-MM-DD.
+  raw <- raw[!is.na(raw)]
+  if (length(raw) == 0) return(character(0))
+
+  converted <- vapply(as.character(raw), function(s) {
+    if (grepl("^[0-9]{4}-Q[1-4]$", s)) return(s)
+    if (grepl("^[0-9]{4}-[0-9]{2}(-[0-9]{2})?$", s)) {
+      year <- substr(s, 1, 4)
+      month <- as.integer(substr(s, 6, 7))
+      if (is.na(month) || month < 1 || month > 12) return(NA_character_)
+      q <- ceiling(month / 3)
+      return(sprintf("%s-Q%d", year, q))
+    }
+    NA_character_
+  }, character(1))
+
+  converted <- converted[!is.na(converted)]
+  if (length(converted) == 0) return(character(0))
+
+  sort(unique(converted))
 }
 
 
@@ -189,6 +266,7 @@ assemble_c2_s2_test_set <- function(c2_data, aligned_data) {
 #' @param api_key Optional API key
 #' @return Tibble with one row per chunk: chunk_id, act_name, year,
 #'   discusses_motivation, evidence (list-col), enacted_signals (list-col),
+#'   timing_signals (list-col, added in C2a v0.5.0),
 #'   c2a_valid (logical), c2a_failure_reason (character|NA)
 #' @export
 run_c2a_extraction <- function(c2a_codebook,
@@ -296,6 +374,9 @@ run_c2a_extraction <- function(c2a_codebook,
       enacted_signals = list(
         if (c2a_result$valid) c2a_result$parsed$enacted_signals %||% list() else list()
       ),
+      timing_signals = list(
+        if (c2a_result$valid) c2a_result$parsed$timing_signals %||% list() else list()
+      ),
       c2a_valid = c2a_result$valid,
       c2a_failure_reason = if (!c2a_result$valid) c2a_result$reason %||% "unknown"
                            else NA_character_
@@ -344,12 +425,24 @@ run_c2b_classification <- function(c2b_codebook,
 
   c2b_system <- construct_codebook_prompt(c2b_codebook)
 
+  # Defensive: cached c2a_evidence from C2a v0.4.0 lacks timing_signals.
+  # Default to a per-row empty list so aggregation works either way.
+  if (!"timing_signals" %in% names(c2a_results)) {
+    warning(
+      "c2a_results lacks 'timing_signals' column (likely cached from C2a v0.4.0). ",
+      "Defaulting to empty timing_signals per chunk; rerun c2a_evidence to populate."
+    )
+    c2a_results <- c2a_results |>
+      dplyr::mutate(timing_signals = purrr::map(seq_len(dplyr::n()), ~ list()))
+  }
+
   # Aggregate C2a evidence by act
   act_evidence <- c2a_results |>
     dplyr::group_by(act_name, year) |>
     dplyr::summarize(
       all_evidence = list(unlist(evidence, recursive = FALSE)),
       all_enacted = list(unlist(enacted_signals, recursive = FALSE)),
+      all_timing = list(unlist(timing_signals, recursive = FALSE)),
       n_chunks = dplyr::n(),
       n_c2a_failures = sum(!c2a_valid),
       .groups = "drop"
@@ -359,7 +452,8 @@ run_c2b_classification <- function(c2b_codebook,
   combined <- act_evidence |>
     dplyr::inner_join(
       test_set |> dplyr::select(act_name, dplyr::any_of("true_motivation"),
-                                true_exogenous, true_sign),
+                                true_exogenous, true_sign,
+                                dplyr::any_of("true_quarters")),
       by = "act_name"
     )
 
@@ -370,11 +464,13 @@ run_c2b_classification <- function(c2b_codebook,
     act <- combined[i, ]
     all_evidence <- act$all_evidence[[1]]
     all_enacted <- act$all_enacted[[1]]
+    all_timing <- act$all_timing[[1]]
 
     if (show_progress) {
       message(sprintf(
-        "  C2b act %d/%d [%s] — %d evidence items, %d enacted signals",
-        i, n_acts, act$act_name, length(all_evidence), length(all_enacted)
+        "  C2b act %d/%d [%s] — %d evidence, %d enacted, %d timing signals",
+        i, n_acts, act$act_name,
+        length(all_evidence), length(all_enacted), length(all_timing)
       ))
     }
 
@@ -388,7 +484,8 @@ run_c2b_classification <- function(c2b_codebook,
           act_name = act$act_name,
           year = act$year,
           evidence = all_evidence,
-          enacted_signals = all_enacted
+          enacted_signals = all_enacted,
+          timing_signals = all_timing
         )
         parsed <- call_codebook_generic(
           user_message = user_msg_b,
@@ -426,10 +523,11 @@ run_c2b_classification <- function(c2b_codebook,
       ))
     }
 
-    # ------ Extract v0.7.0 schema fields ------
+    # ------ Extract v0.8.0 schema fields ------
     pred_exogenous_str <- NA_character_
     pred_exogenous <- NA  # logical — TRUE only when exogenous == "TRUE"
     pred_sign <- NA_character_
+    pred_quarters <- character()  # empty character vector by default
     enacted <- NA
     confidence <- NA_character_
     reasoning <- NA_character_
@@ -441,6 +539,16 @@ run_c2b_classification <- function(c2b_codebook,
       confidence <- c2b_parsed$confidence %||% NA_character_
       reasoning <- c2b_parsed$reasoning %||% NA_character_
 
+      # enacted_quarter: jsonlite may give list() or character() depending on
+      # auto-simplification. Coerce to character vector; preserve order; allow empty.
+      raw_q <- c2b_parsed$enacted_quarter
+      if (!is.null(raw_q)) {
+        if (is.list(raw_q)) raw_q <- unlist(raw_q, use.names = FALSE)
+        if (length(raw_q) > 0) {
+          pred_quarters <- as.character(raw_q)
+        }
+      }
+
       pred_exogenous <- dplyr::case_when(
         identical(pred_exogenous_str, "TRUE")  ~ TRUE,
         identical(pred_exogenous_str, "FALSE") ~ FALSE,
@@ -448,23 +556,32 @@ run_c2b_classification <- function(c2b_codebook,
       )
     }
 
+    # true_quarters comes through as a list-column entry; extract the vector
+    true_q <- if ("true_quarters" %in% names(act))
+      act$true_quarters[[1]] %||% character(0)
+    else character(0)
+
     tibble::tibble(
       act_name = act$act_name,
       year = act$year,
       true_motivation = act$true_motivation %||% NA_character_,
       true_exogenous = act$true_exogenous,
       true_sign = act$true_sign,
+      true_quarters = list(true_q),
       pred_exogenous = pred_exogenous,
       pred_exogenous_raw = pred_exogenous_str,
       pred_sign = pred_sign,
+      pred_quarters = list(pred_quarters),
       enacted = enacted,
       confidence = confidence,
       evidence_raw = list(all_evidence),
       enacted_signals_raw = list(all_enacted),
+      timing_signals_raw = list(all_timing),
       c2b_raw_response = if (c2b_valid) c2b_parsed$raw_response else NA_character_,
       reasoning = reasoning,
       n_chunks = act$n_chunks,
       n_evidence_items = length(all_evidence),
+      n_timing_signals = length(all_timing),
       n_c2a_failures = act$n_c2a_failures
     )
   })
@@ -749,25 +866,38 @@ run_c2_zero_shot <- function(c2a_codebook,
 # Evaluation
 # =============================================================================
 
-#' Evaluate C2 motivation classification results (v0.7.0)
+#' Evaluate C2 motivation, sign, and timing classification results (v0.8.0)
 #'
-#' Computes two co-equal headline metrics for the v0.7.0 binary+sign output:
-#' (a) **exogenous precision** (binary, TRUE-class precision) and
-#' (b) **sign accuracy on true-exogenous acts** (the population whose sign
-#' enters the shock series). Both metrics get bootstrap CIs.
+#' Computes six headline metrics for the v0.8.0 act-level output schema:
+#' (a) **exogenous precision** (binary, TRUE-class precision); (b) **sign
+#' accuracy on true-exogenous acts**; (c) **primary-quarter exact match**
+#' (predicted earliest quarter == R&R primary); (d) **primary-quarter ±1
+#' quarter tolerance**; (e) **phased-act detection rate** (diagnostic — among
+#' acts with ≥2 ground-truth quarters, fraction where C2b returns ≥2);
+#' (f) **quarter-set Jaccard** (diagnostic — mean per-act Jaccard).
+#'
+#' Bootstrap CIs are computed by resampling **at the act level** (the unit of
+#' independence). Per-act metrics — including per-act Jaccard for quarter-set
+#' comparison — are computed before resampling and then averaged across the
+#' resampled act draws. This avoids anti-conservative CIs that would result
+#' from treating quarters from the same phased act as independent observations.
+#' The phased-act detection rate has effective N = number of phased acts in
+#' each resample (typically 8-12 of 39).
 #'
 #' UNCLEAR predictions on the exogenous flag are mapped to NA and excluded
 #' from the precision denominator (treated as abstentions). UNCLEAR sign
 #' predictions count as incorrect when ground truth is exogenous (the model
 #' failed to commit to a direction the shock series requires).
 #'
-#' @param c2_s2_results Tibble from run_c2b_classification(); must include
-#'   columns pred_exogenous (logical), true_exogenous (logical),
-#'   pred_sign (character), true_sign (character).
+#' @param c2_s2_results Tibble from `run_c2b_classification()`; must include
+#'   columns `pred_exogenous` (logical), `true_exogenous` (logical),
+#'   `pred_sign` (character), `true_sign` (character), `pred_quarters`
+#'   (list-col of `YYYY-QN` strings), `true_quarters` (list-col of `YYYY-QN`
+#'   strings).
 #' @param n_bootstrap Integer bootstrap resamples (default 1000)
 #' @param ci_level Numeric confidence level (default 0.95)
-#' @return List with exogenous metrics, sign metrics, per-act results,
-#'   and quality flags
+#' @return List with exogenous metrics, sign metrics, quarter metrics,
+#'   per-act results, and quality flags
 #' @export
 evaluate_c2_classification <- function(c2_s2_results,
                                        n_bootstrap = 1000,
@@ -794,6 +924,22 @@ evaluate_c2_classification <- function(c2_s2_results,
     stop("No committed (TRUE/FALSE) exogenous predictions to evaluate")
   }
 
+  has_quarters <- "pred_quarters" %in% names(c2_s2_results) &&
+                  "true_quarters" %in% names(c2_s2_results)
+  if (!has_quarters) {
+    warning(
+      "c2_s2_results lacks pred_quarters/true_quarters list-columns. ",
+      "Quarter metrics will be skipped (likely a v0.7.0 cached results object). ",
+      "Rerun run_c2b_classification with v0.8.0 codebook + assemble_c2_s2_test_set."
+    )
+  }
+
+  # Per-act quarter metrics added once on the full tibble; reused by point
+  # estimates and bootstrap.
+  if (has_quarters) {
+    c2_s2_results <- add_quarter_metrics(c2_s2_results)
+  }
+
   # --- Exogenous metrics (binary) ---
   exo_cm <- table(
     Predicted = factor(valid$pred_exogenous, levels = c(TRUE, FALSE)),
@@ -803,8 +949,6 @@ evaluate_c2_classification <- function(c2_s2_results,
   exo_point <- compute_exo_metrics(valid$pred_exogenous, valid$true_exogenous)
 
   # --- Sign accuracy on true-exogenous acts ---
-  # The deliverable is the signed exogenous shock series. Sign correctness
-  # only matters for acts whose ground truth is exogenous.
   sign_point <- compute_sign_metrics_on_true_exo(
     pred_sign = c2_s2_results$pred_sign,
     true_sign = c2_s2_results$true_sign,
@@ -812,11 +956,28 @@ evaluate_c2_classification <- function(c2_s2_results,
     pred_exo  = c2_s2_results$pred_exogenous
   )
 
-  # --- Bootstrap CIs ---
-  # Resample over the entire results tibble (not just exo-valid rows) so the
-  # sign metric, which is conditioned on true_exogenous == TRUE, retains the
-  # full denominator. The exo-precision metric still excludes NA predictions
-  # within each resample.
+  # --- Quarter metrics (point estimates) ---
+  quarter_point <- if (has_quarters) {
+    summarize_quarter_metrics(c2_s2_results)
+  } else {
+    list(
+      primary_quarter_exact = NA_real_,
+      primary_quarter_within_one = NA_real_,
+      phased_act_detection_rate = NA_real_,
+      quarter_set_jaccard = NA_real_,
+      n_phased_acts = NA_integer_,
+      n_with_both_quarters = NA_integer_,
+      n_jaccard_defined = NA_integer_,
+      pred_n_true_n_distribution = NULL
+    )
+  }
+
+  # --- Act-level bootstrap ---
+  # Resample over the full results tibble (acts as the unit of independence).
+  # Per-act metrics are precomputed; bootstrap recomputes the means over
+  # resampled rows. Exo precision, sign accuracy, and signed exo precision
+  # are recomputed inside each resample because their denominators depend on
+  # subset filters (not-NA pred_exogenous, true_exogenous == TRUE).
   set.seed(42)
   boot_stats <- replicate(n_bootstrap, {
     boot_idx <- sample(seq_len(n_total), n_total, replace = TRUE)
@@ -838,12 +999,33 @@ evaluate_c2_classification <- function(c2_s2_results,
       pred_exo  = boot_data$pred_exogenous
     )
 
+    if (has_quarters) {
+      pq_exact <- mean(boot_data$primary_quarter_exact, na.rm = TRUE)
+      pq_within <- mean(boot_data$primary_quarter_within_one, na.rm = TRUE)
+      jacc <- mean(boot_data$quarter_jaccard, na.rm = TRUE)
+      phased_idx <- which(boot_data$phased_act)
+      phased_det <- if (length(phased_idx) > 0) {
+        mean(boot_data$phased_detection[phased_idx], na.rm = TRUE)
+      } else {
+        NA_real_
+      }
+    } else {
+      pq_exact <- NA_real_
+      pq_within <- NA_real_
+      jacc <- NA_real_
+      phased_det <- NA_real_
+    }
+
     c(exo_precision = e$precision,
       exo_recall = e$recall,
       exo_f1 = e$f1,
       exo_accuracy = e$accuracy,
       sign_acc_on_true_exo = s$sign_accuracy,
-      signed_exo_precision = s$signed_exo_precision)
+      signed_exo_precision = s$signed_exo_precision,
+      primary_quarter_exact = pq_exact,
+      primary_quarter_within_one = pq_within,
+      phased_act_detection_rate = phased_det,
+      quarter_set_jaccard = jacc)
   })
 
   alpha <- 1 - ci_level
@@ -851,6 +1033,17 @@ evaluate_c2_classification <- function(c2_s2_results,
   ci_upper <- apply(boot_stats, 1, quantile, probs = 1 - alpha / 2, na.rm = TRUE)
 
   # --- Per-act results ---
+  per_act_cols <- c(
+    "act_name", "year", "true_motivation",
+    "true_exogenous", "pred_exogenous", "pred_exogenous_raw", "correct_exogenous",
+    "true_sign", "pred_sign", "correct_sign_on_true_exo",
+    "true_quarters", "pred_quarters",
+    "n_true_quarters", "n_pred_quarters",
+    "primary_quarter_exact", "primary_quarter_within_one",
+    "quarter_jaccard", "phased_act", "phased_detection",
+    "confidence", "n_chunks", "n_evidence_items", "n_c2a_failures"
+  )
+
   per_act <- c2_s2_results |>
     dplyr::mutate(
       correct_exogenous = !is.na(pred_exogenous) &
@@ -861,13 +1054,7 @@ evaluate_c2_classification <- function(c2_s2_results,
         NA
       )
     ) |>
-    dplyr::select(
-      act_name, year,
-      dplyr::any_of("true_motivation"),
-      true_exogenous, pred_exogenous, pred_exogenous_raw, correct_exogenous,
-      true_sign, pred_sign, correct_sign_on_true_exo,
-      confidence, n_chunks, n_evidence_items, n_c2a_failures
-    ) |>
+    dplyr::select(dplyr::any_of(per_act_cols)) |>
     dplyr::arrange(correct_exogenous, correct_sign_on_true_exo, act_name)
 
   # --- Quality flags ---
@@ -875,7 +1062,13 @@ evaluate_c2_classification <- function(c2_s2_results,
     n_c2a_failures_total = sum(c2_s2_results$n_c2a_failures, na.rm = TRUE),
     n_unclear_exo = n_unclear_exo,
     n_unclear_sign = sum(c2_s2_results$pred_sign == "UNCLEAR", na.rm = TRUE),
-    n_na_pred_sign = sum(is.na(c2_s2_results$pred_sign))
+    n_na_pred_sign = sum(is.na(c2_s2_results$pred_sign)),
+    n_empty_pred_quarters = if (has_quarters) {
+      sum(c2_s2_results$n_pred_quarters == 0, na.rm = TRUE)
+    } else NA_integer_,
+    n_empty_true_quarters = if (has_quarters) {
+      sum(c2_s2_results$n_true_quarters == 0, na.rm = TRUE)
+    } else NA_integer_
   )
 
   list(
@@ -911,13 +1104,39 @@ evaluate_c2_classification <- function(c2_s2_results,
       upper = ci_upper["signed_exo_precision"]
     ),
 
+    # Quarter metrics (v0.8.0)
+    primary_quarter_exact = quarter_point$primary_quarter_exact,
+    primary_quarter_exact_ci = c(
+      lower = ci_lower["primary_quarter_exact"],
+      upper = ci_upper["primary_quarter_exact"]
+    ),
+    primary_quarter_within_one = quarter_point$primary_quarter_within_one,
+    primary_quarter_within_one_ci = c(
+      lower = ci_lower["primary_quarter_within_one"],
+      upper = ci_upper["primary_quarter_within_one"]
+    ),
+    phased_act_detection_rate = quarter_point$phased_act_detection_rate,
+    phased_act_detection_rate_ci = c(
+      lower = ci_lower["phased_act_detection_rate"],
+      upper = ci_upper["phased_act_detection_rate"]
+    ),
+    n_phased_acts = quarter_point$n_phased_acts,
+    quarter_set_jaccard = quarter_point$quarter_set_jaccard,
+    quarter_set_jaccard_ci = c(
+      lower = ci_lower["quarter_set_jaccard"],
+      upper = ci_upper["quarter_set_jaccard"]
+    ),
+    n_jaccard_defined = quarter_point$n_jaccard_defined,
+    pred_n_true_n_distribution = quarter_point$pred_n_true_n_distribution,
+
     # Diagnostics
     per_act_results = per_act,
     quality_flags = quality_flags,
     n_total = n_total,
     n_valid = n_valid,
     n_bootstrap = n_bootstrap,
-    ci_level = ci_level
+    ci_level = ci_level,
+    bootstrap_unit = "act"
   )
 }
 
@@ -1049,6 +1268,153 @@ compute_sign_metrics_on_true_exo <- function(pred_sign, true_sign,
 
 # isTRUE-style vectorised helper (TRUE only when value is non-NA TRUE)
 isTRUE_vec <- function(x) !is.na(x) & x
+
+
+#' Convert a `YYYY-QN` quarter string to an integer index for distance arithmetic
+#'
+#' @param q Character vector of quarter strings (e.g., "1946-Q1"). Returns NA
+#'   for malformed strings.
+#' @return Integer vector: `year * 4 + (quarter - 1)`. NA where input is invalid.
+#' @keywords internal
+quarter_to_int <- function(q) {
+  out <- rep(NA_integer_, length(q))
+  ok <- !is.na(q) & grepl("^[0-9]{4}-Q[1-4]$", q)
+  if (any(ok)) {
+    yy <- as.integer(substr(q[ok], 1, 4))
+    qn <- as.integer(substr(q[ok], 7, 7))
+    out[ok] <- yy * 4L + (qn - 1L)
+  }
+  out
+}
+
+
+#' Compute per-act quarter-comparison metrics
+#'
+#' Given a single act's predicted and true quarter sets (each a character
+#' vector of `YYYY-QN` strings, possibly empty), returns a one-row tibble
+#' of metrics used by `evaluate_c2_classification()`:
+#'
+#' - `primary_quarter_exact`: predicted earliest == R&R primary (earliest true)
+#' - `primary_quarter_within_one`: same with ±1 quarter tolerance
+#' - `quarter_jaccard`: |pred ∩ true| / |pred ∪ true|; defined as 1 when
+#'   both sets are empty (both correctly returned no quarters), NA when only
+#'   one side is empty (asymmetric coverage)
+#' - `phased_act`: TRUE when the act has ≥2 ground-truth quarters
+#' - `phased_detection`: TRUE when phased and pred has ≥2 quarters; NA for
+#'   non-phased acts (excluded from phased-detection-rate denominator)
+#' - `n_pred_quarters`, `n_true_quarters`: cardinalities
+#'
+#' Both inputs are assumed to be already deduplicated and `YYYY-QN`-formatted.
+#'
+#' @param pred_q Character vector of predicted quarters (may be empty).
+#' @param true_q Character vector of true quarters (may be empty).
+#' @return A 1-row tibble with the metric columns above.
+#' @keywords internal
+compute_act_quarter_metrics <- function(pred_q, true_q) {
+  pred_q <- if (is.null(pred_q)) character(0) else pred_q
+  true_q <- if (is.null(true_q)) character(0) else true_q
+
+  n_pred <- length(pred_q)
+  n_true <- length(true_q)
+
+  # Primary quarter: earliest in each set
+  if (n_pred == 0 || n_true == 0) {
+    primary_exact <- NA
+    primary_within_one <- NA
+  } else {
+    pred_int <- sort(quarter_to_int(pred_q))
+    true_int <- sort(quarter_to_int(true_q))
+    pred_primary <- pred_int[1]
+    true_primary <- true_int[1]
+    if (is.na(pred_primary) || is.na(true_primary)) {
+      primary_exact <- NA
+      primary_within_one <- NA
+    } else {
+      primary_exact <- pred_primary == true_primary
+      primary_within_one <- abs(pred_primary - true_primary) <= 1L
+    }
+  }
+
+  # Jaccard
+  if (n_pred == 0 && n_true == 0) {
+    quarter_jaccard <- 1.0
+  } else if (n_pred == 0 || n_true == 0) {
+    # Asymmetric coverage: NA rather than 0, so means are not penalised
+    # by acts the model legitimately skipped (or true sets we lack).
+    # Phased and primary metrics already capture coverage failure.
+    quarter_jaccard <- NA_real_
+  } else {
+    inter <- length(intersect(pred_q, true_q))
+    uni   <- length(union(pred_q, true_q))
+    quarter_jaccard <- if (uni > 0) inter / uni else NA_real_
+  }
+
+  phased_act <- n_true >= 2L
+  phased_detection <- if (phased_act) n_pred >= 2L else NA
+
+  tibble::tibble(
+    primary_quarter_exact = primary_exact,
+    primary_quarter_within_one = primary_within_one,
+    quarter_jaccard = quarter_jaccard,
+    phased_act = phased_act,
+    phased_detection = phased_detection,
+    n_pred_quarters = n_pred,
+    n_true_quarters = n_true
+  )
+}
+
+
+#' Compute aggregate quarter-set metrics over a results tibble
+#'
+#' @param results Tibble with `pred_quarters` and `true_quarters` list-columns
+#'   plus the per-act metric columns added by `add_quarter_metrics()`.
+#' @return Named list with point estimates for the four headline quarter
+#'   metrics plus the (pred_n, true_n) distribution.
+#' @keywords internal
+summarize_quarter_metrics <- function(results) {
+  n_phased <- sum(results$phased_act, na.rm = TRUE)
+  n_with_both <- sum(results$n_pred_quarters > 0 & results$n_true_quarters > 0,
+                     na.rm = TRUE)
+  n_jaccard_defined <- sum(!is.na(results$quarter_jaccard))
+
+  list(
+    primary_quarter_exact = mean(results$primary_quarter_exact, na.rm = TRUE),
+    primary_quarter_within_one = mean(results$primary_quarter_within_one,
+                                       na.rm = TRUE),
+    phased_act_detection_rate = if (n_phased > 0) {
+      mean(results$phased_detection[results$phased_act], na.rm = TRUE)
+    } else {
+      NA_real_
+    },
+    quarter_set_jaccard = mean(results$quarter_jaccard, na.rm = TRUE),
+    n_phased_acts = n_phased,
+    n_with_both_quarters = n_with_both,
+    n_jaccard_defined = n_jaccard_defined,
+    pred_n_true_n_distribution = table(
+      pred_n = results$n_pred_quarters,
+      true_n = results$n_true_quarters
+    )
+  )
+}
+
+
+#' Add per-act quarter metric columns to a results tibble
+#'
+#' @param results Tibble with `pred_quarters` and `true_quarters` list-columns.
+#' @return Same tibble with seven new columns appended (see
+#'   `compute_act_quarter_metrics`).
+#' @keywords internal
+add_quarter_metrics <- function(results) {
+  if (!"pred_quarters" %in% names(results) ||
+      !"true_quarters" %in% names(results)) {
+    stop("results must contain pred_quarters and true_quarters list-columns")
+  }
+  qm <- purrr::map2_dfr(
+    results$pred_quarters, results$true_quarters,
+    compute_act_quarter_metrics
+  )
+  dplyr::bind_cols(results, qm)
+}
 
 
 #' Compute binary exogenous classification metrics

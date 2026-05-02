@@ -13,7 +13,7 @@
 
 **Core Challenge**: The original plan assumed 126 acts and recommended "100+ acts for Malaysia" — both infeasible.
 
-**Authoritative Methodology**: See `docs/strategy.md` for the complete R&R + H&K framework. Phase 1 applies validated codebooks (C1-C4) to Malaysia with expert validation.
+**Authoritative Methodology**: See `docs/strategy.md` for the complete R&R + H&K framework. Phase 1 applies validated codebooks (C1 and C2) to Malaysia with expert validation.
 
 ## Strategic Options
 
@@ -23,7 +23,7 @@
 
 **Implementation**:
 
-1. **Phase 0 (Current)**: Develop and validate codebooks C1-C4 on 44 US acts using H&K stages S0-S3
+1. **Phase 0 (Current)**: Develop and validate codebooks C1 and C2 (motivation + sign + timing) on 44 US acts using H&K stages S0-S3
 2. **Phase 1**: Deploy validated codebooks to Malaysia documents (1980-2022)
 3. **Validation**: Expert reviews codebook outputs, provides corrections
 4. **Iteration**: Use expert feedback to refine codebook definitions (S0 revision)
@@ -56,7 +56,7 @@
 
 **Implementation**:
 
-1. Deploy codebooks C1-C4 to Malaysia documents
+1. Deploy codebooks C1 and C2 to Malaysia documents
 2. Expert labels top 20-30 codebook-identified acts (high confidence)
 3. Add Malaysia-specific examples to codebook definitions (S0 revision)
 4. Re-run H&K S2 evaluation and validate
@@ -145,7 +145,7 @@
 **Phase 1A: Deployment (Weeks 1-4)**
 
 1. Extract Malaysia documents (1980-2022)
-2. Run codebooks C1-C4 with US-validated definitions
+2. Run codebooks C1 and C2 with US-validated definitions
 3. Generate candidate dataset (~20-40 acts expected)
 
 **Phase 1B: Expert Validation (Weeks 5-8)**
@@ -172,13 +172,13 @@
 **Primary**:
 
 - Expert agreement ≥80% on measure identification (C1)
-- Expert agreement ≥70% on motivation classification (C2)
+- Expert agreement ≥70% on C2 outputs — exogeneity, sign, and implementation quarter
 - Correctly identified ≥3 known major acts (e.g., 1997 crisis measures)
 
 **Secondary**:
 
 - False positive rate ≤10% on expert review (precision critical)
-- Timing/magnitude extraction within ±10% (C3/C4, if applicable)
+- Implementation-quarter assignment matches expert review on a random sample (no fixed threshold; diagnostic only — Malaysia ground truth is the expert)
 
 **Research Contribution**:
 - Demonstrated cross-country transfer without retraining
@@ -196,7 +196,7 @@
 
 ### Revised Framing:
 
-> "Phase 0 develops and validates codebooks C1-C4 on 44 US fiscal acts using the H&K validation framework. Phase 1 tests cross-country transfer to Malaysia (1980-2022) with expert validation, demonstrating methodology generalizability despite limited training data."
+> "Phase 0 develops and validates codebooks C1 (measure identification) and C2 (motivation, sign, and implementation quarter) on 44 US fiscal acts using the H&K validation framework. Phase 1 tests cross-country transfer to Malaysia (1980-2022) with expert validation, demonstrating methodology generalizability despite limited training data."
 
 **Emphasis Shift**:
 
@@ -262,7 +262,7 @@ This is a **stronger** research contribution than just "we labeled more acts."
 
 - [ ] Download Malaysia government documents (1980-2022)
 - [ ] Run PDF extraction (PyMuPDF or pdftools)
-- [ ] Deploy codebooks C1-C4 with US-validated definitions
+- [ ] Deploy codebooks C1 and C2 with US-validated definitions
 - [ ] Generate candidate measure dataset
 - [ ] Document any extraction failures
 
@@ -295,7 +295,7 @@ This is a **stronger** research contribution than just "we labeled more acts."
 | Component | Estimated Cost |
 |-----------|----------------|
 | PDF Extraction (Malaysia docs) | $3-5 |
-| Codebook C1-C4 Deployment (20-40 acts × 4 codebooks) | $8-12 |
+| Codebook C1+C2 Deployment (20-40 acts × 2 codebooks; C2 internally two-stage C2a→C2b) | $4-6 |
 | Expert Consultation (15 hours @ $100/hr) | $1,500 |
 | Refinement Round (Re-run models) | $4-6 |
 | **Total** | **~$1,520** |

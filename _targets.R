@@ -603,7 +603,8 @@ list(
   # tar_target(model_b_loocv_results, ..., deployment = "main"),
   # tar_target(model_b_loocv_eval, ...),
   #
-  # # Model C (replaced by C3/C4)
+  # # Model C (folded into C2b v0.8.0 — sign + enacted_quarter[] are extracted
+  # # alongside motivation; see docs/strategy.md C2 Blueprint and Das et al. 2026)
   # tar_target(model_c_predictions_val, ..., deployment = "main"),
   # tar_target(model_c_eval_val, ...),
   # tar_target(model_c_predictions_test, ..., deployment = "main"),

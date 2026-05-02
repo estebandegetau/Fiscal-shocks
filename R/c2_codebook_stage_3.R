@@ -54,11 +54,17 @@ classify_c2b_batch <- function(c2b_codebook,
   preds <- vapply(seq_len(n_acts), function(i) {
     act <- acts_evidence[i, ]
 
+    timing_input <- if ("timing_signals" %in% names(act)) {
+      act$timing_signals[[1]] %||% list()
+    } else {
+      list()
+    }
     user_msg <- format_c2b_input(
       act_name = act$act_name,
       year = act$year,
       evidence = act$evidence[[1]],
-      enacted_signals = act$enacted_signals[[1]]
+      enacted_signals = act$enacted_signals[[1]],
+      timing_signals = timing_input
     )
 
     parsed <- NULL

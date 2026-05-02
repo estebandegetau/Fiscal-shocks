@@ -74,10 +74,15 @@ build_s3_act_clusters <- function(iterations_yaml,
 #' (pass / fail-overfit / structural_issue).
 #'
 #' Fingerprint definition (auto-detected from codebook output):
-#'   - v0.7.0+ minimal codebook (no `classes`): "{exogenous}|{sign}".
+#'   - v0.8.0+ minimal codebook (no `classes`, has `enacted_quarter[]`):
+#'     "{exogenous}|{sign}|{sorted-quarters}".
+#'   - v0.7.0 minimal codebook (no `classes`, no quarters): "{exogenous}|{sign}".
 #'   - Legacy 4-class codebook: "{sorted-categories}|{exogenous}".
-#' Both fingerprints carry the deliverable-relevant fields so the F-A gap
-#' is comparable across versions.
+#' All fingerprints carry the deliverable-relevant fields so the F-A gap
+#' is comparable across versions. Acts that legitimately return an empty
+#' `enacted_quarter` array contribute "" to the third component, conflating
+#' "no timing evidence" with "stable across permutations" — flagged in the
+#' diagnostic output for separate review.
 #'
 #' @param c2b_codebook Parsed codebook from load_validate_codebook()
 #' @param c2b_inputs Tibble of frozen C2a evidence (data/validated/c2a_evidence.qs);
@@ -139,7 +144,14 @@ test_c2b_evidence_shuffle <- function(c2b_codebook,
     if (is_minimal) {
       exo_str <- as.character(parsed$exogenous %||% NA)
       sign_str <- as.character(parsed$sign %||% NA)
-      paste(exo_str, sign_str, sep = "|")
+      # v0.8.0: include sorted-unique enacted_quarter[] in fingerprint.
+      raw_q <- parsed$enacted_quarter
+      q_str <- if (is.null(raw_q)) "" else {
+        qv <- if (is.list(raw_q)) unlist(raw_q, use.names = FALSE) else raw_q
+        if (length(qv) == 0L) "" else paste(sort(unique(as.character(qv))),
+                                            collapse = ",")
+      }
+      paste(exo_str, sign_str, q_str, sep = "|")
     } else {
       cats <- vapply(
         parsed$motivations %||% list(),
@@ -153,8 +165,10 @@ test_c2b_evidence_shuffle <- function(c2b_codebook,
     }
   }
 
-  classify_one <- function(act_name, year, evidence, enacted_signals) {
-    user_msg <- format_c2b_input(act_name, year, evidence, enacted_signals)
+  classify_one <- function(act_name, year, evidence, enacted_signals,
+                           timing_signals = list()) {
+    user_msg <- format_c2b_input(act_name, year, evidence, enacted_signals,
+                                 timing_signals = timing_signals)
     tryCatch({
       parsed <- call_codebook_generic(
         user_message  = user_msg,
@@ -175,9 +189,15 @@ test_c2b_evidence_shuffle <- function(c2b_codebook,
     row <- joined[i, ]
     evidence <- row$evidence[[1]]
     enacted_signals <- row$enacted_signals[[1]]
+    timing_signals <- if ("timing_signals" %in% names(row)) {
+      row$timing_signals[[1]] %||% list()
+    } else {
+      list()
+    }
     n_records <- length(evidence)
 
-    fp_orig <- classify_one(row$act_name, row$year, evidence, enacted_signals)
+    fp_orig <- classify_one(row$act_name, row$year, evidence,
+                            enacted_signals, timing_signals)
 
     set.seed(seed + i)
     perms <- if (n_records >= 2L) {
@@ -187,7 +207,8 @@ test_c2b_evidence_shuffle <- function(c2b_codebook,
     }
 
     fp_shuffles <- vapply(perms, function(p) {
-      classify_one(row$act_name, row$year, evidence[p], enacted_signals)
+      classify_one(row$act_name, row$year, evidence[p],
+                   enacted_signals, timing_signals)
     }, character(1))
 
     valid_shuffles <- !is.na(fp_shuffles)

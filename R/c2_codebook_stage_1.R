@@ -8,57 +8,85 @@
 # Synthetic Test Data
 # =============================================================================
 
-#' Generate synthetic evidence sets for C2b behavioral tests
+#' Generate synthetic evidence sets for C2b behavioral tests (v0.8.0)
 #'
-#' Creates four synthetic evidence sets covering the four corners of the
-#' v0.7.0 output schema: exogenous-positive (deficit reduction by tax
-#' increase), exogenous-negative (long-run reform via tax cut),
-#' endogenous-positive (spending-financing tax increase), and
-#' endogenous-negative (countercyclical tax relief). Each set carries
-#' `expected_exogenous` and `expected_sign` fields used by Test II
-#' (schema recovery).
+#' Creates six synthetic evidence sets exercising the v0.8.0 output schema:
+#'
+#' 1. Spending-financing tax increase (exo FALSE, sign +) — Vietnam-era surtax
+#' 2. Countercyclical relief crossing a midpoint (exo FALSE, sign -) — effective
+#'    November 20 (past Q4 midpoint Nov 15) → 2009Q1 next quarter
+#' 3. Inherited-deficit reduction with phased steps (exo TRUE, sign +)
+#'    — Jan 1, 1991 + Jan 1, 1992 effective dates
+#' 4. Long-run rate reduction (exo TRUE, sign -) — different year/structure
+#'    from the C2b YAML examples to keep schema recovery distinct from
+#'    example recovery
+#' 5. Phased exogenous reform (exo TRUE, sign -) — two phases with quarter
+#'    set {1999Q4, 2000Q3} testing multi-quarter recovery
+#' 6. Empty-timing reform (exo TRUE, sign -) — motivation evidence only,
+#'    no enacted-status or timing signals; expected `enacted_quarter: []`
+#'    and the model should not invent a date
+#'
+#' Years and structures are deliberately disjoint from the years used in the
+#' C2b YAML's `examples:` block (1985, 2009, 1951, 1993, 1950) so Test II
+#' (schema recovery) is not conflated with Test III (example recovery).
+#'
+#' Each case carries `expected_exogenous`, `expected_sign`, and
+#' `expected_quarters` (character vector, possibly empty) fields used by
+#' `test_c2b_schema_recovery()`.
 #'
 #' @param seed Integer random seed (unused currently, reserved for future)
-#' @return List of 4 evidence sets, each with act_name, year, evidence,
-#'   enacted_signals, expected_exogenous, expected_sign
+#' @return List of 6 evidence sets, each with act_name, year, evidence,
+#'   enacted_signals, timing_signals, expected_exogenous, expected_sign,
+#'   expected_quarters
 #' @keywords internal
 generate_c2b_test_evidence <- function(seed = 42) {
   list(
+    # 1. Spending-financing tax increase (Vietnam-era surtax, distinct from
+    #    YAML's 1951 Defense Financing example)
     list(
-      act_name = "Synthetic Spending-Financing Revenue Act",
-      year = 2003,
+      act_name = "Synthetic Vietnam-Era Defense Surtax",
+      year = 1968,
       expected_exogenous = "FALSE",
       expected_sign = "+",
+      expected_quarters = c("1968-Q3"),
       evidence = list(
         list(
-          quote = "The tax increase was enacted to finance the new military operations abroad.",
-          signal = "Revenue measure explicitly linked to financing a contemporaneous spending commitment"
+          quote = "The surtax was enacted to finance the cost of military operations in Southeast Asia.",
+          signal = "Revenue measure explicitly tied to financing contemporaneous defense spending"
         ),
         list(
-          quote = "The revenue provisions and the defense appropriations were passed together as a single package.",
-          signal = "Fiscal measure and spending change enacted together within the same year"
+          quote = "The revenue provisions accompany the supplemental defense appropriations passed earlier this year.",
+          signal = "Fiscal measure and spending change enacted within the same year"
         )
       ),
       enacted_signals = list(
         list(
-          quote = "The act was signed into law on November 5, 2003.",
+          quote = "The act was signed into law on June 28, 1968.",
           signal = "Signed into law"
+        )
+      ),
+      timing_signals = list(
+        list(
+          quote = "The surtax took effect July 1, 1968.",
+          signal = "Effective date — July 1, 1968 (1968Q3 under midpoint rule)"
         )
       )
     ),
+
+    # 2. Countercyclical relief crossing the Q4 midpoint into Q1 next year.
+    #    Effective Nov 20 is one day past the Nov 15 Q4 midpoint, so the act
+    #    falls into 2009Q1 (next quarter) under the midpoint rule. Tests the
+    #    midpoint-equality boundary.
     list(
-      act_name = "Synthetic Countercyclical Relief Act",
-      year = 2009,
+      act_name = "Synthetic Year-End Pandemic Relief Act",
+      year = 2008,
       expected_exogenous = "FALSE",
       expected_sign = "-",
+      expected_quarters = c("2009-Q1"),
       evidence = list(
         list(
           quote = "With unemployment rising sharply and GDP contracting, the government enacted emergency tax relief.",
-          signal = "Response to economic downturn, goal of restoring growth to normal"
-        ),
-        list(
-          quote = "The stimulus package aims to counteract the recession and return the economy to its pre-crisis trajectory.",
-          signal = "Explicit countercyclical framing, temporary measure"
+          signal = "Response to economic downturn"
         ),
         list(
           quote = "These temporary measures will expire once economic conditions normalize.",
@@ -67,54 +95,144 @@ generate_c2b_test_evidence <- function(seed = 42) {
       ),
       enacted_signals = list(
         list(
-          quote = "The President signed the emergency relief package on February 17, 2009.",
+          quote = "The President signed the relief package on October 3, 2008.",
           signal = "Signed into law"
+        )
+      ),
+      timing_signals = list(
+        list(
+          quote = "Provisions take effect November 20, 2008.",
+          signal = "Effective November 20, 2008 — one day past Q4 midpoint (Nov 15) → 2009Q1 under midpoint rule"
         )
       )
     ),
+
+    # 3. Inherited-deficit reduction, phased over two years (TRUE, +).
+    #    Different year from YAML's 1993 Inherited Deficit Reduction Act.
     list(
-      act_name = "Synthetic Inherited-Deficit Reduction Act",
-      year = 1993,
+      act_name = "Synthetic Federal Deficit Reform Act",
+      year = 1990,
       expected_exogenous = "TRUE",
       expected_sign = "+",
+      expected_quarters = c("1991-Q1", "1992-Q1"),
       evidence = list(
         list(
-          quote = "The deficit, accumulated over many years of past policy decisions, threatens long-term fiscal stability.",
-          signal = "Deficit described as inherited from past decisions, not a contemporaneous spending change"
+          quote = "The deficit, built up over many years of past policy decisions, threatens long-term fiscal stability.",
+          signal = "Deficit described as inherited from past decisions"
         ),
         list(
-          quote = "The primary purpose of this act is to restore fiscal balance through higher revenues and reduce the structural budget deficit.",
-          signal = "Stated goal of deficit reduction by raising revenues"
+          quote = "The primary purpose of the act is to reduce the structural budget deficit through higher revenues.",
+          signal = "Stated goal of deficit reduction"
         )
       ),
       enacted_signals = list(
         list(
-          quote = "The act was enacted on August 10, 1993.",
-          signal = "Enacted into law"
+          quote = "The act was signed into law on November 5, 1990.",
+          signal = "Signed into law"
+        )
+      ),
+      timing_signals = list(
+        list(
+          quote = "Phase one provisions take effect January 1, 1991.",
+          signal = "Phase 1 effective date — January 1, 1991 (1991Q1)"
+        ),
+        list(
+          quote = "Phase two rate increases follow on January 1, 1992.",
+          signal = "Phase 2 effective date — January 1, 1992 (1992Q1)"
         )
       )
     ),
+
+    # 4. Long-run rate reduction (exo TRUE, sign -), different year and
+    #    structure from YAML's 1985 Long-Run Rate Reduction Act.
     list(
-      act_name = "Synthetic Long-Run Reform Act",
-      year = 1986,
+      act_name = "Synthetic Tax Simplification Act",
+      year = 1995,
       expected_exogenous = "TRUE",
       expected_sign = "-",
+      expected_quarters = c("1996-Q1"),
       evidence = list(
         list(
-          quote = "By broadening the tax base and lowering marginal rates, we can improve economic efficiency and raise long-run growth.",
-          signal = "Structural reform aimed at raising potential output, with rate reductions"
+          quote = "Lowering marginal income tax rates will improve incentives to invest and raise long-run economic growth.",
+          signal = "Stated goal of structural reform aimed at raising potential output"
         ),
         list(
-          quote = "The reform simplifies the tax code to improve incentives for investment, reducing aggregate liabilities.",
-          signal = "Permanent structural change for efficiency, net reduction in liabilities"
+          quote = "The reform simplifies the rate structure as a permanent change to the tax instrument.",
+          signal = "Permanent structural change to the fiscal instrument"
         )
       ),
       enacted_signals = list(
         list(
-          quote = "The Economic Reform Act was signed into law on October 22, 1986.",
-          signal = "Signed into law"
+          quote = "The act was enacted on July 30, 1995.",
+          signal = "Enacted into law"
+        )
+      ),
+      timing_signals = list(
+        list(
+          quote = "The new rate structure takes effect January 1, 1996.",
+          signal = "Effective date — January 1, 1996 (1996Q1)"
         )
       )
+    ),
+
+    # 5. Phased exogenous reform (exo TRUE, sign -) with two phases NOT in
+    #    consecutive quarters — tests phased-act detection beyond simple Q1
+    #    repetitions.
+    list(
+      act_name = "Synthetic Multi-Phase Investment Reform Act",
+      year = 1999,
+      expected_exogenous = "TRUE",
+      expected_sign = "-",
+      expected_quarters = c("1999-Q4", "2000-Q3"),
+      evidence = list(
+        list(
+          quote = "The reform aims to raise long-run investment by phasing in lower marginal rates over two years.",
+          signal = "Long-run growth motivation, permanent structural change"
+        ),
+        list(
+          quote = "The act simplifies the depreciation schedule for capital investment.",
+          signal = "Structural reform of the fiscal instrument"
+        )
+      ),
+      enacted_signals = list(
+        list(
+          quote = "The act was signed into law on September 14, 1999.",
+          signal = "Signed into law"
+        )
+      ),
+      timing_signals = list(
+        list(
+          quote = "First-phase rate cuts take effect October 1, 1999.",
+          signal = "Phase 1 effective date — October 1, 1999 (1999Q4)"
+        ),
+        list(
+          quote = "Second-phase rate cuts follow on July 1, 2000.",
+          signal = "Phase 2 effective date — July 1, 2000 (2000Q3)"
+        )
+      )
+    ),
+
+    # 6. Empty timing case: motivation only, no enacted-status or timing
+    #    signals. Tests whether C2b correctly returns `enacted_quarter: []`
+    #    rather than hallucinating a date.
+    list(
+      act_name = "Synthetic Sparse-Timing Reform Act",
+      year = 1975,
+      expected_exogenous = "TRUE",
+      expected_sign = "-",
+      expected_quarters = character(0),
+      evidence = list(
+        list(
+          quote = "The reform was undertaken to improve long-run efficiency of the tax system through structural simplification.",
+          signal = "Long-run motivation, permanent structural change"
+        ),
+        list(
+          quote = "The provisions reduce marginal rates as part of a permanent restructuring.",
+          signal = "Net reduction in fiscal liabilities through rate cuts"
+        )
+      ),
+      enacted_signals = list(),
+      timing_signals = list()
     )
   )
 }

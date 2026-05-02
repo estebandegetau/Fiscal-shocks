@@ -4,7 +4,7 @@ This file provides context for Claude Code when working on Phase 2 (Malaysia Pil
 
 ## Phase 2 Overview
 
-**Goal**: Deploy US-validated codebooks (C1-C4) to Malaysia government documents (1980-2022) with expert validation to test cross-country transfer learning.
+**Goal**: Deploy US-validated codebooks (C1 and C2) to Malaysia government documents (1980-2022) with expert validation to test cross-country transfer learning.
 
 **Timeline**: 12 weeks (4 weeks deployment, 4 weeks validation, 2 weeks refinement, 2 weeks documentation)
 
@@ -52,7 +52,7 @@ This document contains the complete R&R + H&K framework specification. Phase 2 a
 
 See [malaysia_strategy.md](malaysia_strategy.md) for full details. Summary:
 
-1. Deploy US-validated codebooks C1-C4 to Malaysia documents (no retraining)
+1. Deploy US-validated codebooks C1 and C2 to Malaysia documents (no retraining)
 2. Expert reviews random sample of outputs (10-20 acts)
 3. Analyze error patterns using H&K S3 methodology
 4. Refine codebook definitions if needed, re-run on error cases
@@ -96,7 +96,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 
 ### Phase 2A: Deployment (Weeks 1-4)
 
-**Goal**: Extract Malaysia documents, run codebooks C1-C4, generate candidate dataset
+**Goal**: Extract Malaysia documents, run codebooks C1 and C2 (motivation + sign + timing), generate candidate dataset
 
 **Tasks**:
 
@@ -106,7 +106,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
    - Treasury/Finance Ministry annual reports
    - Economic reports
 2. Extract PDFs (use PyMuPDF or pdftools)
-3. Run codebooks C1-C4 with US-validated definitions (no modification initially)
+3. Run codebooks C1 and C2 with US-validated definitions (no modification initially)
 4. Generate candidate fiscal shock dataset
 
 **Deliverables**:
@@ -114,8 +114,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 - Malaysia document corpus (estimated 200-300 PDFs)
 - Extracted text in targets pipeline
 - Candidate dataset: 20-40 fiscal acts identified by C1
-- Motivation classifications from C2
-- Timing/magnitude extractions from C3/C4 (if applicable)
+- C2 outputs per act: motivation (exogenous flag), sign of effect on fiscal liabilities, implementation quarter(s)
 
 ### Phase 2B: Expert Validation (Weeks 5-8)
 
@@ -204,7 +203,7 @@ See [malaysia_strategy.md](malaysia_strategy.md) for detailed comparison.
 ### Secondary (Desirable)
 
 - ✅ False positive rate ≤10% on expert review (precision critical)
-- ✅ Timing/magnitude extraction within ±10% (C3/C4, if applicable)
+- ✅ Implementation-quarter assignments match expert review on a random sample (diagnostic only — Malaysia ground truth is the expert)
 - ✅ Error analysis identifies clear patterns (not random noise)
 
 ### Research Contribution (Critical)
@@ -278,17 +277,15 @@ tar_target(
   malaysia_c1,
   run_codebook(malaysia_relevant, "c1_measure_id.yml")
 )
+# C2 is internally two-stage: C2a evidence extraction → C2b act-level classification
+# C2b returns {enacted, exogenous, sign, enacted_quarter[], confidence, reasoning}
+tar_target(
+  malaysia_c2a_evidence,
+  run_codebook(malaysia_c1 %>% filter(is_measure == TRUE), "c2a_extraction.yml")
+)
 tar_target(
   malaysia_c2,
-  run_codebook(malaysia_c1 %>% filter(is_measure == TRUE), "c2_motivation.yml")
-)
-tar_target(
-  malaysia_c3,
-  run_codebook(malaysia_c2, "c3_timing.yml")
-)
-tar_target(
-  malaysia_c4,
-  run_codebook(malaysia_c2, "c4_magnitude.yml")
+  run_codebook(malaysia_c2a_evidence, "c2b_classification.yml")
 )
 
 # Expert validation (manual step, store results)
@@ -307,7 +304,7 @@ tar_target(
 # Final dataset
 tar_target(
   malaysia_shocks,
-  finalize_malaysia_dataset(malaysia_c2, malaysia_c3, malaysia_c4, expert_validation)
+  finalize_malaysia_dataset(malaysia_c2, expert_validation)
 )
 ```
 
@@ -315,7 +312,7 @@ tar_target(
 
 ```r
 # Phase 2A: Deployment
-tar_make(malaysia_c4)  # Runs all dependencies
+tar_make(malaysia_c2)  # Runs all dependencies
 
 # Phase 2B: After expert validation file created
 tar_make(malaysia_agreement_metrics)
@@ -425,7 +422,7 @@ tar_read(malaysia_shocks)
 
 - **[malaysia_strategy.md](malaysia_strategy.md)** — Full strategic plan (READ THIS)
 - **[expert_review_protocol.md](expert_review_protocol.md)** — Expert validation protocol
-- **docs/strategy.md** — Authoritative C1-C4 + H&K methodology
+- **docs/strategy.md** — Authoritative C1+C2 + H&K methodology
 - **Romer & Romer (2010)**: Original narrative approach methodology
 - **Halterman & Keith (2025)**: LLM content analysis validation framework
 - **Targets Guide**: https://books.ropensci.org/targets/
