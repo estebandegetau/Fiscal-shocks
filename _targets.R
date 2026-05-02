@@ -275,7 +275,7 @@ list(
       c2a_codebook,
       c2_input_data,
       model = "claude-haiku-4-5-20251001",
-      max_tokens = 4096,
+      max_tokens = 16384,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")
@@ -321,7 +321,7 @@ list(
     run_c2a_extraction(
       c2a_codebook, c2_s2_sensitivity_test_set,
       model = "claude-haiku-4-5-20251001",
-      max_tokens_c2a = 4096,
+      max_tokens_c2a = 16384,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")

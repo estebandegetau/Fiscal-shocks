@@ -550,3 +550,61 @@ iterations:
       C2a extraction validated. No further C2a changes needed. Focus shifts
       to C2b codebook improvements and potential model upgrade (Sonnet) to
       address persistent LONG_RUN→COUNTERCYCLICAL classification errors.
+
+  - iteration: 15
+    codebook_version: "0.5.0"
+    date: "2026-05-02"
+    git_commit: "922c3c0"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      First S1 run since the v0.5.0 fold-in. Commit 922c3c0 absorbed sign and
+      timing extraction from the dropped C3/C4 codebooks by adding
+      enacted_signals[] and timing_signals[] arrays alongside the existing
+      evidence[] array. No structural changes to extraction logic; output
+      schema expanded only.
+    results:
+      overall_pass: false
+      metrics:
+        - test: "I_legal_outputs"
+          value: 0.9000
+          threshold: 1.0000
+          pass: false
+        - test: "II_instruction_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          skipped: true
+          pass: true
+          note: "Structurally inapplicable — classless extraction codebook"
+      failure_detail:
+        test_i_failures: 1
+        failed_chunk: "Tax Reform Act of 1969"
+        failure_mode: "Output truncated at max_tokens=4096; JSON well-formed up to truncation point but final string/array unclosed."
+        raw_response_chars: 14305
+        n_evidence_extracted_before_cutoff: ">=17"
+    interpretation: >
+      Current max_tokens=4096 caps the output of 1/10 of test inputs. The
+      failed chunk is an evidence-dense fiscal-year survey (Tax Reform Act of
+      1969) covering wagering tax, air ticket tax, ADR depreciation, social
+      security expansion, FUTA, and more — each yielding multiple evidence,
+      enacted, and timing items. Output was well-formed JSON, just truncated
+      mid-string at the token ceiling. The v0.5.0 schema expansion
+      (enacted_signals + timing_signals folded in alongside evidence) roughly
+      2–3× the per-chunk output volume relative to v0.4.0, exposing a budget
+      shortfall that v0.4.0 did not have. Test II (instruction recovery)
+      passed cleanly on the v0.5.0 expanded schema, so the schema additions
+      themselves did not regress instruction-following — this is purely a
+      token-budget shortfall.
+    decision: >
+      Increase max_tokens to 16384 for C2a calls — C2a is by definition
+      verbose, and the v0.5.0 fold-in made it more so. Apply at S1
+      (_targets.R:278) and S2 (max_tokens_c2a at _targets.R:324) for
+      consistency. Re-run S1 to confirm 10/10 pass before declaring v0.5.0
+      S1-clean.
