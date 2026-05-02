@@ -608,3 +608,59 @@ iterations:
       (_targets.R:278) and S2 (max_tokens_c2a at _targets.R:324) for
       consistency. Re-run S1 to confirm 10/10 pass before declaring v0.5.0
       S1-clean.
+
+  - iteration: 16
+    codebook_version: "0.5.0"
+    date: "2026-05-02"
+    git_commit: "e83722b"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      No codebook changes. Single configuration delta from iteration 15:
+      max_tokens bumped 4096 → 16384 at _targets.R:278 (S1) and :324
+      (S2 c2a_evidence) per iter-15 decision. This run verifies the fix.
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_instruction_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+          note: "No per-class examples in C2a codebook"
+        - test: "IV_order_invariance"
+          value: ~
+          threshold: 0.0500
+          pass: true
+          skipped: true
+          note: "Structurally inapplicable — C2a has no classes block to reorder"
+      headroom_check:
+        largest_response_chars: 16760
+        largest_response_act: "Tax Reform Act of 1986"
+        max_tokens_cap: 16384
+        approx_tokens_used: 4200
+        note: >
+          Largest response (~4.2K tokens at 4 chars/token) sits ~4× under the
+          16,384-token cap and ends with a clean fenced code block close.
+          Comfortable headroom — not a near-miss.
+    interpretation: >
+      Truncation solved. The iter-15 failure on Tax Reform Act of 1969 was
+      purely a token-budget issue; lifting the ceiling to 16384 cleared
+      Test I (10/10 valid). All four S1 tests now pass under v0.5.0 — the
+      schema fold-in (enacted_signals + timing_signals) is fully validated
+      at the behavioral-test layer. No semantic regression in Test II
+      (instruction recovery still 4/4). Tests III and IV remain auto-pass
+      under the C2a extraction architecture (no per-class examples; no
+      classes block to reorder), as in prior iterations.
+    decision: >
+      Proceed to build c2a_evidence (S2 extraction pass on the sensitivity
+      superset of FISCAL_MEASURE chunks). v0.5.0 is S1-clean; no further
+      C2a codebook changes pending.
