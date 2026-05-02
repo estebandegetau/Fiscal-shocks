@@ -65,7 +65,7 @@ From R&R companion paper, Section I.B (pp. 4-5) and main paper, Section II.B (pp
 
 From R&R companion paper, Section I.C (pp. 5-8) and main paper, Section II.C-E (pp. 769-774).
 
-**Note on C2 codebook scope (2026-05-01).** The 4-class taxonomy below is **diagnostic context, not codebook content** under C2 v0.7.0. The C2b codebook outputs a binary exogenous flag plus a sign of effect on fiscal liabilities, following the proxy convention of Das et al. (2026, IMF WP/26/43). The 4-class R&R categories remain the authoritative ground-truth source on `aligned_data` (used to derive `true_exogenous` and to group acts in error analysis), and the boundary cases below remain the conceptual basis for what counts as exogenous. They are no longer encoded as decision rules in the prompt because (a) iter 35 diagnosed a structural ceiling under any v0.5–v0.6.x rule density and (b) iter 36's evidence-shuffle leakage diagnostic showed the dense rules were overfit to F-cluster US edge cases (F–A median-stability gap = −0.333). See `docs/strategy.md` C2 Blueprint for the v0.7.0 design.
+**Note on C2 codebook scope (2026-05-01).** The 4-class taxonomy below is **diagnostic context, not codebook content** under C2 v0.7.0. The C2b codebook outputs a binary exogenous flag plus a sign of effect on fiscal liabilities, following the proxy convention of Das et al. (2026, IMF WP/26/43); see Section 2 of this document for the full methodological treatment. The 4-class R&R categories remain the authoritative ground-truth source on `aligned_data` (used to derive `true_exogenous` and to group acts in error analysis), and the boundary cases below remain the conceptual basis for what counts as exogenous. They are no longer encoded as decision rules in the prompt because (a) iter 35 diagnosed a structural ceiling under any v0.5–v0.6.x rule density and (b) iter 36's evidence-shuffle leakage diagnostic showed the dense rules were overfit to F-cluster US edge cases (F–A median-stability gap = −0.333). See `docs/strategy.md` C2 Blueprint for the v0.7.0 design.
 
 **The four categories (diagnostic context):**
 
@@ -191,11 +191,197 @@ The companion paper (pp. 16-95) contains detailed documentation for each of the 
 
 Acts from 1965 onward follow sequentially. Use `grep` on `docs/articles/Romer and Romer - A NARRATIVE ANALYSIS OF POSTWAR TAX CHANGES.pdf` (extracted to text) for specific act lookups.
 
-## Section 2: H&K Framework — Implementation Specifications
+## Section 2: Das et al. (2026) — LLM-Based Narrative Identification at Scale
+
+**Source paper**: Das, Furceri, Patel, and Peralta-Alva (2026), "AI Meets Fiscal Policy: Mapping Government Spending Actions Across 64 Countries," IMF Working Paper WP/26/43 (89 pp)
+
+This paper is the methodological precedent closest to ours: it is the first study to operationalize the Romer & Romer narrative method at scale using an off-the-shelf LLM, producing a quarterly cross-country dataset of exogenous *spending* shocks for 64 countries from 1952Q1 to 2023Q4. It governs three concrete design choices in our C2 codebook (v0.7.0): the binary exogenous flag plus sign-of-effect output schema; the "critical clarifier" prompt language; and the conservative aggregation rule for mixed-action passages.
+
+### 2.1 Methodological Framework: Romer & Romer (2023)'s Four Requirements
+
+Das et al. organize their construction around the four "requirements" Romer & Romer (2023) lay out for any narrative-identification exercise. These are useful as a checklist for our project as well:
+
+1. **A reliable narrative source** (Section 2.2 below)
+2. **A clear idea of the information sought in the source** (Section 2.3)
+3. **A dispassionate and consistent approach to the source** (Section 2.4 — the LLM prompt)
+4. **Careful documentation of the narrative evidence** (verbatim excerpts retained alongside coded series)
+
+Our project inherits this framing: ERP/Budget/Treasury reports are our "reliable source"; the C1-C4 codebooks operationalize "the information sought"; the fixed YAML prompt + temperature settings provide "a dispassionate and consistent approach"; and the chunk-level evidence excerpts retained in pipeline outputs satisfy the documentation requirement.
+
+### 2.2 Source Selection
+
+**Primary source**: Economist Intelligence Unit (EIU) Country Reports.
+
+**Why EIU over alternatives:**
+
+- Standardized, centralized editorial workflow (country analyst draft → specialist review → published) promotes comparability across countries and time
+- Quarterly frequency for a broad cross-section (later monthly for some countries), with coverage extending back to the 1950s for many countries
+- Reports describe fiscal measures *and* the motivations emphasized at the time, which makes them well suited for narrative identification
+- Higher-frequency and longer historical coverage than OECD or IMF country reports
+
+**Quarterly aggregation rule**: One report per country–quarter (March/June/September/December calendar). When multiple reports exist within a quarter (e.g., 2000–2007 short "Updaters" + longer "Main Reports"), retain the chronologically last comprehensive "Main Report" — overlapping coverage provides limited incremental information on fiscal policy actions.
+
+**Coverage**: 64 advanced and developing economies (subset of EIU's ~140-country archive selected by macro-data availability), 16,029 country-quarter observations, 8,636 nonzero (53.9%) — 50.6% expansions / 49.4% contractions. Low-income countries account for 22.2% of nonzero quarters.
+
+### 2.3 Information Sought: Two-Condition Exogeneity Test
+
+Das et al. (Section 2.2) operationalize R&R's exogeneity criterion as a **conjunction of two conditions** that must simultaneously hold for an action to count as exogenous:
+
+1. The stated motive is unrelated to near-term macroeconomic conditions; AND
+2. The narrative does *not* cite contemporaneous growth, inflation, unemployment, interest-rate movements, exchange-rate pressure, or financing stress as the rationale.
+
+Failing either condition → action is endogenous and excluded from the exogenous series.
+
+**Two non-cyclical motive families** (per R&R 2010): (i) measures addressing inherited fiscal imbalances; (ii) measures reflecting long-run objectives for size/composition of the public sector (growth, fairness, institutional design). These are the only motivations Das et al. retain as exogenous — collapsing R&R's 4-category taxonomy to a binary flag.
+
+**Critical clarifier** (verbatim, p. 9): *"Acknowledging current conditions does not by itself imply endogeneity if the stated motive is explicitly non-cyclical."*
+
+This clarifier is load-bearing because it corrects a natural LLM failure mode: passages where text describes both current conditions *and* a non-cyclical motive often get misclassified as endogenous on the basis of the cyclical context alone. Our C2b v0.7.0 codebook adopts this clarifier verbatim.
+
+### 2.4 The Fixed Prompt Specification
+
+Das et al. use a single fixed GPT-4.1 prompt held invariant across all 64 countries and ~16,000 country-quarters. **No fine-tuning, no in-context examples, no task-specific training, no sample-specific tailoring.** The fixed-prompt design serves three purposes: (a) prevents look-ahead bias and overfitting to particular country contexts; (b) enables replication by other researchers; (c) ensures the coding rubric is identical across the panel.
+
+**Prompt structure** (paraphrased from pp. 9-10):
+
+- **Task**: "Read the EIU country report excerpt for country C and quarter Q. Identify exogenous government spending actions in Q based on the stated motivations in the text, and summarize their net directional impact on spending."
+- **Definition of exogenous action**: enumerates the two-condition test above plus the critical clarifier
+- **Outputs**: structured 5-field schema (see below)
+- **Notes**: "Base the classification strictly on the provided text; do not infer unstated motives. If net direction is not supported by the text, return NEUTRAL or UNCLEAR."
+
+**Output schema (5 fields):**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `EXOG_NET_SPENDING` | {EXP_, CON_, NEUTRAL, UNCLEAR} | Optional small/large suffix when intensity cue present |
+| `MOTIVATION` | free text | Brief phrase citing the stated motive(s) |
+| `COMPONENT` | free text (optional) | Spending component(s) referenced |
+| `INTENSITY_ORDINAL` | integer in [-10, +10] (optional) | Directional intensity |
+| `CONFIDENCE` | self-assessment (optional) | Brief classification confidence |
+
+**Note on announcement vs. implementation**: The prompt records whether identified measures are implemented in the current quarter or announced for future quarters, but the baseline shock series does *not* perform an announcement/implementation split at the classification stage. They explicitly defer this to future work, treating the indicator as "a qualitative proxy for discretionary spending actions as recorded in real time, which may reflect a mixture of announcement and implementation elements."
+
+### 2.5 Construction of the Quarterly Shock Series
+
+Report-level outputs are aggregated into a country–quarter proxy:
+
+```
+z_{i,t} ∈ {-1, 0, +1}
+       = +1 if EXOG_NET_SPENDING = EXP_
+       = -1 if EXOG_NET_SPENDING = CON_
+       =  0 if EXOG_NET_SPENDING ∈ {NEUTRAL, UNCLEAR}
+```
+
+**Conservative aggregation**: Whenever the stated motive is not explicitly non-cyclical — or the report links the action to contemporaneous macro conditions — the prompt classifies the action as non-exogenous and it does not contribute to the net effect. This conservative rule matters for mixed-action passages where multiple measures with different signs co-occur: the model extracts each individually, but the net stance is conservatively coded NEUTRAL when relative magnitudes are not explicitly stated.
+
+**Use in econometrics**: `z_{i,t}` is used as an *internal instrument* for innovations to realized government spending in country-by-country Bayesian VARs (following Plagborg-Møller and Wolf 2021; Li et al. 2024). Because the contemporaneous response of measured G pins the scale of the structural innovation, the qualitative nature of the proxy (no magnitude information) is non-critical for identification.
+
+### 2.6 Validation Strategy — Four Complementary Exercises
+
+This is the most important section for our purposes: Das et al. design four orthogonal validation exercises, each testing a different aspect of the AI-narrative pipeline.
+
+**Validation 1: Benchmark against expert human coding (Romer & Romer 2019, "RR19")**
+
+- RR19 examined 200 EIU reports across 19 OECD countries (1980-2017) using expert coders to classify fiscal stance + motivations during financial-distress episodes
+- Das et al. apply a *separate*, RR19-mirroring fixed prompt to the same 200 reports and compare cell-by-cell
+- **Expansions**: stance match 14/16 (87.5%); motivation match 32/34 (94.1%)
+- **Contractions**: stance match 18/19 (95%); motivation match 44/45 (97.8%)
+- Footnote 3 (p. 21) discloses that 4 boundary cases (Finland 1993Q1, Sweden 1993Q2, Greece 2009M7, Ireland 2009M7) are excluded from the baseline because RR19 codes them as net expansions on the basis of large financial-rescue measures while EIU describes concurrent contraction; including them lowers the stance match to 14/20 (70%). The authors interpret this as a difference in aggregation rule, not interpretation failure.
+- The *headline* "exceeds 93% accuracy" claim aggregates stance + motivation matches across both panels.
+
+**Critical methodological insight**: They distinguish stance disagreement from motivation disagreement and score them independently — a report can show a stance disagreement (because the conservative aggregation rule yields a different net direction) but still match motivation. This separation is directly analogous to the {exogenous, sign} decomposition our C2b v0.7.0 outputs.
+
+**Validation 2: Replicability across reruns**
+
+- Re-ran the prompt **51 times** on a subset of 20 reports under identical fixed prompt
+- For each (report, field), they compute the **modal share** = fraction of runs in which the most frequent value was returned (1 = perfect replicability)
+- ECDFs of modal shares across the 20 reports show:
+  - **Direction**: perfectly stable (modal share = 1 for all 20 reports — every run assigned the same sign)
+  - **Motivation**: high but not perfect (multi-category construct with multiple plausible motives)
+  - **Confidence and Intensity**: lower replicability (finer quantitative judgments more sensitive to phrasing)
+- Interpretation: coarse binary classifications are robust; fine-grained ordinal/quantitative outputs are more sensitive to sampling.
+
+This methodology is directly relevant to our pipeline's evidence-shuffle / order-invariance diagnostics (Test IV in H&K) and to the multi-run consistency checks our self-consistency sampling already performs.
+
+**Validation 3: AI shocks predict realized government spending**
+
+Local-projection regression of log G on shock indicators, country and time FEs, 4 lags of G, Y, and the shock:
+
+- At impact, contractions (z = -1) reduce log G by ~-0.005 (0.5% level); expansions (z = +1) raise log G by ~+0.002 one quarter later
+- Cumulatively at h = 8: contractions reach ~-0.06, expansions reach ~+0.04
+- Confirms the narrative shocks have economic content beyond noise
+
+**Validation 4: External alignment with Adler et al. (2024)**
+
+Adler et al. (2024) provide an annual *quantitative* dataset of action-based fiscal consolidation packages (size in % of GDP) for 31 countries since 1978. Das et al. show:
+
+- **Extensive margin**: Of 138 country-years that Adler codes as ≥0.5% GDP spending consolidation, 96.4% have at least one consolidation quarter in Das et al.'s database; 100% match for ≥2.0% GDP packages
+- **Probability model**: Conditional on country FE, observing a consolidation quarter is associated with a 12.6 pp higher probability of being in Adler's "sizable consolidation" set
+- **Intensity alignment**: The annual net stance index (consol_quarters − expand_quarters)/4 has a coefficient of 0.263 (s.e. 0.044) when regressed on Adler's spend size — moving from purely expansionary year to purely consolidation year corresponds to ~0.5 pp of GDP additional consolidation in Adler's dataset
+
+### 2.7 Predictability / Orthogonality Check
+
+A complementary validation: are the shocks orthogonal to lagged macro conditions? This addresses the Jordà–Taylor (2015) critique that earlier narrative-shock series (Guajardo et al. 2014) were forecastable from standard macro indicators.
+
+Panel regression of `z_{i,t}` on lagged debt/GDP, output gap, GDP growth, and `z_{i,t-1}` with country FE:
+
+- Across all three samples (full / Guajardo subset / Adler subset), only the lagged shock is significant; macro lags are insignificant
+- R² ≤ 0.10 — limited explanatory power
+- *When aggregated to annual frequency*, predictability emerges (R² up to 0.31 for Adler shocks, with significant lagged GDP growth)
+- Interpretation: quarterly frequency is itself an exogeneity-protective design choice; annual aggregation contaminates with predictable within-year cyclical responses.
+
+**Implication for our pipeline**: We work at sub-quarterly chunk granularity and aggregate to act-level, but the same logic suggests a predictability/orthogonality check on our final shock series should be part of Phase 1 validation.
+
+### 2.8 Stylized Facts on the Resulting Database
+
+- 8,636 nonzero quarters across 64 countries; 50.6% expansions / 49.4% contractions
+- LICs disproportionately represented (22.2% of nonzero quarters) — narrative coverage that did not previously exist for this group
+- **Asymmetry by country group**:
+  - Advanced: 45.8% expansion share (more contractions, possibly reflecting fiscal rules)
+  - Emerging: 49.5% expansion share (near-balanced)
+  - LIC: 60.7% expansion share (majority expansionary)
+- **Asymmetry by motive type** (text-dictionary classification of a random subsample):
+  - Expansions: ~60% are public investment / infrastructure / capital projects
+  - Contractions: >2/3 are explicit consolidation / deficit-reduction measures
+  - Suggests fiscal expansions and consolidations are *not* mirror images of each other
+
+### 2.9 Adaptations and Inheritance for Our Project
+
+**What our C2 codebook v0.7.0 inherits directly:**
+
+| Das et al. design choice | C2b v0.7.0 adoption |
+|---------------------------|---------------------|
+| Binary exogenous flag (collapsing R&R's 4 motive classes) | Yes — primary output is `exogenous ∈ {true, false}` |
+| Sign of net effect on spending: {-1, 0, +1} | Adapted to `sign ∈ {increase, decrease, no_change}` for fiscal liabilities |
+| Critical clarifier ("Acknowledging current conditions...") | Yes — verbatim in C2b prompt |
+| Conservative aggregation: NEUTRAL/UNCLEAR → 0 | Yes — when sign is ambiguous or evidence is mixed, return `unclear` rather than guess |
+| Fixed prompt across all examples (no per-act tailoring) | Yes — reinforced by iter 36 leakage diagnostic showing v0.6.x rules were overfit |
+| No in-context few-shot examples in production prompt | Yes — v0.7.0 removes the dense decision rules and class definitions |
+| Explicit confidence field as auxiliary diagnostic | Yes — `confidence` retained in C2b output schema |
+
+**What is genuinely different about our setting:**
+
+| Dimension | Das et al. | Our project |
+|-----------|------------|-------------|
+| Source | EIU Country Reports (curated, analyst-edited, summary-style) | ERP / Budget / Treasury reports (official, primary, longer, more legalistic) |
+| Unit of analysis | One report per country–quarter (~3-15 pages) | Sub-document chunks pre-filtered by C1 (typically 1-3 paragraphs) |
+| Granularity of measure | Net stance per country–quarter | Per-act, with C3/C4 separating implementation quarters |
+| Ground truth | RR19 (200 reports, 19 countries) — non-public expert codings | R&R (2010) + companion paper — 50 acts US-only, public, fully documented |
+| LLM | GPT-4.1 (closed-weight, OpenAI) | Claude (closed-weight, Anthropic) — currently Haiku for cost; Sonnet for headline runs |
+| Scope of fiscal action | Spending only | Tax/revenue (R&R 2010 corpus) — mirrors Romer & Romer (2010), not (2019) |
+| Validation against quantitative external dataset | Adler et al. (2024) annual consolidation sizes | `us_shocks.csv` (R&R 2010 series, quarterly, US-only) — Phase 1 validation target |
+
+**Methodology gaps we still need to fill** (Phase 1 / Phase 2 work):
+
+- A predictability/orthogonality check on our final aggregated shock series (R² of `z_{i,t}` on lagged macro controls)
+- A multi-run replicability ECDF on a held-out subset (analogous to Das et al.'s 51-rerun exercise)
+- An external alignment exercise once Phase 2 (Malaysia) data exists — likely against IMF Article IV report-based codings or the Adler et al. (2024) panel where overlap exists
+
+## Section 3: H&K Framework — Implementation Specifications
 
 **Source paper**: Halterman and Keith (2025), "Codebook LLMs: Evaluating LLMs as Measurement Tools for Political Science Concepts," arXiv:2407.10747v2 (53 pp)
 
-### 2.1 Codebook Format Specification
+### 3.1 Codebook Format Specification
 
 From H&K Section 5, Figure 1 (pp. 7-9):
 
@@ -223,7 +409,7 @@ Output reminder: [enumerate valid labels, specify format]
 - Each component serves a distinct purpose: definition for core meaning, clarification for boundary cases, examples for in-context learning
 - Output reminder is critical for ensuring legal label output
 
-### 2.2 Behavioral Tests I-IV (Label-Free)
+### 3.2 Behavioral Tests I-IV (Label-Free)
 
 From H&K Section 6, Table 2, Figure 3 (pp. 10-13):
 
@@ -248,7 +434,7 @@ From H&K Section 6, Table 2, Figure 3 (pp. 10-13):
 - OLMo-7B performed so poorly it was dropped from later stages
 - Test IV is the most informative label-free test for our use case, since our codebooks will have semantically loaded category names
 
-### 2.3 Behavioral Tests V-VII (Labels-Required)
+### 3.3 Behavioral Tests V-VII (Labels-Required)
 
 From H&K Section 8.1, Table 2, Figure 4 (pp. 14-16):
 
@@ -274,7 +460,7 @@ Tests VI and VII show that LLMs rely heavily on label names rather than definiti
 
 **Implication for C2 (Motivation)**: Our category names are semantically loaded ("deficit-driven," "countercyclical"). The model may classify a passage as "deficit-driven" simply because it mentions the word "deficit," even if the R&R operationalization says otherwise. Tests VI and VII will reveal whether this is happening.
 
-### 2.4 Ablation Methodology
+### 3.4 Ablation Methodology
 
 From H&K Section 8.2, Table 4 (pp. 16-17):
 
@@ -308,7 +494,7 @@ From H&K Section 8.2, Table 4 (pp. 16-17):
 6. Remove definition (labels only)
 7. Remove all examples + clarifications (definition + label only)
 
-### 2.5 Manual Error Analysis
+### 3.5 Manual Error Analysis
 
 From H&K Section 8.3, Table 5 (pp. 17-18):
 
@@ -335,7 +521,7 @@ From H&K Section 8.3, Table 5 (pp. 17-18):
 - Category B errors (incorrect gold standard) are possible since our 44-act dataset derives from R&R's own judgments, which may have borderline cases.
 - Category D errors (non-compliance) should be minimal with Claude, which generally follows format instructions well.
 
-### 2.6 Evaluation Metrics
+### 3.6 Evaluation Metrics
 
 From H&K Section 7 (pp. 11-14):
 
@@ -369,7 +555,7 @@ From H&K Section 7 (pp. 11-14):
 - Cohen's kappa for pairwise agreement (2 coders: LLM vs. R&R ground truth)
 - Bootstrap with 500-1000 resamples for all primary metrics
 
-### 2.7 Key Adaptations for Our Project
+### 3.7 Key Adaptations for Our Project
 
 H&K used open-weight 7-12B parameter models (Mistral-7B, Llama-8B). Our project uses Claude (closed-weight, much larger). Key implications:
 
@@ -399,9 +585,9 @@ H&K used open-weight 7-12B parameter models (Mistral-7B, Llama-8B). Our project 
 - Is Claude more robust to label name reliance? (Larger models may attend better to instructions)
 - Does self-consistency sampling (already implemented) compensate for any label sensitivity?
 
-## Section 3: Cross-Paper Synthesis — Codebook Design Decisions
+## Section 4: Cross-Paper Synthesis — Codebook Design Decisions
 
-### 3.1 Mapping R&R Steps to Codebooks
+### 4.1 Mapping R&R Steps to Codebooks
 
 | Codebook | R&R Step | Input | Output | Key R&R Concepts to Operationalize |
 |----------|----------|-------|--------|-----------------------------------|
@@ -410,7 +596,7 @@ H&K used open-weight 7-12B parameter models (Mistral-7B, Llama-8B). Our project 
 | **C3: Timing** | RR4 (Timing assignment) | Identified measure passage | List of (quarter, amount) tuples | Midpoint rule; phased changes as separate entries; retroactive handling (standard vs. adjusted); implementation date vs. passage date |
 | **C4: Magnitude** | RR3 (Revenue estimation) | Identified measure passage | Revenue effect in domestic currency, billions | Fallback hierarchy (ERP > calendar year > fiscal year > Conference report); annual rate convention; exclude growth-driven revenue increases; present-value alternative |
 
-### 3.2 Country-Agnostic Language Mapping
+### 4.2 Country-Agnostic Language Mapping
 
 For each R&R concept, what needs to be generalized for cross-country transfer:
 
@@ -427,7 +613,7 @@ For each R&R concept, what needs to be generalized for cross-country transfer:
 | "Excise taxes" | "Indirect taxes / consumption taxes" | Terminology varies (VAT, GST, excise) |
 | "Executive actions" | "Executive/administrative orders" | Presidential decrees, ministerial orders |
 
-### 3.3 Anticipated LLM Challenges
+### 4.3 Anticipated LLM Challenges
 
 Based on H&K error analysis findings and our knowledge of the R&R domain:
 
@@ -467,7 +653,7 @@ Claude likely has knowledge of R&R's work from pretraining. This creates a risk 
 
 *Mitigation*: Test with fictional country-agnostic examples; Tests VI/VII will reveal reliance on background knowledge; LOOCV inherently tests generalization since the held-out act's classification must come from codebook application, not memorization.
 
-### 3.4 Codebook Development Sequence
+### 4.4 Codebook Development Sequence
 
 **Order**: C1 → C2 → C3 → C4
 
