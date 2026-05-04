@@ -418,21 +418,49 @@ run_c2b_behavioral_tests_s1 <- function(codebook,
                   if (test_ii$pass) "PASS" else "FAIL",
                   test_ii$n_correct, test_ii$n_total))
 
-  # Test III: Example Recovery — SKIPPED (no examples in C2b codebook)
-  message("  Test III: Example Recovery... SKIPPED (no examples in codebook)")
-  test_iii <- list(
-    test = "III_example_recovery",
-    pass = TRUE,
-    n_correct = 0L,
-    n_total = 0L,
-    rate = 1.0,
-    threshold = 1.0,
-    details = tibble::tibble(
-      class = character(), example_type = character(), example_idx = integer(),
-      true_label = character(), pred_label = character(), correct = logical()
-    ),
-    skipped = TRUE
-  )
+  # Test III: Example Recovery — conditional on whether codebook has examples
+  has_examples <- !is.null(codebook$examples) && length(codebook$examples) > 0
+
+  if (has_examples) {
+    message(sprintf("  Test III: Example Recovery (n=%d)...",
+                    length(codebook$examples)))
+    test_iii <- test_c2b_example_recovery(codebook, model,
+                                          max_tokens = max_tokens,
+                                          provider = provider,
+                                          base_url = base_url,
+                                          api_key = api_key)
+    message(sprintf("    %s (%d/%d correct)",
+                    if (test_iii$pass) "PASS" else "FAIL",
+                    test_iii$n_correct, test_iii$n_total))
+  } else {
+    message("  Test III: Example Recovery... SKIPPED (no examples in codebook)")
+    test_iii <- list(
+      test = "III_example_recovery",
+      pass = TRUE,
+      n_correct = 0L,
+      n_total = 0L,
+      rate = 1.0,
+      threshold = 1.0,
+      details = tibble::tibble(
+        example_idx = integer(),
+        act_name = character(),
+        expected_enacted = logical(),
+        expected_exogenous = character(),
+        expected_sign = character(),
+        expected_quarters = character(),
+        pred_enacted = logical(),
+        pred_exogenous = character(),
+        pred_sign = character(),
+        pred_quarters = character(),
+        enacted_correct = logical(),
+        exo_correct = logical(),
+        sign_correct = logical(),
+        quarter_correct = logical(),
+        correct = logical()
+      ),
+      skipped = TRUE
+    )
+  }
 
   # Test IV: Order Invariance
   message(sprintf("  Test IV: Order Invariance (n=%d)...", length(test_evidence_sets)))

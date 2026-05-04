@@ -690,6 +690,32 @@ test_c2b_legal_outputs <- function(codebook,
 }
 
 
+#' Set equality on quarter character vectors
+#'
+#' Used by C2b tests that compare predicted vs. expected `enacted_quarter[]`.
+#' Empty vectors match only when both sides are empty.
+#'
+#' @param a Character vector or NULL
+#' @param b Character vector or NULL
+#' @return Logical scalar
+#' @keywords internal
+quarters_equal <- function(a, b) {
+  a <- if (is.null(a)) character(0) else as.character(a)
+  b <- if (is.null(b)) character(0) else as.character(b)
+  identical(sort(unique(a)), sort(unique(b)))
+}
+
+
+#' Format a quarter vector for human-readable display in result tibbles
+#'
+#' @param x Character vector of quarter strings
+#' @return Character scalar (e.g., "[1986-Q1,1986-Q2]" or "[]")
+#' @keywords internal
+fmt_quarters <- function(x) {
+  if (length(x) == 0) "[]" else paste0("[", paste(x, collapse = ","), "]")
+}
+
+
 #' Test II: C2b Schema Recovery (v0.8.0)
 #'
 #' For each synthetic evidence set with known expected `exogenous`, `sign`,
@@ -721,17 +747,6 @@ test_c2b_schema_recovery <- function(codebook,
                                      base_url = NULL,
                                      api_key = NULL) {
   system_prompt <- construct_codebook_prompt(codebook)
-
-  # Helper: set equality on quarter character vectors
-  quarters_equal <- function(a, b) {
-    a <- if (is.null(a)) character(0) else as.character(a)
-    b <- if (is.null(b)) character(0) else as.character(b)
-    identical(sort(unique(a)), sort(unique(b)))
-  }
-
-  fmt_quarters <- function(x) {
-    if (length(x) == 0) "[]" else paste0("[", paste(x, collapse = ","), "]")
-  }
 
   results <- purrr::map(seq_along(test_evidence_sets), function(i) {
     es <- test_evidence_sets[[i]]
@@ -811,6 +826,136 @@ test_c2b_schema_recovery <- function(codebook,
     rate = n_correct / nrow(details),
     threshold = 1.0,
     details = details
+  )
+}
+
+
+#' Test III: C2b Example Recovery (v0.8.0)
+#'
+#' Memorization-style test for codebooks with worked examples. For each
+#' example in `codebook$examples`, presents the example's `input` block as a
+#' recall-framed user message and checks whether the model returns the
+#' `output` block listed alongside it. Compares `{enacted, exogenous, sign,
+#' enacted_quarter}`; free-form fields (`confidence`, `reasoning`) are not
+#' compared. Pass criterion: 100% of examples correct on all four dimensions.
+#'
+#' Mirrors the recall framing of `test_example_recovery()` for class-based
+#' codebooks (C1). C2b's flat top-level `examples` array and multi-field
+#' output schema require a separate implementation.
+#'
+#' @param codebook A validated C2b codebook object with non-empty `examples`
+#' @param model Character model ID
+#' @param max_tokens Integer max output tokens
+#' @param provider Character provider name
+#' @param base_url Optional API base URL
+#' @param api_key Optional API key
+#' @return List with pass, n_correct, n_total, rate, threshold, details
+#' @export
+test_c2b_example_recovery <- function(codebook,
+                                      model = "claude-haiku-4-5-20251001",
+                                      max_tokens = 1024,
+                                      provider = "anthropic",
+                                      base_url = NULL,
+                                      api_key = NULL) {
+  system_prompt <- construct_codebook_prompt(codebook)
+
+  recall_prefix <- paste0(
+    "The following input appears verbatim as an example in the codebook. ",
+    "Recall the output the codebook associates with it.\n\n"
+  )
+
+  results <- purrr::map(seq_along(codebook$examples), function(i) {
+    ex <- codebook$examples[[i]]
+
+    if (is.null(ex$input) || is.null(ex$output)) {
+      stop(sprintf(
+        "codebook$examples[[%d]] missing input/output blocks",
+        i
+      ))
+    }
+
+    user_msg <- paste0(
+      recall_prefix,
+      format_c2b_input(
+        ex$input$act_name, ex$input$year, ex$input$evidence,
+        ex$input$enacted_signals %||% list(),
+        timing_signals = ex$input$timing_signals %||% list()
+      )
+    )
+
+    parsed <- tryCatch({
+      call_codebook_generic(
+        user_message = user_msg,
+        codebook = codebook,
+        model = model,
+        system_prompt = system_prompt,
+        max_tokens = max_tokens,
+        temperature = 0,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key
+      )
+    }, error = function(e) {
+      list(error = e$message, raw_response = NA_character_)
+    })
+
+    validation <- validate_c2b_output(parsed)
+
+    pred_enacted <- if (validation$valid) parsed$enacted else NA
+    pred_exo <- if (validation$valid) parsed$exogenous else NA_character_
+    pred_sign <- if (validation$valid) parsed$sign else NA_character_
+
+    pred_quarters <- character(0)
+    if (validation$valid && !is.null(parsed$enacted_quarter)) {
+      pq <- parsed$enacted_quarter
+      if (is.list(pq)) pq <- unlist(pq, use.names = FALSE)
+      if (length(pq) > 0) pred_quarters <- as.character(pq)
+    }
+
+    expected_quarters <- ex$output$enacted_quarter %||% character(0)
+    if (is.list(expected_quarters)) {
+      expected_quarters <- unlist(expected_quarters, use.names = FALSE)
+    }
+    expected_quarters <- as.character(expected_quarters)
+
+    enacted_correct <- identical(as.logical(pred_enacted),
+                                 as.logical(ex$output$enacted))
+    exo_correct <- identical(pred_exo, ex$output$exogenous)
+    sign_correct <- identical(pred_sign, ex$output$sign)
+    quarter_correct <- quarters_equal(pred_quarters, expected_quarters)
+
+    tibble::tibble(
+      example_idx = i,
+      act_name = ex$input$act_name %||% NA_character_,
+      expected_enacted = ex$output$enacted,
+      expected_exogenous = ex$output$exogenous,
+      expected_sign = ex$output$sign,
+      expected_quarters = fmt_quarters(expected_quarters),
+      pred_enacted = pred_enacted,
+      pred_exogenous = pred_exo,
+      pred_sign = pred_sign,
+      pred_quarters = fmt_quarters(pred_quarters),
+      enacted_correct = enacted_correct,
+      exo_correct = exo_correct,
+      sign_correct = sign_correct,
+      quarter_correct = quarter_correct,
+      correct = enacted_correct && exo_correct && sign_correct && quarter_correct
+    )
+  })
+
+  details <- dplyr::bind_rows(results)
+  n_correct <- sum(details$correct)
+  n_total <- nrow(details)
+
+  list(
+    test = "III_example_recovery",
+    pass = n_correct == n_total,
+    n_correct = n_correct,
+    n_total = n_total,
+    rate = if (n_total > 0) n_correct / n_total else 1.0,
+    threshold = 1.0,
+    details = details,
+    skipped = FALSE
   )
 }
 
