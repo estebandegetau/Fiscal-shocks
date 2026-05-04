@@ -4948,3 +4948,115 @@ iterations:
       C2b production codebook. Document the v0.6.1 → v0.7.0 → v0.7.1
       path in the strategy doc as the audit trail for "stability
       first, precision earned back without re-introducing overfit".
+  - iteration: 41
+    codebook_version: "0.8.0"
+    date: "2026-05-04"
+    git_commit: "51be788"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      Runner fix only — no codebook YAML changes. Made Test III
+      (Example Recovery) conditional on `codebook$examples` instead
+      of hard-coded skipped. Background: the C2b S1 runner at
+      R/c2_codebook_stage_1.R hard-coded Test III to
+      `skipped=TRUE, n_total=0` since v0.7.0 (the minimal
+      Das-et-al. prompt with no examples). v0.8.0 (commit 922c3c0)
+      added 5 worked examples back to prompts/c2b_classification.yml
+      (lines 97–216), but the runner was not updated, so prior
+      v0.8.0 S1 runs reported PASS without ever testing the
+      codebook's worked examples. Patch (a) hoisted `quarters_equal`
+      and `fmt_quarters` from inside `test_c2b_schema_recovery` to
+      file-scope helpers in R/c2_behavioral_tests.R (pure refactor);
+      (b) added `test_c2b_example_recovery()` that iterates
+      codebook$examples, presents each input via
+      format_c2b_input() with recall framing, and compares returned
+      {enacted, exogenous, sign, enacted_quarter} against the
+      example's output block; (c) replaced the hard-coded skip in
+      R/c2_codebook_stage_1.R:421-435 with a `has_examples`
+      conditional that mirrors the C1 pattern. Pre-edit smoke tests
+      (no API): file scope helpers, conditional dispatch on real
+      v0.8.0 codebook (TRUE branch) and synthetic empty-examples
+      copy (FALSE branch) all verified. End-to-end re-run of
+      c2b_s1_results: 17 API calls (6 Test I + 6 Test II + 5 Test
+      III + Test IV skipped by no-classes design).
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_schema_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          n_correct: 5
+          n_total: 5
+          per_example_correct:
+            - example_idx: 1
+              act_name: "Example Long-Run Rate Reduction Act"
+              all_dimensions_correct: true
+            - example_idx: 2
+              act_name: "Example Recession Relief Act"
+              all_dimensions_correct: true
+            - example_idx: 3
+              act_name: "Example Defense Financing Revenue Act"
+              all_dimensions_correct: true
+            - example_idx: 4
+              act_name: "Example Inherited Deficit Reduction Act"
+              all_dimensions_correct: true
+            - example_idx: 5
+              act_name: "Example Excess Profits Tax Act"
+              all_dimensions_correct: true
+        - test: "IV_order_invariance"
+          value: null
+          threshold: 0.0500
+          pass: true
+          skipped: true
+          skip_reason: "no classes block in v0.7.0+ minimal codebook"
+      n_evidence_sets: 6
+      n_examples: 5
+    interpretation: >
+      S1 passes overall, including the previously-untested Test III
+      for the 5 worked examples. Per-example breakdown shows the
+      model recalls all 4 dimensions (enacted, exogenous, sign,
+      enacted_quarter) exactly for every example — including the
+      Q1-midpoint boundary case (Example 2: Feb 17 effective → Q2,
+      not Q1) and the R&R standard-series rule (Example 5: retroactive
+      excess-profits levy collapses to 1951-Q1 implementation
+      quarter, no separate retroactive entries). This is the
+      memorization floor — a precondition for trusting the codebook
+      on real chunks, not evidence of generalization. The clean PASS
+      on Test III also confirms the 5 worked examples are
+      internally consistent under the v0.8.0 system prompt: nothing
+      in the prose definitions contradicts the worked examples.
+      Test IV remains skipped by design (no classes in v0.7.0+
+      minimal architecture); the c2b_evidence_shuffle_diagnostic
+      supersedes it for stability checks. Caveat: Test III's recall
+      framing ("appears verbatim — recall the output") plus the
+      fact that the evidence redundantly carries the answer means
+      this is closer to a "can the model read?" check than a true
+      memorization probe. That's the same behavior as C1's
+      analogous test and adequate for an S1 floor — the real
+      generalization test is S2.
+    decision: >
+      Proceed to S2 on v0.8.0. Run c2_s2_results and c2_s2_eval
+      against the v0.8.0 codebook to measure the new headline
+      metrics: Exogenous Precision ≥85% (binary), Sign Accuracy on
+      True-Exogenous ≥90%, plus the new timing accuracy gates
+      introduced by v0.8.0's `enacted_quarter[]` field. v0.7.0's
+      iter-39 baseline (exogenous precision 0.500) is the floor;
+      v0.6.1's iter-32 baseline (0.812) is the ceiling, but
+      reaching it without re-introducing the v0.6.x F-A overfit
+      (gap −0.333 at iter 36) is the real bar. Open question:
+      whether to also re-run c2b_evidence_shuffle_diagnostic on
+      v0.8.0 — iter 40 ran it on v0.7.0 (gap = 0.000, PASS) and
+      v0.8.0 added the timing extraction and the
+      mixed-component conservative rule, both of which could
+      plausibly shift the F-A stability gap. Cost is ~99 calls
+      (33 acts × 3 shuffles); defer until S2 results are in to
+      decide whether the run is informative.
