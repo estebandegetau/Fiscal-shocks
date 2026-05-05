@@ -37,16 +37,17 @@ The project progresses through four phases. Each phase builds on the previous on
 
 ## The Complete R&R Pipeline
 
-The Romer & Romer methodology consists of 6 steps (RR1-RR6). RR2 and RR5 are implemented as LLM codebooks (C1 and C2); RR3 and RR4 are folded into C2b alongside motivation classification (Das et al. 2026 framing — see Section 2 of `docs/literature_review.md`); RR1 and RR6 are data engineering tasks.
+The Romer & Romer methodology consists of 6 steps (RR1-RR6). RR2 and RR5 are implemented as LLM codebooks (C1 and C2); RR3 (sign of effect on fiscal liabilities, binary direction) is folded into C2b alongside motivation classification; RR4 (implementation timing) is deferred to a separate codebook C3 (planned, not yet built); full-magnitude RR3 (dollar amounts) is deferred to C4 (planned, not yet built); RR1 and RR6 are data engineering tasks. Following Das et al. (2026, IMF WP/26/43), the deliverable is a signed quarterly proxy `z ∈ {-1, 0, +1}` rather than a dollar-magnitude reproduction of R&R's series; full magnitude is captured by C4 once built, but is not required for the headline shock series.
 
 | R&R Step | Task | Implementation | Output |
 |----------|------|----------------|--------|
 | **RR1: Source Compilation** | Gather fiscal policy documents | Data engineering | Document corpus |
 | **RR2: Measure ID** | Identify fiscal measures meeting "significant mention" rule | Codebook C1 (LLM) | Binary + extraction |
-| **RR3: Quantification** | Sign of effect on fiscal liabilities (binary direction, not dollar amount) | Folded into C2b (LLM) | `sign ∈ {+, -, 0, UNCLEAR}` per act |
-| **RR4: Timing** | Extract implementation quarter(s) using midpoint rule | Folded into C2b (LLM) | `enacted_quarter[]` per act |
-| **RR5: Motivation** | Classify motivation and filter exogenous shocks | Codebook C2 (LLM) | Exogenous flag |
-| **RR6: Aggregation** | Cross-tabulate exogenous-flagged acts by `enacted_quarter[]`; produce signed quarterly proxy `z ∈ {-1, 0, +1}` | Data engineering | Shock time series |
+| **RR3a: Sign** | Sign of effect on fiscal liabilities (binary direction, not dollar amount) | Folded into C2b (LLM) | `sign ∈ {increase, decrease, no_change}` per act |
+| **RR3b: Magnitude** | Full dollar magnitude of effect | Codebook C4 (LLM, **planned — not yet built**) | Magnitude per act |
+| **RR4: Timing** | Extract implementation quarter(s) using midpoint rule | Codebook C3 (LLM, **planned — not yet built**) | `enacted_quarter[]` per act |
+| **RR5: Motivation** | Classify 4-way R&R motivation and filter exogenous shocks | Codebook C2 (LLM) | 4-way label + derived `exogenous` |
+| **RR6: Aggregation** | Cross-tabulate exogenous-flagged acts by `enacted_quarter[]`; produce signed quarterly proxy `z ∈ {-1, 0, +1}` | Data engineering | Shock time series (depends on C3) |
 
 ---
 
@@ -97,16 +98,18 @@ Known act recall (expanded year window) is **84.8%** (39/46 acts). The 7 missing
 
 ---
 
-## Architecture: 2 Codebooks × 5 Stages
+## Architecture: 4 Codebooks × 5 Stages (C1+C2 implemented; C3+C4 planned)
 
-### The Two Codebooks (R&R Steps RR2 and RR3-RR5)
+### The Four Codebooks (R&R Steps RR2-RR5)
 
-C2 is internally a two-stage codebook (C2a evidence extraction → C2b act-level classification) but counts as a single codebook for stage-gating purposes.
+C2 is internally a two-stage codebook (C2a evidence extraction → C2b act-level classification) but counts as a single codebook for stage-gating purposes. C3 and C4 are planned but not yet built; both will consume C2a's evidence pool (C2a v0.4.0 already extracts `timing_signals[]` for use by C3).
 
-| Codebook | R&R Step | Task | Output Type |
-|----------|----------|------|-------------|
-| **C1: Measure ID** | RR2 | Does passage describe a fiscal measure meeting "significant mention" rule? | Binary + extraction |
-| **C2: Motivation + Sign + Timing** | RR3, RR4, RR5 | Classify whether the act's motivation is exogenous, the directional effect on fiscal liabilities, and the implementation quarter(s) | Exogenous flag + sign + `enacted_quarter[]` |
+| Codebook | R&R Step | Task | Output Type | Status |
+|----------|----------|------|-------------|--------|
+| **C1: Measure ID** | RR2 | Does passage describe a fiscal measure meeting "significant mention" rule? | Binary + extraction | ✅ S3 PASS (v0.6.0) |
+| **C2: Motivation + Sign** | RR3 (sign), RR5 (motivation) | 4-way R&R motivation classification (`SPENDING_DRIVEN`, `COUNTERCYCLICAL`, `DEFICIT_DRIVEN`, `LONG_RUN`); `exogenous` derived as `motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`; sign of effect on fiscal liabilities | 4-way label + sign + `enacted` | 🔄 S0 complete (v0.9.0); S1 next |
+| **C3: Timing** | RR4 | Extract implementation quarter(s) using midpoint rule, with phased and retroactive handling | `enacted_quarter[]` per act | ⏸ Planned — not yet built |
+| **C4: Magnitude** | RR3b | Extract full dollar magnitude of effect on fiscal liabilities | Magnitude per act (per quarter when phased) | ⏸ Planned — not yet built |
 
 ### H&K Stages (Applied to Each Codebook)
 
@@ -126,15 +129,19 @@ Fine-tuning is a **last resort** that should only be triggered based on S3 error
 
 ## Sequencing Strategy
 
-**Order:** C1 → C2 → RR6 (aggregation).
+**Order:** C1 → C2 → C3 (planned) → C4 (planned) → RR6 (aggregation).
 
 **Rationale:**
 
-In production, C1 feeds C2, which feeds RR6 aggregation:
+In production, C1 feeds C2, which feeds C3 and C4 (each consuming C2a's evidence pool), which feed RR6 aggregation:
 
 ```
-Documents → C1 (Measure ID) → C2 (Motivation + Sign + Timing) → RR6 Aggregation
+Documents → C1 (Measure ID) → C2 (Motivation + Sign) → C3 (Timing, planned) → RR6 Aggregation
+                                                    ↘
+                                                     C4 (Magnitude, planned)
 ```
+
+The headline shock series (RR6 output) requires C1 + C2 + C3. C4 is needed only for full dollar-magnitude reproduction of R&R's series, not for the binary-direction proxy that is our primary deliverable.
 
 **Note on C1→C2 handoff.** C2 receives C1-filtered chunks (`FISCAL_MEASURE` with `discusses_motivation = TRUE`) via C1 v0.6.0's extra_output_fields, not raw heuristic tier labels. C2 is internally two-stage (C2a evidence extraction per chunk → C2b act-level classification from extracted evidence). This compresses signal and fits any context window. See C2 Blueprint for details.
 
@@ -157,12 +164,15 @@ Developing C1 before C2 allows us to:
 | C1: Measure ID | Tier 1 Recall | ≥95% | Diagnostic benchmark (label noise limits hard gating) |
 | C1: Measure ID | Combined Recall (Tier 1+2) | ≥90% | Diagnostic benchmark (Tier 2 labels are noisy) |
 | C1: Measure ID | Precision | ≥70% | Diagnostic benchmark (FPs include unlabeled real acts) |
-| C2: Motivation + Sign + Timing | Exogenous Precision | ≥85% | Critical for shock series (binary) |
-| C2: Motivation + Sign + Timing | Sign Accuracy on True-Exogenous | ≥90% | Sign correctness on the deliverable population |
-| C2: Motivation + Sign + Timing | Primary-quarter exact match | ≥85% | Quarter accuracy (parallels old C3 target) |
-| C2: Motivation + Sign + Timing | Primary-quarter ±1 quarter | ≥95% | Acceptable tolerance |
-| C2: Motivation + Sign + Timing | Phased-act detection rate | ≥70% | Diagnostic — fraction of multi-quarter acts where C2b returns ≥2 quarters |
-| C2: Motivation + Sign + Timing | Quarter-set Jaccard | reported | Diagnostic — mean over acts |
+| C2: Motivation + Sign | Exogenous Precision | ≥85% | Critical for shock series (binary, derived from 4-way label as `motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`) |
+| C2: Motivation + Sign | Sign Accuracy on True-Exogenous | ≥90% | Sign correctness on the deliverable population |
+| C2: Motivation + Sign | Motivation Weighted F1 | ≥0.70 | Secondary diagnostic on the 4-way classification (returns under v0.9.0 with the `classes` block) |
+| C3: Timing (planned) | Primary-quarter exact match | ≥85% | Quarter accuracy — to be measured when C3 is built |
+| C3: Timing (planned) | Primary-quarter ±1 quarter | ≥95% | Acceptable tolerance — to be measured when C3 is built |
+| C3: Timing (planned) | Phased-act detection rate | ≥70% | Diagnostic — fraction of multi-quarter acts where C3 returns ≥2 quarters |
+| C3: Timing (planned) | Quarter-set Jaccard | reported | Diagnostic — mean over acts |
+| C4: Magnitude (planned) | MAPE | <30% | Diagnostic — to be measured when C4 is built |
+| C4: Magnitude (planned) | Sign Accuracy | ≥95% | Cross-check against C2's sign output |
 
 **Note on C1 metrics.** C1 metrics are diagnostic benchmarks, not hard gates. The ground truth label set (44 acts identified in chunks via name matching) is noisy: Tier 2 matching misses acronyms and compound names, and FPs include real fiscal measures absent from the 44-act set (H&K Error Category F). S3 manual error audit is the actual stage gate for C1.
 
@@ -247,9 +257,11 @@ Each R&R step is implemented and validated independently before proceeding to th
 |------|-------------|-------------|
 | 1 | ✅ Source compilation complete (360 docs, 104K pages, 4 sources) | `notebooks/verify_body.qmd` updated |
 | 2 | ✅ C1 (Measure ID): S0-S3 complete. May require adjustments based on C2 development | `notebooks/c1_measure_id.qmd` |
-| 3 | Implement C2 (Motivation + Sign + Timing) through H&K S0-S3 | `notebooks/c2_motivation.qmd` |
-| 4 | Implement RR6 aggregation, validate against `us_shocks.csv` (extensive-margin, sign correlation, quarter accuracy) | `notebooks/rr6_aggregation.qmd` |
-| 5 | End-to-end pipeline integration and testing | `notebooks/pipeline_integration.qmd` |
+| 3 | Implement C2 (Motivation + Sign) through H&K S0-S3 | `notebooks/c2_motivation.qmd` |
+| 4 | Implement C3 (Timing) through H&K S0-S3 — planned, not yet started | `notebooks/c3_timing.qmd` |
+| 5 | Implement C4 (Magnitude) through H&K S0-S3 — planned, not yet started; optional for headline shock series | `notebooks/c4_magnitude.qmd` |
+| 6 | Implement RR6 aggregation, validate against `us_shocks.csv` (extensive-margin, sign correlation, quarter accuracy) | `notebooks/rr6_aggregation.qmd` |
+| 7 | End-to-end pipeline integration and testing | `notebooks/pipeline_integration.qmd` |
 
 ### C1: Measure Identification Blueprint
 
@@ -281,42 +293,35 @@ Chunks with relevance keys but no Tier 1/2 match are excluded from evaluation (a
 
 **Iteration Strategy.** If combined recall <90%: examine FN chunks for context dilution patterns; consider shorter chunk windows or multi-pass detection. If Tier 1 recall <95%: check substring matching in tier identification. If precision <70%: strengthen negative clarifications for fiscal-vocabulary-without-act patterns; add chunk-level negative examples to few-shot.
 
-### C2: Motivation + Sign + Timing Blueprint
+### C2: Motivation + Sign Blueprint
 
-**Design Rationale (v0.8.0).** C2 outputs a signed exogenous flag *with implementation quarter(s)* per act, matching the proxy convention of Das et al. (2026, IMF WP/26/43): for each act, it returns `{enacted, exogenous, sign, enacted_quarter[]}` plus a confidence and short reasoning. The 4-class R&R motivation taxonomy (`SPENDING_DRIVEN`, `COUNTERCYCLICAL`, `DEFICIT_DRIVEN`, `LONG_RUN`) is preserved as a diagnostic concept used in error analysis and aligned-data ground truth, but is not a codebook output. This collapse is motivated by three converging signals: (a) iter 35's structural-ceiling diagnosis (wF1 ≈ 0.66 under any v0.5–v0.6.x rule density on Haiku); (b) iter 36's evidence-shuffle leakage diagnostic showing F-cluster acts are order-fragile under v0.6.1's dense decision rules (F–A median-stability gap = −0.333); (c) Das et al.'s demonstration that an off-the-shelf, fixed, ~250-word prompt achieves 87.5–95% direction agreement and 94–97% motivation-category agreement against expert RR19 coding. The deliverable framing — "the signed exogenous shock series feeds RR6 and downstream multipliers" — matches Das et al.'s empirical target.
+**Design Rationale (v0.9.0).** C2 outputs a 4-way R&R motivation classification per act, plus a sign of effect on fiscal liabilities, an `enacted` boolean, a confidence label, and a brief reasoning that cites the decisive R&R criterion. The four motivation labels are R&R's own (`SPENDING_DRIVEN`, `COUNTERCYCLICAL`, `DEFICIT_DRIVEN`, `LONG_RUN`); `exogenous` is a derived metric (`motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`) rather than a codebook output. v0.9.0 reverses two earlier architectural decisions: (i) the v0.7.0 binary collapse (`exogenous` as a primary output), which the iter 39/iter 42 S2 runs showed was structurally underpowered (exogenous precision 0.500 — identical at v0.7.0 and v0.8.0); and (ii) the v0.8.0 folding of timing into C2b, which is now reverted — timing returns to a separate downstream codebook (C3, planned but not yet built). What did *not* reverse from v0.8.0: sign and `enacted` stay inside C2b (sign accuracy 0.957 PASS at iter 42 — no regression intended). The unchanged signal: v0.6.x's denser 4-way design hit a structural ceiling (wF1 ≈ 0.66) and overfit (iter 36 evidence-shuffle F–A median-stability gap = −0.333). v0.9.0's hypothesis is that the v0.6.x failure was rule-density and overfit-to-test-set, not class-structure per se: a 4-way design grounded in R&R's own language (made country-agnostic), with edge-case handling embedded inside class clarifications rather than as detached rule paragraphs, and with two specific guardrails targeting v0.8.0's documented failure modes (LONG_RUN recall collapse to 1/15; SPENDING_DRIVEN false positives 5/10), should both recover precision over the 0.500 floor and keep the F–A gap above −0.10.
 
-**Why timing is folded into C2b (not its own codebook).** Das et al. assign timing via the *report's* publication quarter rather than asking the LLM to extract an implementation quarter. That choice does not transfer to our setting: we have many documents per act (a 1946 act gets discussed in the 1950 ERP, the 1962 Treasury report, etc.), so document-date aggregation would smear each act's shock across every quarter where it gets mentioned. C2b already sees all chunks for an act across time — it should *read* the implementation quarter from the evidence pool rather than have RR6 collapse to document dates. A separate C3 codebook is unnecessary because the evidence required (effective dates, signing dates, retroactive language, phased steps) is in the same chunks C2a is already extracting from. A separate C4 magnitude codebook is dropped because Das et al.'s `z ∈ {-1, 0, +1}` proxy is the empirically-validated deliverable for downstream BVARs (their internal-instrument framing — see `docs/literature_review.md` Section 2).
+**Two-stage architecture.** C2 keeps the C2a (per-chunk evidence extraction) → C2b (act-level classification) split. **C2a v0.4.0** is unchanged: a pure extraction codebook (no `classes` block) that emits `evidence[]` (motivation quotes), `enacted_signals[]`, and `timing_signals[]` per chunk. The `timing_signals[]` array is preserved on the C2a side for use by the future C3 codebook; C2b v0.9.0 ignores it. **C2b v0.9.0** receives an act_name, year, evidence array, and enacted-status signals; it returns the v0.9.0 schema below. C3 (when built) and C4 (when built) will consume the same C2a evidence pool, reading `timing_signals[]` and motivation/magnitude evidence respectively.
 
-**Two-stage architecture.** C2 keeps the C2a (per-chunk evidence extraction) → C2b (act-level classification) split. **C2a v0.5.0** adds a `timing_signals[]` array (quotes naming effective dates, signing dates, retroactive language, phased steps) alongside the existing `evidence[]` and `enacted_signals[]`. **C2b v0.8.0** receives an act_name, year, evidence array, enacted-status signals, and now timing signals; it returns the v0.8.0 schema below. The C2a v0.4.0 → v0.5.0 schema change invalidates cached `c2a_evidence` (~$0.50 to re-run on Haiku for the test set).
-
-**Output schema (v0.8.0).** `{enacted: bool, exogenous: "TRUE"|"FALSE"|"UNCLEAR", sign: "+"|"-"|"0"|"UNCLEAR", enacted_quarter: ["YYYY-QN", ...], confidence: HIGH|MEDIUM|LOW, reasoning: str}`. Sign refers to the change in fiscal liabilities (positive = tax increase, negative = tax cut, zero = no net effect, UNCLEAR = direction not determinable). `enacted_quarter` is an array of `YYYY-Q[1-4]` strings; empty array allowed when no implementation timing is determinable from evidence. Multi-component acts that mix exogenous and endogenous motives in roughly comparable shares return `exogenous: UNCLEAR` rather than an inferred dominant — the conservative-aggregation rule replaces v0.6.1's DR3 + tiebreaker hierarchy. Phased acts emit multiple quarters; retroactive offsets (e.g., Revenue Act of 1948: -10B/Q2 then +5B/Q3) are collapsed to the dominant act-level sign and the implementation quarter set — per-quarter sign is a deferred v0.9.0 extension.
+**Output schema (v0.9.0).** `{label: SPENDING_DRIVEN|COUNTERCYCLICAL|DEFICIT_DRIVEN|LONG_RUN, enacted: bool, sign: increase|decrease|no_change, confidence: low|medium|high, reasoning: str}`. Exactly one motivation label per act; mixed-motivation acts follow R&R's "predominant motivation cited at time of passage" rule rather than a multi-label array. Sign refers to the net change in fiscal liabilities (increase = revenue-raising, decrease = revenue-reducing, no_change = revenue-neutral reform). The `reasoning` field is required to cite the decisive R&R criterion (e.g., "applies countercyclical-vs-long-run test: stated motive is to raise potential output despite a recession context") rather than a free narrative. `exogenous` is *not* a codebook field; it is derived downstream as `label ∈ {DEFICIT_DRIVEN, LONG_RUN}`.
 
 **Input Architecture (unchanged).** C2 receives C1-filtered chunks as input: chunks classified as `FISCAL_MEASURE` with `discusses_motivation = TRUE` by C1 v0.6.0. Rationale: C1's output is a better proxy for "chunks containing motivation-relevant fiscal discussion" than heuristic tier labels, and has been expert-vetted through C1 S3 manual analysis (31A/6B/0E/3F — zero semantic errors). The `discusses_motivation` flag provides targeted compression (635 → 531 chunks, 83.6%).
 
-**Error Decomposition.** Using C1's `discusses_motivation` flags as the input filter enables decomposable error attribution: when C2 misclassifies, we can distinguish C1 filtering errors from C2 classification errors. For timing specifically, the two-stage architecture gives a similar decomposition: when `enacted_quarter[]` is wrong, we can inspect whether C2a's `timing_signals[]` array is sparse (C2a recall problem) or dense but C2b chose wrong (C2b reasoning problem). The S2 sensitivity condition (relax `discusses_motivation`) tests the C1 dimension.
+**Error Decomposition.** Using C1's `discusses_motivation` flags as the input filter enables decomposable error attribution: when C2 misclassifies, we can distinguish C1 filtering errors from C2 classification errors. The S2 sensitivity condition (relax `discusses_motivation`) tests the C1 dimension. The two-stage C2a → C2b split additionally separates C2a evidence-extraction failures from C2b reasoning failures.
 
-**S0 Codebook Design (v0.8.0).** Minimal Das-et-al.-style prompt extended with timing language. Single instructions block with: definition of exogenous (long-run, structural reform, inherited deficit, treaty/rule compliance), definition of endogenous (response to current macro conditions or contemporaneous spending), one critical clarifier verbatim from Das et al. ("Acknowledging current conditions does not by itself imply endogeneity if the stated motive is explicitly non-cyclical"), conservative aggregation rule for mixed components, sign convention, enacted-status determination, and a new paragraph on **timing extraction**: apply R&R's midpoint rule (effective date before quarter midpoint → that quarter; after → next quarter), list each phased step as a separate entry, treat retroactive components per the standard series (implementation quarter only). Four short illustrative examples covering the four corners of the {exogenous, sign} schema, plus one timing-focused example (Excess Profits Tax 1950 retroactive case from companion paper p.~4227). No per-class definitions, no DR1–DR4, no BCR1–BCR4, no share/dominant tiebreaker. Country-agnostic by construction.
+**S0 Codebook Design (v0.9.0).** A reviewer reading C2b v0.9.0 should be able to recognise every substantive sentence as coming from R&R. The codebook follows the H&K semi-structured format used by C1 v0.6.0: top-level `instructions`, then a `classes[]` array with `label`, `label_definition`, `clarification[]`, and `negative_clarification[]` per class; `extra_output_fields` for `enacted`, `sign`, `confidence`, `reasoning`; and an `output_instructions` block. Verbatim R&R phrases are quoted where they exist ("return growth to normal," "raise growth above normal," "raise potential output," "inherited deficit," "actuarial soundness," "smaller government," "fairness," "improved incentives"). Country-agnostic by construction — no US institutional names ("Ways and Means," "ERP," "Treasury Annual Report") appear anywhere in the prompt. No worked examples in the first cut (deliberate constraint to avoid memorisation effects; revisit only if S2 underperforms). No standalone DR/BCR rule ladders — edge-case guidance lives inside each class's `clarification[]` and `negative_clarification[]` (the iter 36 F–A overfit diagnostic showed detached rule paragraphs induce overfit). Two specific guardrails are embedded inside class bodies: (i) inside LONG_RUN, a timing-of-decision clarification (act proposed in normal times remains long-run even if economy weakens by passage) plus the Das clarifier localised inside negative_clarification (mention of macro context ≠ countercyclical motive); (ii) inside SPENDING_DRIVEN, the 1-year temporal rule plus a negative_clarification stating that "structural" framing of a spending programme does not by itself make the financing tax exogenous.
 
-**S1 Behavioral Tests.** Test I (legal outputs): full schema validation against `{enacted, exogenous, sign, enacted_quarter[], confidence, reasoning}`, including array shape and `YYYY-QN` format for quarters. Test II (schema recovery, replacing definition recovery): synthetic evidence sets each with known expected `(exogenous, sign, enacted_quarter[])`; C2b must recover all three. New timing-specific Test II cases: (a) "signed October 22, 1986; effective January 1, 1987" → `["1987-Q1"]`; (b) "signed January 1951, retroactive to July 1950, ongoing $3.5B annual rate" → `["1951-Q1"]` per standard series. Test III (example recovery): skipped (no per-class examples to recover). Test IV (order invariance): skipped — degenerate without a `classes` block; legal-output stability is covered by Test I and the iter 36-style evidence-shuffle diagnostic.
+**S1 Behavioral Tests.** Test I (legal outputs): full schema validation on the v0.9.0 schema, including the four-label enum and the sign enum. Test II (definition recovery): synthetic evidence that paraphrases each R&R class definition; C2b must recover the correct label. Test III (in-context examples): N/A — codebook has no examples; runner skips per commit `51be788`. Test IV (order invariance): re-runs over original/reversed/shuffled class orderings, Fleiss κ > 0.8 with Landis-Koch interpretation. Test IV is now meaningful because v0.9.0 has a `classes` block (it was degenerate under v0.7.0/v0.8.0).
 
-**S2 Zero-Shot Eval.** Ground truth: `aligned_data` (39 acts after alignment filtering), with the existing `ground_truth_quarters` list-column (per `R/prepare_training_data.R::align_labels_shocks()` lines 51-60) supplying `change_in_liabilities_quarter` as the validation target (standard series; PV series deferred). Two evaluation conditions retained: (a) **Primary** — C1-filtered inputs through the two-stage pipeline. (b) **Sensitivity** — relax the `discusses_motivation` requirement to test whether C2 finds evidence C1 missed. Six headline metrics, with bootstrap 1000-resample 95% CIs on the first four:
+**S2 Zero-Shot Eval.** Ground truth: `aligned_data` (39 acts after alignment filtering). Two evaluation conditions retained: (a) **Primary** — C1-filtered inputs through the two-stage pipeline. (b) **Sensitivity** — relax the `discusses_motivation` requirement to test whether C2 finds evidence C1 missed. Three headline metrics, with bootstrap 1000-resample 95% CIs:
 
-- **Exogenous Precision** ≥ 85% (binary, TRUE-class precision; UNCLEAR predictions are abstentions, excluded from precision denominators)
-- **Sign Accuracy on True-Exogenous** ≥ 90% (denominator is the true-exogenous subset, since sign of endogenous acts does not enter the shock series; UNCLEAR pred_sign counts as incorrect)
-- **Primary-quarter exact match** ≥ 85% (predicted earliest quarter == R&R primary `change_in_liabilities_quarter`)
-- **Primary-quarter ±1 quarter** ≥ 95% (same with ±1 quarter tolerance)
-- **Phased-act detection rate** ≥ 70% (diagnostic — among acts with ≥2 ground-truth quarters, fraction where C2b returns ≥2 quarters)
-- **Quarter-set Jaccard** (diagnostic — `|pred ∩ true| / |pred ∪ true|` per act, mean across acts)
+- **Exogenous Precision** ≥ 85% (binary, derived; precision of the predicted-exogenous set against the true-exogenous set, where both are determined as `label ∈ {DEFICIT_DRIVEN, LONG_RUN}`)
+- **Sign Accuracy on True-Exogenous** ≥ 90% (denominator is the true-exogenous subset, since sign of endogenous acts does not enter the shock series)
+- **Motivation Weighted F1** ≥ 0.70 (secondary diagnostic on the 4-way classification; bootstrap CI reported)
 
-**Bootstrap resampling unit.** All bootstrap CIs are computed by resampling **at the act level** (the unit of independence; 39 acts in primary and sensitivity conditions). Per-act metrics — including per-act Jaccard for quarter-set comparison — are computed *before* resampling, then averaged across the resampled act draws. This avoids anti-conservative CIs that would result from treating quarters from the same phased act as independent observations. The phased-act detection rate has a smaller effective N (acts with ≥2 ground-truth quarters; approximately 8-12 of the 39 in the test set), and its CI is reported with that effective N noted alongside the point estimate.
+Floor to beat (v0.7.0/v0.8.0 baseline): exogenous precision 0.500. Ceiling to approach (v0.6.1, partly inflated by overfit): exogenous precision 0.812, motivation wF1 0.660. A 4×4 confusion matrix on motivation labels and the 2×2 derived-exogenous matrix are reported for transparency. Quarter-related metrics (primary-quarter exact match, ±1 quarter, phased-act detection rate, quarter-set Jaccard) are deferred to C3 when built — `aligned_data`'s `ground_truth_quarters` list-column remains available for that future evaluator and is preserved by `R/prepare_training_data.R::align_labels_shocks()` lines 51-60 for traceability.
 
-**Ground-truth preprocessing for quarter metrics.** The `ground_truth_quarters` list-column preserves R&R's `YYYY-MM` format (e.g., `1946-01` for 1946Q1) and retains *duplicate same-quarter rows* where R&R splits a single act's effect across multiple provisions in the same quarter (e.g., Tax Reform Act of 1969: two rows in 1971-Q1 from distinct provisions both effective that quarter). The C2 evaluator must (a) convert `YYYY-MM` → `YYYY-QN` via `Q = ceiling(month / 3)` before any string comparison against C2b's `enacted_quarter[]`, and (b) de-duplicate same-quarter rows within each act, since C2b's `enacted_quarter[]` is naturally a set of unique quarters. Without de-duplication, the Jaccard denominator inflates and `phased-act detection rate` over-counts the true number of distinct R&R quarters. This preprocessing happens in the evaluator (`R/c2_codebook_stage_2.R::evaluate_c2_classification()`), not in `align_labels_shocks()`, which faithfully preserves R&R's row structure for traceability.
+**Bootstrap resampling unit.** All bootstrap CIs are computed by resampling **at the act level** (the unit of independence; 39 acts in primary and sensitivity conditions). Per-act metrics are computed *before* resampling, then averaged across the resampled act draws.
 
-A joint diagnostic (`signed_exo_precision`: P(pred_exo == TRUE AND correct sign | true exogenous)) is also reported for transparency. Confusion matrices: 2×2 exogenous, 4×5 sign-on-true-exo (rows: pred_sign in {+, −, 0, UNCLEAR, NA}, columns: true_sign in {+, −, 0, UNCLEAR}); plus a `(pred_n_quarters, true_n_quarters)` distribution.
+**S3 Error Analysis Plan (v0.9.0).** Tests V–VII (exclusion criteria, generic labels, swapped labels) are now runnable because v0.9.0 has a `classes` block — they were degenerate under v0.7.0/v0.8.0 and are restored. Test V tests whether the model follows specific exclusion rules in the negative_clarifications. Test VI replaces label names with non-informative substitutes (LABEL_1, LABEL_2, …) to measure label-name reliance; given the semantically loaded R&R category names, expect substantial degradation — the magnitude of the drop quantifies how much the model is reasoning vs name-matching. Test VII permutes labels across definitions to test definition-following vs name-following. Stability analysis is also retained via the **evidence-shuffle diagnostic** (`c2b_evidence_shuffle_diagnostic` target): per-act fingerprint stability under k=3 deterministic permutations of the C2a evidence array. The fingerprint under v0.9.0 is `{label}|{sign}|{enacted}` (timing dropped). **Hard gate:** F–A median-stability gap > −0.10. Manual error review on misclassified acts (iter-30-style audit) is retained, classified under H&K A-F.
 
-**S3 Error Analysis Plan (v0.8.0).** Tests V–VII (exclusion criteria, generic labels, swapped labels) are degenerate without a `classes` block and are guarded to skip cleanly when the codebook has no classes. Stability analysis is delegated to the **evidence-shuffle diagnostic** (`c2b_evidence_shuffle_diagnostic` target): per-act fingerprint stability under k=3 deterministic permutations of the C2a evidence array. The fingerprint auto-detects codebook generation: v0.7.0+ → `{exogenous}|{sign}|{sorted-quarters}` for v0.8.0; legacy 4-class → `{sorted-categories}|{exogenous}`. F–A median-stability gap remains the overfit signal. Manual error review on misclassified acts (iter-30-style audit) is retained — for quarter mismatches, pull R&R's `Reasoning` column from `data/raw/us_shocks.csv` for the act and compare the LLM's stated reasoning against R&R's narrative explanation of the quarter assignment. Classify under H&K A-F.
-
-**Iteration Strategy.** If exogenous_precision < 0.81 (v0.6.1 baseline floor): investigate per-act regressions in `per_act_results`; consider folding back one specific clarifier at a time, preserving the minimalism principle. If sign_accuracy < 0.85: add a `direction_signals` array to C2a v0.5.x. If primary-quarter exact < 0.85: inspect whether C2a's `timing_signals[]` array is sparse for missed acts (C2a recall problem — re-tune C2a extraction language) or dense but C2b chose wrong (C2b reasoning problem — re-tune the timing paragraph in C2b). The two failure modes have different remedies. If sensitivity outperforms primary: relax C1's `discusses_motivation` filter rather than re-tune C2b.
+**Iteration Strategy.** If exogenous_precision < 0.500 (floor): the 4-way restoration has not improved on v0.7.0/v0.8.0; investigate whether the embedded guardrails are firing as intended via Test V. If F–A median-stability gap < −0.10: the design has overfit; reduce clarification specificity inside the class bodies (do *not* re-introduce detached rule paragraphs). If wF1 < 0.66: the 4-way distinction is no better than v0.6.x's ceiling on Haiku; consider whether worked examples (a v0.10 addition) are needed despite the memorisation risk. If sensitivity outperforms primary: relax C1's `discusses_motivation` filter rather than re-tune C2b. If sign_accuracy regresses below 0.90 from v0.8.0's 0.957: the rewrite has unintentionally affected sign reasoning; restore the explicit sign paragraph from v0.8.0 to the new codebook structure.
 
 ---
 
@@ -324,9 +329,11 @@ A joint diagnostic (`signed_exo_precision`: P(pred_exo == TRUE AND correct sign 
 
 ### Codebooks (`/prompts/`)
 
-- ✅ `c1_measure_id.yml`
-- ✅ `c2a_extraction.yml` — per-chunk motivation, enacted-status, and timing evidence extraction (v0.5.0)
-- ✅ `c2b_classification.yml` — act-level signed-exogenous classification with implementation quarter(s) (v0.8.0)
+- ✅ `c1_measure_id.yml` (v0.6.0)
+- ✅ `c2a_extraction.yml` — per-chunk motivation, enacted-status, and timing evidence extraction (v0.4.0; `timing_signals[]` retained for future C3)
+- ✅ `c2b_classification.yml` — act-level 4-way R&R motivation classification + sign + `enacted` (v0.9.0; `exogenous` derived as `motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`)
+- ⏸ `c3_timing.yml` — act-level implementation quarter extraction from C2a's `timing_signals[]` (planned, not yet built)
+- ⏸ `c4_magnitude.yml` — act-level dollar-magnitude extraction (planned, not yet built; optional for headline shock series)
 
 ### H&K Stage Functions (`/R/`)
 
@@ -346,7 +353,9 @@ A joint diagnostic (`signed_exo_precision`: P(pred_exo == TRUE AND correct sign 
 **New (create):**
 
 - ✅ `c1_measure_id.qmd`
-- `c2_motivation.qmd` — covers motivation, sign, and timing extraction
+- `c2_motivation.qmd` — covers 4-way motivation classification and sign extraction
+- `c3_timing.qmd` — covers timing extraction (planned, paired with C3 codebook)
+- `c4_magnitude.qmd` — covers dollar-magnitude extraction (planned, optional)
 - `rr6_aggregation.qmd`
 - `pipeline_integration.qmd`
 
@@ -398,9 +407,10 @@ The entire pipeline is designed for **country-agnostic transfer**. This means:
 
 | Component | Transfer Quality | Risk |
 |-----------|-----------------|------|
-| Motivation categories | High | Low |
-| Timing extraction (folded into C2b) | High | Low — date arithmetic and midpoint rule are universal |
+| Motivation categories (C2) | High | Low |
+| Timing extraction (C3, planned) | High | Low — date arithmetic and midpoint rule are universal |
 | Sign of effect (folded into C2b) | High | Low — direction labels generalize |
+| Magnitude extraction (C4, planned) | Medium | Currency normalisation and reporting conventions vary |
 | Legislative language | Low | High |
 
 ### Malaysia Adaptation Protocol
@@ -451,7 +461,7 @@ The entire pipeline is designed for **country-agnostic transfer**. This means:
 - **Explicit methodology references**: Implementing agents consult `docs/methods/` for details
 - **Incremental validation**: Each codebook validated before proceeding to next
 - **C2 two-stage architecture**: Evidence extraction per chunk (C2a), then act-level classification from extracted evidence (C2b) — fits any context window, compresses signal, enables C1/C2 error decomposition
-- **Timing and sign extraction folded into C2b** (Das et al.-inspired; replaces separate C3/C4 codebooks). Magnitude validated as binary direction (`sign ∈ {+, -, 0}`), not dollar amounts. Implementation quarter(s) extracted by C2b as `enacted_quarter[]` from the same evidence pool C2a feeds.
+- **Sign folded into C2b; timing and magnitude as separate downstream codebooks**: C2b v0.9.0 emits motivation (4-way) + sign + `enacted`. Timing returns to a planned C3 codebook (consuming C2a's `timing_signals[]`); full dollar magnitude returns to a planned C4 codebook. The 2026-05-02 decision to fold C3/C4 into C2b is partially reversed — sign stays, timing/magnitude leave. Rationale: v0.7.0/v0.8.0's binary-output design hit a 0.500 exogenous-precision floor that 4-way restoration aims to break, and the H&K framework expects one classification task per codebook for clean ablation; bundling all four R&R steps into one prompt diluted attention. The signed quarterly proxy `z ∈ {-1, 0, +1}` (Das et al. deliverable) requires C1 + C2 + C3; full dollar-magnitude reproduction additionally requires C4.
 
 ---
 
@@ -459,17 +469,19 @@ The entire pipeline is designed for **country-agnostic transfer**. This means:
 
 ### Steps (Das et al.-style proxy construction)
 
-1. **Filter to exogenous-flagged acts.** Drop acts where C2b returned `exogenous != "TRUE"` or `enacted = false`.
-2. **Cross-tabulate by quarter.** For each act, expand the `enacted_quarter[]` array into one row per quarter. Assign the act-level `sign` to every quarter in the array.
+RR6 requires C1 + C2 + C3 outputs. Until C3 is built, RR6 cannot produce the final quarterly series — only an act-level table without quarter assignment.
+
+1. **Filter to exogenous-flagged enacted acts.** Drop acts where C2b's derived `exogenous` flag is FALSE (i.e., motivation ∈ {SPENDING_DRIVEN, COUNTERCYCLICAL}) or `enacted = false`.
+2. **Cross-tabulate by quarter.** For each act, expand C3's `enacted_quarter[]` array into one row per quarter. Assign the act-level `sign` (from C2b) to every quarter in the array.
 3. **Aggregate per country–quarter.** For each `(country, quarter)`, define `z_{i,t} ∈ {-1, 0, +1}` via Das et al.'s conservative aggregation:
-   - `+1` if quarter has at least one exogenous act with `sign == "+"` and no acts with `sign == "-"`
-   - `-1` if quarter has at least one exogenous act with `sign == "-"` and no acts with `sign == "+"`
+   - `+1` if quarter has at least one exogenous act with `sign == "increase"` and no acts with `sign == "decrease"`
+   - `-1` if quarter has at least one exogenous act with `sign == "decrease"` and no acts with `sign == "increase"`
    - `0` otherwise (no exogenous act, or mixed signs in the same quarter)
-4. **Produce final series.** Quarterly time series of `z_{i,t}` plus diagnostic columns retaining the underlying act names and per-act sign for traceability.
+4. **Produce final series.** Quarterly time series of `z_{i,t}` plus diagnostic columns retaining the underlying act names, motivation labels, and per-act sign for traceability.
 
 ### Required Data
 
-- Codebook outputs: C1 measure ID, C2b act-level `{exogenous, sign, enacted_quarter[]}`
+- Codebook outputs: C1 measure ID, C2b act-level `{label, sign, enacted}` (with `exogenous` derived as `label ∈ {DEFICIT_DRIVEN, LONG_RUN}`), C3 act-level `enacted_quarter[]` (when built)
 
 ### RR6 Deliverable
 

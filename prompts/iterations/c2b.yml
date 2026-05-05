@@ -5220,3 +5220,92 @@ iterations:
       this far below ceiling the stability question is moot until
       the precision regression is diagnosed.
 
+  - iteration: 43
+    codebook_version: "0.9.0"
+    date: "2026-05-05"
+    git_commit: "8c092af"
+    model: ~
+    stage: "s0"
+    changes: >
+      Full rewrite drafted by a fresh general-purpose agent given only R&R
+      primary sources (R&R 2010 §II.C-E; companion paper §I.C, pp. 5-8),
+      docs/methods §RR5, literature_review.md §1.3 (verbatim phrase table)
+      and §4.2 (cross-country mapping), C1 v0.6.0 as a structural template
+      (shape only), and the codebook-yaml SKILL — no access to any prior
+      C2b version (current YAML, git history, or iteration log). Replaces
+      v0.8.0's binary exogeneity surface with R&R's own four motivation
+      categories (SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN,
+      LONG_RUN); `exogenous` becomes a derived metric (motivation ∈
+      {DEFICIT_DRIVEN, LONG_RUN}), not an output field. Restoring classes
+      re-enables S3 Tests V/VI/VII (impossible under v0.7.0/v0.8.0).
+      Sign and `enacted` fields retained verbatim from v0.8.0 (sign
+      accuracy 0.957 PASS at iter 42 — no regression intended). Timing
+      surface (`enacted_quarter[]`) removed; will return as a separate
+      downstream codebook (C3) consuming C2a output, restoring strategy.md
+      architecture. No worked examples (deliberate first-cut constraint;
+      revisit only if S2 underperforms). No standalone DR/BCR rule
+      ladders — all edge-case guidance embedded inside class
+      `clarification[]`/`negative_clarification[]` blocks (the iter 36
+      F-A overfit diagnostic showed detached rule paragraphs induce
+      overfitting to the 39-act sample). Two specific guardrails embedded
+      by construction inside the class bodies most affected by v0.8.0's
+      failure modes: (i) inside LONG_RUN, a timing-of-decision clarification
+      (act proposed in normal times remains long-run even if the economy
+      weakens by passage) plus the Das clarifier localised inside the
+      negative_clarification (mention of macro context ≠ countercyclical
+      motive), targeting the LONG_RUN recall collapse to 1/15 in v0.8.0;
+      (ii) inside SPENDING_DRIVEN, the 1-year temporal rule plus a
+      negative_clarification stating that "structural" framing of a
+      spending programme does not by itself make the financing tax
+      exogenous, targeting the 5/10 SPENDING_DRIVEN false-positives in
+      v0.8.0. Length: 256 lines (below the 300-500 budget the brief
+      suggested; agent argued padding would dilute per-component ablation
+      signal in S3, and we accepted that argument). Reasoning field
+      schema requires citation of the decisive R&R criterion rather than
+      free narrative. COUNTERCYCLICAL extended symmetrically to cover
+      anti-inflationary restraint (R&R's logic is direction-symmetric;
+      SEA corpora will include both directions).
+    results: ~
+    interpretation: >
+      S0 design responds to a planning-conversation finding that overturned
+      the iter 42 framing: v0.8.0's 0.500 exogenous precision is v0.7.0
+      reproduced verbatim (the diff added only timing+sign content, zero
+      changes to exogeneity reasoning), so the real regression is
+      v0.6.x → v0.7.0 — dropping the `classes` block lost 31pp precision
+      and made S3 ablation impossible. v0.9.0 attempts to recover the
+      4-way structure without re-introducing v0.6.x's overfit (iter 36
+      F-A median-stability gap −0.333) by holding to three constraints:
+      R&R-language fidelity (a reviewer should recognise every substantive
+      sentence as R&R), country-agnostic vocabulary (no US institutional
+      names), and embedded-guardrail design (no detached rule paragraphs).
+      Whether this works is empirical — the question is whether class
+      structure + minimal R&R prose can both (a) recover meaningful
+      precision over the 0.500 floor and (b) keep the F-A stability gap
+      above −0.10 on the rerun shuffle diagnostic. If both hold, v0.9.0
+      validates the hypothesis that v0.6.x's failure was rule-density
+      and overfit-to-test-set, not class-structure per se. If the F-A
+      gap deteriorates, the diagnosis sharpens toward "any 4-way design
+      on this evidence is order-fragile." If precision stays near 0.500,
+      the diagnosis is that the model cannot perform 4-way classification
+      on this evidence regardless of prompt design and we should consider
+      explicit worked examples (v0.10) or fall back to v0.7.0's binary
+      output as the production interface.
+    decision: >
+      Run S1 behavioral tests next (tar_make(c2b_s1_results)) to confirm
+      Tests I, II, IV pass on the new structure (Test III auto-skips per
+      commit 51be788 since the codebook has no examples). On S1 PASS,
+      proceed to S2 zero-shot (tar_make(c2_s2_results) → c2_s2_eval) on
+      the unchanged 39-act primary test set. Headline gates per
+      docs/strategy.md C2 Blueprint: Exogenous Precision ≥0.85 (binary,
+      derived), Sign Accuracy on True-Exogenous ≥0.90 (no regression
+      from 0.957). Diagnostic baselines to beat: exogenous precision
+      0.500 (v0.7.0/v0.8.0 floor), motivation wF1 0.660 (v0.6.x ceiling).
+      Following S2 review, run the evidence-shuffle diagnostic
+      (c2b_evidence_shuffle_diagnostic) as the gating overfit check —
+      hard requirement that F–A median-stability gap > −0.10. Then S3
+      Tests V/VI/VII + ablation on the now-class-bearing prompt to
+      characterise label-name dominance and per-component contribution.
+      Defer C3 (timing) and C4 (magnitude) codebooks until C2b v0.9.0
+      gates pass; both will consume C2a output and be evaluated as
+      scalars against aligned_data.
+
