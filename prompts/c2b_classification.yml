@@ -1,14 +1,16 @@
 codebook:
   name: "C2b: Motivation Classification (Act-Level)"
-  version: "0.9.0"
-  # Classification scheme follows Romer & Romer (2010, AER 100(3): 763-801),
-  # Section II.C ("Identifying Motivation"), pp. 769-771; and the companion
-  # paper "A Narrative Analysis of Postwar Tax Changes," Section I.C
-  # ("Classifying Motivation"), pp. 5-8. All four categories, the
+  version: "0.9.1"
+  # Classification scheme is grounded in Romer & Romer (2010, AER 100(3):
+  # 763-801), Section II.C ("Identifying Motivation"), pp. 769-771; and the
+  # companion paper "A Narrative Analysis of Postwar Tax Changes," Section I.C
+  # ("Classifying Motivation"), pp. 5-8. The four categories, the
   # countercyclical-vs-long-run test, the spending-driven-vs-deficit-driven
-  # one-year rule, and the mixed-motivation aggregation rule are taken from
-  # those sources. Institutional names have been generalised so that the
-  # codebook applies cross-country.
+  # one-year rule, and the mixed-motivation aggregation rule originate there.
+  # The codebook body itself is written in country-agnostic language: author
+  # attributions and US-decade-specific anchoring examples have been removed
+  # from the prompt the model sees, to avoid US-anchoring the classifier
+  # when deployed to Malaysia and other countries (v0.9.1 de-attribution).
 
   instructions: >
     You are an expert in fiscal policy analysis. You are given consolidated
@@ -18,20 +20,20 @@ codebook:
     documents (executive economic outlooks, legislative committee reports,
     head-of-government statements and signing remarks, fiscal authority
     reports). Your task is to classify the **motivation** for the action into
-    exactly one of four categories drawn from Romer and Romer (2010): one of
-    two endogenous categories (SPENDING_DRIVEN, COUNTERCYCLICAL) or one of two
-    exogenous categories (DEFICIT_DRIVEN, LONG_RUN).
+    exactly one of four categories: one of two endogenous categories
+    (SPENDING_DRIVEN, COUNTERCYCLICAL) or one of two exogenous categories
+    (DEFICIT_DRIVEN, LONG_RUN).
 
 
-    Romer and Romer's central question is: **why did policymakers take the
-    action they did?** Their framework separates legislated fiscal changes into
-    those taken *in response to other factors likely to affect output growth in
-    the near future* (endogenous) and those taken *for any other reason*
-    (exogenous). Most acts have a single predominant motivation that is
-    consistently mentioned across executive and legislative sources. Read the
-    evidence at face value: take policymakers' stated reasons as the primary
-    signal of motivation, while applying the boundary tests below to
-    distinguish neighbouring categories.
+    The central question is: **why did policymakers take the action they
+    did?** The framework separates legislated fiscal changes into those taken
+    *in response to other factors likely to affect output growth in the near
+    future* (endogenous) and those taken *for any other reason* (exogenous).
+    Most acts have a single predominant motivation that is consistently
+    mentioned across executive and legislative sources. Read the evidence at
+    face value: take policymakers' stated reasons as the primary signal of
+    motivation, while applying the boundary tests below to distinguish
+    neighbouring categories.
 
 
     The evidence you receive will typically include three arrays produced by an
@@ -48,12 +50,11 @@ codebook:
     The action may originate in any country and any period. Where the
     evidence references country-specific institutions (legislative committees,
     economic outlook documents, fiscal authorities, social-insurance trust
-    funds), treat them as functional equivalents of the corresponding actors in
-    Romer and Romer's framework. Romer and Romer's *concepts* — return growth
-    to normal, raise growth above normal, inherited deficit, raise potential
-    output, smaller government, fairness, improved incentives — apply across
-    countries. Do not require the specific institutional vocabulary of any one
-    country.
+    funds), treat them as functional equivalents within the framework. The
+    underlying *concepts* — return growth to normal, raise growth above
+    normal, inherited deficit, raise potential output, smaller government,
+    fairness, improved incentives — apply across countries. Do not require
+    the specific institutional vocabulary of any one country.
 
 
     Read the class definitions and clarifications carefully and classify the
@@ -68,9 +69,9 @@ codebook:
         expansionary effects of, an associated spending increase.
 
       clarification:
-        - "The classic case is a revenue increase taken to finance a contemporaneous spending programme. Romer and Romer's prototypical example is the increase in payroll taxes that accompanied the introduction of a new social insurance benefit; another is a revenue increase to finance a war or defence build-up. Policymakers in such cases often state explicitly that the revenue measure is intended to pay for, or to offset the expansionary effects of, increased government spending."
-        - "Spending-driven actions are endogenous in Romer and Romer's framework because they are 'tax actions taken to offset another factor that would tend to move output growth away from normal' — the associated spending change is itself a force pushing output away from normal, and the revenue measure is a response to it."
-        - "**One-year temporal rule (Romer and Romer, companion paper p. 7).** A revenue increase taken to pay for a *past* spending increase is classified as SPENDING_DRIVEN if it occurs **within roughly one year** of the associated spending increase, and as DEFICIT_DRIVEN if it occurs **more than one year** after. This rule resolves cases — common in social-insurance legislation — where a single bill schedules an immediate benefit increase together with revenue increases that take effect years later: the immediate-financing portion is spending-driven, and the delayed portion is deficit-driven."
+        - "The classic case is a revenue increase taken to finance a contemporaneous spending programme — for example, a levy introduced alongside a new public health, social insurance, or defence programme, where policymakers state explicitly that the revenue is intended to pay for the associated spending. Another is a revenue increase to finance a war or defence build-up. Policymakers in such cases often state explicitly that the revenue measure is intended to pay for, or to offset the expansionary effects of, increased government spending."
+        - "Spending-driven actions are endogenous because they are tax actions taken to offset another factor that would tend to move output growth away from normal — the associated spending change is itself a force pushing output away from normal, and the revenue measure is a response to it."
+        - "**One-year temporal rule.** A revenue increase taken to pay for a *past* spending increase is classified as SPENDING_DRIVEN if it occurs **within roughly one year** of the associated spending increase, and as DEFICIT_DRIVEN if it occurs **more than one year** after. This rule resolves cases — common in social-insurance legislation — where a single bill schedules an immediate benefit increase together with revenue increases that take effect years later: the immediate-financing portion is spending-driven, and the delayed portion is deficit-driven."
         - "Apply the one-year rule using the timing evidence already in the input. If the evidence shows the spending and the revenue change taking effect close together (within about a year), classify as SPENDING_DRIVEN. If the evidence shows the revenue change taking effect well after the associated spending change (more than about a year), the change has shifted into the DEFICIT_DRIVEN category and should be classified there instead."
         - "When the evidence describes a deliberate financing link — phrases such as 'to pay for', 'to finance', 'in order to fund', 'to offset the cost of', or descriptions of the revenue measure as the 'financing' or 'pay-for' element of a programme — that is direct evidence of a spending-driven motivation, provided the temporal rule is satisfied."
 
@@ -88,16 +89,16 @@ codebook:
         future.
 
       clarification:
-        - "The defining test is Romer and Romer's: a countercyclical action is one whose stated goal is to **return growth to normal**, not to **raise growth above normal**. Stimulating activity in the face of a predicted recession, or restraining activity in the face of an overheating economy, are both countercyclical. The classic example in Romer and Romer is a revenue cut enacted because policymakers were 'explicit that they were cutting taxes because the economy was predicted to fall further, and they were attempting to mitigate the decline'."
-        - "Countercyclical actions are endogenous because, in Romer and Romer's words, they are 'taken to offset developments that would cause output growth to differ from normal'. They are systematically correlated with other factors affecting output in the short run."
-        - "Two complementary diagnostics indicate countercyclical motivation: (a) policymakers state directly that the action is intended to mitigate a downturn, support a faltering economy, restore growth, check a slide, or — in the opposite direction — to restrain inflation or cool an overheating economy; and (b) policymakers' own forecasts of unemployment or activity imply growth that would otherwise be below (or above) normal in the absence of the action. Romer and Romer take policymakers' own statements about what counts as 'normal' at face value."
+        - "The defining test: a countercyclical action is one whose stated goal is to **return growth to normal**, not to **raise growth above normal**. Stimulating activity in the face of a predicted recession, or restraining activity in the face of an overheating economy, are both countercyclical. A classic example is a revenue cut enacted because policymakers were explicit that they were cutting taxes because the economy was predicted to fall further, and they were attempting to mitigate the decline."
+        - "Countercyclical actions are endogenous because they are taken to offset developments that would cause output growth to differ from normal. They are systematically correlated with other factors affecting output in the short run."
+        - "Two complementary diagnostics indicate countercyclical motivation: (a) policymakers state directly that the action is intended to mitigate a downturn, support a faltering economy, restore growth, check a slide, or — in the opposite direction — to restrain inflation or cool an overheating economy; and (b) policymakers' own forecasts of unemployment or activity imply growth that would otherwise be below (or above) normal in the absence of the action. Take policymakers' own statements about what counts as 'normal' at face value."
         - "Phrases such as 'to support the economy', 'to restore growth', 'to mitigate the decline', 'to check the downward slide', 'to provide stimulus', 'to counteract the recession', 'to combat inflation', or 'to cool an overheating economy' — when offered as the *reason* for the action — are direct evidence of countercyclical motivation. Predictions that unemployment will rise (implying below-normal growth) or fall sharply from a low base (implying above-normal growth) are corroborating evidence."
 
       negative_clarification:
         - "An action is NOT COUNTERCYCLICAL merely because the evidence mentions a recession, high unemployment, slow growth, inflation, or other macroeconomic conditions. Such mentions are background, not motivation. The action is countercyclical only if the *stated reason* for it is to offset those conditions and bring growth back to normal."
-        - "If policymakers say the economy is doing fine (or, equivalently, that growth is currently at or near normal) but they want growth to be **faster** in the long run, the action is LONG_RUN, not COUNTERCYCLICAL. Romer and Romer are explicit: 'A very common tax cut is one in which policymakers say that the economy is doing fine (output is growing normally), but they want output to grow faster than normal' — that is long-run, not countercyclical."
+        - "If policymakers say the economy is doing fine (or, equivalently, that growth is currently at or near normal) but they want growth to be **faster** in the long run, the action is LONG_RUN, not COUNTERCYCLICAL. To be explicit: a very common tax cut is one in which policymakers say that the economy is doing fine (output is growing normally), but they want output to grow faster than normal — that is long-run, not countercyclical."
         - "An action whose stated rationale is structural — improving incentives, raising potential output, increasing fairness, shrinking government — is LONG_RUN even if the evidence also mentions current weak conditions. The countercyclical-vs-long-run boundary is decided by the *stated motive*, not by whether macroeconomic context is mentioned."
-        - "An offsetting action — for example, a revenue cut taken to undo a previously legislated exogenous revenue increase because the economy has weakened — is, by Romer and Romer's offsetting-changes convention, classified with the **same motivation as the original action it counteracts**, not as countercyclical. This avoids identifying two opposite-motivation actions in a quarter when liabilities did not in fact change."
+        - "An offsetting action — for example, a revenue cut taken to undo a previously legislated exogenous revenue increase because the economy has weakened — is, by the offsetting-changes convention, classified with the **same motivation as the original action it counteracts**, not as countercyclical. This avoids identifying two opposite-motivation actions in a quarter when liabilities did not in fact change."
 
     - label: "DEFICIT_DRIVEN"
       label_definition: >
@@ -108,10 +109,10 @@ codebook:
         cyclical conditions.
 
       clarification:
-        - "Romer and Romer's defining language: 'A deficit-driven tax change is a tax increase designed to reduce an **inherited** budget deficit. Such a change is fundamentally different from a spending-driven action because there is no contemporaneous increase in spending. A deficit-driven tax change is taken in spite of or regardless of its effects on output in the short run.' The deficit being addressed reflects 'past economic conditions and budgetary decisions, not current conditions or spending changes'."
+        - "The defining criterion: a deficit-driven action is a tax increase designed to reduce an **inherited** budget deficit. Such a change is fundamentally different from a spending-driven action because there is no contemporaneous increase in spending; it is taken in spite of, or regardless of, its effects on output in the short run. The deficit being addressed reflects past economic conditions and budgetary decisions, not current conditions or spending changes."
         - "Direct evidence of deficit-driven motivation includes: descriptions of the deficit as 'inherited', 'accumulated', 'long-standing', 'structural', or as the result of 'past decisions' or 'past policy'; statements that the action is 'prudent fiscal policy', is intended to 'restore fiscal balance', 'reduce the structural deficit', 'return the budget to sustainability', or to safeguard the long-term solvency of a major programme (for example, restoring 'actuarial soundness' to a social-insurance fund)."
-        - "Deficit-driven actions are exogenous because they are not motivated by current or prospective short-run economic conditions and not motivated by a contemporaneous spending change. Romer and Romer note that they may, however, be paired with spending reductions inside the same deficit-reduction package; the package as a whole is still deficit-driven."
-        - "**Delayed financing of past spending.** When a single bill calls for both an immediate spending increase and a much-delayed revenue increase to pay for the higher spending, the *delayed* revenue increase is DEFICIT_DRIVEN if it takes effect more than about one year after the spending increase. Romer and Romer apply this rule explicitly to the social-insurance amendments of the 1950s, 1960s, and 1970s, where benefit increases were often paired with revenue increases scheduled to occur years later. The rationale: by the time the revenue increase takes effect, there is no contemporaneous spending change, only the inherited liability."
+        - "Deficit-driven actions are exogenous because they are not motivated by current or prospective short-run economic conditions and not motivated by a contemporaneous spending change. Note that they may, however, be paired with spending reductions inside the same deficit-reduction package; the package as a whole is still deficit-driven."
+        - "**Delayed financing of past spending.** When a single bill calls for both an immediate spending increase and a much-delayed revenue increase to pay for the higher spending, the *delayed* revenue increase is DEFICIT_DRIVEN if it takes effect more than about one year after the spending increase. This situation is common in social-insurance legislation, where benefit increases are often paired with revenue increases scheduled to occur years later. The rationale: by the time the revenue increase takes effect, there is no contemporaneous spending change, only the inherited liability."
 
       negative_clarification:
         - "An action is NOT DEFICIT_DRIVEN merely because the evidence mentions a deficit, debt, or fiscal imbalance. The deficit must be cited as the *reason* for the action, and it must be characterised as inherited from past decisions or past conditions, not as the consequence of a contemporaneous spending increase that the action is financing."
@@ -127,14 +128,14 @@ codebook:
         responding to current or prospective short-run economic conditions.
 
       clarification:
-        - "Romer and Romer characterise long-run actions as those whose goal is to **raise growth above normal** in the long run, or to **raise potential output**, in contrast to countercyclical actions whose goal is to return growth to normal. The quintessential exogenous change in their framework is a revenue cut 'motivated by a belief that lower marginal tax rates will raise output in the long run', where 'the goal is to raise normal growth, not to offset shocks acting to reduce growth relative to normal'."
-        - "This category encompasses a wide range of motivations united by their structural, non-cyclical character: a stated belief that the action will raise the long-run growth rate of potential output; a desire to improve **incentives** for work, saving, or investment; a desire for greater **efficiency** of the fiscal system; a desire for greater **fairness** or equity; or a philosophical preference for **smaller government**. Romer and Romer combine these 'under the broad rubric of tax changes for long-run growth'."
-        - "Direct evidence of long-run motivation includes phrases such as 'raise long-run growth', 'raise potential output', 'remove a barrier to growth', 'improve incentives for work, saving, and investment', 'remove the drag on the economy', 'reform the system for fairness', 'simplify the system', 'broaden the base', 'shrink the size of government', 'limited government', or characterisations of the action as a 'fundamental reform' of the fiscal system rather than a cyclical response."
-        - "**Timing-of-decision rule.** An action proposed when the economy was growing normally remains LONG_RUN even if the economy weakened by the time of passage, provided the long-run rationale persists in the evidence and was not displaced by a new countercyclical motivation at passage. Romer and Romer's worked example is an act originally proposed when 'the economy was growing normally' on the basis of 'a belief in limited government and a desire to stimulate long-run growth'; this would be classified as exogenous (long-run) even though, by the time it passed, concerns about a developing recession were also being mentioned. Use the *prevailing motivation at the time of passage* — but a long-run rationale that is still present and dominant at passage is not displaced merely because cyclical conditions have changed in the interim."
+        - "The defining characterisation: long-run actions are those whose goal is to **raise growth above normal** in the long run, or to **raise potential output**, in contrast to countercyclical actions whose goal is to return growth to normal. A quintessential exogenous change is a revenue cut motivated by a belief that lower marginal tax rates will raise output in the long run, where the goal is to raise normal growth, not to offset shocks acting to reduce growth relative to normal."
+        - "This category encompasses a wide range of motivations united by their structural, non-cyclical character: a stated belief that the action will raise the long-run growth rate of potential output; a desire to improve **incentives** for work, saving, or investment; a desire for greater **efficiency** of the fiscal system; a desire for greater **fairness** or equity; or a philosophical preference for **smaller government**, **limited government**, **economic competitiveness**, or **structural reform**. These all fall under the broad rubric of tax changes for long-run growth."
+        - "Direct evidence of long-run motivation includes phrases such as 'raise long-run growth', 'raise potential output', 'remove a barrier to growth', 'improve incentives for work, saving, and investment', 'remove the drag on the economy', 'reform the system for fairness', 'simplify the system', 'broaden the base', 'shrink the size of government', 'limited government', 'economic competitiveness', 'structural transformation', or characterisations of the action as a 'fundamental reform' of the fiscal system rather than a cyclical response."
+        - "**Timing-of-decision rule.** An action proposed when the economy was growing normally remains LONG_RUN even if the economy weakened by the time of passage, provided the long-run rationale persists in the evidence and was not displaced by a new countercyclical motivation at passage. An illustrative case is an act originally proposed when the economy was growing normally on the basis of a belief in structural reform and a desire to stimulate long-run growth; this would be classified as exogenous (long-run) even though, by the time it passed, concerns about a developing recession were also being mentioned. Use the *prevailing motivation at the time of passage* — but a long-run rationale that is still present and dominant at passage is not displaced merely because cyclical conditions have changed in the interim."
         - "Long-run actions are exogenous because they are not motivated by current or prospective short-run economic conditions; they are taken to alter the structural properties of the fiscal system or the long-run path of output."
 
       negative_clarification:
-        - "Mention of contemporaneous macroeconomic conditions — recession, high unemployment, slow growth, inflation — is NOT, by itself, evidence of a countercyclical motive when the stated rationale for the action is structural or long-run. Romer and Romer's worked examples include long-run actions enacted during periods of weak activity in which policymakers nevertheless framed the action as motivated by long-run growth, fairness, or improved incentives. Acknowledging current conditions does not by itself imply endogeneity if the stated motive is explicitly non-cyclical."
+        - "Mention of contemporaneous macroeconomic conditions — recession, high unemployment, slow growth, inflation — is NOT, by itself, evidence of a countercyclical motive when the stated rationale for the action is structural or long-run. Long-run actions are sometimes enacted during periods of weak activity in which policymakers nevertheless frame the action as motivated by long-run growth, fairness, or improved incentives. Acknowledging current conditions does not by itself imply endogeneity if the stated motive is explicitly non-cyclical."
         - "An action is NOT LONG_RUN merely because the evidence mentions growth. Policymakers commonly say they want to 'stimulate growth' or 'support growth' — the question is *which growth*. If the stated goal is to **return growth to normal** in the face of a downturn, the action is COUNTERCYCLICAL. If the stated goal is to **raise growth above normal** or to raise the **long-run growth rate of potential output**, the action is LONG_RUN."
         - "An action is NOT LONG_RUN if the primary stated motive is to finance a contemporaneous spending increase (SPENDING_DRIVEN) or to reduce an inherited deficit (DEFICIT_DRIVEN), even if a secondary long-run rationale is also mentioned. Use the predominant motive cited consistently across the evidence."
         - "Vague aspirational language about 'a stronger economy', 'prosperity', or 'national strength' that does not specify whether the goal is cyclical or structural is not, on its own, sufficient evidence of LONG_RUN. Look for explicit references to long-run growth, potential output, incentives, efficiency, fairness, or smaller government."
@@ -175,8 +176,8 @@ codebook:
       values: ["low", "medium", "high"]
       description: >
         Your confidence in the motivation classification. Use 'high' when
-        the evidence consistently and unambiguously cites a single Romer and
-        Romer category. Use 'medium' when the evidence points predominantly
+        the evidence consistently and unambiguously cites a single
+        category. Use 'medium' when the evidence points predominantly
         to one category but contains some signals consistent with a
         neighbouring category, or when one of the boundary tests
         (countercyclical vs. long-run; spending-driven vs. deficit-driven)
@@ -187,28 +188,27 @@ codebook:
     - name: "reasoning"
       type: "string"
       description: >
-        A brief explanation (2-4 sentences) that names the Romer and Romer
-        criterion that was decisive for the classification. Cite specific
-        evidence from the input — direct quotes or paraphrases of the
-        motivation evidence — and explicitly identify which test or
-        clarification was applied (for example: 'applies the
-        countercyclical-vs-long-run test: stated motive is to raise
-        potential output despite a recession context'; or 'applies the
-        one-year temporal rule: revenue increase takes effect within a
-        year of the associated spending increase, so SPENDING_DRIVEN
-        rather than DEFICIT_DRIVEN'; or 'applies the offsetting-changes
-        convention: this revenue cut counteracts a previously legislated
-        long-run cut and inherits its motivation'). Do not write a free
-        narrative; cite the criterion.
+        A brief explanation (2-4 sentences) that names the criterion that
+        was decisive for the classification. Cite specific evidence from
+        the input — direct quotes or paraphrases of the motivation
+        evidence — and explicitly identify which test or clarification was
+        applied (for example: 'applies the countercyclical-vs-long-run
+        test: stated motive is to raise potential output despite a
+        recession context'; or 'applies the one-year temporal rule:
+        revenue increase takes effect within a year of the associated
+        spending increase, so SPENDING_DRIVEN rather than DEFICIT_DRIVEN';
+        or 'applies the offsetting-changes convention: this revenue cut
+        counteracts a previously legislated long-run cut and inherits its
+        motivation'). Do not write a free narrative; cite the criterion.
 
   output_instructions: >
-    Classify the act using exactly one of the four Romer and Romer
-    motivation labels: SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN, or
-    LONG_RUN. Use exactly one label; do not output multiple labels, and do
-    not invent additional categories. If the evidence genuinely supports
-    more than one motivation, follow Romer and Romer's apportionment
-    guidance and assign the **predominant** motivation cited across the
-    sources at the time of passage.
+    Classify the act using exactly one of the four motivation labels:
+    SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN, or LONG_RUN. Use
+    exactly one label; do not output multiple labels, and do not invent
+    additional categories. If the evidence genuinely supports more than
+    one motivation, assign the motivation that accounts for the largest
+    share of the action's fiscal effect, as stated by policymakers, across
+    the evidence at the time of passage.
 
 
     Apply the four boundary tests embedded in the class definitions:
@@ -236,8 +236,7 @@ codebook:
 
     Then report the four extra fields described above: `enacted`, `sign`,
     `confidence`, and `reasoning`. The `reasoning` field must cite the
-    specific Romer and Romer criterion that was decisive — do not write a
-    free narrative.
+    specific criterion that was decisive — do not write a free narrative.
 
 
     Return your answer as JSON with exactly the following keys and no
@@ -248,7 +247,7 @@ codebook:
       "enacted": true | false,
       "sign": "increase" | "decrease" | "no_change",
       "confidence": "low" | "medium" | "high",
-      "reasoning": "2-4 sentences citing the decisive Romer and Romer criterion and the specific evidence that triggered it"
+      "reasoning": "2-4 sentences citing the decisive criterion and the specific evidence that triggered it"
     }
 
 

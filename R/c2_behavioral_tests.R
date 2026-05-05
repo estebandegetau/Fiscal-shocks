@@ -173,19 +173,21 @@ validate_c2a_output <- function(parsed) {
 }
 
 
-#' Validate C2b output schema (v0.8.0)
+#' Validate C2b output schema (v0.9.1)
 #'
-#' Validates the minimal Das-et-al.-adapted schema with timing extraction:
-#' {enacted: bool, exogenous: "TRUE"|"FALSE"|"UNCLEAR",
-#'  sign: "+"|"-"|"0"|"UNCLEAR", enacted_quarter: ["YYYY-QN", ...],
-#'  confidence: str, reasoning: str}.
+#' Validates the 4-way motivation classifier schema:
+#' {label: enum-of-4-categories, enacted: bool,
+#'  sign: "increase"|"decrease"|"no_change",
+#'  confidence: "low"|"medium"|"high", reasoning: str}.
 #'
-#' Quarter strings must match the regex `^[0-9]{4}-Q[1-4]$`. The
-#' `enacted_quarter` array is allowed to be empty when timing evidence is
-#' absent or inconsistent, but the field itself must be present and a list.
+#' The `label` enum is taken from the codebook's `classes:` block via
+#' `get_valid_labels()`. `enacted_quarter[]` is deferred to a later
+#' codebook version and is not part of v0.9.1.
 #'
 #' @param parsed List from parse_json_response()
-#' @param valid_categories Unused (kept for backward-compatible signature).
+#' @param valid_categories Optional character vector of valid label values.
+#'   When NULL, the validator skips the label-membership check and only
+#'   verifies that `label` is a non-empty character.
 #' @return List with $valid (logical) and $reason (character, NA if valid)
 #' @keywords internal
 validate_c2b_output <- function(parsed, valid_categories = NULL) {
@@ -193,23 +195,27 @@ validate_c2b_output <- function(parsed, valid_categories = NULL) {
     return(list(valid = FALSE, reason = paste("JSON parse error:", parsed$error)))
   }
 
+  # label must be character; if valid_categories provided, must be one of them
+  if (is.null(parsed$label) || !is.character(parsed$label) ||
+      length(parsed$label) != 1L || !nzchar(parsed$label)) {
+    return(list(valid = FALSE,
+                reason = sprintf("Invalid 'label' field: '%s' (must be a non-empty string)",
+                                 parsed$label %||% "NULL")))
+  }
+  if (!is.null(valid_categories) && !parsed$label %in% valid_categories) {
+    return(list(valid = FALSE,
+                reason = sprintf("Invalid 'label' field: '%s' (must be one of %s)",
+                                 parsed$label,
+                                 paste(valid_categories, collapse = "/"))))
+  }
+
   # enacted must be logical
   if (is.null(parsed$enacted) || !is.logical(parsed$enacted)) {
     return(list(valid = FALSE, reason = "Missing or non-logical 'enacted' field"))
   }
 
-  # exogenous must be character with valid value
-  valid_exo <- c("TRUE", "FALSE", "UNCLEAR")
-  if (is.null(parsed$exogenous) || !is.character(parsed$exogenous) ||
-      !parsed$exogenous %in% valid_exo) {
-    return(list(valid = FALSE,
-                reason = sprintf("Invalid 'exogenous' field: '%s' (must be one of %s)",
-                                 parsed$exogenous %||% "NULL",
-                                 paste(valid_exo, collapse = "/"))))
-  }
-
   # sign must be character with valid value
-  valid_sign <- c("+", "-", "0", "UNCLEAR")
+  valid_sign <- c("increase", "decrease", "no_change")
   if (is.null(parsed$sign) || !is.character(parsed$sign) ||
       !parsed$sign %in% valid_sign) {
     return(list(valid = FALSE,
@@ -218,32 +224,14 @@ validate_c2b_output <- function(parsed, valid_categories = NULL) {
                                  paste(valid_sign, collapse = "/"))))
   }
 
-  # enacted_quarter must be present and a list/character vector;
-  # parse_json_response may yield list() or character() depending on jsonlite simplify.
-  # Empty array is valid (no timing evidence).
-  if (is.null(parsed$enacted_quarter)) {
-    return(list(valid = FALSE, reason = "Missing 'enacted_quarter' field"))
-  }
-  q_vec <- parsed$enacted_quarter
-  if (is.list(q_vec)) q_vec <- unlist(q_vec, use.names = FALSE)
-  if (!is.character(q_vec) && length(q_vec) > 0) {
+  # confidence must be character with valid value
+  valid_conf <- c("low", "medium", "high")
+  if (is.null(parsed$confidence) || !is.character(parsed$confidence) ||
+      !parsed$confidence %in% valid_conf) {
     return(list(valid = FALSE,
-                reason = "'enacted_quarter' must be an array of strings"))
-  }
-  if (length(q_vec) > 0) {
-    bad_quarter <- !grepl("^[0-9]{4}-Q[1-4]$", q_vec)
-    if (any(bad_quarter)) {
-      return(list(valid = FALSE,
-                  reason = sprintf(
-                    "Invalid 'enacted_quarter' format(s): %s (expected YYYY-QN)",
-                    paste(q_vec[bad_quarter], collapse = ", ")
-                  )))
-    }
-  }
-
-  # confidence must be character
-  if (is.null(parsed$confidence) || !is.character(parsed$confidence)) {
-    return(list(valid = FALSE, reason = "Missing or non-character 'confidence' field"))
+                reason = sprintf("Invalid 'confidence' field: '%s' (must be one of %s)",
+                                 parsed$confidence %||% "NULL",
+                                 paste(valid_conf, collapse = "/"))))
   }
 
   # reasoning must be character
@@ -668,7 +656,7 @@ test_c2b_legal_outputs <- function(codebook,
       act_name = es$act_name,
       valid = validation$valid,
       reason = validation$reason,
-      pred_exogenous = parsed$exogenous %||% NA_character_,
+      pred_label = parsed$label %||% NA_character_,
       pred_sign = parsed$sign %||% NA_character_,
       confidence = parsed$confidence %||% NA_character_,
       raw_response = parsed$raw_response %||% NA_character_
@@ -716,22 +704,19 @@ fmt_quarters <- function(x) {
 }
 
 
-#' Test II: C2b Schema Recovery (v0.8.0)
+#' Test II: C2b Definition Recovery (v0.9.1)
 #'
-#' For each synthetic evidence set with known expected `exogenous`, `sign`,
-#' and `enacted_quarter[]` values, verifies that C2b returns the expected
-#' outputs. Replaces the prior 4-class definition-recovery test under the
-#' v0.7.0+ minimal codebook (no class definitions to recover).
+#' For each class in the codebook, constructs a synthetic evidence array whose
+#' signal matches the class's own `label_definition`, and verifies that C2b
+#' returns the corresponding `label`. This is the H&K-canonical Test II for
+#' class-based codebooks: feed the definition back as evidence and check that
+#' the model recovers the same class label.
 #'
-#' Quarter equality is checked as a set (sorted unique), since C2b's
-#' `enacted_quarter[]` is naturally a set of unique implementation quarters.
-#' Empty arrays match only when both sides are empty.
+#' Restored from the pre-v0.7.0 4-class implementation with one schema-adapter
+#' edit: prediction is read from `parsed$label` (v0.9.1 single-label schema)
+#' rather than the legacy `parsed$motivations[[1]]$category` array form.
 #'
-#' @param codebook A validated C2b codebook object
-#' @param test_evidence_sets List of evidence set lists from
-#'   generate_c2b_test_evidence(); each must include `expected_exogenous`,
-#'   `expected_sign`, and `expected_quarters` fields. `timing_signals` is
-#'   optional (defaults to empty for backward compatibility).
+#' @param codebook A validated C2b codebook object with a `classes:` block
 #' @param model Character model ID
 #' @param max_tokens Integer max output tokens
 #' @param provider Character provider name
@@ -739,33 +724,54 @@ fmt_quarters <- function(x) {
 #' @param api_key Optional API key
 #' @return List with pass, n_correct, n_total, rate, threshold, details
 #' @export
-test_c2b_schema_recovery <- function(codebook,
-                                     test_evidence_sets,
-                                     model = "claude-haiku-4-5-20251001",
-                                     max_tokens = 1024,
-                                     provider = "anthropic",
-                                     base_url = NULL,
-                                     api_key = NULL) {
+test_c2b_definition_recovery <- function(codebook,
+                                         model = "claude-haiku-4-5-20251001",
+                                         max_tokens = 1024,
+                                         provider = "anthropic",
+                                         base_url = NULL,
+                                         api_key = NULL) {
+  if (is.null(codebook$classes) || length(codebook$classes) == 0L) {
+    return(list(
+      test = "II_definition_recovery",
+      pass = TRUE,
+      n_correct = 0L,
+      n_total = 0L,
+      rate = 1.0,
+      threshold = 1.0,
+      details = tibble::tibble(true_label = character(),
+                               pred_label = character(),
+                               correct = logical()),
+      skipped = TRUE
+    ))
+  }
+
+  valid_categories <- get_valid_labels(codebook)
   system_prompt <- construct_codebook_prompt(codebook)
 
-  results <- purrr::map(seq_along(test_evidence_sets), function(i) {
-    es <- test_evidence_sets[[i]]
-    if (is.null(es$expected_exogenous) || is.null(es$expected_sign)) {
-      stop(sprintf(
-        "test_evidence_sets[[%d]] missing expected_exogenous/expected_sign fields",
-        i
-      ))
-    }
-    if (is.null(es$expected_quarters)) {
-      stop(sprintf(
-        "test_evidence_sets[[%d]] missing expected_quarters field (v0.8.0)",
-        i
-      ))
-    }
+  results <- purrr::map(codebook$classes, function(cls) {
+    # Build synthetic evidence with the class definition as the signal
+    evidence <- list(
+      list(
+        quote = paste(
+          "The fiscal measure was enacted for the following reason:",
+          trimws(cls$label_definition)
+        ),
+        signal = trimws(cls$label_definition)
+      )
+    )
+
+    enacted_signals <- list(
+      list(
+        quote = "The act was signed into law.",
+        signal = "Enacted"
+      )
+    )
 
     user_msg <- format_c2b_input(
-      es$act_name, es$year, es$evidence, es$enacted_signals,
-      timing_signals = es$timing_signals %||% list()
+      act_name = paste("Test", cls$label, "Act"),
+      year = 2000,
+      evidence = evidence,
+      enacted_signals = enacted_signals
     )
 
     parsed <- tryCatch({
@@ -784,34 +790,14 @@ test_c2b_schema_recovery <- function(codebook,
       list(error = e$message, raw_response = NA_character_)
     })
 
-    validation <- validate_c2b_output(parsed)
+    validation <- validate_c2b_output(parsed, valid_categories)
 
-    pred_exo <- if (validation$valid) parsed$exogenous else NA_character_
-    pred_sign <- if (validation$valid) parsed$sign else NA_character_
-
-    pred_quarters <- character(0)
-    if (validation$valid && !is.null(parsed$enacted_quarter)) {
-      pq <- parsed$enacted_quarter
-      if (is.list(pq)) pq <- unlist(pq, use.names = FALSE)
-      if (length(pq) > 0) pred_quarters <- as.character(pq)
-    }
-
-    quarter_correct <- quarters_equal(pred_quarters, es$expected_quarters)
+    pred_label <- if (validation$valid) parsed$label else NA_character_
 
     tibble::tibble(
-      act_name = es$act_name,
-      expected_exogenous = es$expected_exogenous,
-      expected_sign = es$expected_sign,
-      expected_quarters = fmt_quarters(es$expected_quarters),
-      pred_exogenous = pred_exo,
-      pred_sign = pred_sign,
-      pred_quarters = fmt_quarters(pred_quarters),
-      exo_correct = identical(pred_exo, es$expected_exogenous),
-      sign_correct = identical(pred_sign, es$expected_sign),
-      quarter_correct = quarter_correct,
-      correct = identical(pred_exo, es$expected_exogenous) &&
-        identical(pred_sign, es$expected_sign) &&
-        quarter_correct
+      true_label = cls$label,
+      pred_label = pred_label,
+      correct = identical(pred_label, cls$label)
     )
   })
 
@@ -819,7 +805,7 @@ test_c2b_schema_recovery <- function(codebook,
   n_correct <- sum(details$correct, na.rm = TRUE)
 
   list(
-    test = "II_schema_recovery",
+    test = "II_definition_recovery",
     pass = n_correct == nrow(details),
     n_correct = n_correct,
     n_total = nrow(details),
@@ -830,18 +816,21 @@ test_c2b_schema_recovery <- function(codebook,
 }
 
 
-#' Test III: C2b Example Recovery (v0.8.0)
+#' Test III: C2b Example Recovery (v0.9.1)
 #'
 #' Memorization-style test for codebooks with worked examples. For each
 #' example in `codebook$examples`, presents the example's `input` block as a
 #' recall-framed user message and checks whether the model returns the
-#' `output` block listed alongside it. Compares `{enacted, exogenous, sign,
-#' enacted_quarter}`; free-form fields (`confidence`, `reasoning`) are not
-#' compared. Pass criterion: 100% of examples correct on all four dimensions.
+#' `output` block listed alongside it. Compares `{label, enacted, sign}`;
+#' free-form fields (`confidence`, `reasoning`) are not compared. Pass
+#' criterion: 100% of examples correct on all three dimensions.
 #'
 #' Mirrors the recall framing of `test_example_recovery()` for class-based
 #' codebooks (C1). C2b's flat top-level `examples` array and multi-field
-#' output schema require a separate implementation.
+#' output schema require a separate implementation. v0.9.1 has no
+#' top-level `examples:` block, so the orchestrator auto-skips this test;
+#' the implementation is retained for future codebook versions that
+#' reintroduce examples.
 #'
 #' @param codebook A validated C2b codebook object with non-empty `examples`
 #' @param model Character model ID
@@ -902,44 +891,27 @@ test_c2b_example_recovery <- function(codebook,
     validation <- validate_c2b_output(parsed)
 
     pred_enacted <- if (validation$valid) parsed$enacted else NA
-    pred_exo <- if (validation$valid) parsed$exogenous else NA_character_
+    pred_label <- if (validation$valid) parsed$label else NA_character_
     pred_sign <- if (validation$valid) parsed$sign else NA_character_
-
-    pred_quarters <- character(0)
-    if (validation$valid && !is.null(parsed$enacted_quarter)) {
-      pq <- parsed$enacted_quarter
-      if (is.list(pq)) pq <- unlist(pq, use.names = FALSE)
-      if (length(pq) > 0) pred_quarters <- as.character(pq)
-    }
-
-    expected_quarters <- ex$output$enacted_quarter %||% character(0)
-    if (is.list(expected_quarters)) {
-      expected_quarters <- unlist(expected_quarters, use.names = FALSE)
-    }
-    expected_quarters <- as.character(expected_quarters)
 
     enacted_correct <- identical(as.logical(pred_enacted),
                                  as.logical(ex$output$enacted))
-    exo_correct <- identical(pred_exo, ex$output$exogenous)
+    label_correct <- identical(pred_label, ex$output$label)
     sign_correct <- identical(pred_sign, ex$output$sign)
-    quarter_correct <- quarters_equal(pred_quarters, expected_quarters)
 
     tibble::tibble(
       example_idx = i,
       act_name = ex$input$act_name %||% NA_character_,
       expected_enacted = ex$output$enacted,
-      expected_exogenous = ex$output$exogenous,
+      expected_label = ex$output$label %||% NA_character_,
       expected_sign = ex$output$sign,
-      expected_quarters = fmt_quarters(expected_quarters),
       pred_enacted = pred_enacted,
-      pred_exogenous = pred_exo,
+      pred_label = pred_label,
       pred_sign = pred_sign,
-      pred_quarters = fmt_quarters(pred_quarters),
       enacted_correct = enacted_correct,
-      exo_correct = exo_correct,
+      label_correct = label_correct,
       sign_correct = sign_correct,
-      quarter_correct = quarter_correct,
-      correct = enacted_correct && exo_correct && sign_correct && quarter_correct
+      correct = enacted_correct && label_correct && sign_correct
     )
   })
 
@@ -1023,28 +995,24 @@ test_c2b_order_invariance <- function(codebook,
   prompt_reversed <- construct_codebook_prompt(codebook, class_order = reversed_order)
   prompt_shuffled <- construct_codebook_prompt(codebook, class_order = shuffled_order)
 
-  # Helper: extract combined label from C2b response (category multiset + exogenous)
-  extract_c2b_label <- function(parsed) {
-    cats <- vapply(
-      parsed$motivations %||% list(),
-      function(m) m$category %||% NA_character_,
-      character(1)
-    )
-    cats <- sort(cats[!is.na(cats)])
-    cat_str <- if (length(cats) == 0) "NONE" else paste(cats, collapse = "+")
-    exo_str <- as.character(parsed$exogenous %||% NA)
-    paste(cat_str, exo_str, sep = "|")
+  # Deterministic mapping from v0.9.1 label to exogenous flag
+  label_to_exogenous <- function(label) {
+    if (is.null(label) || is.na(label)) return(NA_character_)
+    if (label %in% c("DEFICIT_DRIVEN", "LONG_RUN")) return("TRUE")
+    if (label %in% c("SPENDING_DRIVEN", "COUNTERCYCLICAL")) return("FALSE")
+    NA_character_
   }
 
-  # Helper: extract just the category multiset (for separate reporting)
+  # Helper: extract combined fingerprint from C2b response (label + sign)
+  extract_c2b_label <- function(parsed) {
+    label_str <- as.character(parsed$label %||% NA)
+    sign_str <- as.character(parsed$sign %||% NA)
+    paste(label_str, sign_str, sep = "|")
+  }
+
+  # Helper: extract just the predicted category label (for separate reporting)
   extract_category_str <- function(parsed) {
-    cats <- vapply(
-      parsed$motivations %||% list(),
-      function(m) m$category %||% NA_character_,
-      character(1)
-    )
-    cats <- sort(cats[!is.na(cats)])
-    if (length(cats) == 0) "NONE" else paste(cats, collapse = "+")
+    as.character(parsed$label %||% NA)
   }
 
   n <- length(test_evidence_sets)
@@ -1069,10 +1037,11 @@ test_c2b_order_invariance <- function(codebook,
           base_url = base_url,
           api_key = api_key
         )
+        cat_str <- extract_category_str(parsed)
         list(
           combined = extract_c2b_label(parsed),
-          category = extract_category_str(parsed),
-          exogenous = as.character(parsed$exogenous %||% NA)
+          category = cat_str,
+          exogenous = label_to_exogenous(cat_str)
         )
       }, error = function(e) {
         list(combined = NA_character_, category = NA_character_,

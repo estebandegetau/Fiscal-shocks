@@ -135,34 +135,12 @@ test_c2b_evidence_shuffle <- function(c2b_codebook,
 
   system_prompt <- construct_codebook_prompt(c2b_codebook)
 
-  # Detect codebook generation: v0.7.0+ has no classes, outputs {exogenous, sign};
-  # legacy 4-class codebooks output a motivations[] array.
-  is_minimal <- is.null(c2b_codebook$classes) || length(c2b_codebook$classes) == 0
-
+  # v0.9.1 schema: single label + sign. Quarter is deferred to v0.9.x.
   fingerprint <- function(parsed) {
     if (is.null(parsed)) return(NA_character_)
-    if (is_minimal) {
-      exo_str <- as.character(parsed$exogenous %||% NA)
-      sign_str <- as.character(parsed$sign %||% NA)
-      # v0.8.0: include sorted-unique enacted_quarter[] in fingerprint.
-      raw_q <- parsed$enacted_quarter
-      q_str <- if (is.null(raw_q)) "" else {
-        qv <- if (is.list(raw_q)) unlist(raw_q, use.names = FALSE) else raw_q
-        if (length(qv) == 0L) "" else paste(sort(unique(as.character(qv))),
-                                            collapse = ",")
-      }
-      paste(exo_str, sign_str, q_str, sep = "|")
-    } else {
-      cats <- vapply(
-        parsed$motivations %||% list(),
-        function(m) m$category %||% NA_character_,
-        character(1)
-      )
-      cats <- sort(cats[!is.na(cats)])
-      cat_str <- if (length(cats) == 0L) "NONE" else paste(cats, collapse = "+")
-      exo_str <- as.character(parsed$exogenous %||% NA)
-      paste(cat_str, exo_str, sep = "|")
-    }
+    label_str <- as.character(parsed$label %||% NA)
+    sign_str  <- as.character(parsed$sign %||% NA)
+    paste(label_str, sign_str, sep = "|")
   }
 
   classify_one <- function(act_name, year, evidence, enacted_signals,

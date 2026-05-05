@@ -523,43 +523,35 @@ run_c2b_classification <- function(c2b_codebook,
       ))
     }
 
-    # ------ Extract v0.8.0 schema fields ------
-    pred_exogenous_str <- NA_character_
-    pred_exogenous <- NA  # logical — TRUE only when exogenous == "TRUE"
-    pred_sign <- NA_character_
-    pred_quarters <- character()  # empty character vector by default
+    # ------ Extract v0.9.1 schema fields ------
+    pred_label <- NA_character_
+    pred_exogenous <- NA  # logical — deterministic mapping from label
+    pred_sign_raw <- NA_character_  # v0.9.1 enum: increase/decrease/no_change
+    pred_sign <- NA_character_      # canonical sign convention: +/-/0
     enacted <- NA
     confidence <- NA_character_
     reasoning <- NA_character_
 
     if (c2b_valid && !is.null(c2b_parsed)) {
+      pred_label <- c2b_parsed$label %||% NA_character_
       enacted <- c2b_parsed$enacted %||% NA
-      pred_exogenous_str <- c2b_parsed$exogenous %||% NA_character_
-      pred_sign <- c2b_parsed$sign %||% NA_character_
+      pred_sign_raw <- c2b_parsed$sign %||% NA_character_
       confidence <- c2b_parsed$confidence %||% NA_character_
       reasoning <- c2b_parsed$reasoning %||% NA_character_
 
-      # enacted_quarter: jsonlite may give list() or character() depending on
-      # auto-simplification. Coerce to character vector; preserve order; allow empty.
-      raw_q <- c2b_parsed$enacted_quarter
-      if (!is.null(raw_q)) {
-        if (is.list(raw_q)) raw_q <- unlist(raw_q, use.names = FALSE)
-        if (length(raw_q) > 0) {
-          pred_quarters <- as.character(raw_q)
-        }
-      }
-
       pred_exogenous <- dplyr::case_when(
-        identical(pred_exogenous_str, "TRUE")  ~ TRUE,
-        identical(pred_exogenous_str, "FALSE") ~ FALSE,
-        TRUE ~ NA  # UNCLEAR or anything else → NA
+        pred_label %in% c("DEFICIT_DRIVEN", "LONG_RUN")          ~ TRUE,
+        pred_label %in% c("SPENDING_DRIVEN", "COUNTERCYCLICAL")  ~ FALSE,
+        TRUE                                                     ~ NA
+      )
+
+      pred_sign <- dplyr::case_when(
+        identical(pred_sign_raw, "increase")  ~ "+",
+        identical(pred_sign_raw, "decrease")  ~ "-",
+        identical(pred_sign_raw, "no_change") ~ "0",
+        TRUE                                  ~ NA_character_
       )
     }
-
-    # true_quarters comes through as a list-column entry; extract the vector
-    true_q <- if ("true_quarters" %in% names(act))
-      act$true_quarters[[1]] %||% character(0)
-    else character(0)
 
     tibble::tibble(
       act_name = act$act_name,
@@ -567,11 +559,10 @@ run_c2b_classification <- function(c2b_codebook,
       true_motivation = act$true_motivation %||% NA_character_,
       true_exogenous = act$true_exogenous,
       true_sign = act$true_sign,
-      true_quarters = list(true_q),
+      pred_label = pred_label,
       pred_exogenous = pred_exogenous,
-      pred_exogenous_raw = pred_exogenous_str,
       pred_sign = pred_sign,
-      pred_quarters = list(pred_quarters),
+      pred_sign_raw = pred_sign_raw,
       enacted = enacted,
       confidence = confidence,
       evidence_raw = list(all_evidence),
@@ -587,12 +578,12 @@ run_c2b_classification <- function(c2b_codebook,
   })
 
   message(sprintf(
-    paste0("\nC2b classification complete: %d acts, %d valid predictions, ",
-           "%d UNCLEAR/NA exogenous, %d UNCLEAR/NA sign"),
+    paste0("\nC2b classification complete: %d acts, %d valid labels, ",
+           "%d NA exogenous, %d NA sign"),
     nrow(results),
-    sum(!is.na(results$pred_exogenous)),
+    sum(!is.na(results$pred_label)),
     sum(is.na(results$pred_exogenous)),
-    sum(is.na(results$pred_sign) | results$pred_sign == "UNCLEAR")
+    sum(is.na(results$pred_sign))
   ))
 
   results
@@ -866,78 +857,64 @@ run_c2_zero_shot <- function(c2a_codebook,
 # Evaluation
 # =============================================================================
 
-#' Evaluate C2 motivation, sign, and timing classification results (v0.8.0)
+#' Evaluate C2 motivation and sign classification results (v0.9.1)
 #'
-#' Computes six headline metrics for the v0.8.0 act-level output schema:
-#' (a) **exogenous precision** (binary, TRUE-class precision); (b) **sign
-#' accuracy on true-exogenous acts**; (c) **primary-quarter exact match**
-#' (predicted earliest quarter == R&R primary); (d) **primary-quarter ±1
-#' quarter tolerance**; (e) **phased-act detection rate** (diagnostic — among
-#' acts with ≥2 ground-truth quarters, fraction where C2b returns ≥2);
-#' (f) **quarter-set Jaccard** (diagnostic — mean per-act Jaccard).
+#' Computes the headline metrics for the v0.9.1 act-level output schema:
+#' (a) **exogenous precision** (binary, TRUE-class precision; exogenous flag
+#' is derived deterministically from the 4-way `label` in
+#' `run_c2b_classification`); (b) **sign accuracy on true-exogenous acts**;
+#' (c) joint diagnostic **signed-exogenous precision** (P(correct exo AND
+#' correct sign | true exogenous)).
+#'
+#' Quarter-based metrics (primary-quarter exact match, ±1 quarter tolerance,
+#' phased-act detection rate, quarter-set Jaccard) are deferred until
+#' `enacted_quarter[]` is restored to the codebook output schema in a future
+#' v0.9.x. Until then those four metrics return NA and the test set carries
+#' no quarter list-columns.
 #'
 #' Bootstrap CIs are computed by resampling **at the act level** (the unit of
-#' independence). Per-act metrics — including per-act Jaccard for quarter-set
-#' comparison — are computed before resampling and then averaged across the
-#' resampled act draws. This avoids anti-conservative CIs that would result
-#' from treating quarters from the same phased act as independent observations.
-#' The phased-act detection rate has effective N = number of phased acts in
-#' each resample (typically 8-12 of 39).
+#' independence). Exo precision, sign accuracy, and signed exo precision are
+#' recomputed inside each resample because their denominators depend on
+#' subset filters (not-NA pred_exogenous, true_exogenous == TRUE).
 #'
-#' UNCLEAR predictions on the exogenous flag are mapped to NA and excluded
-#' from the precision denominator (treated as abstentions). UNCLEAR sign
-#' predictions count as incorrect when ground truth is exogenous (the model
-#' failed to commit to a direction the shock series requires).
+#' v0.9.1 has no UNCLEAR exogenous path — `pred_exogenous` is a deterministic
+#' function of `pred_label`, NA only when the model returned an unparseable
+#' or out-of-vocabulary label. NA sign predictions count as incorrect when
+#' ground truth is exogenous (the model failed to commit to a direction the
+#' shock series requires).
 #'
 #' @param c2_s2_results Tibble from `run_c2b_classification()`; must include
-#'   columns `pred_exogenous` (logical), `true_exogenous` (logical),
-#'   `pred_sign` (character), `true_sign` (character), `pred_quarters`
-#'   (list-col of `YYYY-QN` strings), `true_quarters` (list-col of `YYYY-QN`
-#'   strings).
+#'   columns `pred_label` (character), `pred_exogenous` (logical),
+#'   `true_exogenous` (logical), `pred_sign` (character), `true_sign`
+#'   (character).
 #' @param n_bootstrap Integer bootstrap resamples (default 1000)
 #' @param ci_level Numeric confidence level (default 0.95)
-#' @return List with exogenous metrics, sign metrics, quarter metrics,
-#'   per-act results, and quality flags
+#' @return List with exogenous metrics, sign metrics, per-act results,
+#'   and quality flags
 #' @export
 evaluate_c2_classification <- function(c2_s2_results,
                                        n_bootstrap = 1000,
                                        ci_level = 0.95) {
 
   # An act is "valid" for exogenous evaluation if pred_exogenous is non-NA.
-  # UNCLEAR predictions map to NA (per run_c2b_classification) and are
-  # excluded from precision denominators.
+  # NA predictions are out-of-vocabulary labels (the model returned a label
+  # not in {SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN, LONG_RUN}).
   valid <- c2_s2_results |>
     dplyr::filter(!is.na(pred_exogenous))
 
   n_total <- nrow(c2_s2_results)
   n_valid <- nrow(valid)
-  n_unclear_exo <- sum(is.na(c2_s2_results$pred_exogenous))
+  n_na_exo <- sum(is.na(c2_s2_results$pred_exogenous))
 
   if (n_valid < n_total) {
     warning(sprintf(
-      "%d/%d acts had NA/UNCLEAR pred_exogenous and were excluded from precision",
+      "%d/%d acts had NA pred_exogenous (out-of-vocabulary label) and were excluded",
       n_total - n_valid, n_total
     ))
   }
 
   if (n_valid == 0) {
-    stop("No committed (TRUE/FALSE) exogenous predictions to evaluate")
-  }
-
-  has_quarters <- "pred_quarters" %in% names(c2_s2_results) &&
-                  "true_quarters" %in% names(c2_s2_results)
-  if (!has_quarters) {
-    warning(
-      "c2_s2_results lacks pred_quarters/true_quarters list-columns. ",
-      "Quarter metrics will be skipped (likely a v0.7.0 cached results object). ",
-      "Rerun run_c2b_classification with v0.8.0 codebook + assemble_c2_s2_test_set."
-    )
-  }
-
-  # Per-act quarter metrics added once on the full tibble; reused by point
-  # estimates and bootstrap.
-  if (has_quarters) {
-    c2_s2_results <- add_quarter_metrics(c2_s2_results)
+    stop("No valid label predictions to evaluate")
   }
 
   # --- Exogenous metrics (binary) ---
@@ -956,28 +933,7 @@ evaluate_c2_classification <- function(c2_s2_results,
     pred_exo  = c2_s2_results$pred_exogenous
   )
 
-  # --- Quarter metrics (point estimates) ---
-  quarter_point <- if (has_quarters) {
-    summarize_quarter_metrics(c2_s2_results)
-  } else {
-    list(
-      primary_quarter_exact = NA_real_,
-      primary_quarter_within_one = NA_real_,
-      phased_act_detection_rate = NA_real_,
-      quarter_set_jaccard = NA_real_,
-      n_phased_acts = NA_integer_,
-      n_with_both_quarters = NA_integer_,
-      n_jaccard_defined = NA_integer_,
-      pred_n_true_n_distribution = NULL
-    )
-  }
-
   # --- Act-level bootstrap ---
-  # Resample over the full results tibble (acts as the unit of independence).
-  # Per-act metrics are precomputed; bootstrap recomputes the means over
-  # resampled rows. Exo precision, sign accuracy, and signed exo precision
-  # are recomputed inside each resample because their denominators depend on
-  # subset filters (not-NA pred_exogenous, true_exogenous == TRUE).
   set.seed(42)
   boot_stats <- replicate(n_bootstrap, {
     boot_idx <- sample(seq_len(n_total), n_total, replace = TRUE)
@@ -999,33 +955,12 @@ evaluate_c2_classification <- function(c2_s2_results,
       pred_exo  = boot_data$pred_exogenous
     )
 
-    if (has_quarters) {
-      pq_exact <- mean(boot_data$primary_quarter_exact, na.rm = TRUE)
-      pq_within <- mean(boot_data$primary_quarter_within_one, na.rm = TRUE)
-      jacc <- mean(boot_data$quarter_jaccard, na.rm = TRUE)
-      phased_idx <- which(boot_data$phased_act)
-      phased_det <- if (length(phased_idx) > 0) {
-        mean(boot_data$phased_detection[phased_idx], na.rm = TRUE)
-      } else {
-        NA_real_
-      }
-    } else {
-      pq_exact <- NA_real_
-      pq_within <- NA_real_
-      jacc <- NA_real_
-      phased_det <- NA_real_
-    }
-
     c(exo_precision = e$precision,
       exo_recall = e$recall,
       exo_f1 = e$f1,
       exo_accuracy = e$accuracy,
       sign_acc_on_true_exo = s$sign_accuracy,
-      signed_exo_precision = s$signed_exo_precision,
-      primary_quarter_exact = pq_exact,
-      primary_quarter_within_one = pq_within,
-      phased_act_detection_rate = phased_det,
-      quarter_set_jaccard = jacc)
+      signed_exo_precision = s$signed_exo_precision)
   })
 
   alpha <- 1 - ci_level
@@ -1035,12 +970,8 @@ evaluate_c2_classification <- function(c2_s2_results,
   # --- Per-act results ---
   per_act_cols <- c(
     "act_name", "year", "true_motivation",
-    "true_exogenous", "pred_exogenous", "pred_exogenous_raw", "correct_exogenous",
-    "true_sign", "pred_sign", "correct_sign_on_true_exo",
-    "true_quarters", "pred_quarters",
-    "n_true_quarters", "n_pred_quarters",
-    "primary_quarter_exact", "primary_quarter_within_one",
-    "quarter_jaccard", "phased_act", "phased_detection",
+    "true_exogenous", "pred_label", "pred_exogenous", "correct_exogenous",
+    "true_sign", "pred_sign", "pred_sign_raw", "correct_sign_on_true_exo",
     "confidence", "n_chunks", "n_evidence_items", "n_c2a_failures"
   )
 
@@ -1060,15 +991,9 @@ evaluate_c2_classification <- function(c2_s2_results,
   # --- Quality flags ---
   quality_flags <- list(
     n_c2a_failures_total = sum(c2_s2_results$n_c2a_failures, na.rm = TRUE),
-    n_unclear_exo = n_unclear_exo,
-    n_unclear_sign = sum(c2_s2_results$pred_sign == "UNCLEAR", na.rm = TRUE),
+    n_na_exo = n_na_exo,
     n_na_pred_sign = sum(is.na(c2_s2_results$pred_sign)),
-    n_empty_pred_quarters = if (has_quarters) {
-      sum(c2_s2_results$n_pred_quarters == 0, na.rm = TRUE)
-    } else NA_integer_,
-    n_empty_true_quarters = if (has_quarters) {
-      sum(c2_s2_results$n_true_quarters == 0, na.rm = TRUE)
-    } else NA_integer_
+    n_na_pred_label = sum(is.na(c2_s2_results$pred_label))
   )
 
   list(
@@ -1104,30 +1029,7 @@ evaluate_c2_classification <- function(c2_s2_results,
       upper = ci_upper["signed_exo_precision"]
     ),
 
-    # Quarter metrics (v0.8.0)
-    primary_quarter_exact = quarter_point$primary_quarter_exact,
-    primary_quarter_exact_ci = c(
-      lower = ci_lower["primary_quarter_exact"],
-      upper = ci_upper["primary_quarter_exact"]
-    ),
-    primary_quarter_within_one = quarter_point$primary_quarter_within_one,
-    primary_quarter_within_one_ci = c(
-      lower = ci_lower["primary_quarter_within_one"],
-      upper = ci_upper["primary_quarter_within_one"]
-    ),
-    phased_act_detection_rate = quarter_point$phased_act_detection_rate,
-    phased_act_detection_rate_ci = c(
-      lower = ci_lower["phased_act_detection_rate"],
-      upper = ci_upper["phased_act_detection_rate"]
-    ),
-    n_phased_acts = quarter_point$n_phased_acts,
-    quarter_set_jaccard = quarter_point$quarter_set_jaccard,
-    quarter_set_jaccard_ci = c(
-      lower = ci_lower["quarter_set_jaccard"],
-      upper = ci_upper["quarter_set_jaccard"]
-    ),
-    n_jaccard_defined = quarter_point$n_jaccard_defined,
-    pred_n_true_n_distribution = quarter_point$pred_n_true_n_distribution,
+    # Quarter metrics deferred to v0.9.x (enacted_quarter[] not in v0.9.1 schema)
 
     # Diagnostics
     per_act_results = per_act,

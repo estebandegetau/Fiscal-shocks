@@ -408,12 +408,13 @@ run_c2b_behavioral_tests_s1 <- function(codebook,
   message(sprintf("    %s (%.0f%% valid)",
                   if (test_i$pass) "PASS" else "FAIL", test_i$rate * 100))
 
-  # Test II: Schema Recovery (v0.7.0+; replaces Definition Recovery)
-  message("  Test II: Schema Recovery...")
-  test_ii <- test_c2b_schema_recovery(codebook, test_evidence_sets, model,
-                                      max_tokens = max_tokens,
-                                      provider = provider, base_url = base_url,
-                                      api_key = api_key)
+  # Test II: Definition Recovery (v0.9.1; restored 4-class definition recovery)
+  message("  Test II: Definition Recovery...")
+  test_ii <- test_c2b_definition_recovery(codebook, model,
+                                          max_tokens = max_tokens,
+                                          provider = provider,
+                                          base_url = base_url,
+                                          api_key = api_key)
   message(sprintf("    %s (%d/%d correct)",
                   if (test_ii$pass) "PASS" else "FAIL",
                   test_ii$n_correct, test_ii$n_total))
@@ -445,17 +446,14 @@ run_c2b_behavioral_tests_s1 <- function(codebook,
         example_idx = integer(),
         act_name = character(),
         expected_enacted = logical(),
-        expected_exogenous = character(),
+        expected_label = character(),
         expected_sign = character(),
-        expected_quarters = character(),
         pred_enacted = logical(),
-        pred_exogenous = character(),
+        pred_label = character(),
         pred_sign = character(),
-        pred_quarters = character(),
         enacted_correct = logical(),
-        exo_correct = logical(),
+        label_correct = logical(),
         sign_correct = logical(),
-        quarter_correct = logical(),
         correct = logical()
       ),
       skipped = TRUE
@@ -504,7 +502,7 @@ run_c2b_behavioral_tests_s1 <- function(codebook,
     seed = seed,
     timestamp = Sys.time(),
     summary = tibble::tibble(
-      test = c("I_legal_outputs", "II_schema_recovery",
+      test = c("I_legal_outputs", "II_definition_recovery",
                "III_example_recovery", "IV_order_invariance"),
       pass = c(test_i$pass, test_ii$pass, test_iii$pass, test_iv$pass),
       metric = c(test_i$rate, test_ii$rate, test_iii$rate,
