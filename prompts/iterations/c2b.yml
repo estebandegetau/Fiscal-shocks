@@ -5060,3 +5060,163 @@ iterations:
       plausibly shift the F-A stability gap. Cost is ~99 calls
       (33 acts × 3 shuffles); defer until S2 results are in to
       decide whether the run is informative.
+  - iteration: 42
+    codebook_version: "0.8.0"
+    date: "2026-05-04"
+    git_commit: "00124a8"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    condition: "primary (discusses_motivation == TRUE chunks only)"
+    changes: >
+      No codebook YAML changes since iter 41 (v0.8.0 S1). First S2
+      zero-shot run of v0.8.0 against the 39-act primary test set.
+      v0.8.0 retains the v0.7.0 minimal Das-et-al. binary
+      exogenous/endogenous prompt and adds back 5 worked examples,
+      sign classification, and the `enacted_quarter[]` timing
+      extraction folded in from the dropped C3/C4 codebooks
+      (commit 922c3c0). Test set composition unchanged from iter 32
+      and iter 39 (39 acts, 23 true-exogenous). Headline metrics per
+      docs/strategy.md C2 Blueprint: Exogenous Precision ≥0.85
+      (binary), Sign Accuracy on True-Exogenous ≥0.90.
+    results:
+      overall_pass: false
+      n_total: 39
+      n_valid: 37
+      n_true_exo: 23
+      n_bootstrap: 1000
+      ci_level: 0.95
+      metrics:
+        - metric: "exogenous_precision"
+          value: 0.5000
+          ci_lower: 0.2139
+          ci_upper: 0.8000
+          target: 0.8500
+          pass: false
+        - metric: "sign_accuracy_on_true_exo"
+          value: 0.9565
+          ci_lower: 0.8571
+          ci_upper: 1.0000
+          target: 0.9000
+          pass: true
+        - metric: "exogenous_recall"
+          value: 0.2857
+          ci_lower: 0.1053
+          ci_upper: 0.5000
+        - metric: "exogenous_f1"
+          value: 0.3636
+          ci_lower: 0.1479
+          ci_upper: 0.5625
+        - metric: "exogenous_accuracy"
+          value: 0.4324
+        - metric: "signed_exo_precision"
+          value: 0.2609
+          ci_lower: 0.0909
+          ci_upper: 0.4584
+      exogenous_confusion_matrix:
+        TP: 6
+        FP: 6
+        FN: 15
+        TN: 10
+      per_motivation_pred:
+        - true_motivation: "LONG_RUN"
+          n: 15
+          pred_TRUE: 1
+          pred_FALSE: 13
+          pred_NA_or_UNCLEAR: 1
+        - true_motivation: "DEFICIT_DRIVEN"
+          n: 8
+          pred_TRUE: 4
+          pred_FALSE: 3
+          pred_NA_or_UNCLEAR: 1
+        - true_motivation: "COUNTERCYCLICAL"
+          n: 6
+          pred_TRUE: 0
+          pred_FALSE: 6
+          pred_NA_or_UNCLEAR: 0
+        - true_motivation: "SPENDING_DRIVEN"
+          n: 10
+          pred_TRUE: 5
+          pred_FALSE: 3
+          pred_NA_or_UNCLEAR: 2
+      quality_flags:
+        n_c2a_failures_total: 0
+        n_unclear_exo: 2
+        n_unclear_sign: 0
+        n_na_pred_sign: 0
+      comparison_baselines:
+        - codebook_version: "0.6.1"
+          iteration: 32
+          exogenous_precision: 0.8125
+          exogenous_recall: 0.6190
+          exogenous_f1: 0.7027
+          note: "ceiling under 4-class architecture; F-A overfit gap −0.333 at iter 36"
+        - codebook_version: "0.7.0"
+          iteration: 39
+          exogenous_precision: 0.5000
+          note: "first minimal-Das binary prompt; F-A gap PASS (0.000) at iter 40"
+    interpretation: >
+      v0.8.0 produced super significant regressions on the headline
+      exogenous-classification metric. Exogenous precision is 0.500
+      (target 0.85), recall is 0.286, F1 is 0.364 — a drop of about
+      0.31, 0.33, and 0.34 respectively versus the v0.6.1 iter-32
+      ceiling. Precision is unchanged versus v0.7.0's iter-39 0.500
+      floor, so the regression is a v0.6.1 → v0.7.0 phenomenon that
+      v0.8.0 inherited rather than worsened on the exogenous axis;
+      v0.8.0's added value is the new sign and timing surfaces, with
+      sign accuracy on true-exogenous at 0.957 (CI [0.857, 1.000]),
+      passing the 0.90 target cleanly on the first measurement. The
+      per-motivation breakdown shows the regression is driven by
+      two opposite error patterns. (1) LONG_RUN → endogenous
+      (recall 1/15 = 0.067): the model latches onto macro-condition
+      mentions in evidence (recession, stagflation, inflation) and
+      classifies as endogenous even when the dominant stated motive
+      is structural — Economic Recovery Tax Act of 1981, Crude Oil
+      Windfall Profit Tax 1980, Revenue Act of 1964, Excise Tax
+      Reduction Act of 1965, Tax Reform Act of 1976 all read as
+      endogenous responses to current conditions despite explicit
+      long-run/structural framing. The Das clarifier
+      ("Acknowledging current economic conditions does not by itself
+      imply endogeneity if the stated motive is explicitly
+      non-cyclical") is in the prompt but is not consistently
+      overriding the macro-context heuristic when evidence quotes
+      conditions. (2) SPENDING_DRIVEN → exogenous (5 of 10): the
+      model reads "long-run / structural / non-cyclical" framing in
+      spending-program acts (Federal-Aid Highway Act 1956, Social
+      Security Amendments 1954/1965/1966, Taxpayer Relief +
+      Balanced Budget Act 1997) and applies the exogenous label,
+      missing that taxes raised to fund a near-term spending
+      decision are endogenous in R&R even when the spending is
+      structural. The codebook's endogenous definition includes
+      "finance or offset a contemporaneous spending change (within
+      roughly one year)", but it is buried in the endogenous
+      paragraph and the only spending-financing example
+      (Korean War excess profits) is wartime, which the model
+      generalises as "war = cyclical-equivalent" rather than
+      "spending decision". COUNTERCYCLICAL is perfectly classified
+      (6/6), confirming the model handles the unambiguous
+      cyclical-response case but degrades on both flavours of
+      non-cyclical-motive disambiguation. Two acts returned UNCLEAR
+      under the v0.8.0 mixed-component conservative rule, both on
+      true-exogenous DEFICIT/LONG_RUN cases, suggesting the rule
+      may be firing on cases that should be clearly exogenous.
+    decision: >
+      Run S3 (c2_s3_results) to determine what caused the
+      regression and make further decisions. The S3 ablation
+      (Tests V/VI/VII + component drops) on v0.8.0 will quantify
+      which prompt components are actually load-bearing, whether
+      the Das clarifier is contributing at all, and whether the
+      worked examples block helps or hurts. Defer the
+      v0.8.1-vs-revert decision until the ablation results are
+      in — the S2 confusion matrix alone does not distinguish
+      between "the binary prompt is undertrained for the LONG_RUN
+      vs SPENDING_DRIVEN distinction" (in which case a v0.8.1 patch
+      adding explicit anti-patterns + a peacetime spending example
+      could close the gap) and "the binary architecture itself
+      cannot disambiguate without 4-class scaffolding" (in which
+      case revert toward v0.6.x and address the F-A overfit through
+      a different mechanism). c2b_evidence_shuffle_diagnostic on
+      v0.8.0 remains deferred — its purpose was to confirm v0.7.0's
+      stability survived the v0.8.0 additions, but with precision
+      this far below ceiling the stability question is moot until
+      the precision regression is diagnosed.
+
