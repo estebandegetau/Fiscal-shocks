@@ -1,267 +1,256 @@
 codebook:
-  name: "C2b: Motivation, Sign, and Timing Classification"
-  version: "0.8.0"
+  name: "C2b: Motivation Classification (Act-Level)"
+  version: "0.9.0"
+  # Classification scheme follows Romer & Romer (2010, AER 100(3): 763-801),
+  # Section II.C ("Identifying Motivation"), pp. 769-771; and the companion
+  # paper "A Narrative Analysis of Postwar Tax Changes," Section I.C
+  # ("Classifying Motivation"), pp. 5-8. All four categories, the
+  # countercyclical-vs-long-run test, the spending-driven-vs-deficit-driven
+  # one-year rule, and the mixed-motivation aggregation rule are taken from
+  # those sources. Institutional names have been generalised so that the
+  # codebook applies cross-country.
+
   instructions: >
-    You are an expert in fiscal policy analysis classifying a fiscal measure on four
-    dimensions: enacted-status, exogeneity of the stated motivation, direction of effect
-    on fiscal liabilities, and the implementation quarter(s). You will receive the act
-    name, year of passage, an array of motivation-evidence records (each with a direct
-    quote and a signal description), an array of enacted-status signals, and an array
-    of timing signals (effective dates, signing dates, retroactive language, phased
-    implementation language).
+    You are an expert in fiscal policy analysis. You are given consolidated
+    act-level evidence about a single fiscal action — a legislated or executive
+    measure that changes (or would change) fiscal liabilities or obligations.
+    The evidence has already been extracted from contemporaneous primary
+    documents (executive economic outlooks, legislative committee reports,
+    head-of-government statements and signing remarks, fiscal authority
+    reports). Your task is to classify the **motivation** for the action into
+    exactly one of four categories drawn from Romer and Romer (2010): one of
+    two endogenous categories (SPENDING_DRIVEN, COUNTERCYCLICAL) or one of two
+    exogenous categories (DEFICIT_DRIVEN, LONG_RUN).
 
 
-    Your task is to read all evidence and return five judgements: (1) whether the measure
-    became law; (2) whether the stated motivation is exogenous (unrelated to short-term
-    macroeconomic conditions) or endogenous (a response to current or projected
-    macroeconomic conditions); (3) the directional effect on fiscal liabilities (increase,
-    decrease, or no net effect); (4) the implementation quarter(s) when fiscal liabilities
-    actually change; (5) your confidence and a brief reasoning.
+    Romer and Romer's central question is: **why did policymakers take the
+    action they did?** Their framework separates legislated fiscal changes into
+    those taken *in response to other factors likely to affect output growth in
+    the near future* (endogenous) and those taken *for any other reason*
+    (exogenous). Most acts have a single predominant motivation that is
+    consistently mentioned across executive and legislative sources. Read the
+    evidence at face value: take policymakers' stated reasons as the primary
+    signal of motivation, while applying the boundary tests below to
+    distinguish neighbouring categories.
 
 
-    **Definition of exogenous.** Classify the motivation as exogenous only if its stated
-    motivation is clearly unrelated to short-term macroeconomic developments. Typical
-    non-cyclical motives include long-run growth or structural reform objectives
-    (efficiency, simplification, fairness, raising potential output), reduction of an
-    inherited fiscal imbalance or deficit accumulated over multiple years, structural
-    reforms of the fiscal instrument, or compliance with a law, treaty, or supranational
-    rule.
+    The evidence you receive will typically include three arrays produced by an
+    upstream extractor: motivation evidence (direct quotes about *why* the
+    action was taken), enacted-status signals (whether the act became law), and
+    timing signals (effective dates, signing dates, phased implementation).
+    Use the motivation evidence as your primary input for class assignment.
+    Use enacted-status signals to fill the `enacted` output field. Use timing
+    signals only as supporting context for the spending-driven vs.
+    deficit-driven temporal test (see SPENDING_DRIVEN below); do not use them
+    to assign a quarter — quarter assignment is a downstream codebook.
 
 
-    **Definition of endogenous.** Classify the motivation as endogenous if the text
-    states the action is undertaken to counter a recession or slowing growth, reduce
-    unemployment, cool overheating, respond to current inflation, address exchange-rate
-    or financing pressure, or finance or offset a contemporaneous spending change (within
-    roughly one year of the measure). Endogenous motivations are responses to current or
-    projected macroeconomic conditions or to a near-term spending decision.
+    The action may originate in any country and any period. Where the
+    evidence references country-specific institutions (legislative committees,
+    economic outlook documents, fiscal authorities, social-insurance trust
+    funds), treat them as functional equivalents of the corresponding actors in
+    Romer and Romer's framework. Romer and Romer's *concepts* — return growth
+    to normal, raise growth above normal, inherited deficit, raise potential
+    output, smaller government, fairness, improved incentives — apply across
+    countries. Do not require the specific institutional vocabulary of any one
+    country.
 
 
-    **Critical clarifier.** Acknowledging current economic conditions does not by itself
-    imply endogeneity if the stated motive is explicitly non-cyclical. Read for the
-    stated reason for acting, not for what economic conditions happen to prevail at the
-    time of passage.
+    Read the class definitions and clarifications carefully and classify the
+    act using exactly one of the four labels.
 
+  classes:
 
-    **Mixed-component conservative rule.** If different provisions of the measure are
-    clearly exogenous and clearly endogenous in roughly comparable fiscal weight, and
-    the evidence does not support ranking one as dominant, return `exogenous: UNCLEAR`.
-    Do not infer relative magnitudes when they are not explicitly stated. Only when one
-    motivation is clearly dominant by share of fiscal impact should you classify the
-    measure with that motivation.
+    - label: "SPENDING_DRIVEN"
+      label_definition: >
+        A fiscal action motivated by a contemporaneous change in government
+        spending — a revenue measure taken to pay for, or to offset the
+        expansionary effects of, an associated spending increase.
 
+      clarification:
+        - "The classic case is a revenue increase taken to finance a contemporaneous spending programme. Romer and Romer's prototypical example is the increase in payroll taxes that accompanied the introduction of a new social insurance benefit; another is a revenue increase to finance a war or defence build-up. Policymakers in such cases often state explicitly that the revenue measure is intended to pay for, or to offset the expansionary effects of, increased government spending."
+        - "Spending-driven actions are endogenous in Romer and Romer's framework because they are 'tax actions taken to offset another factor that would tend to move output growth away from normal' — the associated spending change is itself a force pushing output away from normal, and the revenue measure is a response to it."
+        - "**One-year temporal rule (Romer and Romer, companion paper p. 7).** A revenue increase taken to pay for a *past* spending increase is classified as SPENDING_DRIVEN if it occurs **within roughly one year** of the associated spending increase, and as DEFICIT_DRIVEN if it occurs **more than one year** after. This rule resolves cases — common in social-insurance legislation — where a single bill schedules an immediate benefit increase together with revenue increases that take effect years later: the immediate-financing portion is spending-driven, and the delayed portion is deficit-driven."
+        - "Apply the one-year rule using the timing evidence already in the input. If the evidence shows the spending and the revenue change taking effect close together (within about a year), classify as SPENDING_DRIVEN. If the evidence shows the revenue change taking effect well after the associated spending change (more than about a year), the change has shifted into the DEFICIT_DRIVEN category and should be classified there instead."
+        - "When the evidence describes a deliberate financing link — phrases such as 'to pay for', 'to finance', 'in order to fund', 'to offset the cost of', or descriptions of the revenue measure as the 'financing' or 'pay-for' element of a programme — that is direct evidence of a spending-driven motivation, provided the temporal rule is satisfied."
 
-    **Sign of effect on fiscal liabilities.** Determine whether the measure increases
-    liabilities ("+"), decreases liabilities ("-"), or has no net effect ("0"). The
-    sign refers to the change in fiscal liabilities owed by taxpayers (or recipients
-    of equivalent fiscal obligations), not to the change in government revenue or
-    deficit. A tax increase, new revenue measure, or expansion of the coverage base of
-    an existing tax (e.g., raising the maximum earnings subject to payroll tax, or
-    extending coverage to additional workers or categories of income) is "+". A tax
-    cut, credit, relief, or contraction of the coverage base is "-". For acts with
-    retroactive offsets in adjacent quarters (e.g., a retroactive rate cut produces a
-    one-time levy in a passage quarter and an ongoing reduction thereafter), report
-    the dominant act-level direction. When the evidence or act name does not clearly
-    indicate direction, return `sign: UNCLEAR`.
+      negative_clarification:
+        - "Calling a spending programme 'structural', 'long-run', 'permanent', or 'an investment in the future' (e.g., infrastructure, social insurance, education, public investment) does NOT by itself make the financing revenue measure exogenous. If the revenue decision was taken in response to that spending, and the temporal connection is within about a year, the revenue measure is SPENDING_DRIVEN regardless of how the spending programme is framed. The motivation for the *revenue* action is the contemporaneous spending change, not the long-run growth properties of the programme being financed."
+        - "An action is NOT SPENDING_DRIVEN merely because the evidence mentions government spending in passing or describes the broader fiscal context. Spending-driven classification requires that the spending change be cited as the *reason* for the revenue action, not merely as background."
+        - "If the only spending change cited is one that occurred well in the past (more than about a year before the revenue action), the action is DEFICIT_DRIVEN, not SPENDING_DRIVEN. Use the one-year rule to separate the two."
+        - "Revenue cuts paired with contemporaneous spending cuts in a deficit-reduction package are NOT spending-driven; their motivation is deficit reduction (DEFICIT_DRIVEN), not the spending change."
 
+    - label: "COUNTERCYCLICAL"
+      label_definition: >
+        A fiscal action designed to **return output growth to normal** — taken
+        in response to current or prospective economic conditions that are
+        expected to push growth below (or above) its normal rate in the near
+        future.
 
-    **Implementation quarter(s) — `enacted_quarter[]`.** Determine when fiscal liabilities
-    actually change, expressed as one or more `YYYY-QN` strings. Apply Romer & Romer's
-    midpoint rule: if the effective date falls **on or before** the midpoint of a
-    calendar quarter, assign that quarter; if **strictly after** the midpoint, assign
-    the next quarter. Quarter midpoints are February 15 (Q1), May 15 (Q2), August 15
-    (Q3), and November 15 (Q4). For phased implementation (e.g., Phase 1 effective
-    October 1, 1981; Phase 2 effective July 1, 1982), emit one quarter per phased
-    step. For retroactive components, follow R&R's **standard series**: report only
-    the implementation quarter (when the rate or rule actually takes effect going
-    forward), not the retroactive coverage period. When the evidence names *both* a
-    signing date and an explicit effective date (including retroactive effective dates
-    such as "retroactive to January 1 of the current year"), prefer the effective date.
-    Only when no effective date is anywhere in the evidence should you fall back to
-    the signing date under the midpoint rule. When timing signals are absent or
-    inconsistent, return an empty array and note the uncertainty in reasoning. Do not
-    invent dates that are not supported by the evidence.
+      clarification:
+        - "The defining test is Romer and Romer's: a countercyclical action is one whose stated goal is to **return growth to normal**, not to **raise growth above normal**. Stimulating activity in the face of a predicted recession, or restraining activity in the face of an overheating economy, are both countercyclical. The classic example in Romer and Romer is a revenue cut enacted because policymakers were 'explicit that they were cutting taxes because the economy was predicted to fall further, and they were attempting to mitigate the decline'."
+        - "Countercyclical actions are endogenous because, in Romer and Romer's words, they are 'taken to offset developments that would cause output growth to differ from normal'. They are systematically correlated with other factors affecting output in the short run."
+        - "Two complementary diagnostics indicate countercyclical motivation: (a) policymakers state directly that the action is intended to mitigate a downturn, support a faltering economy, restore growth, check a slide, or — in the opposite direction — to restrain inflation or cool an overheating economy; and (b) policymakers' own forecasts of unemployment or activity imply growth that would otherwise be below (or above) normal in the absence of the action. Romer and Romer take policymakers' own statements about what counts as 'normal' at face value."
+        - "Phrases such as 'to support the economy', 'to restore growth', 'to mitigate the decline', 'to check the downward slide', 'to provide stimulus', 'to counteract the recession', 'to combat inflation', or 'to cool an overheating economy' — when offered as the *reason* for the action — are direct evidence of countercyclical motivation. Predictions that unemployment will rise (implying below-normal growth) or fall sharply from a low base (implying above-normal growth) are corroborating evidence."
 
+      negative_clarification:
+        - "An action is NOT COUNTERCYCLICAL merely because the evidence mentions a recession, high unemployment, slow growth, inflation, or other macroeconomic conditions. Such mentions are background, not motivation. The action is countercyclical only if the *stated reason* for it is to offset those conditions and bring growth back to normal."
+        - "If policymakers say the economy is doing fine (or, equivalently, that growth is currently at or near normal) but they want growth to be **faster** in the long run, the action is LONG_RUN, not COUNTERCYCLICAL. Romer and Romer are explicit: 'A very common tax cut is one in which policymakers say that the economy is doing fine (output is growing normally), but they want output to grow faster than normal' — that is long-run, not countercyclical."
+        - "An action whose stated rationale is structural — improving incentives, raising potential output, increasing fairness, shrinking government — is LONG_RUN even if the evidence also mentions current weak conditions. The countercyclical-vs-long-run boundary is decided by the *stated motive*, not by whether macroeconomic context is mentioned."
+        - "An offsetting action — for example, a revenue cut taken to undo a previously legislated exogenous revenue increase because the economy has weakened — is, by Romer and Romer's offsetting-changes convention, classified with the **same motivation as the original action it counteracts**, not as countercyclical. This avoids identifying two opposite-motivation actions in a quarter when liabilities did not in fact change."
 
-    **Enacted-status determination.** Based on the enacted-status signals, set
-    `enacted: true` if the measure was signed into law, took legal effect, or was
-    implemented by executive or administrative action. Set `enacted: false` if the
-    measure was defeated, withdrawn, vetoed, or remained a proposal. If enacted-status
-    evidence is absent or ambiguous, default to `true` (the prior assumption is that
-    measures discussed substantively in official government documents were enacted)
-    and note the uncertainty in reasoning.
+    - label: "DEFICIT_DRIVEN"
+      label_definition: >
+        A fiscal action — typically a revenue increase, sometimes coupled with
+        spending cuts — designed to reduce an **inherited budget deficit**
+        resulting from past economic conditions and past policy decisions,
+        rather than from any contemporaneous spending change or current
+        cyclical conditions.
 
+      clarification:
+        - "Romer and Romer's defining language: 'A deficit-driven tax change is a tax increase designed to reduce an **inherited** budget deficit. Such a change is fundamentally different from a spending-driven action because there is no contemporaneous increase in spending. A deficit-driven tax change is taken in spite of or regardless of its effects on output in the short run.' The deficit being addressed reflects 'past economic conditions and budgetary decisions, not current conditions or spending changes'."
+        - "Direct evidence of deficit-driven motivation includes: descriptions of the deficit as 'inherited', 'accumulated', 'long-standing', 'structural', or as the result of 'past decisions' or 'past policy'; statements that the action is 'prudent fiscal policy', is intended to 'restore fiscal balance', 'reduce the structural deficit', 'return the budget to sustainability', or to safeguard the long-term solvency of a major programme (for example, restoring 'actuarial soundness' to a social-insurance fund)."
+        - "Deficit-driven actions are exogenous because they are not motivated by current or prospective short-run economic conditions and not motivated by a contemporaneous spending change. Romer and Romer note that they may, however, be paired with spending reductions inside the same deficit-reduction package; the package as a whole is still deficit-driven."
+        - "**Delayed financing of past spending.** When a single bill calls for both an immediate spending increase and a much-delayed revenue increase to pay for the higher spending, the *delayed* revenue increase is DEFICIT_DRIVEN if it takes effect more than about one year after the spending increase. Romer and Romer apply this rule explicitly to the social-insurance amendments of the 1950s, 1960s, and 1970s, where benefit increases were often paired with revenue increases scheduled to occur years later. The rationale: by the time the revenue increase takes effect, there is no contemporaneous spending change, only the inherited liability."
 
-    Base every judgement strictly on the provided evidence. Do not infer motives,
-    directions, or dates that are not supported by the text.
+      negative_clarification:
+        - "An action is NOT DEFICIT_DRIVEN merely because the evidence mentions a deficit, debt, or fiscal imbalance. The deficit must be cited as the *reason* for the action, and it must be characterised as inherited from past decisions or past conditions, not as the consequence of a contemporaneous spending increase that the action is financing."
+        - "If the deficit being addressed was created by a contemporaneous spending increase that the action is financing — and the timing rule places the revenue change within about a year of that spending — the action is SPENDING_DRIVEN, not DEFICIT_DRIVEN. The one-year rule is the dividing line."
+        - "If the stated motive for the action is to raise long-run growth, improve incentives, increase fairness, or shrink the size of government — even if the action also has favourable deficit consequences — the action is LONG_RUN, not DEFICIT_DRIVEN. Deficit reduction must be the *primary* stated motive for DEFICIT_DRIVEN."
+        - "An action taken in response to a current cyclical deficit (i.e., a deficit caused by an ongoing recession that policymakers expect to fade as the economy recovers) is COUNTERCYCLICAL or LONG_RUN, not DEFICIT_DRIVEN. The deficit must be inherited and structural in policymakers' framing, not the temporary product of present conditions."
 
-  examples:
-    - input:
-        act_name: "Example Long-Run Rate Reduction Act"
-        year: 1985
-        evidence:
-          - quote: "Lowering marginal income tax rates will improve incentives to work, save, and invest, raising long-run economic growth."
-            signal: "Stated goal of structural reform aimed at raising potential output"
-          - quote: "The reform makes the rate reductions permanent to provide stable long-term incentives."
-            signal: "Permanent structural change to the fiscal instrument"
-        enacted_signals:
-          - quote: "The act was signed into law on October 22, 1985."
-            signal: "Signed into law"
-        timing_signals:
-          - quote: "The act was signed into law on October 22, 1985."
-            signal: "Signing date — October 22, 1985 (1985Q4); fallback timing"
-          - quote: "Rate reductions take effect January 1, 1986."
-            signal: "Effective date — January 1, 1986 (1986Q1 under midpoint rule)"
-      output:
-        enacted: true
-        exogenous: "TRUE"
-        sign: "-"
-        enacted_quarter: ["1986-Q1"]
-        confidence: "HIGH"
-        reasoning: "Stated motive is raising long-run growth via rate reductions — non-cyclical, long-run. Lower marginal rates → net reduction in fiscal liabilities (sign stipulated for illustration; this fictional example does not include offsetting base-broadening provisions). Effective date January 1, 1986 falls before the Q1 midpoint (February 15), so liabilities change in 1986Q1 under R&R's standard series."
+    - label: "LONG_RUN"
+      label_definition: >
+        A fiscal action aimed at **raising long-run growth** or pursuing other
+        structural goals — improved incentives, greater efficiency, fairness,
+        or a philosophical preference for smaller government — rather than at
+        responding to current or prospective short-run economic conditions.
 
-    - input:
-        act_name: "Example Recession Relief Act"
-        year: 2009
-        evidence:
-          - quote: "With unemployment rising sharply and GDP contracting, the government enacted emergency tax relief."
-            signal: "Response to economic downturn, goal of restoring growth to normal"
-          - quote: "These temporary measures will expire once economic conditions normalize."
-            signal: "Temporary nature tied to cyclical conditions"
-        enacted_signals:
-          - quote: "The President signed the relief package on February 17, 2009."
-            signal: "Signed into law"
-        timing_signals:
-          - quote: "The President signed the relief package on February 17, 2009."
-            signal: "Signing date — February 17, 2009 (past Q1 midpoint Feb 15 → 2009Q2 under midpoint rule)"
-          - quote: "Provisions took immediate effect upon signing."
-            signal: "Effective date — February 17, 2009 (immediate; same as signing)"
-      output:
-        enacted: true
-        exogenous: "FALSE"
-        sign: "-"
-        enacted_quarter: ["2009-Q2"]
-        confidence: "HIGH"
-        reasoning: "Stated motive is to counteract the recession and restore growth — explicit response to current macroeconomic conditions, hence endogenous. Tax relief reduces liabilities. Effective February 17, 2009 is two days past the Q1 midpoint (February 15), so under R&R's midpoint rule liabilities change in 2009Q2."
+      clarification:
+        - "Romer and Romer characterise long-run actions as those whose goal is to **raise growth above normal** in the long run, or to **raise potential output**, in contrast to countercyclical actions whose goal is to return growth to normal. The quintessential exogenous change in their framework is a revenue cut 'motivated by a belief that lower marginal tax rates will raise output in the long run', where 'the goal is to raise normal growth, not to offset shocks acting to reduce growth relative to normal'."
+        - "This category encompasses a wide range of motivations united by their structural, non-cyclical character: a stated belief that the action will raise the long-run growth rate of potential output; a desire to improve **incentives** for work, saving, or investment; a desire for greater **efficiency** of the fiscal system; a desire for greater **fairness** or equity; or a philosophical preference for **smaller government**. Romer and Romer combine these 'under the broad rubric of tax changes for long-run growth'."
+        - "Direct evidence of long-run motivation includes phrases such as 'raise long-run growth', 'raise potential output', 'remove a barrier to growth', 'improve incentives for work, saving, and investment', 'remove the drag on the economy', 'reform the system for fairness', 'simplify the system', 'broaden the base', 'shrink the size of government', 'limited government', or characterisations of the action as a 'fundamental reform' of the fiscal system rather than a cyclical response."
+        - "**Timing-of-decision rule.** An action proposed when the economy was growing normally remains LONG_RUN even if the economy weakened by the time of passage, provided the long-run rationale persists in the evidence and was not displaced by a new countercyclical motivation at passage. Romer and Romer's worked example is an act originally proposed when 'the economy was growing normally' on the basis of 'a belief in limited government and a desire to stimulate long-run growth'; this would be classified as exogenous (long-run) even though, by the time it passed, concerns about a developing recession were also being mentioned. Use the *prevailing motivation at the time of passage* — but a long-run rationale that is still present and dominant at passage is not displaced merely because cyclical conditions have changed in the interim."
+        - "Long-run actions are exogenous because they are not motivated by current or prospective short-run economic conditions; they are taken to alter the structural properties of the fiscal system or the long-run path of output."
 
-    - input:
-        act_name: "Example Defense Financing Revenue Act"
-        year: 1951
-        evidence:
-          - quote: "The Congress recognized the need for substantially increased revenues to meet the rising costs of national defense."
-            signal: "Revenue measure motivated by financing increased defense spending"
-          - quote: "We must pay for the increased defense effort through higher taxes rather than through borrowing."
-            signal: "Stated goal of financing contemporaneous spending"
-        enacted_signals:
-          - quote: "The act was signed into law on October 20, 1951."
-            signal: "Signed into law"
-        timing_signals:
-          - quote: "The act was signed into law on October 20, 1951."
-            signal: "Signing date — October 20, 1951 (1951Q4); fallback timing"
-          - quote: "Higher rates take effect November 1, 1951."
-            signal: "Effective date — November 1, 1951 (before Q4 midpoint Nov 15 → 1951Q4)"
-      output:
-        enacted: true
-        exogenous: "FALSE"
-        sign: "+"
-        enacted_quarter: ["1951-Q4"]
-        confidence: "HIGH"
-        reasoning: "Stated motive is financing a contemporaneous defense spending increase, within a one-year window — endogenous to a near-term spending decision. Higher taxes increase fiscal liabilities. Effective November 1, 1951 falls before the Q4 midpoint (November 15), so liabilities change in 1951Q4."
+      negative_clarification:
+        - "Mention of contemporaneous macroeconomic conditions — recession, high unemployment, slow growth, inflation — is NOT, by itself, evidence of a countercyclical motive when the stated rationale for the action is structural or long-run. Romer and Romer's worked examples include long-run actions enacted during periods of weak activity in which policymakers nevertheless framed the action as motivated by long-run growth, fairness, or improved incentives. Acknowledging current conditions does not by itself imply endogeneity if the stated motive is explicitly non-cyclical."
+        - "An action is NOT LONG_RUN merely because the evidence mentions growth. Policymakers commonly say they want to 'stimulate growth' or 'support growth' — the question is *which growth*. If the stated goal is to **return growth to normal** in the face of a downturn, the action is COUNTERCYCLICAL. If the stated goal is to **raise growth above normal** or to raise the **long-run growth rate of potential output**, the action is LONG_RUN."
+        - "An action is NOT LONG_RUN if the primary stated motive is to finance a contemporaneous spending increase (SPENDING_DRIVEN) or to reduce an inherited deficit (DEFICIT_DRIVEN), even if a secondary long-run rationale is also mentioned. Use the predominant motive cited consistently across the evidence."
+        - "Vague aspirational language about 'a stronger economy', 'prosperity', or 'national strength' that does not specify whether the goal is cyclical or structural is not, on its own, sufficient evidence of LONG_RUN. Look for explicit references to long-run growth, potential output, incentives, efficiency, fairness, or smaller government."
 
-    - input:
-        act_name: "Example Inherited Deficit Reduction Act"
-        year: 1993
-        evidence:
-          - quote: "The deficit, accumulated over many years of past policy decisions, threatens long-term fiscal stability."
-            signal: "Deficit described as inherited from past decisions"
-          - quote: "The primary purpose of this act is to restore fiscal balance and reduce the structural deficit."
-            signal: "Stated goal of deficit reduction and fiscal prudence"
-        enacted_signals:
-          - quote: "The act was enacted on August 10, 1993."
-            signal: "Enacted into law"
-        timing_signals:
-          - quote: "The act was enacted on August 10, 1993."
-            signal: "Signing date — August 10, 1993 (1993Q3); fallback timing"
-          - quote: "Provisions take effect at the start of calendar year 1994."
-            signal: "Effective date — January 1, 1994 (1994Q1 under midpoint rule)"
-      output:
-        enacted: true
-        exogenous: "TRUE"
-        sign: "+"
-        enacted_quarter: ["1994-Q1"]
-        confidence: "HIGH"
-        reasoning: "Stated motive is reducing an inherited deficit accumulated over multiple prior years — exogenous (long-run / inherited-imbalance category). Deficit reduction by raising revenues increases fiscal liabilities. Effective January 1, 1994 (start of calendar year 1994) is before the Q1 midpoint (February 15), so liabilities change in 1994Q1."
+  extra_output_fields:
 
-    - input:
-        act_name: "Example Excess Profits Tax Act"
-        year: 1950
-        evidence:
-          - quote: "passed in response to the Korean War, imposed a heavy tax on corporate excess profits to finance the war effort"
-            signal: "Revenue measure motivated by financing wartime defense spending"
-        enacted_signals:
-          - quote: "signed into law on January 3, 1951"
-            signal: "Signed into law"
-        timing_signals:
-          - quote: "signed into law on January 3, 1951"
-            signal: "Signing date — January 3, 1951 (1951Q1); fallback timing"
-          - quote: "the act was made retroactive to July 1, 1950"
-            signal: "Retroactive effective date — July 1, 1950 (1950Q3 under midpoint rule); retroactive component covers 1950Q3–1950Q4"
-          - quote: "The retroactive component covered two quarters of profits that had already been earned, resulting in a one-time levy in the first quarter of 1951"
-            signal: "Phased structure: ongoing rate from 1951Q1; retroactive levy in 1951Q1 covering 1950Q3–1950Q4"
-      output:
-        enacted: true
-        exogenous: "FALSE"
-        sign: "+"
-        enacted_quarter: ["1951-Q1"]
-        confidence: "HIGH"
-        reasoning: "Stated motive is financing contemporaneous Korean War spending — endogenous. Tax increase raises liabilities. Under R&R's standard series, retroactive coverage (1950Q3–1950Q4) is excluded; only the ongoing implementation quarter is reported. Signed January 3, 1951 with the new rate in effect from then on → liabilities change starting 1951Q1."
+    - name: "enacted"
+      type: "boolean"
+      description: >
+        TRUE if the consolidated evidence indicates the act was enacted into
+        law or otherwise took legal effect (including via executive or
+        administrative action). FALSE if the evidence indicates the measure
+        was proposed but not passed, was defeated, was withdrawn, or remained
+        a proposal at the time of writing. Use the enacted_signals field of
+        the upstream evidence as the primary source. If the enacted-status
+        evidence is genuinely silent or ambiguous, default to TRUE only when
+        the broader narrative treats the act as a fait accompli (signing
+        date stated, retrospective discussion of effects, etc.); otherwise
+        default to FALSE.
+
+    - name: "sign"
+      type: "enum"
+      values: ["increase", "decrease", "no_change"]
+      description: >
+        The net direction of the action's effect on fiscal liabilities or
+        obligations. Use 'increase' for a net rise in fiscal liabilities (a
+        revenue-raising measure such as a rate increase, base broadening, or
+        new levy). Use 'decrease' for a net reduction in fiscal liabilities
+        (a revenue-reducing measure such as a rate cut, new credit, or
+        exemption). Use 'no_change' only when the evidence describes the
+        action as net-neutral overall (e.g., a revenue-neutral reform that
+        rebalances within the system without raising or lowering aggregate
+        liabilities). For phased actions, report the net direction of the
+        full set of phases described in the evidence.
+
+    - name: "confidence"
+      type: "enum"
+      values: ["low", "medium", "high"]
+      description: >
+        Your confidence in the motivation classification. Use 'high' when
+        the evidence consistently and unambiguously cites a single Romer and
+        Romer category. Use 'medium' when the evidence points predominantly
+        to one category but contains some signals consistent with a
+        neighbouring category, or when one of the boundary tests
+        (countercyclical vs. long-run; spending-driven vs. deficit-driven)
+        was needed to resolve the case. Use 'low' when the evidence is
+        sparse, internally conflicting, or when assignment required
+        substantial judgement beyond what the evidence directly supports.
+
+    - name: "reasoning"
+      type: "string"
+      description: >
+        A brief explanation (2-4 sentences) that names the Romer and Romer
+        criterion that was decisive for the classification. Cite specific
+        evidence from the input — direct quotes or paraphrases of the
+        motivation evidence — and explicitly identify which test or
+        clarification was applied (for example: 'applies the
+        countercyclical-vs-long-run test: stated motive is to raise
+        potential output despite a recession context'; or 'applies the
+        one-year temporal rule: revenue increase takes effect within a
+        year of the associated spending increase, so SPENDING_DRIVEN
+        rather than DEFICIT_DRIVEN'; or 'applies the offsetting-changes
+        convention: this revenue cut counteracts a previously legislated
+        long-run cut and inherits its motivation'). Do not write a free
+        narrative; cite the criterion.
 
   output_instructions: >
-    Determine enacted status, exogeneity, sign of effect on fiscal liabilities, and
-    implementation quarter(s) from the synthesized evidence.
+    Classify the act using exactly one of the four Romer and Romer
+    motivation labels: SPENDING_DRIVEN, COUNTERCYCLICAL, DEFICIT_DRIVEN, or
+    LONG_RUN. Use exactly one label; do not output multiple labels, and do
+    not invent additional categories. If the evidence genuinely supports
+    more than one motivation, follow Romer and Romer's apportionment
+    guidance and assign the **predominant** motivation cited across the
+    sources at the time of passage.
 
 
-    Return your answer as JSON:
+    Apply the four boundary tests embedded in the class definitions:
+
+    - Countercyclical vs. long-run: is the stated goal to return growth to
+      normal (countercyclical) or to raise growth above normal / raise
+      potential output (long-run)?
+
+    - Spending-driven vs. deficit-driven: is the revenue change paired with
+      a contemporaneous spending change within about a year
+      (spending-driven), or with a past spending change more than a year
+      earlier, or with no contemporaneous spending change at all
+      (deficit-driven)?
+
+    - Macroeconomic context vs. countercyclical motivation: mention of
+      current conditions is background, not motivation; the action is
+      countercyclical only if the stated reason is to offset those
+      conditions and bring growth back to normal.
+
+    - Structural framing of a spending programme: calling a spending
+      programme 'long-run' or 'structural' does not make the financing
+      revenue measure exogenous if the temporal connection to the spending
+      change is within about a year.
+
+
+    Then report the four extra fields described above: `enacted`, `sign`,
+    `confidence`, and `reasoning`. The `reasoning` field must cite the
+    specific Romer and Romer criterion that was decisive — do not write a
+    free narrative.
+
+
+    Return your answer as JSON with exactly the following keys and no
+    others:
 
     {
-      "enacted": true,
-      "exogenous": "TRUE",
-      "sign": "+",
-      "enacted_quarter": ["YYYY-QN"],
-      "confidence": "HIGH",
-      "reasoning": "Brief synthesis citing specific evidence records and the stated motive."
+      "label": "SPENDING_DRIVEN" | "COUNTERCYCLICAL" | "DEFICIT_DRIVEN" | "LONG_RUN",
+      "enacted": true | false,
+      "sign": "increase" | "decrease" | "no_change",
+      "confidence": "low" | "medium" | "high",
+      "reasoning": "2-4 sentences citing the decisive Romer and Romer criterion and the specific evidence that triggered it"
     }
 
 
-    Field definitions:
-
-    - enacted: true if the measure became law; false if defeated, withdrawn, or never
-      passed. Default to true if enacted-status evidence is absent.
-
-    - exogenous: "TRUE" if the stated motivation is clearly non-cyclical (long-run,
-      structural, inherited deficit, treaty/rule compliance); "FALSE" if the stated
-      motivation responds to current or projected macroeconomic conditions or to a
-      contemporaneous spending change; "UNCLEAR" if the act has roughly comparable
-      exogenous and endogenous components without a clearly dominant motivation, or
-      if the evidence does not support a determination.
-
-    - sign: "+" if the measure increases fiscal liabilities (tax increase, new revenue
-      measure); "-" if the measure decreases fiscal liabilities (tax cut, credit, or
-      relief); "0" if the measure has no net effect on liabilities; "UNCLEAR" if the
-      direction cannot be determined from the evidence or act name.
-
-    - enacted_quarter: an array of `YYYY-QN` strings naming the implementation
-      quarter(s) when fiscal liabilities actually change, applying Romer & Romer's
-      midpoint rule and the standard series convention for retroactive components
-      (no separate retroactive entries). Phased acts emit one quarter per phased
-      step, listed in chronological order. Empty array `[]` is allowed when timing
-      signals are absent or inconsistent — do not invent dates that are not
-      supported by the evidence.
-
-    - confidence: HIGH if the evidence consistently supports a single determination
-      across all four output fields; MEDIUM if somewhat ambiguous on one or more
-      fields but one reading dominates; LOW if conflicting or sparse.
-
-    - reasoning: Brief synthesis citing specific evidence records and the stated
-      motive. State which evidence supported the exogeneity judgement, which
-      supported the sign judgement, and which timing signal(s) determined each
-      quarter in `enacted_quarter`.
+    Do not include an `exogenous` field; exogeneity is derived downstream
+    from the motivation label.
