@@ -5308,4 +5308,114 @@ iterations:
       Defer C3 (timing) and C4 (magnitude) codebooks until C2b v0.9.0
       gates pass; both will consume C2a output and be evaluated as
       scalars against aligned_data.
+  - iteration: 44
+    codebook_version: "0.9.1"
+    date: "2026-05-05"
+    git_commit: "f42276d"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      v0.9.1 reconciliation patch on top of v0.9.0 S0 (iter 43). Two
+      coordinated changes, no behavioural redesign:
+      (a) YAML — stripped 13 inline "Romer and Romer" attributions from
+      the prompt body to preserve country-agnostic transferability for
+      Phase 2 (Malaysia) and Phase 3 (SEA) deployment. Substantive
+      content (one-year temporal rule, return-to-normal vs
+      raise-above-normal, inherited deficit, offsetting-changes
+      convention, timing-of-decision rule, Das clarifier) retained
+      verbatim; only citations and US-decade-specific anchoring examples
+      (1950s-70s social-insurance amendments, payroll-tax prototype)
+      neutralised. Replaced misattributed "Romer and Romer's
+      apportionment guidance" with neutral largest-share language.
+      Preamble metadata comment retains R&R citation as provenance.
+      (b) R — reconciled S1/S2/diagnostic runners to the v0.9.1 output
+      schema {label, enacted, sign, confidence, reasoning}. Code
+      previously hard-coded to v0.8.0 schema and would have produced NA
+      across the board. R/c2_behavioral_tests.R:
+      validate_c2b_output() rewritten; test_c2b_schema_recovery
+      replaced with restored test_c2b_definition_recovery (canonical
+      4-class H&K Test II, restored from pre-v0.7.0 lineage);
+      test_c2b_order_invariance updated to compare {label|sign} and
+      derive exogenous from label via DEFICIT_DRIVEN/LONG_RUN ⇒ TRUE
+      mapping. End-to-end re-run: 28 API calls (Test I 6, Test II 4,
+      Test III 0 skipped, Test IV 18 = 6×3 orderings).
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          n_total: 6
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          n_correct: 4
+          n_total: 4
+          per_class_correct:
+            - true_label: "SPENDING_DRIVEN"
+              pred_label: "SPENDING_DRIVEN"
+              correct: true
+            - true_label: "COUNTERCYCLICAL"
+              pred_label: "COUNTERCYCLICAL"
+              correct: true
+            - true_label: "DEFICIT_DRIVEN"
+              pred_label: "DEFICIT_DRIVEN"
+              correct: true
+            - true_label: "LONG_RUN"
+              pred_label: "LONG_RUN"
+              correct: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          n_correct: 0
+          n_total: 0
+          skipped: true
+          skip_reason: "v0.9.x ships with zero worked examples by design"
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+          change_rate_reversed: 0.0000
+          change_rate_shuffled: 0.0000
+          change_rate_categories: 0.0000
+          change_rate_exogenous: 0.0000
+          fleiss_kappa: 1.0000
+          kappa_interpretation: "Near-perfect agreement"
+          n_orderings: 3
+          n_evidence_sets: 6
+    interpretation: >
+      S1 passed cleanly on the restored 4-class structure. First time
+      since v0.6.1 that 4-way definition recovery (Test II) and order
+      invariance over class enumeration (Test IV) are even measurable —
+      v0.7.0/v0.8.0 had no `classes` block, so Test IV auto-skipped and
+      Test II degenerated to schema recovery. Definition recovery is
+      4/4 and Fleiss κ = 1.000 across reversed and shuffled class
+      orderings on all 6 synthetic evidence sets, including
+      category-level and exogenous-derived projections. Test III
+      auto-skipped per the v0.9.0 design choice to ship without worked
+      examples (revisit only if S2 underperforms). Test I confirms the
+      v0.9.1 schema reconciliation (R code aligned to {label, enacted,
+      sign, confidence, reasoning}) is parsing correctly — without
+      that fix S1 would have returned NA across the board. Caveat
+      flagged in /review-iteration: synthetic evidence in Test IV is
+      designed to be unambiguous (one motivation per item, clear
+      signals), so κ = 1.0 bounds stability only on easy cases. The
+      real order-invariance test for this codebook is the
+      evidence-shuffle diagnostic on the 39-act primary set, not S1.
+    decision: >
+      Proceed to S2. Run tar_make(c2_s2_results) → c2_s2_eval against
+      v0.9.1 on the unchanged 39-act primary test set. Headline gates
+      per docs/strategy.md C2 Blueprint: Exogenous Precision ≥0.85
+      (binary, derived from 4-way label via DEFICIT_DRIVEN/LONG_RUN ⇒
+      TRUE), Sign Accuracy on True-Exogenous ≥0.90 (no regression from
+      iter 42's 0.957). Diagnostic baselines: floor 0.500 (v0.7.0/v0.8.0
+      exogenous precision); ceiling 0.812 (v0.6.1, but inflated by the
+      iter 36 F-A overfit gap of −0.333). Following S2 review, the
+      evidence-shuffle diagnostic (c2b_evidence_shuffle_diagnostic) is
+      the gating overfit check — F-A median-stability gap > −0.10 is
+      the hard requirement. S3 Tests V/VI/VII + ablation deferred until
+      after the shuffle gate clears.
 
