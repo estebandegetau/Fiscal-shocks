@@ -631,8 +631,8 @@ run_c2b_ablation <- function(c2b_codebook,
 #' only re-runs C2b with modified codebooks.
 #'
 #' @param c2b_codebook Parsed C2b codebook
-#' @param c2_s2_results Tibble from run_c2_zero_shot() with evidence_raw,
-#'   enacted_signals_raw, pred_motivation, true_motivation columns
+#' @param c2_s2_results Tibble from run_c2b_classification() with evidence_raw,
+#'   enacted_signals_raw, pred_label, true_motivation columns
 #' @param model Character model ID (default "claude-haiku-4-5-20251001")
 #' @param max_tokens_c2b Integer max output tokens for C2b (default 1024)
 #' @param max_retries Integer retries on validation failure (default 1)
@@ -684,9 +684,9 @@ run_c2_error_analysis <- function(c2b_codebook,
 
   # --- Extract baseline from c2_s2_results ---
   valid <- c2_s2_results |>
-    dplyr::filter(!is.na(pred_motivation))
+    dplyr::filter(!is.na(pred_label))
 
-  baseline_preds <- valid$pred_motivation
+  baseline_preds <- valid$pred_label
   true_labels <- valid$true_motivation
   n_acts <- nrow(valid)
 
