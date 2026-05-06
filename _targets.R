@@ -564,6 +564,99 @@ list(
       c2b = c2b_iteration_log_file
     )),
     packages = c("tidyverse", "yaml")
+  ),
+
+  # =============================================================================
+  # Deployment Pipeline (Phase 1 / Phase 2)
+  # Country-agnostic dynamic branching. Adding a country = appending one entry
+  # to build_country_configs() in R/build_country_configs.R; existing branches
+  # stay cached because dynamic branches hash independently.
+  # Stops at C2a evidence; C2b deployment deferred until C2b codebook stabilizes.
+  # =============================================================================
+
+  tar_target(
+    country_configs,
+    build_country_configs(),
+    iteration = "list"
+  ),
+
+  tar_target(
+    country_urls,
+    get_country_urls(country_configs),
+    pattern = map(country_configs),
+    iteration = "list",
+    packages = c("tidyverse", "rvest")
+  ),
+
+  tar_target(
+    country_text,
+    pull_country_text(
+      pdf_url = country_urls$pdf_url,
+      output_dir = here::here("data/extracted"),
+      workers = 6,
+      ocr_dpi = 200
+    ),
+    pattern = map(country_urls),
+    iteration = "list"
+  ),
+
+  tar_target(
+    country_body,
+    bind_country_body(country_urls, country_text),
+    pattern = map(country_urls, country_text),
+    iteration = "list",
+    packages = "dplyr"
+  ),
+
+  tar_target(
+    country_chunks,
+    make_chunks(country_body, window_size = 10, overlap = 3,
+                max_tokens = 40000, min_chars = 100L),
+    pattern = map(country_body),
+    iteration = "list",
+    packages = c("tidyverse", "purrr")
+  ),
+
+  tar_target(
+    country_c1_predictions,
+    run_c1_deployment(
+      country_chunks,
+      c1_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens = 1024,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    pattern = map(country_chunks),
+    iteration = "list",
+    packages = c("tidyverse", "httr2", "jsonlite", "progress"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    country_c1_measures,
+    filter_c1_measures(country_c1_predictions, country_chunks),
+    pattern = map(country_c1_predictions, country_chunks),
+    iteration = "list",
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    country_c2a_evidence,
+    run_c2a_deployment(
+      country_c1_measures,
+      c2a_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2a = 16384,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    pattern = map(country_c1_measures),
+    iteration = "list",
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
   )
 
   # =============================================================================
