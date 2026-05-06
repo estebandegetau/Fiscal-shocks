@@ -100,39 +100,10 @@ classify_c2b_batch <- function(c2b_codebook,
       return(NA_character_)
     }
 
-    # Collapse motivations to single label (same precedence as run_c2_zero_shot)
-    collapse_motivations(parsed$motivations)
+    parsed$label
   }, character(1))
 
   preds
-}
-
-
-#' Collapse motivations array to single label
-#'
-#' Applies the same precedence logic as run_c2_zero_shot():
-#' sole > single dominant > first dominant (with warning) > first (with warning)
-#'
-#' @param motivations List of motivation entries with category and share fields
-#' @return Character single motivation label, or NA_character_ if empty
-#' @keywords internal
-collapse_motivations <- function(motivations) {
-  if (length(motivations) == 0) return(NA_character_)
-
-  shares <- vapply(motivations, function(m) m$share %||% "", character(1))
-
-  sole_idx <- which(shares == "sole")
-  dominant_idx <- which(shares == "dominant")
-
-  if (length(sole_idx) >= 1) {
-    motivations[[sole_idx[1]]]$category
-  } else if (length(dominant_idx) == 1) {
-    motivations[[dominant_idx[1]]]$category
-  } else if (length(dominant_idx) > 1) {
-    motivations[[dominant_idx[1]]]$category
-  } else {
-    motivations[[1]]$category
-  }
 }
 
 
