@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 complete through S3 (v0.6.0, iteration 28: 31A/6B/0E/3F, bias-corrected recall 100%, precision 83.3%). C2b v0.9.1 S3 manual analysis complete (iter 47, 2026-05-06, commit 93e4d1c) — 39 acts inspected: 24A/2B/0C/0D/2E/11F. Bias-corrected exogenous precision 0.833 (1.7pp below 0.85 gate; CI on n=18 likely contains gate); sign accuracy on true-exogenous 0.955 PASSES 0.90 gate. F-cluster cross-version persistence (8/9 iter-35 F's preserved through 4 codebook rewrites and 2 model generations) supports iter-46 reading-(a) borderline-cases over reading-(b) overfit-anchors. Awaiting decision on freeze + minor-revision recommendation. C2a unchanged at v0.4.0. C3-C4 not yet started (will return as separate downstream codebooks consuming C2a output once C2b gates fully pass).
+**Status**: C1 + C2 COMPLETE — Phase 0 codebook deliverables frozen. C1 through S3 (v0.6.0, iteration 28: 31A/6B/0E/3F, bias-corrected recall 100%, precision 83.3%). C2b v0.9.1 FROZEN as C2 deliverable (iter 48, 2026-05-06, commit 2bfdf20): iter 47 manual analysis (24A/2B/0C/0D/2E/11F; bias-corrected exogenous precision 0.833 with CI on n=18 likely containing 0.85 gate; sign accuracy on true-exogenous 0.955 PASSES 0.90 gate; F-cluster cross-version persistence supporting reading-(a) borderline-cases over reading-(b) overfit-anchors) plus iter 48 automated S3 (Tests V/VI/VII overall consistency 0.789; generic-label Δacc 0.034; follows-names 0.974; ablation drops ≤7.7pp accuracy with label_definition the largest single contributor at 5.1pp). Combined reading: model has internalized R&R-style reasoning from pretraining; codebook adds modest calibration. C2a unchanged at v0.4.0. Three deferred items carried to future work: iter 47's minor revision (causal-link priority + restoration-of-suspended-provision rules), Test V combo 4 partial-exclusion finding (known zero-shot limitation), C4 sign-mapping worked-examples requirement. C3-C4 not yet started (will return as separate downstream codebooks if/when needed).
 
 ## Authoritative Methodology
 
@@ -94,8 +94,8 @@ This document contains the complete R&R + H&K framework specification including:
 ### Codebooks (`/prompts/`)
 
 - ✅ `c1_measure_id.yml` — Created
-- ✅ `c2a_extraction.yml` — Created (C2a: per-chunk evidence extraction, v0.2.0)
-- ✅ `c2b_classification.yml` — Created (C2b: act-level motivation classification, v0.2.0)
+- ✅ `c2a_extraction.yml` — Created (C2a: per-chunk evidence extraction, v0.4.0)
+- ✅ `c2b_classification.yml` — Created (C2b: act-level motivation classification, v0.9.1, FROZEN)
 - `c3_timing.yml`
 - `c4_magnitude.yml`
 

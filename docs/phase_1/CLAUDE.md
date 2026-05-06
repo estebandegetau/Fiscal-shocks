@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 2 (Malaysia Pil
 
 **Timeline**: 12 weeks (4 weeks deployment, 4 weeks validation, 2 weeks refinement, 2 weeks documentation)
 
-**Status**: PLANNING (Phase 0 codebook development and Phase 1 US full production must complete first)
+**Status**: READY TO DEPLOY — Phase 0 C1+C2 codebooks frozen (C2b v0.9.1, iter 48, 2026-05-06). User decision on iter 48 explicitly authorizes Malaysia deployment as the active next step. Country deployment pipeline already wired (commit b92ee61: dynamic-branched URLs → C2a evidence).
 
 **Expected Output**: 20-40 expert-validated Malaysia fiscal acts
 
