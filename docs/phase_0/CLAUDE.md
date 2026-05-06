@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 0 implementatio
 
 **Approach**: Country-agnostic codebook design with few-shot learning using LLM API (Anthropic Claude or OpenRouter)
 
-**Status**: IN PROGRESS — C1 complete through S3 (v0.6.0, iteration 28: 31A/6B/0E/3F, bias-corrected recall 100%, precision 83.3%). C2b v0.9.0 S0 complete (iter 43, commit 8c092af) — 4-class R&R-anchored rewrite restoring class structure after v0.7.0/v0.8.0 binary architecture; pending S1 → S2 → evidence-shuffle diagnostic → S3. C2a unchanged at v0.4.0. C3-C4 not yet started (will return as separate downstream codebooks consuming C2a output once C2b v0.9.0 gates pass).
+**Status**: IN PROGRESS — C1 complete through S3 (v0.6.0, iteration 28: 31A/6B/0E/3F, bias-corrected recall 100%, precision 83.3%). C2b v0.9.1 S3 manual analysis complete (iter 47, 2026-05-06, commit 93e4d1c) — 39 acts inspected: 24A/2B/0C/0D/2E/11F. Bias-corrected exogenous precision 0.833 (1.7pp below 0.85 gate; CI on n=18 likely contains gate); sign accuracy on true-exogenous 0.955 PASSES 0.90 gate. F-cluster cross-version persistence (8/9 iter-35 F's preserved through 4 codebook rewrites and 2 model generations) supports iter-46 reading-(a) borderline-cases over reading-(b) overfit-anchors. Awaiting decision on freeze + minor-revision recommendation. C2a unchanged at v0.4.0. C3-C4 not yet started (will return as separate downstream codebooks consuming C2a output once C2b gates fully pass).
 
 ## Authoritative Methodology
 
