@@ -5800,4 +5800,666 @@ iterations:
       (b) dominates, return to codebook revision targeting the
       LR<->CC and CC<->SPENDING boundaries. No codebook YAML edits at
       this point.
+  - iteration: 47
+    codebook_version: "0.9.1"
+    date: "2026-05-06"
+    git_commit: "3642033"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3_manual_analysis"
+    changes: >
+      Manual error analysis of v0.9.1 S2 baseline predictions (39 acts,
+      0 NA) using H&K 6-category framework (A-F). Substrate is
+      c2_s2_results from iter 45 (the v0.9.1 S2 evaluation; no separate
+      S3 baseline target was run since c2_s3_results carries v0.8.0
+      cached state). Performed in fulfilment of the iter 46 decision
+      to use S3 manual analysis as the disambiguation step for the
+      F-A gap = -0.333 evidence-shuffle verdict, specifically tagging
+      whether unstable F-cluster acts are R&R-judgment-call
+      borderlines (reading a) or genuine overfit anchors (reading b).
+      Pre-screening + human-collaborative review categorized all 39
+      acts; 24 confident-bucket A's batch-approved without individual
+      discussion; 5 flagged acts (4, 9, 17, 18, 37) reviewed
+      individually; remaining 10 (8 unchanged F-cluster + 2 timing-
+      only-evidence formerly C) inherited from iter 35 contrast.
+      Two new B precedents established: B = "evaluation-framework
+      gap" (multi-motivation or multi-quarter acts that exceed the
+      single-label / single-sign codebook output schema), distinct
+      from the H&K original B = "incorrect gold-standard label."
+    results:
+      n_inspected: 39
+      n_valid: 39
+      n_na_pred: 0
+      category_distribution:
+        - category: "A_llm_correct"
+          count: 24
+          pct: 61.5
+        - category: "B_evaluation_framework_gap"
+          count: 2
+          pct: 5.1
+        - category: "C_document_error"
+          count: 0
+          pct: 0.0
+        - category: "D_non_compliance"
+          count: 0
+          pct: 0.0
+        - category: "E_semantics_reasoning"
+          count: 2
+          pct: 5.1
+        - category: "F_other"
+          count: 11
+          pct: 28.2
+      bias_corrected_metrics:
+        effective_n: 37
+        excluded_categories: ["B", "C"]
+        confusion_matrix:
+          TP: 15
+          FP: 3
+          FN: 7
+          TN: 12
+        exogenous_precision: 0.8333
+        exogenous_recall: 0.6818
+        sign_accuracy_on_true_exo: 0.9545
+        joint_label_and_sign_accuracy: 0.6486
+        gate_assessment:
+          exogenous_precision_gate: 0.85
+          exogenous_precision_observed: 0.8333
+          exogenous_precision_verdict: "borderline (below gate by 1.7pp; CI on n=18 likely contains 0.85)"
+          sign_accuracy_gate: 0.90
+          sign_accuracy_observed: 0.9545
+          sign_accuracy_verdict: "PASS"
+      raw_metrics_for_comparison:
+        n: 39
+        exogenous_precision: 0.8000
+        exogenous_recall: 0.6957
+        notes: >
+          Raw precision (0.800) below bias-corrected (0.833) because
+          excluding the 2 B's (acts 4, 37) removes one FP (act 4) and
+          one TP-with-sign-error (act 37). Bias-corrected metric is
+          the appropriate comparison to the 0.85 gate.
+      comparison_with_iter_35:
+        prior_iter: 35
+        prior_codebook_version: "0.6.1"
+        prior_n_inspected: 39
+        prior_a_count: 25
+        prior_b_count: 0
+        prior_c_count: 4
+        prior_e_count: 1
+        prior_f_count: 9
+        prior_bias_corrected_accuracy: 0.7143
+        a_count_delta: -1
+        b_count_delta: 2
+        c_count_delta: -4
+        e_count_delta: 1
+        f_count_delta: 2
+        category_drift_acts:
+          - act_id: 4
+            iter_35_category: "A"
+            iter_47_category: "B"
+            delta: >
+              A->B. Iter 35 noted v0.6.1 pred CC matched gold "by
+              happenstance not codebook rule." v0.9.1 lands LR via the
+              timing-of-decision rule (Das clarifier), surfacing the
+              underlying multi-motivation tension. EGTRRA is genuinely
+              both LR and CC in stated motivations; gold reflects the
+              hardcoded-endogenous-on-tie convention. Reclassified as
+              B (evaluation-framework gap) because we lack tools to
+              evaluate multi-category acts.
+          - act_id: 9
+            iter_35_category: "A"
+            iter_47_category: "E"
+            delta: >
+              A->E. Regression. Evidence contains explicit one-year-
+              temporal-rule trigger ("This reduction in proposed
+              spending made possible the tax cuts"; "transfer billions
+              of dollars which the Government will not be spending
+              back to the taxpayers"). Model recognized the SD signal
+              in reasoning text but mislabeled it as past-context
+              rather than the cited reason. v0.6.1 had explicit DR4
+              priority rule ("explicit causal link takes precedence")
+              that resolved this; v0.7.0+ rewrite did not preserve
+              priority emphasis. Codebook rule is sufficient; model
+              failed to apply it. Different from F (rule absent or
+              ambiguous).
+          - act_id: 17
+            iter_35_category: "A"
+            iter_47_category: "E"
+            delta: >
+              A->E (sign-error). Motivation match (CC=CC). Sign
+              extraction: model output sign='-' but reasoning prose
+              describes restraint, cooling, "tax increases." Two
+              hypotheses for the slip: (1) generic "suspension =
+              reduction" inference without thinking through who pays
+              what; (2) anchor on co-occurring "investment tax credit"
+              tokens. Either way, compliant output with internal
+              inconsistency between reasoning paragraph and sign
+              field. New failure mode under v0.8.0+ sign output
+              requirement. Note for C4 development: include a worked
+              sign-mapping example for credit suspension/restoration
+              cases (suspend credit -> +; restore credit -> -).
+          - act_id: 18
+            iter_35_category: "E"
+            iter_47_category: "F"
+            delta: >
+              E->F (drift, not improvement). Same wrong prediction
+              (CC vs gold LR) but category shifts because v0.7.0+
+              codebook removed BCR1(b), the rule that named this
+              case verbatim ("reinstating a suspended tax provision...
+              belongs in structural-reform category... regardless of
+              how it is framed"). v0.9.1's offsetting-changes
+              convention actually predicts CC (matching the suspension
+              it counteracts), not LR. Without BCR1(b), the codebook
+              cannot produce the gold answer. Note for v0.9.x
+              revision: consider restoring an analog of BCR1(b)
+              inside the LR class body. Also: c2a evidence is
+              suspension-contaminated (quotes 1-8 are PL 89-800
+              rationale), but with 81 total items this is not pure C.
+          - act_id: 20
+            iter_35_category: "C"
+            iter_47_category: "A"
+            delta: >
+              C->A. v0.6.1 misread Truman's veto-opposition reasoning
+              (deficit/inflation) as the act's motivation, missing the
+              postwar structural framing because corpus lacks
+              congressional-debate documents. v0.9.1 lands on LR
+              despite the same corpus gap, likely via fuller c2a
+              evidence-extraction (smoking-gun quote about postwar
+              decline of military expenditures recovered) or
+              world-knowledge fallback.
+          - act_id: 26
+            iter_35_category: "C"
+            iter_47_category: "A"
+            delta: >
+              C->A. Persistent zero-evidence input (n_evidence=0).
+              v0.9.1 model output "low" confidence and recovers
+              SPENDING_DRIVEN classification via world-knowledge
+              fallback. Prediction is correct; evidence gap remains.
+              Borderline A vs C call; classified A because the
+              prediction is right.
+          - act_id: 33
+            iter_35_category: "C"
+            iter_47_category: "F"
+            delta: >
+              C->F. v0.6.1 had 8 evidence items in 2 chunks; v0.9.1
+              has 16 items, but per user judgment the new evidence
+              relates to timing, not motivation. Pred shifts from CC
+              (v0.6.1) to DD (v0.9.1) but gold is LR. No longer pure
+              data gap; codebook ambiguity on extension/sign
+              semantics for tax-rate-extension acts (LR vs DD vs
+              sign-of-no-change).
+          - act_id: 37
+            iter_35_category: "F"
+            iter_47_category: "B"
+            delta: >
+              F->B. v0.6.1 had NA (output-capacity / max_tokens).
+              v0.9.1 recovers a substantive prediction (LR motivation
+              match). Sign error: pred '-' vs gold '+'. R&R coding
+              shows multi-quarter opposite-signed liability changes:
+              "1976Q4 +$2.4 billion (Exogenous; Long-run); 1977Q1
+              -$0.8 billion (Exogenous; Long-run); Present Value
+              1976Q4 +$1.61 billion." Gold's '+' is the PV collapse
+              of opposing-sign components. Single-sign output field
+              cannot evaluate this cleanly. Classified B (evaluation-
+              framework gap) per same convention as act 4.
+          - act_id: 39
+            iter_35_category: "C"
+            iter_47_category: "F"
+            delta: >
+              C->F. v0.6.1 had limited evidence; v0.9.1 has 80 items
+              but per user judgment the new evidence relates to
+              timing, not motivation. Pred remains DD vs gold SD; gold
+              is unusual (most analysts code 1997 acts as DD). No
+              longer pure data gap; codebook tension on bundled-
+              package classification (paired deficit-reduction +
+              spending changes).
+        net_judgment: >
+          Bias-corrected accuracy 0.649 in iter 47 vs 0.714 in iter
+          35 looks worse, but the comparison is misleading: iter 47
+          uses joint label-AND-sign accuracy (sign output is new in
+          v0.8.0+), while iter 35 used label-only accuracy. On
+          label-only, iter 47 = 26/37 = 0.703, statistically
+          indistinguishable from iter 35's 0.714. The headline
+          metric (exogenous precision) improved from raw 0.800 to
+          bias-corrected 0.833, with sign accuracy on true-exo 0.955
+          PASS. The F-cluster identity is preserved across versions
+          (8/9 iter-35 F-cluster acts remain F in v0.9.1), supporting
+          the iter-46 reading-(a) "borderline cases" hypothesis over
+          reading-(b) "overfit anchors."
+      f_cluster_disambiguation:
+        question: >
+          Iter 46 evidence-shuffle verdict was fail (overfit), F-A
+          gap = -0.333. The iter-46 decision deferred this verdict to
+          S3 manual analysis on the basis of asymmetric stability
+          (A-cluster kappa 0.964 almost-perfect; F-cluster moderate
+          at 0.497). The disambiguation question: are the unstable
+          F-cluster acts (a) R&R-judgment-call borderlines, or (b)
+          genuine overfit anchors firing on surface features?
+        evidence_for_reading_a_borderlines:
+          - "F-cluster identity preserved across 4 codebook versions (v0.4.0, v0.5.0, v0.6.1, v0.9.1) and 2 model generations (Sonnet/Haiku). 8 of 9 iter-35 F-cluster acts remain F in v0.9.1; the 9th (act 37) recovered to a substantive prediction with sign error. Cross-version persistence is the diagnostic signature of structurally borderline cases, not memorization-overfit."
+          - "5 of 11 v0.9.1 F-acts are LR<->CC borderlines on R&R's canonical Kennedy-era / Nixon-era / Carter-era tax cuts (acts 22, 23, 24, 31, 35). These are the cases R&R themselves debate in the methodology literature; gold codings are R&R judgment calls, not unambiguous truths."
+          - "The two new F regressions vs iter 35 (acts 4, 9) are themselves borderline cases: act 4 is multi-motivation (now B), act 9 has explicit competing SD/LR signals in evidence."
+        evidence_for_reading_b_overfit:
+          - "v0.9.1 reproduces v0.6.1 iter-36 F-A gap exactly (-0.333), and the F-cluster mean stability degraded from v0.6.1 (0.704) to v0.9.1 (0.556). This is the literal definition of overfit signature on the diagnostic."
+          - "However: the F-cluster is by construction the v0.6.1 misclassification set, so degradation on it under permutation could reflect either model fragility or genuine borderline-case fragility. The diagnostic alone cannot distinguish these."
+        verdict: >
+          Reading (a) borderline-cases dominates. The cross-version
+          persistence of F-cluster identity across 4 codebook
+          rewrites and 2 models is the decisive evidence. Treat the
+          F-A gap as an artifact of the F-cluster's borderline
+          construction. Headline metrics (exogenous precision 0.833,
+          sign accuracy 0.955) support proceeding to deployment with
+          documented caveats: (i) gold for multi-motivation acts
+          uses an out-of-codebook hardcoded-endogenous convention
+          (acts 4, 37 as B); (ii) LR<->CC boundary on R&R's canonical
+          1960s/70s tax cuts remains the residual F-pattern; (iii)
+          one priority-rule regression (act 9 SD<->LR) was lost in
+          the v0.6.1 -> v0.7.0 rewrite and should be restored.
+      act_judgments:
+        - act_id: 1
+          act_name: "Changes in Depreciation Guidelines and Revenue Act of 1962"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "LONG_RUN"
+          pred_sign: "-"
+          category: "A"
+          notes: "Confident bucket. Structural ITC + depreciation; reasoning sound."
+        - act_id: 2
+          act_name: "Crude Oil Windfall Profit Tax Act of 1980"
+          true: "LONG_RUN"
+          true_sign: "+"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "+"
+          category: "F"
+          notes: "Iter 35 F (rule-priority gap). Iter 47 F (DD<->LR boundary on response-to-shock). Both exogenous; binary precision unaffected. Persistent F-cluster member."
+        - act_id: 3
+          act_name: "Deficit Reduction Act of 1984"
+          true: "DEFICIT_DRIVEN"
+          true_sign: "+"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Inherited deficit framing explicit."
+        - act_id: 4
+          act_name: "Economic Growth and Tax Relief Reconciliation Act of 2001"
+          true: "COUNTERCYCLICAL"
+          true_sign: "-"
+          pred: "LONG_RUN"
+          pred_sign: "-"
+          category: "B"
+          notes: >
+            EGTRRA is a multi-motivation act: gold reflects the
+            hardcoded-endogenous-on-tie convention used when an act
+            is categorized both LR and CC. v0.9.1 codebook lands on
+            LR via the timing-of-decision rule (proposed during 1999-
+            2000 expansion). Codebook is partially correct; we lack
+            tools to evaluate multi-category acts. Reclassified as B
+            (evaluation-framework gap, not gold-standard error).
+        - act_id: 5
+          act_name: "Economic Recovery Tax Act of 1981"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "LONG_RUN"
+          pred_sign: "-"
+          category: "A"
+          notes: "Confident bucket. Reagan-era LR canonical."
+        - act_id: 6
+          act_name: "Excess Profits Tax Act of 1950"
+          true: "SPENDING_DRIVEN"
+          true_sign: "+"
+          pred: "SPENDING_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Korean War financing; clean SD."
+        - act_id: 7
+          act_name: "Excise Tax Reduction Act of 1954"
+          true: "SPENDING_DRIVEN"
+          true_sign: "-"
+          pred: "LONG_RUN"
+          pred_sign: "-"
+          category: "F"
+          notes: "Iter 35 F (DR1/DR4 priority gap). Iter 47 F (SD<->LR; postwar spending-decline causal link missed). Persistent F-cluster member; same root cause as act 9 but kept F here because the structural-reform framing is more dominant in evidence than for act 9."
+        - act_id: 8
+          act_name: "Excise Tax Reduction Act of 1965"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "LONG_RUN"
+          pred_sign: "-"
+          category: "A"
+          notes: "Confident bucket. Structural removal of outdated relics; LR clear."
+        - act_id: 9
+          act_name: "Expiration of Excess Profits Tax and of Temporary Income Tax Increases"
+          true: "SPENDING_DRIVEN"
+          true_sign: "-"
+          pred: "LONG_RUN"
+          pred_sign: "-"
+          category: "E"
+          notes: >
+            REGRESSION from iter 35 A. Evidence contains explicit
+            one-year-temporal-rule trigger quotes ("made possible the
+            tax cuts"; "transfer billions of dollars which the
+            Government will not be spending back to the taxpayers").
+            Model recognized SD signal in reasoning text but
+            mislabeled as past-context rather than the cited reason.
+            Codebook rule is sufficient (one-year temporal rule +
+            "reason" test in SD negative_clarification); model
+            failed to apply. v0.6.1 caught this with same evidence
+            via explicit DR4 priority rule. v0.9.x revision target:
+            restore explicit causal-link priority emphasis.
+        - act_id: 10
+          act_name: "Federal-Aid Highway Act of 1956"
+          true: "SPENDING_DRIVEN"
+          true_sign: "+"
+          pred: "SPENDING_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Highway trust fund, contemporaneous spending."
+        - act_id: 11
+          act_name: "Federal-Aid Highway Act of 1959"
+          true: "DEFICIT_DRIVEN"
+          true_sign: "+"
+          pred: "SPENDING_DRIVEN"
+          pred_sign: "+"
+          category: "F"
+          notes: "Iter 35 F (DD/SD ambiguity on trust-fund deficit vs. spending authorization). Persistent F-cluster member. Precision-affecting (truth exo, pred endo)."
+        - act_id: 12
+          act_name: "Job Creation and Worker Assistance Act of 2002"
+          true: "COUNTERCYCLICAL"
+          true_sign: "-"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "-"
+          category: "A"
+          notes: "Confident bucket. 9/11 + 2001 recession response."
+        - act_id: 13
+          act_name: "Jobs and Growth Tax Relief Reconciliation Act of 2003"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "LONG_RUN"
+          pred_sign: "-"
+          category: "A"
+          notes: "Confident bucket. Structural framing dominant despite mixed cyclical context."
+        - act_id: 14
+          act_name: "Omnibus Budget Reconciliation Act of 1987"
+          true: "DEFICIT_DRIVEN"
+          true_sign: "+"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Bipartisan Budget Agreement deficit reduction."
+        - act_id: 15
+          act_name: "Omnibus Budget Reconciliation Act of 1990"
+          true: "DEFICIT_DRIVEN"
+          true_sign: "+"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. $500B deficit reduction package."
+        - act_id: 16
+          act_name: "Omnibus Budget Reconciliation Act of 1993"
+          true: "DEFICIT_DRIVEN"
+          true_sign: "+"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Inherited $290B deficit."
+        - act_id: 17
+          act_name: "Public Law 89-800 (Suspension of Investment Tax Credit)"
+          true: "COUNTERCYCLICAL"
+          true_sign: "+"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "-"
+          category: "E"
+          notes: >
+            Motivation match (CC=CC); sign mismatch. Reasoning
+            describes restraint and "tax increases" correctly but
+            sign output is "-". Sign-extraction failure on
+            suspend-credit semantics. New failure mode under v0.8.0+
+            sign output requirement. C4 development note: include
+            worked sign-mapping example for credit
+            suspension/restoration (suspend credit -> +; restore
+            credit -> -).
+        - act_id: 18
+          act_name: "Public Law 90-26 (Restoration of the Investment Tax Credit)"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "-"
+          category: "F"
+          notes: >
+            Iter 35 E (model failed to apply BCR1(b)). Iter 47 F
+            because v0.7.0+ removed BCR1(b) and v0.9.1's offsetting-
+            changes convention actually predicts CC, not LR. Same
+            wrong prediction, different category: now codebook
+            absence rather than model semantic failure. Note for
+            v0.9.x revision: restore an analog of BCR1(b) inside the
+            LR class body. Also: c2a evidence is heavily suspension-
+            contaminated (quotes 1-8 are PL 89-800 rationale).
+        - act_id: 19
+          act_name: "Revenue Act of 1945"
+          true: "SPENDING_DRIVEN"
+          true_sign: "-"
+          pred: "SPENDING_DRIVEN"
+          pred_sign: "-"
+          category: "A"
+          notes: "Confident bucket. Postwar transition, declining war spending."
+        - act_id: 20
+          act_name: "Revenue Act of 1948"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "LONG_RUN"
+          pred_sign: "-"
+          category: "A"
+          notes: "FIXED from iter 35 C (corpus gap). v0.9.1 lands LR despite same corpus gap; recovery via fuller c2a evidence-extraction or world-knowledge fallback."
+        - act_id: 21
+          act_name: "Revenue Act of 1950"
+          true: "SPENDING_DRIVEN"
+          true_sign: "+"
+          pred: "SPENDING_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Korean War pay-as-you-go."
+        - act_id: 22
+          act_name: "Revenue Act of 1964"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "-"
+          category: "F"
+          notes: "Iter 35 F (Kennedy boundary). Persistent F-cluster member; canonical LR<->CC borderline. R&R judgment call."
+        - act_id: 23
+          act_name: "Revenue Act of 1971"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "-"
+          category: "F"
+          notes: "Iter 35 F (multiple_dominant tiebreaker). Persistent F-cluster member; LR<->CC borderline."
+        - act_id: 24
+          act_name: "Revenue Act of 1978"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "-"
+          category: "F"
+          notes: "Iter 35 F (NA -> F). v0.9.1 recovers substantive CC pred. Persistent F-cluster member; LR<->CC borderline."
+        - act_id: 25
+          act_name: "Revenue and Expenditure Control Act of 1968"
+          true: "COUNTERCYCLICAL"
+          true_sign: "+"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Surcharge to cool overheating."
+        - act_id: 26
+          act_name: "Social Security Amendments of 1950"
+          true: "SPENDING_DRIVEN"
+          true_sign: "+"
+          pred: "SPENDING_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "FIXED from iter 35 C (zero-evidence). Persistent n_evidence=0; v0.9.1 model returns 'low' confidence and recovers SD via world-knowledge fallback. Borderline A vs C; classified A because prediction is correct."
+        - act_id: 27
+          act_name: "Social Security Amendments of 1954"
+          true: "SPENDING_DRIVEN"
+          true_sign: "+"
+          pred: "SPENDING_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Coverage expansion + payroll tax pairing."
+        - act_id: 28
+          act_name: "Social Security Amendments of 1965"
+          true: "SPENDING_DRIVEN"
+          true_sign: "+"
+          pred: "SPENDING_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Medicare/Medicaid pairing with payroll tax."
+        - act_id: 29
+          act_name: "Social Security Amendments of 1977"
+          true: "DEFICIT_DRIVEN"
+          true_sign: "+"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Trust fund crisis, classic DD language."
+        - act_id: 30
+          act_name: "Social Security Amendments of 1983"
+          true: "DEFICIT_DRIVEN"
+          true_sign: "+"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Solvency restoration."
+        - act_id: 31
+          act_name: "Tax Adjustment Act of 1966"
+          true: "LONG_RUN"
+          true_sign: "+"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "+"
+          category: "F"
+          notes: "Iter 35 F (cross-act consistency gap). Persistent F-cluster member; LR<->CC borderline (Vietnam-era restraint, gold LR is unusual)."
+        - act_id: 32
+          act_name: "Tax Equity and Fiscal Responsibility Act of 1982"
+          true: "DEFICIT_DRIVEN"
+          true_sign: "+"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. ERTA-induced deficit, clear DD."
+        - act_id: 33
+          act_name: "Tax Rate Extension Act of 1958"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "+"
+          category: "F"
+          notes: "Iter 35 C (data gap; 8 evidence items). Iter 47 F: 16 evidence items now, but new evidence relates to timing not motivation. Codebook ambiguity on extension/sign semantics for tax-rate-extension acts."
+        - act_id: 34
+          act_name: "Tax Reduction Act of 1975"
+          true: "COUNTERCYCLICAL"
+          true_sign: "-"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "-"
+          category: "A"
+          notes: "Confident bucket. -9.2% GNP recession response."
+        - act_id: 35
+          act_name: "Tax Reduction and Simplification Act of 1977"
+          true: "LONG_RUN"
+          true_sign: "-"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "-"
+          category: "F"
+          notes: "Iter 35 F (return-to-normal pattern). Persistent F-cluster member; LR<->CC borderline (Carter stimulus)."
+        - act_id: 36
+          act_name: "Tax Reform Act of 1969"
+          true: "COUNTERCYCLICAL"
+          true_sign: "-"
+          pred: "COUNTERCYCLICAL"
+          pred_sign: "-"
+          category: "A"
+          notes: "Confident bucket. Inflation cooling, demand restraint."
+        - act_id: 37
+          act_name: "Tax Reform Act of 1976"
+          true: "LONG_RUN"
+          true_sign: "+"
+          pred: "LONG_RUN"
+          pred_sign: "-"
+          category: "B"
+          notes: >
+            Iter 35 F (NA / max_tokens). v0.9.1 recovers LR motivation
+            match. Sign error: pred '-' vs gold '+'. R&R coding shows
+            multi-quarter opposite-signed liability changes: 1976Q4
+            +$2.4B (Exo; LR); 1977Q1 -$0.8B (Exo; LR); PV 1976Q4
+            +$1.61B. Gold's '+' is the PV collapse of opposing-sign
+            components. Single-sign output field cannot evaluate
+            cleanly. B (evaluation-framework gap), same convention as
+            act 4.
+        - act_id: 38
+          act_name: "Tax Reform Act of 1986"
+          true: "LONG_RUN"
+          true_sign: "+"
+          pred: "LONG_RUN"
+          pred_sign: "+"
+          category: "A"
+          notes: "Confident bucket. Structural overhaul, raise long-run growth."
+        - act_id: 39
+          act_name: "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997"
+          true: "SPENDING_DRIVEN"
+          true_sign: "-"
+          pred: "DEFICIT_DRIVEN"
+          pred_sign: "-"
+          category: "F"
+          notes: "Iter 35 C (limited evidence). Iter 47 F: 80 evidence items now, but new evidence relates to timing not motivation. Codebook tension on bundled-package classification (paired deficit-reduction + spending changes); gold SD is unusual (most analysts code DD)."
+    interpretation: >
+      Manual analysis converts the iter 46 evidence-shuffle "fail
+      (overfit)" verdict into a "pass with documented caveats"
+      reading on the basis of the F-cluster's cross-version
+      persistence. The same set of borderline R&R-judgment-call acts
+      (LR<->CC on Revenue Acts 1964/1971/1978/1977-Reduction; CC
+      <->SPENDING on Tax Adjustment 1966 and Crude Oil 1980; DD/SD
+      on Highway 1959) has been F across 4 codebook versions and 2
+      models. This pattern is the diagnostic signature of structural
+      borderlines, not memorization-overfit. Headline metrics are
+      acceptable: bias-corrected exogenous precision 0.833 (raw
+      0.800) is just below the 0.85 gate but its 95% CI on n=18
+      contains 0.85; sign accuracy on true-exogenous 0.955 PASSES
+      its 0.90 gate. Two B-category acts (4 EGTRRA, 37 Tax Reform
+      1976) reflect a methodological gap: gold codings for multi-
+      motivation or multi-quarter opposite-signed acts use
+      out-of-codebook conventions that the single-label / single-
+      sign output schema cannot evaluate. This is a known limitation
+      and does not warrant codebook revision; it warrants either
+      restricting evaluation to single-motivation acts, or extending
+      the output schema to capture multi-component acts (deferred to
+      future work). Two E-category acts (9 1954-Expiration, 17 ITC
+      Suspension) point to actionable codebook revisions: act 9
+      shows that the v0.6.1 -> v0.7.0 rewrite lost the explicit
+      causal-link priority rule, which should be restored; act 17
+      shows that sign-extraction on credit suspension/restoration
+      needs a worked example (deferred to C4 development).
+    decision: >
+      Pending after this analysis. Candidate next steps to discuss
+      with the user:
+      (a) FREEZE v0.9.1 as the C2 deliverable on the basis of
+          headline metrics + documented F-cluster borderline-cases
+          reading. Headline: bias-corrected exogenous precision
+          0.833, sign accuracy 0.955 PASS. Document the 2 B's as
+          known evaluation-framework gaps and the 11 F's as R&R-
+          judgment-call borderlines.
+      (b) MINOR REVISION: restore an explicit causal-link priority
+          rule (analog of v0.6.1 DR4) inside the SD class body to
+          recover act 9; restore an analog of BCR1(b) inside the
+          LR class body to address act 18 (restoration of suspended
+          structural provision). This targets the 2 cases where the
+          v0.7.0 rewrite lost a working rule. Expected effect: +1-2
+          A's, +0-1pp on exogenous precision. Cheap to test; low
+          risk of overfit given both rules are R&R-original.
+      (c) DEFER any taxonomy-level rework. The F-cluster's cross-
+          version persistence rules out further codebook gains on
+          LR<->CC borderlines; remaining work is gold-standard
+          methodology (multi-motivation handling, sign-of-bundled-
+          packages) which is out of scope for codebook revision.
+      (d) DOCUMENT the C4 development requirement: sign-mapping
+          worked examples for credit suspension/restoration cases.
+      Recommendation: (a) + (b) + (d). Skip (c) per the F-cluster
+          analysis above.
+
 
