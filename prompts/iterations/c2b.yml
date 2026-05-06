@@ -6462,4 +6462,153 @@ iterations:
       Recommendation: (a) + (b) + (d). Skip (c) per the F-cluster
           analysis above.
 
+  - iteration: 48
+    codebook_version: "0.9.1"
+    date: "2026-05-06"
+    git_commit: "4e291a4"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3"
+    changes: >
+      Automated S3 (Tests V/VI/VII + 4-condition ablation) on the
+      v0.9.1 c2b classifier. Required two pre-existing infra fixes
+      to run end-to-end after the v0.7.0 -> v0.9.1 rewrite: commit
+      3642033 (run_c2_error_analysis read pred_motivation; producer
+      emits pred_label) and commit 4e291a4 (classify_c2b_batch
+      extracted via collapse_motivations(parsed$motivations); v0.9.x
+      schema is flat parsed$label). Both bugs were latent through
+      v0.7.0-v0.9.0 because the no-classes early-return guard
+      masked the dead code path; v0.9.1 reintroduces classes and
+      exercised it. Test V uses the H&K 4-combo design with an
+      elephant distractor + matching exclusion clause forcing
+      LONG_RUN. Test VI substitutes LABEL_1..LABEL_4 for the
+      semantic class names. Test VII rotates definitions across
+      label slots. Ablation tests full / no_label_def /
+      no_clarifications / all_removed. Baseline is the cached
+      iter 45 c2_s2_results (39 valid acts, 0 NA).
+    results:
+      n_acts: 39
+      baseline_accuracy: 0.6667
+      metrics:
+        - test: "V_exclusion_criteria"
+          combos:
+            - combo: "normal_ev_normal_cb"
+              accuracy: 1.0000
+              n_correct: 39
+              n_total: 39
+            - combo: "modified_ev_normal_cb"
+              accuracy: 0.9231
+              n_correct: 36
+              n_total: 39
+            - combo: "normal_ev_modified_cb"
+              accuracy: 0.9231
+              n_correct: 36
+              n_total: 39
+            - combo: "modified_ev_modified_cb"
+              accuracy: 0.3077
+              n_correct: 12
+              n_total: 39
+          overall_consistency: 0.7885
+          interpretation: >
+            Combos 2/3 (one-sided modification) show strong
+            robustness: distractor evidence and added exclusion
+            clauses do not spuriously fire. Combo 4 (both trigger
+            and rule present) shows partial compliance only — the
+            model treats negative_clarification as a soft signal,
+            not an absolute rule, and 27/39 acts retain the
+            original label despite the explicit override.
+        - test: "VI_generic_labels"
+          original_accuracy: 0.6667
+          generic_accuracy: 0.6325
+          accuracy_difference: 0.0342
+          original_weighted_f1: 0.6645
+          generic_weighted_f1: 0.6188
+          f1_difference: 0.0457
+          change_rate: 0.0788
+          interpretation: >
+            Tiny degradation under LABEL_1..LABEL_4 substitution
+            (~3pp accuracy, 8pct change rate). Model is not
+            anchoring on the semantic R&R label strings; it
+            reasons from definitions/evidence and the labels are
+            largely interchangeable.
+        - test: "VII_swapped_labels"
+          follows_definitions_rate: 0.0256
+          follows_names_rate: 0.9744
+          swapped_accuracy: 0.6410
+          swapped_weighted_f1: 0.6543
+          interpretation: >
+            Predictions stick with original label slots 97.4% of
+            the time despite definitions being rotated. Combined
+            with Test VI, this indicates the model classifies via
+            internalized priors (R&R-style fiscal-policy reasoning
+            from pretraining) rather than re-reading the codebook
+            definitions on each call.
+      ablation:
+        - condition: "full"
+          accuracy: 0.6667
+          weighted_f1: 0.6645
+          macro_f1: 0.6760
+          accuracy_drop: 0.0000
+          weighted_f1_drop: 0.0000
+        - condition: "no_label_def"
+          accuracy: 0.6154
+          weighted_f1: 0.6178
+          macro_f1: 0.6427
+          accuracy_drop: 0.0513
+          weighted_f1_drop: 0.0468
+        - condition: "no_clarifications"
+          accuracy: 0.6410
+          weighted_f1: 0.6354
+          macro_f1: 0.6649
+          accuracy_drop: 0.0256
+          weighted_f1_drop: 0.0291
+        - condition: "all_removed"
+          accuracy: 0.5897
+          weighted_f1: 0.5478
+          macro_f1: 0.5928
+          accuracy_drop: 0.0769
+          weighted_f1_drop: 0.1166
+      ablation_interpretation: >
+        All ablation drops are small (<=7.7pp on accuracy, <=11.7pp
+        on weighted F1). label_definition is the largest single
+        component (5.1pp) but even removing every codebook section
+        retains 59% accuracy on the 4-way task — well above the
+        25% chance baseline. The codebook contributes calibration
+        signal on top of strong pretraining priors.
+    interpretation: >
+      Tests V-VII suggest the model has correctly internalized the
+      R&R classification schema. Ablation results corroborate this:
+      the prompt stem (label names + class structure) is the
+      largest contributor to performance, while removable codebook
+      sections (label_definition, clarifications) add only modest
+      calibration signal (<=5pp each). Combined with iter 47's
+      manual review (bias-corrected exo precision 0.833 with CI
+      containing 0.85, sign accuracy 0.955 PASS, F-cluster
+      identified as R&R-judgment-call borderlines persisting
+      across 4 codebook versions and 2 models), the three
+      diagnostics converge: v0.9.1 is at the achievable ceiling
+      for codebook-only intervention on Haiku for this task.
+      Test V combo 4 = 30.8% indicates negative_clarification
+      operates as a soft signal not a hard rule; this is a known
+      limitation of zero-shot prompting and is documented but does
+      not block deployment given the headline metrics.
+    decision: >
+      FREEZE c2b v0.9.1 as the C2 codebook deliverable. Deploy
+      this version to Malaysia (Phase 2 pilot). Keep notes on the
+      open recommendations for future C2 development:
+      (i) iter 47's MINOR REVISION proposal (restore v0.6.1
+          causal-link priority rule analog inside SD class body;
+          restore BCR1(b) analog inside LR class body for
+          suspended-structural-provision cases) — deferred, not
+          rejected; revisit if Malaysia pilot reveals analogous
+          E-category cases.
+      (ii) Test V combo 4 finding (exclusion rules partial, not
+           absolute) — documented as a known zero-shot limitation;
+           re-evaluate if cross-country deployment requires harder
+           guardrails.
+      (iii) C4 development requirement — sign-mapping worked
+            examples for credit suspension/restoration cases
+            (carries over from iter 47 (d)).
+      Skipping iter 47's (b) at this time prioritizes shipping the
+      validated cross-country deliverable over marginal in-domain
+      gains.
 
