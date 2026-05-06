@@ -23,8 +23,8 @@
 
 **Implementation**:
 
-1. **Phase 0 (Current)**: Develop and validate codebooks C1 and C2 (motivation + sign + timing) on 44 US acts using H&K stages S0-S3
-2. **Phase 1**: Deploy validated codebooks to Malaysia documents (1980-2022)
+1. **Phase 0 (Complete)**: C1 and C2 codebooks validated on 44 US acts using H&K stages S0-S3. C1 v0.6.0 frozen at iter 28 (S3 GATE PASSED); C2b v0.9.1 frozen at iter 48 (2026-05-06; bias-corrected exogenous precision 0.833, sign accuracy 0.955 PASS).
+2. **Phase 1 (Active next step)**: Deploy validated codebooks (C1 + C2) to Malaysia documents (1980-2022). Country deployment pipeline already wired (commit b92ee61).
 3. **Validation**: Expert reviews codebook outputs, provides corrections
 4. **Iteration**: Use expert feedback to refine codebook definitions (S0 revision)
 
