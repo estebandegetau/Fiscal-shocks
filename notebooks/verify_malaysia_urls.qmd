@@ -1,0 +1,178 @@
+---
+title: "Malaysia PDF URL Manifest: Human Verification Dashboard"
+subtitle: "Phase 2 deployment — clickable checklist for human download"
+date: today
+execute:
+  cache: false
+  warning: false
+  message: false
+---
+
+## Setup
+
+```{r setup}
+library(tidyverse)
+library(targets)
+library(here)
+library(gt)
+
+here::i_am("notebooks/verify_malaysia_urls.qmd")
+tar_config_set(store = here("_targets"))
+
+source(here("R/gt_theme.R"))
+
+country_urls_list <- tar_read(country_urls)
+malaysia_urls <- country_urls_list |>
+  purrr::keep(~ "country" %in% names(.x) &&
+                any(.x$country == "malaysia", na.rm = TRUE)) |>
+  dplyr::bind_rows()
+```
+
+This dashboard renders the Malaysia URL manifest produced by `R/pull_malaysia.R`. Each row is one PDF target. Rows are grouped by `access_status`:
+
+- **`auto`** — direct PDF URL verified; the deployment pipeline fetches automatically.
+- **`manual_pending`** — human action required. Click the URL, navigate to the PDF, save it to the displayed local path. After re-running `tar_make(country_urls)`, the row flips to `manual_ready`.
+- **`manual_ready`** — file present at `local_path`; pipeline ingests it on the next text-extraction step.
+
+## Overview
+
+```{r overview}
+overview <- malaysia_urls |>
+  summarise(
+    total_targets = n(),
+    distinct_series = n_distinct(body),
+    distinct_years = n_distinct(year),
+    year_min = min(year, na.rm = TRUE),
+    year_max = max(year, na.rm = TRUE),
+    auto = sum(access_status == "auto"),
+    manual_ready = sum(access_status == "manual_ready"),
+    manual_pending = sum(access_status == "manual_pending")
+  ) |>
+  mutate(across(everything(), as.character)) |>
+  pivot_longer(everything(), names_to = "metric", values_to = "value") |>
+  mutate(metric = str_replace_all(metric, "_", " ") |> str_to_title())
+
+overview |>
+  gt() |>
+  tab_header(title = "Malaysia URL manifest — overview") |>
+  gt_theme_report()
+```
+
+```{r status-by-series}
+malaysia_urls |>
+  count(body, access_status) |>
+  pivot_wider(names_from = access_status, values_from = n, values_fill = 0L) |>
+  gt() |>
+  tab_header(title = "Status counts by document series") |>
+  gt_theme_report()
+```
+
+## Auto — verified direct PDF URLs
+
+These will be fetched automatically by the deployment pipeline. No human action required.
+
+```{r auto-rows}
+auto_rows <- malaysia_urls |>
+  filter(access_status == "auto") |>
+  arrange(year, package_id)
+
+if (nrow(auto_rows) == 0L) {
+  cat("(none — no verified direct PDF URLs in the current manifest)\n")
+} else {
+  auto_rows |>
+    mutate(
+      pdf_link = sprintf('<a href="%s" target="_blank">%s</a>',
+                         pdf_url, package_id)
+    ) |>
+    select(year, body, pdf_link, source, notes) |>
+    gt() |>
+    fmt_markdown(columns = pdf_link) |>
+    cols_label(
+      year = "Year", body = "Series", pdf_link = "Package (link)",
+      source = "Source", notes = "Notes"
+    ) |>
+    tab_header(title = "Auto-fetch URLs (verified direct PDFs)") |>
+    gt_theme_report()
+}
+```
+
+## Manual ready — files dropped, awaiting extraction
+
+Rows where the human has already placed a PDF at `local_path`. The pipeline will extract these on the next text-extraction step.
+
+```{r manual-ready}
+ready_rows <- malaysia_urls |>
+  filter(access_status == "manual_ready") |>
+  arrange(year, package_id)
+
+if (nrow(ready_rows) == 0L) {
+  cat("(none — no files dropped yet)\n")
+} else {
+  ready_rows |>
+    select(year, body, package_id, local_path, notes) |>
+    gt() |>
+    cols_label(
+      year = "Year", body = "Series", package_id = "Package",
+      local_path = "Local path", notes = "Notes"
+    ) |>
+    tab_header(title = "Manual-ready (file present, ready to extract)") |>
+    gt_theme_report()
+}
+```
+
+## Manual pending — human download required
+
+This is the work queue. For each row:
+
+1. Click the **URL** column to open the page in a browser.
+2. Navigate to the PDF if the URL is a landing page (some archives require year selection or anti-bot click-through).
+3. Save the PDF to the displayed **Local path**. Create subdirectories as needed.
+4. Re-render this notebook (or re-run `tar_make(country_urls)`) to confirm the row flipped to `manual_ready`.
+
+```{r manual-pending-by-series}
+#| results: asis
+pending_rows <- malaysia_urls |>
+  filter(access_status == "manual_pending") |>
+  arrange(body, year, package_id)
+
+if (nrow(pending_rows) == 0L) {
+  cat("(none — all manual rows already resolved)\n")
+} else {
+  for (series in unique(pending_rows$body)) {
+    cat("\n### ", series, "\n\n", sep = "")
+    series_rows <- pending_rows |> filter(body == series)
+    tbl <- series_rows |>
+      mutate(
+        pdf_link = ifelse(
+          is.na(pdf_url) | !nzchar(pdf_url),
+          "(no URL — physical archive)",
+          sprintf('<a href="%s" target="_blank">open</a>', pdf_url)
+        )
+      ) |>
+      select(year, package_id, pdf_link, local_path, notes) |>
+      gt() |>
+      fmt_markdown(columns = pdf_link) |>
+      cols_label(
+        year = "Year", package_id = "Package", pdf_link = "URL",
+        local_path = "Drop file here", notes = "Notes"
+      ) |>
+      gt_theme_report()
+    cat(gt::as_raw_html(tbl), "\n\n")
+  }
+}
+```
+
+## Drop convention
+
+Per `data/manual/malaysia/README.md`, downloaded PDFs go in:
+
+```
+data/manual/malaysia/
+├── economic_report/   <year>.pdf
+├── budget_speech/     <year>.pdf
+├── bnm_annual_report/ <year>.pdf
+├── rmk/               rmk<plan>_{plan,mtr}_<year>.pdf
+└── stimulus/          named per package_id
+```
+
+After dropping files, re-run `tar_make(country_urls)` (cheap; no API calls) to refresh the manifest.

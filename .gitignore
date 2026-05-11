@@ -9,7 +9,11 @@ Lib/
 renv/
 *.pdf
 *.csv
-data/
+data/*
+!data/manual/
+data/manual/**/*.pdf
+!data/manual/**/README.md
+!data/manual/**/MANIFEST.csv
 *_cache/
 *.json
 !.devcontainer/devcontainer.json

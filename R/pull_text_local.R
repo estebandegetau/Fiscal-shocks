@@ -62,11 +62,11 @@ if (missing(pdf_url) || is.null(pdf_url) || length(pdf_url) == 0) {
     stop("pdf_url is required and cannot be empty")
   }
 
-  # Filter out any empty URLs
-  pdf_url <- pdf_url[nzchar(as.character(pdf_url))]
+  # Filter out any empty or NA URLs (manual-pending rows pass NA here)
+  pdf_url <- pdf_url[!is.na(pdf_url) & nzchar(as.character(pdf_url))]
 
   if (length(pdf_url) == 0) {
-    warning("All provided URLs were empty")
+    warning("All provided URLs were empty or NA")
     return(tibble::tibble(
       text = list(character(0)),
       n_pages = 0L,
