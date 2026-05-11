@@ -233,7 +233,7 @@ US Government Documents (1946-present):
 
 ## Technology Stack
 
-- **R**: targets, crew, tidyverse, pdftools, quanteda, tidytext, rvest, googledrive, gt (for tables in .qmd files)
+- **R**: targets, crew, tidyverse, pdftools, quanteda, tidytext, rvest, googledrive, tinytable (for tables in new .qmd files; existing notebooks still use gt), pacman (for setup-chunk package loading)
 - **Python**: pymupdf (PDF extraction)
 - **Documentation**: Quarto with Typst and HTML output, Chicago Author-Date citations
 
@@ -241,7 +241,8 @@ US Government Documents (1946-present):
 
 See `.claude/skills/quarto-style/SKILL.md` for complete Quarto conventions (tables, markdown formatting, plots, citations, writing style, setup chunks). Key rules:
 
-- **gt for all tables** (never kableExtra)
+- **tinytable (`tt()`) for all tables** (never gt or kableExtra in new documents; existing notebooks may still use gt and migrate when next edited)
+- **`pacman::p_load()` instead of `library()`** for setup chunks
 - **Blank line before bullet lists** in both markdown body and `cat()` output
 - **Never end a section with a `---` divider**
 - **Minimize em dashes**

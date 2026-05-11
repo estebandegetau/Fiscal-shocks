@@ -1,12 +1,12 @@
 ---
 name: progress-report
-description: Generate a progress report (.qmd) with auto-gathered project state, terminology translation for external readers, and gt tables following project conventions.
+description: Generate a progress report (.qmd) with auto-gathered project state, terminology translation for external readers, and tinytable (tt) tables following project conventions.
 user-invocable: true
 ---
 
 # Progress Report Skill
 
-Generate a Quarto progress report with auto-gathered project state, jargon-free prose for external readers, and pre-built gt tables. The skill handles tedious context assembly while keeping the human in the loop for framing and review.
+Generate a Quarto progress report with auto-gathered project state, jargon-free prose for external readers, and pre-built tinytable (`tt()`) tables. The skill handles tedious context assembly while keeping the human in the loop for framing and review.
 
 ## When to Use
 
@@ -128,15 +128,11 @@ Include only if the report reads pipeline data. Load only the targets the report
 #| label: setup
 #| cache: false
 
-library(targets)
-library(tidyverse)
-library(gt)
-library(here)
-library(scales)
+pacman::p_load(targets, tidyverse, tinytable, here, scales)
 
 here::i_am("reports/<filename>.qmd")
 tar_config_set(store = here("_targets"))
-source(here("R/gt_theme.R"))
+source(here("R/tt_theme.R"))
 
 # Load data — only what this report uses
 <target_reads>
@@ -156,12 +152,12 @@ Write all prose using the **Terminology Mapping** table below. Rules:
 
 All tables must follow quarto-style conventions:
 
-- Use `gt()` piped to `gt_theme_report()` as the last step
-- Use chunk options `label: tbl-{ref}` and `tbl-cap:` for titles (not `tab_header(title=)`)
-- Use `tab_header(title = "", subtitle = "...")` only for supplementary subtitles
+- Use `tt()` piped to `tt_theme_report()` as the last step
+- Use chunk options `label: tbl-{ref}` and `tbl-cap:` for titles; do not set captions on the table object
+- Rename columns via `dplyr::rename()` (or `setNames()`) upstream of `tt()` — tinytable has no `cols_label()` analog
 - Reference tables in text with `@tbl-{ref}`
-- Use `fmt_percent()`, `fmt_number()`, `comma()` for formatting
-- Use `tab_footnote()` for methodological notes
+- Use `tinytable::format_tt(fmt = "%.1f%%")`, `format_tt(fmt = "%.0f")`, `scales::comma()` for formatting
+- Use `tinytable::footnote_tt()` for methodological notes
 
 #### 3f. References
 
@@ -255,10 +251,9 @@ tibble(
   Value = c(...),
   Target = c(...),
   Status = c(...)
-) %>%
-  gt() %>%
-  tab_header(title = "", subtitle = "...") %>%
-  gt_theme_report()
+) |>
+  tt() |>
+  tt_theme_report()
 ```
 
 ### Timeline Table template
@@ -272,9 +267,9 @@ tibble(
   Task = c(...),
   `Previous Estimate` = c(...),
   `Current Estimate` = c(...)
-) %>%
-  gt() %>%
-  gt_theme_report()
+) |>
+  tt() |>
+  tt_theme_report()
 ```
 
 ## Error Handling

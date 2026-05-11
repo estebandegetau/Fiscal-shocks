@@ -48,20 +48,19 @@ Override directory defaults only when necessary (e.g., `number-sections: true` f
 
 ## Setup Chunk
 
-Include the targets setup block **only when the document reads pipeline data**:
+Include the targets setup block **only when the document reads pipeline data**.
+
+Use `pacman::p_load()` instead of repeated `library()` calls — it installs missing packages and loads them in one call.
 
 ```r
 #| label: setup
 #| cache: false
 
-library(targets)
-library(tidyverse)
-library(gt)
-library(here)
+pacman::p_load(targets, tidyverse, tinytable, here)
 
 here::i_am("path/to/this-document.qmd")
 tar_config_set(store = here("_targets"))
-source(here("R/gt_theme.R"))
+source(here("R/tt_theme.R"))
 set_theme(theme_minimal())
 
 # Load data
@@ -72,11 +71,11 @@ Documents that don't use pipeline data (e.g., pure prose proposals) skip this en
 
 ## Tables
 
-**Always use `gt` for tables.** Never use `kableExtra` (incompatible with Typst) or markdown tables.
+**Always use `tinytable` (`tt()`) for tables.** Never use `gt`, `kableExtra`, or markdown tables — `tinytable` has native Typst support and is the project standard.
 
 ### Project theme
 
-All tables must end with `%>% gt_theme_report()` (defined in `R/gt_theme.R`, sourced in setup). This applies booktabs-style formatting: centered, no row lines, header separator and bottom rule only.
+All tables must end with `|> tt_theme_report()` (defined in `R/tt_theme.R`, sourced in setup). This applies booktabs-style formatting: centered, no row lines, header separator and bottom rule only.
 
 Required pattern:
 
@@ -84,23 +83,25 @@ Required pattern:
 #| label: tbl-descriptive-name
 #| tbl-cap: "Human-readable table caption"
 
-data %>%
-  gt() %>%
-  cols_label(col1 = "Readable Name") %>%
-  gt_theme_report()
+data |>
+  rename(`Readable Name` = col1) |>
+  tt() |>
+  tt_theme_report()
 ```
+
+Rename columns upstream via `dplyr::rename()` (or `setNames()`) before piping into `tt()` — tinytable has no `cols_label()` analog and uses the data-frame's existing column names.
 
 ### Rules
 
 - Always use Quarto chunk options `label: tbl-{ref}` and `tbl-cap:` for table titles and cross-referencing
 - Reference tables in text with `@tbl-{ref}` (e.g., `@tbl-descriptive-name`)
-- Do **not** use `tab_header()` for the main title; use `tbl-cap:` instead so Quarto handles numbering and cross-references
-- Always pipe `gt_theme_report()` as the **last** step in the gt chain
-- Let tables take their natural width; do not force `table.width = pct(100)`
-- Use `tab_footnote()` for methodological notes
-- Use `tab_style()` for conditional formatting when it aids interpretation
-- Use `fmt_percent()`, `fmt_number()`, etc. for consistent number formatting
-- Tables in Typst output will not break across pages (`reports/_metadata.yml` handles this)
+- Do **not** set captions on the table object; always use Quarto's `tbl-cap:` chunk option so Quarto handles numbering and cross-references
+- Always pipe `tt_theme_report()` as the **last** step in the tinytable chain
+- Let tables take their natural width
+- Use `tinytable::footnote_tt()` for methodological notes
+- Use `tinytable::style_tt()` for conditional formatting when it aids interpretation
+- Use `tinytable::format_tt(fmt = "%.1f%%")`, `format_tt(fmt = "%.0f")`, etc. (sprintf-style format strings) for consistent number formatting
+- tinytable renders natively to Typst — no extra config needed for `reports/` documents
 
 ## Plots
 

@@ -151,9 +151,10 @@ Located in `notebooks/unused/` unless noted otherwise. These are from earlier ex
 
 ## Conventions
 
-- All notebooks use `gt` for tables (never `kableExtra`)
+- New notebooks use `tinytable` (`tt()`) for tables (never `gt` or `kableExtra`). Existing notebooks may still use `gt` and will migrate when next edited.
+- New notebooks load packages with `pacman::p_load()` instead of repeated `library()` calls.
 - All notebooks load data via `tar_read()` from the `{targets}` pipeline
 - Notebooks set `tar_config_set(store = here("_targets"))` in their setup chunk
-- Most notebooks source `R/gt_theme.R` for consistent table styling
-- Tests use PASS/WARN/FAIL status with color-coded gt tables
+- Existing notebooks source `R/gt_theme.R`; new notebooks should source `R/tt_theme.R` instead for consistent table styling
+- Tests use PASS/WARN/FAIL status with color-coded tables (`gt` in existing notebooks, `tinytable` in new ones)
 - Interpretive commentary follows each test section explaining findings and decisions
