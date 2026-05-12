@@ -50,6 +50,8 @@ website:
           - notebooks/c1_measure_id.qmd
       - section: "Progress Reports"
         contents: reports/
+      - section: "Deployment"
+        contents: notebooks/verify_country_body.qmd
 
 
 title-block-banner: true

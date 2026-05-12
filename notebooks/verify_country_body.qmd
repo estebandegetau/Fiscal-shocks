@@ -1,0 +1,1046 @@
+---
+title: "Deployment Corpus Verification"
+subtitle: "Text-extraction and chunk-integrity QA across all deployment countries"
+---
+
+## Overview
+
+This notebook verifies the text-extraction quality of every country in the deployment pipeline (currently Malaysia; future Indonesia, Thailand, Philippines, Vietnam). It runs on `country_body` and `country_chunks` after they are built, before C1 deployment.
+
+The US precedent is `verify_body.qmd`. Six of its seven tests port directly: URL resolution, boundary documents, temporal coverage, text quality, anomaly detection, and a new chunk-integrity test that the US notebook does not run. The seventh US test, "Known Act Validation", is omitted because deployment countries have no labeled passages. Anchor-event detection (1997 Asian Financial Crisis, 2015 GST, 2020 COVID packages) is reserved for the C1-output deployment evaluation notebook, not here.
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, digest, stringi)
+
+here::i_am("notebooks/verify_country_body.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/tt_theme.R"))
+theme_set(theme_minimal())
+
+# Country-branched targets use iteration = "list"; bind each into one tibble.
+country_urls    <- tar_read(country_urls)    |> bind_rows()
+country_body    <- tar_read(country_body)    |> bind_rows()
+country_chunks  <- tar_read(country_chunks)  |> bind_rows()
+country_configs <- tar_read(country_configs)
+
+# Flatten country_configs list for joins
+configs_tbl <- tibble(
+  country          = map_chr(country_configs, "country"),
+  pilot_year_min   = map_int(country_configs, "pilot_year_min"),
+  pilot_year_max   = map_int(country_configs, "pilot_year_max"),
+  primary_language = map_chr(country_configs, "primary_language")
+)
+
+# Join chunks back to body metadata so country/source/body are available
+chunks_meta <- country_chunks |>
+  left_join(
+    country_body |> select(package_id, country, source, body, doc_language),
+    by = c("doc_id" = "package_id")
+  )
+
+# Helper: apply PASS/WARN/FAIL/INFO/SKIP colors to a tinytable status column.
+# Takes a tt object, the raw status vector (used to find row indices), and the
+# column position (integer) in the rendered table to color.
+style_status <- function(tt_obj, status_vec, j) {
+  colors <- c(
+    PASS = "#2E7D32", WARN = "#F57C00",
+    FAIL = "#C62828", INFO = "#1565C0",
+    SKIP = "#757575"
+  )
+  for (s in names(colors)) {
+    rows <- which(status_vec == s)
+    if (length(rows) > 0) {
+      tt_obj <- tinytable::style_tt(
+        tt_obj, i = rows, j = j,
+        color = colors[[s]], bold = TRUE
+      )
+    }
+  }
+  tt_obj
+}
+
+# Test-result accumulator: one row per (country, test)
+test_results <- tibble(
+  country = character(),
+  test    = character(),
+  metric  = character(),
+  value   = character(),
+  target  = character(),
+  status  = character()
+)
+record_result <- function(country, test, metric, value, target, status) {
+  test_results <<- bind_rows(test_results, tibble(
+    country = country, test = test, metric = metric,
+    value = as.character(value), target = target, status = status
+  ))
+}
+```
+
+### Corpus snapshot
+
+```{r}
+#| label: tbl-corpus-snapshot
+#| tbl-cap: "Corpus snapshot per country"
+
+chunks_per_country <- chunks_meta |>
+  count(country, name = "Chunks")
+
+corpus_snapshot <- country_body |>
+  group_by(country) |>
+  summarize(
+    Documents          = n(),
+    Extracted          = sum(n_pages > 0),
+    Pages              = sum(n_pages),
+    `Year range`       = sprintf("%d-%d", min(year), max(year)),
+    `Document bodies`  = n_distinct(body),
+    Sources            = n_distinct(source),
+    `OCR docs`         = sum(ocr_used, na.rm = TRUE),
+    .groups            = "drop"
+  ) |>
+  left_join(chunks_per_country, by = "country")
+
+corpus_snapshot |>
+  mutate(across(c(Documents, Extracted, Pages, `OCR docs`, Chunks),
+                ~ scales::comma(.x))) |>
+  rename(Country = country) |>
+  tt() |>
+  tt_theme_report()
+```
+
+## Test (i): URL resolution and extraction success {#sec-test-i}
+
+For each country, the share of documents in `country_urls` that produced extracted text in `country_body`. Documents with `access_status == "manual_pending"` are reported separately as known acquisition gaps, not extraction failures.
+
+```{r}
+#| label: test-i-compute
+
+# Join URL manifest to body to classify each expected document
+url_status <- country_urls |>
+  left_join(
+    country_body |> select(country, package_id, n_pages),
+    by = c("country", "package_id")
+  ) |>
+  mutate(
+    n_pages = replace_na(n_pages, 0L),
+    outcome = case_when(
+      access_status == "manual_pending"               ~ "Pending",
+      access_status %in% c("auto", "manual_ready") &
+        n_pages > 0                                   ~ "Extracted",
+      access_status %in% c("auto", "manual_ready") &
+        n_pages == 0                                  ~ "Failed",
+      TRUE                                            ~ "Failed"
+    )
+  )
+
+test_i_summary <- url_status |>
+  group_by(country) |>
+  summarize(
+    n_expected      = n(),
+    n_pending       = sum(outcome == "Pending"),
+    n_resolvable    = sum(outcome != "Pending"),
+    n_extracted     = sum(outcome == "Extracted"),
+    n_failed        = sum(outcome == "Failed"),
+    success_rate    = if (n_resolvable > 0) n_extracted / n_resolvable else NA_real_,
+    .groups = "drop"
+  ) |>
+  mutate(
+    status = case_when(
+      is.na(success_rate)   ~ "INFO",
+      success_rate >= 0.95  ~ "PASS",
+      success_rate >= 0.85  ~ "WARN",
+      TRUE                  ~ "FAIL"
+    )
+  )
+
+for (i in seq_len(nrow(test_i_summary))) {
+  r <- test_i_summary[i, ]
+  record_result(
+    r$country, "i", "URL resolution rate (excl. pending)",
+    sprintf("%.1f%% (%d/%d)", 100 * r$success_rate, r$n_extracted, r$n_resolvable),
+    "≥95%", r$status
+  )
+}
+```
+
+```{r}
+#| label: tbl-test-i-country
+#| tbl-cap: "Test (i) URL resolution: outcomes per country"
+
+test_i_summary |>
+  mutate(
+    `Success rate` = sprintf("%.1f%%", 100 * success_rate)
+  ) |>
+  select(
+    Country     = country,
+    Expected    = n_expected,
+    Pending     = n_pending,
+    Resolvable  = n_resolvable,
+    Extracted   = n_extracted,
+    Failed      = n_failed,
+    `Success rate`,
+    Status      = status
+  ) |>
+  tt() |>
+  style_status(test_i_summary$status, j = 8) |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: tbl-test-i-series
+#| tbl-cap: "Test (i) URL resolution: by country and document body"
+
+url_status |>
+  group_by(country, body) |>
+  summarize(
+    Expected   = n(),
+    Pending    = sum(outcome == "Pending"),
+    Extracted  = sum(outcome == "Extracted"),
+    Failed     = sum(outcome == "Failed"),
+    .groups    = "drop"
+  ) |>
+  rename(Country = country, Body = body) |>
+  tt() |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: tbl-test-i-failed
+#| tbl-cap: "Test (i) Failed extractions (excluding pending)"
+
+failed_extractions <- url_status |>
+  filter(outcome == "Failed") |>
+  select(country, year, body, source, package_id, access_status, pdf_url)
+
+if (nrow(failed_extractions) == 0) {
+  cat("\nNo failed extractions among resolvable documents.\n\n")
+} else {
+  failed_extractions |>
+    rename(
+      Country = country, Year = year, Body = body, Source = source,
+      `Package ID` = package_id, `Access status` = access_status, URL = pdf_url
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
+
+```{r}
+#| label: fig-test-i-outcomes
+#| fig-cap: "Document outcomes by country and body"
+
+url_status |>
+  count(country, body, outcome) |>
+  ggplot(aes(x = body, y = n, fill = outcome)) +
+  geom_col(position = "stack") +
+  facet_wrap(~ country, ncol = 1, scales = "free_x") +
+  scale_fill_manual(values = c(
+    Extracted = "#2E7D32", Failed = "#C62828", Pending = "#F57C00"
+  )) +
+  labs(x = "Document body", y = "Documents", fill = "Outcome") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+Test (i) is the headline gate. Pending rows reflect the manual-acquisition workflow and are tracked but excluded from the success-rate denominator. A FAIL here points to URL resolution or PDF-extraction problems and must be fixed before C1 deployment runs.
+
+## Test (ii): Boundary documents {#sec-test-ii}
+
+For every country × source × body combination, the earliest and latest documents with extracted text must be at least 10 pages long. This catches systematic extraction failure at the edges of the corpus where document formats are most likely to drift.
+
+```{r}
+#| label: test-ii-compute
+
+boundary_docs <- bind_rows(
+  country_body |>
+    filter(n_pages > 0) |>
+    group_by(country, source, body) |>
+    slice_min(year, n = 1, with_ties = FALSE) |>
+    mutate(boundary_type = "Earliest") |>
+    ungroup(),
+  country_body |>
+    filter(n_pages > 0) |>
+    group_by(country, source, body) |>
+    slice_max(year, n = 1, with_ties = FALSE) |>
+    mutate(boundary_type = "Latest") |>
+    ungroup()
+)
+
+test_ii_per_country <- boundary_docs |>
+  group_by(country) |>
+  summarize(
+    n_boundary = n(),
+    n_short    = sum(n_pages < 10),
+    status     = if_else(n_short == 0, "PASS", "WARN"),
+    .groups = "drop"
+  )
+
+for (i in seq_len(nrow(test_ii_per_country))) {
+  r <- test_ii_per_country[i, ]
+  record_result(
+    r$country, "ii", "Boundary docs ≥10 pages",
+    sprintf("%d/%d", r$n_boundary - r$n_short, r$n_boundary),
+    "All ≥10 pages", r$status
+  )
+}
+```
+
+```{r}
+#| label: tbl-test-ii-summary
+#| tbl-cap: "Test (ii) Boundary document page counts"
+
+boundary_docs |>
+  select(country, source, body, year, boundary_type, n_pages, ocr_used) |>
+  arrange(country, source, body, boundary_type) |>
+  rename(
+    Country   = country, Source = source, Body = body, Year = year,
+    Boundary  = boundary_type, Pages = n_pages, OCR = ocr_used
+  ) |>
+  tt() |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: test-ii-samples
+#| results: 'asis'
+
+# Show middle-page sample text for up to 3 boundary docs per country
+sample_for_display <- boundary_docs |>
+  group_by(country) |>
+  slice_head(n = 3) |>
+  ungroup()
+
+for (i in seq_len(nrow(sample_for_display))) {
+  row <- sample_for_display[i, ]
+  pages <- row$text[[1]]
+  if (length(pages) == 0) next
+  middle_page <- pages[[ceiling(length(pages) / 2)]]
+  cat(sprintf("\n**%s — %s, %s %d (%s)**\n\n",
+              str_to_title(row$country), row$body, row$boundary_type,
+              row$year, row$source))
+  cat("```text\n")
+  cat(str_trunc(as.character(middle_page), 800))
+  cat("\n```\n\n")
+}
+```
+
+A short boundary document does not always indicate failure (a 2020 crisis booklet may legitimately be 8 pages), but every flagged row warrants a glance at the URL and a re-pull if the page count is implausibly low.
+
+## Test (iii): Temporal and source coverage {#sec-test-iii}
+
+The expected document grid is `country_urls` itself: every row in the URL manifest is a document the pipeline expects to extract. This is cleaner than the US notebook's hardcoded coverage grid because each country's URL fetcher already encodes its own coverage rules.
+
+```{r}
+#| label: test-iii-compute
+
+coverage <- url_status |>
+  mutate(coverage_status = case_when(
+    outcome == "Extracted"  ~ "Present",
+    outcome == "Pending"    ~ "Pending",
+    TRUE                    ~ "Missing"
+  ))
+
+test_iii_per_country <- coverage |>
+  group_by(country) |>
+  summarize(
+    n_total          = n(),
+    n_present        = sum(coverage_status == "Present"),
+    n_pending        = sum(coverage_status == "Pending"),
+    n_missing        = sum(coverage_status == "Missing"),
+    n_non_pending    = n_total - n_pending,
+    coverage_rate    = if (n_non_pending > 0) n_present / n_non_pending else NA_real_,
+    .groups = "drop"
+  ) |>
+  mutate(
+    status = case_when(
+      is.na(coverage_rate)  ~ "INFO",
+      coverage_rate >= 0.95 ~ "PASS",
+      coverage_rate >= 0.85 ~ "WARN",
+      TRUE                  ~ "FAIL"
+    )
+  )
+
+for (i in seq_len(nrow(test_iii_per_country))) {
+  r <- test_iii_per_country[i, ]
+  record_result(
+    r$country, "iii", "Coverage rate (excl. pending)",
+    sprintf("%.1f%% (%d/%d)", 100 * r$coverage_rate, r$n_present, r$n_non_pending),
+    "≥95%", r$status
+  )
+}
+```
+
+```{r}
+#| label: tbl-test-iii-summary
+#| tbl-cap: "Test (iii) Coverage rate per country"
+
+test_iii_per_country |>
+  mutate(`Coverage rate` = sprintf("%.1f%%", 100 * coverage_rate)) |>
+  select(
+    Country    = country,
+    Total      = n_total,
+    Present    = n_present,
+    Pending    = n_pending,
+    Missing    = n_missing,
+    `Coverage rate`,
+    Status     = status
+  ) |>
+  tt() |>
+  style_status(test_iii_per_country$status, j = 7) |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: fig-test-iii-heatmap
+#| fig-cap: "Coverage heatmap by country, body, and year"
+
+coverage |>
+  mutate(coverage_status = factor(coverage_status,
+                                  levels = c("Missing", "Pending", "Present"))) |>
+  ggplot(aes(x = year, y = body, fill = coverage_status)) +
+  geom_tile(color = "white", linewidth = 0.4) +
+  facet_wrap(~ country, ncol = 1, scales = "free_y") +
+  scale_fill_manual(values = c(
+    Missing = "#C62828", Pending = "#F57C00", Present = "#2E7D32"
+  )) +
+  labs(x = "Year", y = "Document body", fill = "Status") +
+  theme(
+    axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  )
+```
+
+```{r}
+#| label: tbl-test-iii-missing
+#| tbl-cap: "Test (iii) Missing expected documents"
+
+missing_rows <- coverage |>
+  filter(coverage_status == "Missing") |>
+  select(country, year, body, source, package_id, access_status)
+
+if (nrow(missing_rows) == 0) {
+  cat("\nNo missing documents among non-pending expectations.\n\n")
+} else {
+  missing_rows |>
+    arrange(country, body, year) |>
+    rename(
+      Country = country, Year = year, Body = body, Source = source,
+      `Package ID` = package_id, `Access status` = access_status
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
+
+A WARN here is acceptable if the missing rows cluster in a single series with known access issues; a FAIL means the coverage assumption built into the URL fetcher is broken for some series. Either way, the missing-rows table is the actionable artifact for the acquisition workflow.
+
+## Test (iv): Text quality {#sec-test-iv}
+
+Page-level metrics computed on a sample of documents per country, with fiscal-vocabulary detection adapted per country so the test does not silently fail on non-US documents (US uses `$`; Malaysia uses `RM` and `ringgit`).
+
+```{r}
+#| label: test-iv-setup
+
+PAGES_PER_DOC <- 50L
+DOCS_PER_COUNTRY <- 5L
+
+# Country-aware fiscal vocabulary lookup. Add one row per new country.
+fiscal_vocab <- tribble(
+  ~country,    ~currency_regex,                     ~fiscal_terms_regex,
+  "us",        "\\$\\s*\\d|\\bdollars?\\b",         "tax|fiscal|budget|deficit|revenue|spending|expenditure|appropriation",
+  "malaysia",  "\\bRM\\s*\\d|\\bringgit\\b",        "tax|fiscal|budget|deficit|revenue|expenditure|cukai|belanjawan|hasil"
+)
+```
+
+```{r}
+#| label: test-iv-compute
+
+set.seed(42)
+
+quality_metrics <- country_body |>
+  filter(n_pages > 0) |>
+  group_by(country) |>
+  group_modify(~ slice_sample(
+    .x, n = min(DOCS_PER_COUNTRY, nrow(.x))
+  )) |>
+  ungroup() |>
+  left_join(fiscal_vocab, by = "country") |>
+  mutate(
+    page_metrics = pmap(
+      list(text, currency_regex, fiscal_terms_regex),
+      function(text_list, cur_re, fisc_re) {
+        if (is.null(text_list) || length(text_list) == 0) return(NULL)
+        pages <- if (is.list(text_list)) text_list else list(text_list)
+        pages <- pages[seq_len(min(PAGES_PER_DOC, length(pages)))]
+        page_chr <- map_chr(pages, ~ as.character(.x))
+        tibble(
+          page_num         = seq_along(page_chr),
+          page_text        = page_chr,
+          n_chars          = nchar(page_chr),
+          n_tokens         = str_count(page_chr, "\\S+"),
+          special_char_rate = str_count(page_chr, "[^a-zA-Z0-9\\s.,!?;:'-]") /
+            pmax(nchar(page_chr), 1),
+          non_ascii_rate   = str_count(page_chr, "[^\x01-\x7F]") /
+            pmax(nchar(page_chr), 1),
+          has_currency     = str_detect(page_chr, regex(cur_re, ignore_case = TRUE)),
+          has_fiscal_terms = str_detect(page_chr, regex(fisc_re, ignore_case = TRUE)),
+          has_percent      = str_detect(page_chr, "%|\\bpercent\\b"),
+          has_fiscal_vocab = has_currency | has_fiscal_terms | has_percent
+        )
+      }
+    )
+  ) |>
+  filter(!map_lgl(page_metrics, is.null)) |>
+  select(country, year, body, source, package_id, page_metrics) |>
+  unnest(page_metrics)
+
+quality_by_country <- quality_metrics |>
+  group_by(country) |>
+  summarize(
+    n_pages_sampled = n(),
+    suspicious_rate = mean(
+      n_chars < 100 | special_char_rate > 0.10 | non_ascii_rate > 0.05
+    ),
+    fiscal_vocab_rate = mean(has_fiscal_vocab),
+    .groups = "drop"
+  ) |>
+  mutate(
+    status = case_when(
+      suspicious_rate < 0.05 & fiscal_vocab_rate > 0.70 ~ "PASS",
+      suspicious_rate < 0.10 | fiscal_vocab_rate > 0.50 ~ "WARN",
+      TRUE                                              ~ "FAIL"
+    )
+  )
+
+for (i in seq_len(nrow(quality_by_country))) {
+  r <- quality_by_country[i, ]
+  record_result(
+    r$country, "iv", "Suspicious pages",
+    sprintf("%.1f%%", 100 * r$suspicious_rate),
+    "≤5%", r$status
+  )
+  record_result(
+    r$country, "iv", "Fiscal vocab presence",
+    sprintf("%.1f%%", 100 * r$fiscal_vocab_rate),
+    "≥70%", r$status
+  )
+}
+```
+
+```{r}
+#| label: tbl-test-iv-summary
+#| tbl-cap: "Test (iv) Text quality summary per country"
+
+quality_by_country |>
+  mutate(
+    `Suspicious page rate` = sprintf("%.1f%%", 100 * suspicious_rate),
+    `Fiscal vocab rate`    = sprintf("%.1f%%", 100 * fiscal_vocab_rate)
+  ) |>
+  select(
+    Country = country,
+    `Pages sampled` = n_pages_sampled,
+    `Suspicious page rate`,
+    `Fiscal vocab rate`,
+    Status = status
+  ) |>
+  tt() |>
+  style_status(quality_by_country$status, j = 5) |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: fig-test-iv-tokens
+#| fig-cap: "Token distribution per page across the sampled documents"
+
+quality_metrics |>
+  ggplot(aes(x = n_tokens)) +
+  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.75) +
+  facet_wrap(~ country, ncol = 1, scales = "free_y") +
+  labs(x = "Tokens per page", y = "Pages")
+```
+
+```{r}
+#| label: fig-test-iv-specials
+#| fig-cap: "Special-character rate per page, by source"
+
+quality_metrics |>
+  ggplot(aes(x = source, y = special_char_rate)) +
+  geom_boxplot(fill = "coral", alpha = 0.7) +
+  facet_wrap(~ country, ncol = 1, scales = "free_x") +
+  labs(x = "Source", y = "Special-character rate") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+Suspicious-page rate captures OCR garbage (low character count, dense special characters, runaway non-ASCII). Fiscal-vocabulary rate captures whether the extraction preserved the substance of the document. A FAIL here usually means OCR settings need adjustment for some subset of the corpus.
+
+## Test (v): Anomaly detection {#sec-test-v}
+
+Diagnostic-only test. Surfaces documents that are unusually short, unusually long, suspected duplicates, or that mark large year-on-year page drops within a series.
+
+```{r}
+#| label: test-v-compute
+
+doc_anomalies <- country_body |>
+  filter(n_pages > 0) |>
+  mutate(
+    too_short = n_pages < 10,
+    too_long  = n_pages > 1000,
+    text_hash = map_chr(text, function(pages) {
+      if (length(pages) == 0) return("")
+      first_pages <- pages[seq_len(min(5, length(pages)))]
+      digest::digest(paste(unlist(first_pages), collapse = ""))
+    })
+  )
+
+duplicate_check <- doc_anomalies |>
+  group_by(country, text_hash) |>
+  filter(n() > 1, text_hash != "") |>
+  ungroup() |>
+  select(country, year, body, package_id, text_hash)
+
+year_trends <- country_body |>
+  filter(n_pages > 0) |>
+  group_by(country, body, year) |>
+  summarize(total_pages = sum(n_pages), .groups = "drop") |>
+  group_by(country, body) |>
+  arrange(year, .by_group = TRUE) |>
+  mutate(
+    yoy_change  = (total_pages - lag(total_pages)) / lag(total_pages),
+    sudden_drop = !is.na(yoy_change) & yoy_change < -0.5
+  ) |>
+  ungroup()
+
+anomaly_summary <- doc_anomalies |>
+  group_by(country) |>
+  summarize(
+    n_short = sum(too_short),
+    n_long  = sum(too_long),
+    .groups = "drop"
+  ) |>
+  left_join(
+    duplicate_check |> count(country, name = "n_duplicates"),
+    by = "country"
+  ) |>
+  left_join(
+    year_trends |> filter(sudden_drop) |> count(country, name = "n_sudden_drops"),
+    by = "country"
+  ) |>
+  mutate(
+    across(c(n_duplicates, n_sudden_drops), ~ replace_na(.x, 0L)),
+    status = "INFO"
+  )
+
+for (i in seq_len(nrow(anomaly_summary))) {
+  r <- anomaly_summary[i, ]
+  record_result(
+    r$country, "v", "Anomalies detected",
+    sprintf("%d short / %d long / %d dup / %d YoY drops",
+            r$n_short, r$n_long, r$n_duplicates, r$n_sudden_drops),
+    "Manual review", "INFO"
+  )
+}
+```
+
+```{r}
+#| label: tbl-test-v-summary
+#| tbl-cap: "Test (v) Anomaly counts per country"
+
+anomaly_summary |>
+  select(
+    Country = country,
+    `Short (≤10p)`  = n_short,
+    `Long (≥1000p)` = n_long,
+    `Duplicates`    = n_duplicates,
+    `YoY drops`     = n_sudden_drops,
+    Status          = status
+  ) |>
+  tt() |>
+  style_status(anomaly_summary$status, j = 6) |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: tbl-test-v-flagged
+#| tbl-cap: "Test (v) Flagged anomalous documents"
+
+flagged <- doc_anomalies |>
+  filter(too_short | too_long) |>
+  select(country, year, body, source, package_id, n_pages, too_short, too_long)
+
+if (nrow(flagged) == 0) {
+  cat("\nNo short or long documents flagged.\n\n")
+} else {
+  flagged |>
+    arrange(country, desc(too_long), desc(too_short)) |>
+    head(20) |>
+    rename(
+      Country = country, Year = year, Body = body, Source = source,
+      `Package ID` = package_id, Pages = n_pages,
+      `Too short` = too_short, `Too long` = too_long
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
+
+```{r}
+#| label: fig-test-v-trends
+#| fig-cap: "Pages per year and body; red circles mark sudden drops (>50% YoY)"
+
+year_trends |>
+  ggplot(aes(x = year, y = total_pages, color = body)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(
+    data = year_trends |> filter(sudden_drop),
+    color = "red", size = 3, shape = 1
+  ) +
+  facet_wrap(~ country, ncol = 1, scales = "free_y") +
+  labs(x = "Year", y = "Total pages", color = "Body") +
+  theme(legend.position = "bottom")
+```
+
+Anomalies in deployment corpora often have benign explanations (Malaysia's crisis booklets are intentionally short; bilingual editions may produce duplicate front-matter hashes). The point of this test is awareness, not failure.
+
+## Test (vi): Chunk integrity {#sec-test-vi}
+
+The US `verify_body.qmd` stops at body-level checks, but the deployment pipeline feeds C1 from `country_chunks`. This test verifies the chunk layer.
+
+```{r}
+#| label: test-vi-compute
+
+CONTEXT_BUDGET_TOKENS <- 190700L     # 200K minus ~9.3K codebook+fewshot+output overhead
+MIN_CHARS              <- 100L        # make_chunks() default
+PAGE_BREAK_MARKER      <- "--- PAGE BREAK ---"
+
+# Per-document expected end_page comes from country_body
+doc_totals <- country_body |>
+  filter(n_pages > 0) |>
+  select(package_id, country, total_pages = n_pages)
+
+chunk_checks <- chunks_meta |>
+  left_join(doc_totals |> select(-country), by = c("doc_id" = "package_id")) |>
+  group_by(country, doc_id) |>
+  arrange(chunk_id, .by_group = TRUE) |>
+  summarize(
+    first_chunk_starts_at_1 = first(start_page) == 1,
+    last_chunk_ends_at_total = last(end_page) == first(total_pages),
+    chunk_ids_contiguous = identical(chunk_id, seq_len(n())),
+    any_short_chunk = any(nchar(text) <= MIN_CHARS),
+    any_oversized_chunk = any(approx_tokens > CONTEXT_BUDGET_TOKENS),
+    marker_count_ok = all(
+      str_count(text, fixed(PAGE_BREAK_MARKER)) == pmax(n_pages - 1, 0)
+    ),
+    .groups = "drop"
+  ) |>
+  mutate(
+    doc_passes = first_chunk_starts_at_1 & last_chunk_ends_at_total &
+      chunk_ids_contiguous & !any_short_chunk & !any_oversized_chunk &
+      marker_count_ok
+  )
+
+test_vi_per_country <- chunk_checks |>
+  group_by(country) |>
+  summarize(
+    n_docs           = n(),
+    n_passing        = sum(doc_passes),
+    n_starts_bad     = sum(!first_chunk_starts_at_1),
+    n_ends_bad       = sum(!last_chunk_ends_at_total),
+    n_gaps           = sum(!chunk_ids_contiguous),
+    n_short          = sum(any_short_chunk),
+    n_oversized      = sum(any_oversized_chunk),
+    n_markers_bad    = sum(!marker_count_ok),
+    .groups = "drop"
+  ) |>
+  mutate(
+    status = if_else(n_passing == n_docs, "PASS", "FAIL")
+  )
+
+for (i in seq_len(nrow(test_vi_per_country))) {
+  r <- test_vi_per_country[i, ]
+  record_result(
+    r$country, "vi", "Chunk-integrity-pass docs",
+    sprintf("%d/%d", r$n_passing, r$n_docs),
+    "All pass", r$status
+  )
+}
+```
+
+```{r}
+#| label: tbl-test-vi-summary
+#| tbl-cap: "Test (vi) Chunk-integrity per country"
+
+test_vi_per_country |>
+  select(
+    Country         = country,
+    Documents       = n_docs,
+    Passing         = n_passing,
+    `Bad start`     = n_starts_bad,
+    `Bad end`       = n_ends_bad,
+    `Gap in IDs`    = n_gaps,
+    `Short chunks`  = n_short,
+    Oversized       = n_oversized,
+    `Bad markers`   = n_markers_bad,
+    Status          = status
+  ) |>
+  tt() |>
+  style_status(test_vi_per_country$status, j = 10) |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: fig-test-vi-tokens
+#| fig-cap: "Chunk token distribution with available-context reference line"
+
+chunks_meta |>
+  ggplot(aes(x = approx_tokens)) +
+  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.75) +
+  geom_vline(xintercept = CONTEXT_BUDGET_TOKENS,
+             linetype = "dashed", color = "red") +
+  facet_wrap(~ country, ncol = 1, scales = "free_y") +
+  labs(x = "Approximate tokens", y = "Chunks") +
+  annotate("text", x = CONTEXT_BUDGET_TOKENS,
+           y = Inf, label = "Available context",
+           hjust = 1.05, vjust = 1.5, color = "red", size = 3)
+```
+
+Any FAIL here is a pipeline bug, not a corpus problem. The most likely failure modes are: a document whose extraction returned zero pages but still produced a chunk row, a marker-count mismatch from a stray `--- PAGE BREAK ---` inside the source text, or an oversized chunk produced by a very long page that the sliding-window logic could not split.
+
+## Test (vii): Language audit {#sec-test-vii}
+
+`doc_language` claims English for all current Malaysia rows. Bahasa Malaysia contamination is plausible for Hansard fallbacks and bilingual editions. Per chunk we compare a small Bahasa stopword list against an English stopword list and flag chunks where the Bahasa share exceeds the English share.
+
+```{r}
+#| label: test-vii-compute
+
+LANGUAGE_SAMPLE_PER_COUNTRY <- 500L
+
+en_stopwords <- c("\\bthe\\b", "\\band\\b", "\\bof\\b", "\\bto\\b",
+                  "\\bin\\b", "\\bfor\\b", "\\bis\\b", "\\bwith\\b")
+bm_stopwords <- c("\\byang\\b", "\\bdan\\b", "\\buntuk\\b", "\\bialah\\b",
+                  "\\bdengan\\b", "\\badalah\\b", "\\bkepada\\b", "\\bpada\\b")
+
+count_matches <- function(text, patterns) {
+  rgx <- regex(paste(patterns, collapse = "|"), ignore_case = TRUE)
+  str_count(text, rgx)
+}
+
+set.seed(43)
+lang_sample <- chunks_meta |>
+  group_by(country) |>
+  group_modify(~ slice_sample(
+    .x, n = min(LANGUAGE_SAMPLE_PER_COUNTRY, nrow(.x))
+  )) |>
+  ungroup() |>
+  mutate(
+    en_count = count_matches(text, en_stopwords),
+    bm_count = count_matches(text, bm_stopwords),
+    bm_dominant = bm_count > en_count & bm_count >= 5
+  )
+
+test_vii_per_country <- lang_sample |>
+  group_by(country) |>
+  summarize(
+    n_sampled       = n(),
+    n_bm_dominant   = sum(bm_dominant),
+    pct_bm_dominant = mean(bm_dominant),
+    .groups = "drop"
+  ) |>
+  mutate(
+    # Language audit is diagnostic, never a deployment blocker.
+    # Any Bahasa-dominant chunks in claimed-English docs => WARN.
+    status = if_else(n_bm_dominant == 0, "PASS", "WARN")
+  )
+
+for (i in seq_len(nrow(test_vii_per_country))) {
+  r <- test_vii_per_country[i, ]
+  record_result(
+    r$country, "vii", "Bahasa-dominant chunks (claimed English)",
+    sprintf("%d/%d (%.1f%%)", r$n_bm_dominant, r$n_sampled,
+            100 * r$pct_bm_dominant),
+    "0", r$status
+  )
+}
+```
+
+```{r}
+#| label: tbl-test-vii-summary
+#| tbl-cap: "Test (vii) Language audit per country"
+
+test_vii_per_country |>
+  mutate(`Bahasa-dominant rate` = sprintf("%.1f%%", 100 * pct_bm_dominant)) |>
+  select(
+    Country                   = country,
+    `Chunks sampled`          = n_sampled,
+    `Bahasa-dominant chunks`  = n_bm_dominant,
+    `Bahasa-dominant rate`,
+    Status                    = status
+  ) |>
+  tt() |>
+  style_status(test_vii_per_country$status, j = 5) |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: fig-test-vii-scatter
+#| fig-cap: "Per-chunk English vs Bahasa stopword density"
+
+lang_sample |>
+  ggplot(aes(x = en_count, y = bm_count, color = bm_dominant)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  facet_wrap(~ country, ncol = 1) +
+  scale_color_manual(values = c(`TRUE` = "#C62828", `FALSE` = "#1565C0")) +
+  labs(x = "English stopword count", y = "Bahasa stopword count",
+       color = "Bahasa-dominant")
+```
+
+A small number of Bahasa-dominant chunks is plausible (front matter, signage pages, bilingual sections); a large number suggests a series is misclassified at the `doc_language` field and the codebook prompt's language assumption may break.
+
+## Test (viii): Era stratification of OCR quality {#sec-test-viii}
+
+Pre-digital documents are scans and rely on OCR; modern documents are usually born-digital. Quality should be reported separately so a high suspicious-page rate in one era does not drag the corpus-wide average and mask the issue. Era breakpoints are defined per country.
+
+```{r}
+#| label: test-viii-compute
+
+# Country-specific era breakpoint (year at which born-digital becomes the norm)
+era_breakpoints <- tibble(
+  country = c("us", "malaysia"),
+  era_breakpoint = c(1990L, 1995L)
+)
+
+ocr_by_era <- country_body |>
+  filter(n_pages > 0) |>
+  left_join(era_breakpoints, by = "country") |>
+  mutate(
+    era_breakpoint = coalesce(era_breakpoint, 2000L),
+    era = if_else(year < era_breakpoint, "Pre-digital", "Digital era")
+  ) |>
+  group_by(country, era) |>
+  summarize(
+    n_docs   = n(),
+    ocr_rate = mean(ocr_used, na.rm = TRUE),
+    .groups  = "drop"
+  )
+
+# Special-char rate per era from the sampled quality_metrics
+specials_by_era <- quality_metrics |>
+  left_join(era_breakpoints, by = "country") |>
+  mutate(
+    era_breakpoint = coalesce(era_breakpoint, 2000L),
+    era = if_else(year < era_breakpoint, "Pre-digital", "Digital era")
+  ) |>
+  group_by(country, era) |>
+  summarize(
+    median_specials = median(special_char_rate),
+    .groups = "drop"
+  )
+
+era_summary <- ocr_by_era |>
+  left_join(specials_by_era, by = c("country", "era")) |>
+  mutate(
+    `OCR rate`        = sprintf("%.1f%%", 100 * ocr_rate),
+    `Median specials` = if_else(is.na(median_specials), "—",
+                                sprintf("%.3f", median_specials))
+  )
+
+for (cc in unique(era_summary$country)) {
+  sub <- era_summary |> filter(country == cc)
+  detail <- paste0(
+    sub$era, ": OCR ", sub$`OCR rate`, ", specials ", sub$`Median specials`,
+    collapse = " | "
+  )
+  record_result(cc, "viii", "OCR rate / specials by era", detail,
+                "Diagnostic", "INFO")
+}
+```
+
+```{r}
+#| label: tbl-test-viii-summary
+#| tbl-cap: "Test (viii) OCR usage and quality by era"
+
+era_summary |>
+  select(
+    Country         = country,
+    Era             = era,
+    Documents       = n_docs,
+    `OCR rate`,
+    `Median specials`
+  ) |>
+  tt() |>
+  tt_theme_report()
+```
+
+Pre-digital eras should expect higher OCR usage and higher special-character rates; the values above set a baseline. A future country whose pre-digital era looks dramatically worse than Malaysia's may need OCR settings tuned before C1 deployment.
+
+## Summary dashboard {#sec-dashboard}
+
+```{r}
+#| label: dashboard-compute
+
+# FAIL on any blocker, WARN on any warning, otherwise PASS.
+# INFO results are diagnostic and do not affect overall status.
+overall <- test_results |>
+  group_by(country) |>
+  summarize(
+    overall_status = case_when(
+      any(status == "FAIL") ~ "FAIL",
+      any(status == "WARN") ~ "WARN",
+      TRUE                  ~ "PASS"
+    ),
+    .groups = "drop"
+  )
+```
+
+```{r}
+#| label: tbl-dashboard-overall
+#| tbl-cap: "Overall verification status per country"
+
+overall |>
+  rename(Country = country, `Overall status` = overall_status) |>
+  tt() |>
+  style_status(overall$overall_status, j = 2) |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: tbl-dashboard-full
+#| tbl-cap: "All verification tests"
+
+test_results_sorted <- test_results |> arrange(country, test)
+
+test_results_sorted |>
+  rename(
+    Country = country, Test = test, Metric = metric,
+    Value = value, Target = target, Status = status
+  ) |>
+  tt() |>
+  style_status(test_results_sorted$status, j = 6) |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: next-steps
+#| results: 'asis'
+
+cat("\n### Next steps\n\n")
+
+for (i in seq_len(nrow(overall))) {
+  cc <- overall$country[i]
+  ov <- overall$overall_status[i]
+  cat(sprintf("**%s — %s**\n\n", str_to_title(cc), ov))
+  if (ov == "PASS") {
+    cat("- All gating tests pass. Corpus is ready for C1 deployment.\n")
+    cat("- Anchor-event detection (e.g., 1997 AFC, 2015 GST, 2020 COVID for Malaysia) ",
+        "is verified in the C1-output deployment notebook, not here.\n", sep = "")
+  } else {
+    warned <- test_results |>
+      filter(country == cc, status %in% c("WARN", "FAIL")) |>
+      pull(metric)
+    cat(sprintf("- Review the following before C1 deployment:\n\n"))
+    for (w in warned) cat(sprintf("    - %s\n", w))
+  }
+  cat("\n")
+}
+```
