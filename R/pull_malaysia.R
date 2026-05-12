@@ -15,15 +15,13 @@
 #' | Five-Year Malaysia Plans + MTRs | M+I+Q (spending) | `get_malaysia_rmk_urls()` |
 #' | Crisis booklets (NERP, COVID, etc.) | M+I+Q (event) | `get_malaysia_stimulus_urls()` |
 #'
-#' Access modes:
-#'   - `auto`: `pdf_url` is a verified direct PDF URL; pipeline fetches it
-#'   - `manual`: human verification needed. Two sub-cases resolved at runtime
-#'     by `resolve_manual_paths()`:
-#'       - `manual_ready` (file present at `local_path`): `pdf_url` rewritten
-#'         to absolute local path; pipeline extracts from disk
-#'       - `manual_pending` (file absent): `pdf_url` stays NA; row is
-#'         filtered out at the `pull_country_text` step but still appears
-#'         in the verification dashboard with its landing URL and notes
+#' Access modes (manual-only for non-US per the filesystem-driven extraction
+#' policy; `pdf_url` is acquisition-hint only — extraction is filesystem-driven
+#' via `discover_country_pdfs()`):
+#'   - `manual_ready` (file present at `local_path`): the PDF has been
+#'     downloaded; the file-discovery target picks it up
+#'   - `manual_pending` (file absent): the row appears in the verification
+#'     dashboard with its landing URL and notes so a human can fetch it
 #'
 #' Window: 1980-2022 (Phase 2 pilot). Pre-1995 coverage is gappy —
 #' most pre-1995 series rows are emitted as `manual` placeholders.
@@ -49,39 +47,26 @@ get_malaysia_urls <- function(min_year = 1980L, max_year = 2022L) {
 
 #' Resolve manual-download rows against the local PDF dump
 #'
-#' For rows with `access_status == "manual"`, check whether the PDF has been
-#' dropped at `here::here(local_path)`. If yes, rewrite `pdf_url` to the
-#' absolute local path and tag `access_status = "manual_ready"` so the
-#' pipeline picks it up. If no, leave `pdf_url` (which may be a landing
-#' page URL or NA) and tag `access_status = "manual_pending"`.
-#'
-#' Cache key in `pull_text_local()` is `MD5(pdf_url string)` so manual_ready
-#' rows cache deterministically by absolute path.
+#' For rows with `access_status == "manual"`, set `manual_ready` if the
+#' PDF exists at `here::here(local_path)`, otherwise `manual_pending`.
+#' The `pdf_url` field is preserved as an acquisition hint for the
+#' verify_malaysia_urls dashboard but is no longer read by the extractor —
+#' filesystem discovery (`discover_country_pdfs()`) drives extraction.
 #'
 #' @param urls Tibble with `access_status` and `local_path` columns
-#' @return Same tibble with rewritten `pdf_url` and split `access_status`
+#' @return Same tibble with `access_status` resolved to `manual_ready` or
+#'   `manual_pending`
 #' @keywords internal
 resolve_manual_paths <- function(urls) {
   if (nrow(urls) == 0L) return(urls)
 
-  for (i in seq_len(nrow(urls))) {
-    rel_path <- urls$local_path[i]
-    has_local <- !is.na(rel_path) && nzchar(rel_path) &&
-                 file.exists(here::here(rel_path))
+  rel_path <- urls$local_path
+  has_local <- !is.na(rel_path) & nzchar(rel_path) &
+               vapply(rel_path, function(p) {
+                 !is.na(p) && nzchar(p) && file.exists(here::here(p))
+               }, logical(1))
 
-    # Local file present: always wins over remote URL (auto or manual)
-    if (has_local) {
-      urls$pdf_url[i] <- here::here(rel_path)
-      urls$access_status[i] <- "manual_ready"
-      next
-    }
-
-    # No local file: split manual rows into pending; auto rows stay auto
-    if (urls$access_status[i] == "manual") {
-      urls$access_status[i] <- "manual_pending"
-    }
-  }
-
+  urls$access_status <- dplyr::if_else(has_local, "manual_ready", "manual_pending")
   urls
 }
 
@@ -324,7 +309,7 @@ get_malaysia_rmk_urls <- function(min_year, max_year) {
                              "talentcorp.com.my")),
       body = "Five-Year Malaysia Plan / Mid-Term Review",
       doc_language = "en",
-      access_status = ifelse(is.na(direct_pdf), "manual", "auto"),
+      access_status = "manual",
       local_path = sprintf("data/manual/malaysia/rmk/%s", local_filename),
       notes = dplyr::case_when(
         !is.na(direct_pdf) ~ "Direct PDF verified.",
@@ -401,7 +386,7 @@ get_malaysia_stimulus_urls <- function(min_year, max_year) {
       country = "malaysia",
       body = "Crisis booklet / fiscal stimulus package",
       doc_language = "en",
-      access_status = ifelse(is.na(direct_pdf), "manual", "auto"),
+      access_status = "manual",
       local_path = sprintf("data/manual/malaysia/stimulus/%s",
                            local_filename),
       notes = note

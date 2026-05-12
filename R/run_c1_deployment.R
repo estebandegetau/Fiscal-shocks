@@ -7,48 +7,6 @@
 if (!exists("%||%")) `%||%` <- function(a, b) if (!is.null(a)) a else b
 
 
-#' Extract text for a country, empty-input safe
-#'
-#' Thin wrapper around `pull_text_local()` that returns an empty schema
-#' tibble when the URL vector is empty (the underlying function errors
-#' on empty input). Lets the deployment pipeline parse and run end-to-end
-#' even before country-specific URLs are populated.
-#'
-#' @param pdf_url Character vector of PDF URLs (may be length 0)
-#' @param ... Forwarded to `pull_text_local()`
-#' @return Tibble matching `pull_text_local()` schema; 0 rows if input empty
-#' @export
-pull_country_text <- function(pdf_url, ...) {
-  if (length(pdf_url) == 0L) {
-    return(tibble::tibble(
-      text            = list(),
-      n_pages         = integer(0),
-      ocr_used        = logical(0),
-      extraction_time = numeric(0),
-      extracted_at    = as.POSIXct(character(0))
-    ))
-  }
-  pull_text_local(pdf_url = pdf_url, ...)
-}
-
-
-#' Bind URL metadata with extracted text into a country body tibble
-#'
-#' Mirrors `us_body <- us_urls |> bind_cols(us_text)` from `_targets.R`,
-#' but country-agnostic and used inside dynamic branches. Empty-input safe.
-#'
-#' @param urls Tibble from `get_country_urls()` — one row per PDF URL
-#' @param text Tibble from `pull_country_text()` — one row per PDF
-#' @return Tibble with all `urls` columns + text/n_pages/ocr_used/...
-#' @export
-bind_country_body <- function(urls, text) {
-  if (nrow(urls) == 0L) {
-    return(dplyr::bind_cols(urls, text))
-  }
-  dplyr::bind_cols(urls, text)
-}
-
-
 #' Filter C1 predictions to chunks for downstream C2a deployment
 #'
 #' Keeps chunks with `pred_label == "FISCAL_MEASURE"` AND
