@@ -608,6 +608,12 @@ list(
     packages = "dplyr"
   ),
 
+  tar_quarto(
+    verify_country_body,
+    path = here("notebooks/verify_country_body.qmd"),
+    cache = FALSE
+  ),
+
   tar_target(
     country_chunks,
     make_chunks(country_body, window_size = 10, overlap = 3,
