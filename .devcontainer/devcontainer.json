@@ -6,6 +6,9 @@
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/home/user/Fiscal-shocks,type=bind,consistency=cached",
   "workspaceFolder": "/home/user/Fiscal-shocks",
+  "mounts": [
+    "source=fiscal-shocks-renv-cache,target=/renv/cache,type=volume"
+  ],
   "remoteEnv": {
     "RENV_PATHS_CACHE": "/renv/cache"
   },

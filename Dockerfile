@@ -4,7 +4,7 @@
 FROM rocker/r-ver:4.5.0
 
 LABEL maintainer="Esteban Degetau"
-LABEL description="Research pipeline for fiscal shock identification from historical US government documents (Quarto 1.8.27, R 4.5.0, Python 3)"
+LABEL description="Research pipeline for fiscal shock identification from historical US government documents (Quarto 1.9.37, R 4.5.0, Python 3)"
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -34,9 +34,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-data \
     libqpdf-dev \
     # OCR for scanned PDFs (PyMuPDF.get_textpage_ocr uses Tesseract)
+    # SEA language packs cover Phase 2 (Malaysia) + Phase 3 (Indonesia, Thailand,
+    # Vietnam, Philippines). osd = script/orientation detection for rotated pages.
     tesseract-ocr \
     tesseract-ocr-eng \
     tesseract-ocr-msa \
+    tesseract-ocr-ind \
+    tesseract-ocr-tha \
+    tesseract-ocr-vie \
+    tesseract-ocr-fil \
+    tesseract-ocr-osd \
     # Font and graphics libraries (systemfonts, ragg, textshaping)
     libfreetype6-dev \
     libfontconfig1-dev \
@@ -53,8 +60,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libicu-dev \
     # Git for package installation
     git \
-    # Pandoc for document rendering
-    pandoc \
     # Python
     python3 \
     python3-dev \
@@ -91,19 +96,23 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 RUN npm install -g @anthropic-ai/claude-code
 
 # Install Quarto
-ARG QUARTO_VERSION=1.8.27
+ARG QUARTO_VERSION=1.9.37
 RUN wget -q https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.deb \
     && dpkg -i quarto-${QUARTO_VERSION}-linux-amd64.deb \
     && rm quarto-${QUARTO_VERSION}-linux-amd64.deb
+
+# Install TinyTeX for LaTeX/PDF rendering via Quarto (bundles TeX Live).
+# Pre-installing avoids on-demand install the first time anyone renders to PDF.
+RUN quarto install tinytex --no-prompt
 
 # Set up Python virtual environment
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies
+# Install Python dependencies with uv (faster than pip)
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir uv \
+    && uv pip install --no-cache --python /opt/venv/bin/python -r /tmp/requirements.txt
 
 # Create renv cache directory
 RUN mkdir -p /renv/cache
@@ -117,9 +126,14 @@ COPY .Rprofile .Rprofile
 COPY renv/activate.R renv/activate.R
 COPY renv/settings.json renv/settings.json
 
-# Install renv and restore packages
-RUN R -e "install.packages('renv', repos = 'https://cloud.r-project.org')" \
-    && R -e "renv::restore(prompt = FALSE)"
+# Install renv (pinned to renv.lock version) and restore packages in parallel.
+# MAKEFLAGS speeds up C/C++ compilation of source packages; Ncpus parallelizes
+# the package downloads/installs themselves.
+ARG RENV_VERSION=1.1.5
+RUN R -e "install.packages('remotes', repos = 'https://cloud.r-project.org')" \
+    && R -e "remotes::install_version('renv', version = '${RENV_VERSION}', repos = 'https://cloud.r-project.org', upgrade = 'never')" \
+    && export MAKEFLAGS="-j$(nproc)" \
+    && R -e "renv::restore(prompt = FALSE, ncpus = parallel::detectCores())"
 
 # Copy project files
 COPY . .
