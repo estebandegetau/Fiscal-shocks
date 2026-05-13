@@ -12,17 +12,26 @@
 #' @param path Absolute path to a PDF file
 #' @param ocr_dpi Integer OCR rendering DPI (default 200; same as US)
 #' @param workers Integer parallel workers for OCR pages (default 6)
+#' @param ocr_min_chars Integer per-page native-text threshold below which
+#'   OCR rescue is considered (only fires if the page also has images).
+#'   Default 100.
 #' @return One-row tibble with columns `text` (list of per-page chars),
-#'   `n_pages`, `ocr_used`, `extraction_time`, `extracted_at`. Missing
-#'   files return the same schema with `n_pages = 0L`.
+#'   `n_pages`, `ocr_used` (TRUE if any page was OCR-rescued),
+#'   `n_pages_ocr` (count of pages OCR-rescued),
+#'   `pages_ocr` (list of logical vector parallel to `text`),
+#'   `extraction_time`, `extracted_at`. Missing files return the same
+#'   schema with `n_pages = 0L`.
 #' @export
 extract_pdf_file <- function(path,
                              ocr_dpi = 200L,
-                             workers = 6L) {
+                             workers = 6L,
+                             ocr_min_chars = 100L) {
   empty_result <- tibble::tibble(
     text = list(character(0)),
     n_pages = 0L,
     ocr_used = FALSE,
+    n_pages_ocr = 0L,
+    pages_ocr = list(logical(0)),
     extraction_time = NA_real_,
     extracted_at = Sys.time()
   )
@@ -46,7 +55,8 @@ extract_pdf_file <- function(path,
     "--input", shQuote(path),
     "--output", shQuote(tmp_json),
     "--workers", as.character(workers),
-    "--ocr-dpi", as.character(ocr_dpi)
+    "--ocr-dpi", as.character(ocr_dpi),
+    "--ocr-min-chars", as.character(ocr_min_chars)
   )
 
   exit_code <- system2("python", args = args, stdout = "", stderr = "")
@@ -76,6 +86,8 @@ extract_pdf_file <- function(path,
     text = list(as.list(pages)),
     n_pages = as.integer(result$n_pages %||% length(pages)),
     ocr_used = isTRUE(result$ocr_used),
+    n_pages_ocr = as.integer(result$n_pages_ocr %||% 0L),
+    pages_ocr = list(as.logical(unlist(result$pages_ocr %||% list()))),
     extraction_time = result$extraction_time_seconds %||% NA_real_,
     extracted_at = Sys.time()
   )

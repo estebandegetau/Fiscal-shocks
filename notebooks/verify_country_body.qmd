@@ -98,12 +98,13 @@ corpus_snapshot <- country_body |>
     `Document bodies`  = n_distinct(body),
     Sources            = n_distinct(source),
     `OCR docs`         = sum(ocr_used, na.rm = TRUE),
+    `OCR pages`        = sum(n_pages_ocr, na.rm = TRUE),
     .groups            = "drop"
   ) |>
   left_join(chunks_per_country, by = "country")
 
 corpus_snapshot |>
-  mutate(across(c(Documents, Extracted, Pages, `OCR docs`, Chunks),
+  mutate(across(c(Documents, Extracted, Pages, `OCR docs`, `OCR pages`, Chunks),
                 ~ scales::comma(.x))) |>
   rename(Country = country) |>
   tt() |>
@@ -588,6 +589,8 @@ quality_metrics |>
 ```
 
 Suspicious-page rate captures OCR garbage (low character count, dense special characters, runaway non-ASCII). Fiscal-vocabulary rate captures whether the extraction preserved the substance of the document. A FAIL here usually means OCR settings need adjustment for some subset of the corpus.
+
+Since the introduction of per-page OCR rescue (image-bearing pages with near-zero native text are routed through Tesseract individually), the dominant residual driver of suspicious pages is legitimately-short cover and section-divider pages with no embedded image — there is nothing for OCR to recover from those. The `OCR pages` column in the corpus snapshot tracks the rescue volume per country.
 
 ## Test (v): Anomaly detection {#sec-test-v}
 

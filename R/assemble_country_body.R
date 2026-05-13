@@ -31,9 +31,10 @@ country_urls_for <- function(country_urls, country) {
 #' Schema invariants (so `verify_country_body.qmd` and `make_chunks()`
 #' continue working unchanged):
 #'   - Every column from `country_urls` is preserved
-#'   - Five extraction columns appended: `text`, `n_pages`, `ocr_used`,
-#'     `extraction_time`, `extracted_at`
-#'   - Manifest rows with no file: `n_pages = 0L`, `text = list(character(0))`
+#'   - Seven extraction columns appended: `text`, `n_pages`, `ocr_used`,
+#'     `n_pages_ocr`, `pages_ocr`, `extraction_time`, `extracted_at`
+#'   - Manifest rows with no file: `n_pages = 0L`, `text = list(character(0))`,
+#'     `n_pages_ocr = 0L`, `pages_ocr = list(logical(0))`
 #'   - On-disk files with no manifest match: synthesized row with
 #'     `access_status = "orphan"` and `body = "ORPHAN: <series>"`
 #'
@@ -65,16 +66,23 @@ assemble_country_body <- function(file_paths,
     dplyr::left_join(
       extracted |>
         dplyr::select(country, package_id_inferred, text, n_pages, ocr_used,
+                      n_pages_ocr, pages_ocr,
                       extraction_time, extracted_at),
       by = c("country", "package_id" = "package_id_inferred")
     ) |>
     dplyr::mutate(
       n_pages = dplyr::coalesce(n_pages, 0L),
       ocr_used = dplyr::coalesce(ocr_used, FALSE),
+      n_pages_ocr = dplyr::coalesce(n_pages_ocr, 0L),
       text = ifelse(
         purrr::map_lgl(text, is.null),
         list(list(character(0))),
         text
+      ),
+      pages_ocr = ifelse(
+        purrr::map_lgl(pages_ocr, is.null),
+        list(logical(0)),
+        pages_ocr
       ),
       access_status = dplyr::if_else(
         n_pages > 0L & access_status == "manual_pending",
@@ -121,6 +129,12 @@ assemble_country_body <- function(file_paths,
       text = o$text,
       n_pages = dplyr::coalesce(o$n_pages, 0L),
       ocr_used = dplyr::coalesce(o$ocr_used, FALSE),
+      n_pages_ocr = dplyr::coalesce(o$n_pages_ocr, 0L),
+      pages_ocr = ifelse(
+        purrr::map_lgl(o$pages_ocr, is.null),
+        list(logical(0)),
+        o$pages_ocr
+      ),
       extraction_time = o$extraction_time,
       extracted_at = o$extracted_at
     )

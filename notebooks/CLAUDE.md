@@ -36,6 +36,22 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - **(vi) Anomalies:** 64 short Budget section PDFs (by design), 17 long early-era volumes (legitimate), 7 CBO boilerplate duplicates (expected).
 - **Decision:** RR1 source coverage confirmed with 4 of 9 R&R source types. Corpus ready for chunking and Phase 0.
 
+### `verify_country_body.qmd` -- Deployment Corpus Verification
+
+**Purpose:** Text-extraction and chunk-integrity QA across all deployment countries (currently Malaysia; future Indonesia, Thailand, Philippines, Vietnam). Runs on `country_body` and `country_chunks` before C1 deployment. Six of `verify_body.qmd`'s seven tests port directly; "Known Act Validation" is omitted (no labeled passages outside US); chunk-integrity, language audit, and era-stratified OCR quality are added.
+
+**Key tests and decisions:**
+
+- **(i) URL resolution and extraction success:** Per-country share of `country_urls` rows that produced extracted text in `country_body`. `manual_pending` rows excluded from the success-rate denominator. ≥95% PASS / ≥85% WARN.
+- **(ii) Boundary documents:** Earliest/latest doc per country × source × body must have ≥10 pages.
+- **(iii) Temporal and source coverage:** Coverage rate against the URL manifest grid; clean replacement for the US notebook's hardcoded grid since each country's URL fetcher encodes its own coverage rules.
+- **(iv) Text quality:** Sampled page-level metrics with country-aware fiscal vocabulary (US: `$` + English fiscal terms; Malaysia: `RM`/`ringgit` + English + Bahasa terms). Suspicious-page rate target ≤5%; fiscal vocab presence ≥70%.
+- **(v) Anomaly detection:** Diagnostic — short/long docs, suspected duplicates by first-page hash, year-on-year page drops within a series.
+- **(vi) Chunk integrity:** Verifies the chunk layer (start_page=1, contiguous chunk_ids, no oversized chunks vs 190.7K context budget, marker counts match `n_pages-1`).
+- **(vii) Language audit:** Bahasa stopword vs English stopword counts per chunk; flags chunks with Bahasa dominance in claimed-English docs. Diagnostic, never blocks deployment.
+- **(viii) Era stratification of OCR quality:** Pre-digital vs digital-era OCR rate and special-character rate, per country (Malaysia breakpoint 1995; US 1990). Surfaces era-specific extraction quality so future SEA countries can be benchmarked.
+- **Decision:** Headline gate for advancing a country corpus to C1 deployment. Test (iv) suspicious-page rate flagged the original Malaysia OCR-missing issue and now flags the residual cover/divider floor after the per-page OCR rescue went in.
+
 ### `test_text_extraction.qmd` -- PDF Extraction Quality Test
 
 **Purpose:** Early-stage test of PyMuPDF+OCR extraction on a small sample (2 ERP PDFs). Validates that extracted text is readable, contains expected act names, preserves numeric values, and fits within LLM context windows.

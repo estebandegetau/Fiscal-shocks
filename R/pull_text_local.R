@@ -9,12 +9,18 @@
 #' @param output_dir Directory to store extracted JSON files (default: "data/extracted")
 #' @param workers Number of parallel Python workers for OCR (default: 4)
 #' @param ocr_dpi DPI for OCR rendering (default: 200, higher = better quality but slower)
-#' @param use_cache Whether to use cached results if available (default: TRUE)
+#' @param ocr_min_chars Per-page native-text threshold below which OCR rescue
+#'   is considered, when the page also has images (default: 100)
+#' @param use_cache Whether to use cached results if available (default: TRUE).
+#'   Cache entries missing the `n_pages_ocr` field (produced by an older
+#'   extractor) are treated as stale and re-extracted automatically.
 #'
 #' @return A tibble with columns:
 #'   - text: list of character vectors (one per page)
 #'   - n_pages: integer count of pages
-#'   - ocr_used: logical indicating if OCR was needed
+#'   - ocr_used: logical (TRUE if any page was OCR-rescued)
+#'   - n_pages_ocr: integer count of pages OCR-rescued
+#'   - pages_ocr: list of logical vector parallel to text
 #'   - extraction_time: numeric seconds taken for extraction
 #'   - extracted_at: POSIXct timestamp
 #'
@@ -53,6 +59,7 @@ pull_text_local <- function(
     output_dir = here::here("data/extracted"),
     workers = 4,
     ocr_dpi = 200,
+    ocr_min_chars = 100,
     use_cache = TRUE
 ) {
 
@@ -71,6 +78,8 @@ if (missing(pdf_url) || is.null(pdf_url) || length(pdf_url) == 0) {
       text = list(character(0)),
       n_pages = 0L,
       ocr_used = FALSE,
+      n_pages_ocr = 0L,
+      pages_ocr = list(logical(0)),
       extraction_time = NA_real_,
       extracted_at = Sys.time()
     ))
@@ -100,16 +109,30 @@ if (missing(pdf_url) || is.null(pdf_url) || length(pdf_url) == 0) {
   extract_single_pdf <- function(url, index, total) {
     cache_file <- url_to_cache_file(url)
 
-    # Check cache first
+    # Check cache first. A cache entry produced by an older extractor will be
+    # missing `n_pages_ocr`; treat that as stale and re-extract so the schema
+    # change propagates without requiring a manual cache wipe.
     if (use_cache && file.exists(cache_file)) {
-      message(sprintf("[%d/%d] Using cached: %s", index, total, basename(url)))
-      tryCatch({
-        result <- jsonlite::read_json(cache_file)
-        return(result)
-      }, error = function(e) {
-        message("  Cache file corrupted, re-extracting...")
-        file.remove(cache_file)
-      })
+      cached <- tryCatch(
+        jsonlite::read_json(cache_file),
+        error = function(e) {
+          message("  Cache file corrupted, re-extracting...")
+          file.remove(cache_file)
+          NULL
+        }
+      )
+      if (!is.null(cached)) {
+        if (is.null(cached$n_pages_ocr)) {
+          message(sprintf(
+            "[%d/%d] Cache predates per-page OCR rescue, re-extracting: %s",
+            index, total, basename(url)
+          ))
+          file.remove(cache_file)
+        } else {
+          message(sprintf("[%d/%d] Using cached: %s", index, total, basename(url)))
+          return(cached)
+        }
+      }
     }
 
     message(sprintf("[%d/%d] Extracting: %s", index, total, basename(url)))
@@ -120,7 +143,8 @@ if (missing(pdf_url) || is.null(pdf_url) || length(pdf_url) == 0) {
       "--input", shQuote(url),
       "--output", shQuote(cache_file),
       "--workers", as.character(workers),
-      "--ocr-dpi", as.character(ocr_dpi)
+      "--ocr-dpi", as.character(ocr_dpi),
+      "--ocr-min-chars", as.character(ocr_min_chars)
     )
 
     # Call Python script
@@ -137,7 +161,9 @@ if (missing(pdf_url) || is.null(pdf_url) || length(pdf_url) == 0) {
       return(list(
         text = "",
         pages = list(),
+        pages_ocr = list(),
         n_pages = 0,
+        n_pages_ocr = 0,
         ocr_used = FALSE,
         extraction_time_seconds = NA_real_,
         extracted_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
@@ -152,7 +178,9 @@ if (missing(pdf_url) || is.null(pdf_url) || length(pdf_url) == 0) {
       list(
         text = "",
         pages = list(),
+        pages_ocr = list(),
         n_pages = 0,
+        n_pages_ocr = 0,
         ocr_used = FALSE,
         extraction_time_seconds = NA_real_,
         extracted_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
@@ -187,6 +215,12 @@ if (missing(pdf_url) || is.null(pdf_url) || length(pdf_url) == 0) {
     }),
     ocr_used = purrr::map_lgl(results, function(r) {
       isTRUE(r$ocr_used)
+    }),
+    n_pages_ocr = purrr::map_int(results, function(r) {
+      as.integer(r$n_pages_ocr %||% 0L)
+    }),
+    pages_ocr = purrr::map(results, function(r) {
+      as.logical(unlist(r$pages_ocr %||% list()))
     }),
     extraction_time = purrr::map_dbl(results, function(r) {
       r$extraction_time_seconds %||% NA_real_
