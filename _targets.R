@@ -696,18 +696,8 @@ list(
     iteration = "list",
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
-  ),
-
-  # Malaysia URL manifest: human-verification dashboard. Renders the
-  # `country_urls` Malaysia branch as a clickable checklist of PDFs to
-  # download manually (anti-bot 403s, search-interface archives, etc.).
-  # Cheap to render — no API calls. Re-run after dropping PDFs into
-  # data/manual/malaysia/<series>/ to flip rows from manual_pending
-  # to manual_ready.
-  tar_quarto(
-    verify_malaysia_urls,
-    "notebooks/verify_malaysia_urls.qmd"
   )
+
 
   # =============================================================================
   # LEGACY: Superseded by C1-C4 codebook pipeline
