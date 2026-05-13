@@ -110,6 +110,21 @@ corpus_snapshot |>
   tt_theme_report()
 ```
 
+```{r}
+#| label: fig-pages-per-year
+#| fig-cap: "Extracted pages per year, by country"
+
+country_body |>
+  filter(n_pages > 0) |>
+  group_by(country, year) |>
+  summarize(pages = sum(n_pages), .groups = "drop") |>
+  ggplot(aes(x = year, y = pages)) +
+  geom_col(fill = "steelblue", alpha = 0.85) +
+  facet_wrap(~ country, ncol = 1, scales = "free_y") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "Year", y = "Extracted pages")
+```
+
 ## Test (i): URL resolution and extraction success {#sec-test-i}
 
 For each country, the share of documents in `country_urls` that produced extracted text in `country_body`. Documents with `access_status == "manual_pending"` are reported separately as known acquisition gaps, not extraction failures.
