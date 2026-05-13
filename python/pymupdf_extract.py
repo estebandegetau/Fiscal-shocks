@@ -23,6 +23,7 @@ Output JSON structure:
 
 import argparse
 import json
+import shutil
 import sys
 import tempfile
 import time
@@ -78,7 +79,7 @@ def extract_page_with_ocr(args: tuple) -> tuple[int, str]:
     page = doc[page_num]
 
     try:
-        tp = page.get_textpage_ocr(language="eng", dpi=dpi, full=True)
+        tp = page.get_textpage_ocr(language="eng+msa", dpi=dpi, full=True)
         text = page.get_text(textpage=tp)
     except Exception as e:
         text = f"[OCR Error on page {page_num + 1}: {e}]"
@@ -117,6 +118,16 @@ def extract_pdf(pdf_path: str, force_ocr: bool = False, ocr_dpi: int = 200,
     use_ocr = force_ocr or is_scanned_document(doc)
 
     if use_ocr:
+        if shutil.which("tesseract") is None:
+            doc.close()
+            print(
+                f"ERROR: OCR required for {pdf_path} but `tesseract` is not on PATH. "
+                "Install tesseract-ocr + tesseract-ocr-eng + tesseract-ocr-msa "
+                "and set TESSDATA_PREFIX.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+
         print(f"Scanned document detected - using OCR ({n_pages} pages)...", file=sys.stderr)
         doc.close()
 

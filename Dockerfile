@@ -10,6 +10,7 @@ LABEL description="Research pipeline for fiscal shock identification from histor
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 ENV RENV_PATHS_CACHE=/renv/cache
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
 
 # Install system dependencies for R packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -32,6 +33,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpoppler-cpp-dev \
     poppler-data \
     libqpdf-dev \
+    # OCR for scanned PDFs (PyMuPDF.get_textpage_ocr uses Tesseract)
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-msa \
     # Font and graphics libraries (systemfonts, ragg, textshaping)
     libfreetype6-dev \
     libfontconfig1-dev \
