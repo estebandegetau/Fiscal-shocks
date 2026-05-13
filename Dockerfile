@@ -133,7 +133,8 @@ ARG RENV_VERSION=1.1.5
 RUN R -e "install.packages('remotes', repos = 'https://cloud.r-project.org')" \
     && R -e "remotes::install_version('renv', version = '${RENV_VERSION}', repos = 'https://cloud.r-project.org', upgrade = 'never')" \
     && export MAKEFLAGS="-j$(nproc)" \
-    && R -e "renv::restore(prompt = FALSE, ncpus = parallel::detectCores())"
+    && export RENV_CONFIG_INSTALL_JOBS="$(nproc)" \
+    && R -e "options(Ncpus = parallel::detectCores()); renv::restore(prompt = FALSE)"
 
 # Copy project files
 COPY . .
