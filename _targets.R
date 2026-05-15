@@ -50,6 +50,10 @@ tar_source()
 max_year <- 2022
 min_year <- 1946
 
+# Malaysia EN/BM consistency test — Jaro-Winkler distance cutoff for
+# clustering near-duplicate measure names within each document.
+malay_er_cluster_threshold <- 0.15
+
 # LLM configuration is hardcoded per target (not shared globals) so that
 # changing one codebook/stage's model never invalidates another's cache.
 # C1 targets: Haiku (validated). C2a: Haiku (extraction). C2b: Haiku (classification, v0.5.0 test).
@@ -696,61 +700,147 @@ list(
     iteration = "list",
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
+  ),
+
+  # =============================================================================
+  # Malaysia EN/BM Cross-Language Consistency Test
+  # Self-contained sub-pipeline that slices country_chunks to Economic Report
+  # documents with parallel EN+BM coverage, runs its own C1 -> C2a -> C2b on
+  # the slice, and produces consistency metrics with bootstrap CIs. See
+  # docs/phase_1/malaysia_acquisition.md §4.1 and notebooks/malay_consistency.qmd.
+  # =============================================================================
+
+  tar_target(
+    malay_er_manifest_file,
+    here::here("data", "manual", "malaysia", "economic_report", "MANIFEST.csv"),
+    format = "file",
+    packages = "here"
+  ),
+
+  tar_target(
+    malay_er_pair_years,
+    select_malay_er_pair_years(malay_er_manifest_file),
+    packages = c("readr", "dplyr")
+  ),
+
+  tar_target(
+    malay_er_chunks,
+    slice_malay_er_chunks(country_chunks, malay_er_pair_years),
+    packages = c("tidyverse", "stringr")
+  ),
+
+  tar_target(
+    malay_er_c1,
+    run_c1_deployment(
+      malay_er_chunks, c1_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens = 1024,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite", "progress"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    malay_er_c1_measures,
+    filter_c1_measures(malay_er_c1, malay_er_chunks),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    malay_er_c2a,
+    run_c2a_deployment(
+      malay_er_c1_measures, c2a_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2a = 16384,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    malay_er_clusters,
+    cluster_measure_names_within_doc(malay_er_c2a,
+                                     threshold = malay_er_cluster_threshold),
+    packages = c("tidyverse", "stringdist")
+  ),
+
+  tar_target(
+    malay_er_candidates,
+    propose_en_bm_match_candidates(
+      malay_er_clusters,
+      malay_er_c2a,
+      model = "claude-sonnet-4-20250514"
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    malay_er_candidates_file,
+    write_malay_er_candidates_csv(
+      malay_er_candidates,
+      here::here("data", "manual", "malaysia", "er_consistency_candidates.csv")
+    ),
+    format = "file",
+    packages = c("here", "readr")
+  ),
+
+  tar_target(
+    malay_er_curated_matches_file,
+    here::here("data", "manual", "malaysia", "er_consistency_matches_curated.csv"),
+    format = "file",
+    packages = "here"
+  ),
+
+  tar_target(
+    malay_er_curated_matches,
+    load_curated_matches_or_stub(malay_er_curated_matches_file,
+                                 malay_er_candidates_file),
+    packages = c("readr", "tibble")
+  ),
+
+  tar_target(
+    malay_er_c2b_inputs,
+    aggregate_act_evidence_for_c2b(malay_er_curated_matches,
+                                   malay_er_clusters, malay_er_c2a),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    malay_er_c2b,
+    run_malay_er_c2b(
+      malay_er_c2b_inputs, c2b_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2b = 4096,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    malay_er_consistency_metrics,
+    compute_malay_er_consistency_metrics(
+      malay_er_c1, malay_er_c2b,
+      malay_er_curated_matches, malay_er_candidates, malay_er_clusters,
+      n_boot = 1000L, seed = 20260514L
+    ),
+    packages = "tidyverse"
+  ),
+
+  tar_quarto(
+    malay_consistency,
+    path = here("notebooks/malay_consistency.qmd"),
+    cache = FALSE
   )
 
 
-  # =============================================================================
-  # LEGACY: Superseded by C1-C4 codebook pipeline
-  # Commented out for reference — do not re-enable without updating to new framework
-  # =============================================================================
-  #
-  # # Chunks (Phase 1 only — not needed for Phase 0 LOOCV)
-  # tar_target(
-  #   chunks,
-  #   make_chunks(us_body, window_size = 50, overlap = 10, max_tokens = 160000)
-  # ),
-  # tar_target(chunks_summary, summarize_chunks(chunks)),
-  #
-  # # Training data splits (replaced by LOOCV)
-  # tar_target(aligned_data_split, create_train_val_test_splits(aligned_data, ...)),
-  # tar_target(negative_examples, generate_negative_examples(us_body, n = 200, ...)),
-  # tar_target(training_data_a, prepare_model_a_data(aligned_data_split, negative_examples)),
-  # tar_target(training_data_b, prepare_model_b_data(aligned_data_split)),
-  # tar_target(training_data_c, prepare_model_c_data(aligned_data_split)),
-  #
-  # # Model A (replaced by C1)
-  # tar_target(model_a_examples, ...),
-  # tar_target(model_a_examples_file, ...),
-  # tar_target(model_a_predictions_val, ..., deployment = "main"),
-  # tar_target(model_a_eval_val, ...),
-  # tar_target(model_a_predictions_test, ..., deployment = "main"),
-  # tar_target(model_a_eval_test, ...),
-  #
-  # # Model B (replaced by C2)
-  # tar_target(model_b_examples, ...),
-  # tar_target(model_b_examples_file, ...),
-  # tar_target(model_b_predictions_val, ..., deployment = "main"),
-  # tar_target(model_b_eval_val, ...),
-  # tar_target(model_b_predictions_test, ..., deployment = "main"),
-  # tar_target(model_b_eval_test, ...),
-  # tar_target(model_b_loocv_results, ..., deployment = "main"),
-  # tar_target(model_b_loocv_eval, ...),
-  #
-  # # Model C (folded into C2b v0.8.0 — sign + enacted_quarter[] are extracted
-  # # alongside motivation; see docs/strategy.md C2 Blueprint and Das et al. 2026)
-  # tar_target(model_c_predictions_val, ..., deployment = "main"),
-  # tar_target(model_c_eval_val, ...),
-  # tar_target(model_c_predictions_test, ..., deployment = "main"),
-  # tar_target(model_c_eval_test, ...),
-  #
-  # # Production Pipeline (Phase 1 only)
-  # tar_target(chunks_production, ...),
-  # tar_target(model_a_extract_examples, ...),
-  # tar_target(model_a_extract_examples_file, ...),
-  # tar_target(extracted_passages, ..., deployment = "main"),
-  # tar_target(grouped_acts, ...),
-  # tar_target(extraction_eval, ...),
-  # tar_target(model_b_predictions_production, ..., deployment = "main"),
-  # tar_target(model_b_robustness_eval, ..., deployment = "main"),
-  # tar_target(model_b_robustness_comparison, ...)
 )

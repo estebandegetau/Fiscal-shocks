@@ -1,0 +1,309 @@
+---
+title: "Malaysia EN/BM Cross-Language Consistency Test"
+subtitle: "Economic Report parallel pairs, 2014-2020 + 2022"
+date: today
+date-format: long
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, stringr)
+
+here::i_am("notebooks/malay_consistency.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/tt_theme.R"))
+
+tar_load(c(
+  malay_er_pair_years,
+  malay_er_chunks,
+  malay_er_clusters,
+  malay_er_candidates,
+  malay_er_curated_matches,
+  malay_er_consistency_metrics
+))
+
+m <- malay_er_consistency_metrics
+curated_pending <- nrow(malay_er_curated_matches) == 0L
+```
+
+## Framing
+
+The C1 + C2 codebook pipeline was validated on US English documents. Malaysia has 38 BM-only documents in its ready corpus (out of 99 — primarily older Budget Speeches and Economic Reports). Before trusting LLM outputs on those, we need evidence that the pipeline produces equivalent fiscal reasoning regardless of input language.
+
+This is a **consistency test, not a validity test**. We have no labels for Malaysia. EN outputs are treated as the reference because the codebooks crossed S3 gates on EN-only US data. Passing this test is necessary-but-not-sufficient for extending deployment to the **BM-only-document slice (38 of 99 ready documents)**; it does not gate the broader Malaysia deployment, and it is **not a substitute for expert agreement on the EN-side outputs** (Phase 2's actual success criteria: ≥80% on C1, ≥70% on C2 against expert review). Both gates are required for a complete Phase 2 validation. Failing this test would block deployment on BM-only documents absent a translation pre-processing step.
+
+The test is self-contained: it slices `country_chunks` to Economic Reports with parallel EN+BM coverage, runs its own C1 → C2a → C2b chain on the slice, clusters near-duplicate measure names within each document, has Sonnet propose EN ↔ BM cluster matches for human curation, then compares C2b motivation labels and signs on the curated matched pairs. Sonnet is used for matching (different model family from the Haiku system under test); Haiku runs C1/C2a/C2b (the deployment model).
+
+All reported rates carry bootstrap 95% confidence intervals (n_boot = 1000). No PASS/FAIL bar — interpretation belongs to the reader.
+
+::: {.callout-warning}
+This test only speaks to **modern, professionally-translated MoF prose** (Economic Reports 2014-2020, 2022). It does NOT speak to pre-2009 Budget Speech BM, older Economic Report BM (pre-2014), or crisis-booklet BM. Those are different vintages and registers; deployment to them requires separate evidence.
+:::
+
+```{r}
+#| label: scope-summary
+#| results: 'asis'
+
+cat(sprintf(
+  "**Scope:** %d pair years × 2 languages = %d documents; %d total chunks.\n\n",
+  length(malay_er_pair_years),
+  2L * length(malay_er_pair_years),
+  nrow(malay_er_chunks)
+))
+cat(sprintf("**Pair years:** %s\n\n",
+            paste(malay_er_pair_years, collapse = ", ")))
+```
+
+## Level 1: Per-year act counts
+
+Per year and language, count of distinct fiscal-measure clusters surfaced by the C1 → C2a → clustering pipeline. A cluster is a group of `measure_name` strings within a single document with Jaro-Winkler distance ≤ 0.15. Signed drift is `n_bm - n_en`; large absolute drift is a Level-1 finding regardless of Level 2 / Level 3 outcomes.
+
+```{r}
+#| label: tbl-level1
+#| tbl-cap: "Distinct measure clusters per year, by language"
+
+m$level1 |>
+  rename(
+    Year = year,
+    `n EN` = n_clusters_en,
+    `n BM` = n_clusters_bm,
+    `Signed drift (BM − EN)` = signed_drift,
+    `Drift %` = drift_pct
+  ) |>
+  tt() |>
+  format_tt(j = "Drift %", fmt = function(x) {
+    ifelse(is.na(x), "—", sprintf("%+.1f%%", 100 * x))
+  }) |>
+  tt_theme_report()
+```
+
+## Level 2: Pairwise matching
+
+Per year, Sonnet proposes candidate EN ↔ BM cluster matches with confidence labels. A human reviewer reads the candidates CSV and produces a curated CSV with the matches they accept. This section's match rate is `n_curated / n_proposed`; `n_human_overrides` is the count of LLM-proposed matches the human rejected (a matcher-bias diagnostic).
+
+```{r}
+#| label: tbl-level2
+#| tbl-cap: "Curation status and match rate"
+
+if (curated_pending) {
+  m$level2 |>
+    select(`Proposed by LLM` = n_proposed,
+           `Curated by human` = n_curated) |>
+    tt() |>
+    tt_theme_report()
+} else {
+  m$level2 |>
+    transmute(
+      `Proposed by LLM` = n_proposed,
+      `Curated by human` = n_curated,
+      `Match rate` = sprintf("%.1f%% [%.1f%%, %.1f%%]",
+                             100 * match_rate, 100 * ci_lo, 100 * ci_hi),
+      `Human overrides` = n_human_overrides
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
+
+```{r}
+#| label: curation-banner
+#| results: 'asis'
+
+if (curated_pending) {
+  cat("::: {.callout-warning title=\"Curation pending\"}\n")
+  cat("No curated matches loaded. Levels 2 and 3 below will be empty.\n\n")
+  cat(sprintf("Review the candidates at `%s`, save your curated version as ",
+              here::here("data", "manual", "malaysia",
+                         "er_consistency_candidates.csv")))
+  cat("`data/manual/malaysia/er_consistency_matches_curated.csv` with ")
+  cat("`match_status = \"curated\"` on rows you accept, then re-run ")
+  cat("`tar_make(malay_consistency)`.\n")
+  cat(":::\n\n")
+}
+```
+
+### Candidate matches per year
+
+```{r}
+#| label: tbl-candidates
+#| tbl-cap: "LLM-proposed candidate matches (review context)"
+
+if (nrow(malay_er_candidates) == 0L) {
+  cat("No candidates yet (matcher has not run).\n")
+} else {
+  malay_er_candidates |>
+    arrange(year, match_status, en_cluster_id, bm_cluster_id) |>
+    transmute(
+      Year = year,
+      `EN canonical` = coalesce(en_canonical_name, "—"),
+      `BM canonical` = coalesce(bm_canonical_name, "—"),
+      Confidence = coalesce(confidence, "—"),
+      Status = match_status
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
+
+### Cluster lists per year (review aid)
+
+For each year, the EN and BM cluster lists side-by-side, with canonical names and the count of contributing chunks. Use this when curating the candidates CSV to spot LLM-missed matches.
+
+```{r}
+#| label: per-year-side-by-side
+#| results: 'asis'
+
+if (nrow(malay_er_clusters) > 0L) {
+  for (yr in sort(unique(malay_er_clusters$year))) {
+    en_side <- malay_er_clusters |>
+      filter(year == yr, doc_language == "en") |>
+      distinct(cluster_id, canonical_name) |>
+      arrange(cluster_id)
+    bm_side <- malay_er_clusters |>
+      filter(year == yr, doc_language == "bm") |>
+      distinct(cluster_id, canonical_name) |>
+      arrange(cluster_id)
+
+    cat(sprintf("\n#### %d\n\n", yr))
+    cat(":::: {layout-ncol=2}\n\n")
+    cat("**EN**\n\n")
+    if (nrow(en_side) == 0L) cat("_(no clusters)_\n\n") else {
+      en_side |>
+        transmute(`ID` = cluster_id, `Canonical name` = canonical_name) |>
+        tt() |> tt_theme_report() |> print()
+    }
+    cat("\n**BM**\n\n")
+    if (nrow(bm_side) == 0L) cat("_(no clusters)_\n\n") else {
+      bm_side |>
+        transmute(`ID` = cluster_id, `Canonical name` = canonical_name) |>
+        tt() |> tt_theme_report() |> print()
+    }
+    cat("\n::::\n\n")
+  }
+}
+```
+
+## Level 3: Classification agreement
+
+Conditional on curated matched pairs, do C2b motivation labels and signs agree between the EN-side and BM-side classifications of the same act?
+
+```{r}
+#| label: tbl-level3-headline
+#| tbl-cap: "Headline agreement rates on matched pairs"
+
+if (curated_pending || m$level3$n_pairs == 0L) {
+  tibble(Note = "No matched pairs available") |>
+    tt() |> tt_theme_report()
+} else {
+  tibble(
+    Metric = c("Label agreement", "Sign agreement"),
+    Rate = c(
+      sprintf("%.1f%% [%.1f%%, %.1f%%]",
+              100 * m$level3$label_agreement,
+              100 * m$level3$label_ci_lo,
+              100 * m$level3$label_ci_hi),
+      sprintf("%.1f%% [%.1f%%, %.1f%%]",
+              100 * m$level3$sign_agreement,
+              100 * m$level3$sign_ci_lo,
+              100 * m$level3$sign_ci_hi)
+    ),
+    `n pairs` = m$level3$n_pairs
+  ) |>
+    tt() |> tt_theme_report()
+}
+```
+
+### Confusion matrix (EN labels vs BM labels)
+
+```{r}
+#| label: tbl-confusion
+#| tbl-cap: "Motivation label confusion matrix"
+
+if (curated_pending || nrow(m$confusion) == 0L) {
+  cat("Not available until curated matches are loaded and C2b has run.\n")
+} else {
+  m$confusion |>
+    tidyr::pivot_wider(names_from = bm_label, values_from = n,
+                       names_prefix = "BM: ", values_fill = 0L) |>
+    rename(`EN \\ BM` = en_label) |>
+    tt() |> tt_theme_report()
+}
+```
+
+### Disagreement rows
+
+When EN and BM disagree, the most informative rows are those where both sides expressed high confidence — those are the genuine model-behaviour disagreements rather than borderline calls.
+
+```{r}
+#| label: tbl-flagged
+#| tbl-cap: "Pairs where EN and BM C2b output disagrees on label or sign"
+
+if (curated_pending || nrow(m$per_pair) == 0L) {
+  cat("Not available until curated matches are loaded and C2b has run.\n")
+} else {
+  flagged <- m$per_pair |>
+    filter(!label_agree | !sign_agree) |>
+    arrange(desc(both_high_confidence), pair_id)
+
+  if (nrow(flagged) == 0L) {
+    cat("No disagreements on matched pairs.\n")
+  } else {
+    flagged |>
+      transmute(
+        Year = year,
+        `EN canonical` = en_act_name,
+        `BM canonical` = bm_act_name,
+        `EN label` = en_label,
+        `BM label` = bm_label,
+        `EN sign` = en_sign,
+        `BM sign` = bm_sign,
+        `Both high conf.` = both_high_confidence
+      ) |>
+      tt() |> tt_theme_report()
+  }
+}
+```
+
+## Direction of disagreement
+
+The value of this test is in the *pattern* of disagreement, not the headline rate. Quick reads to do once Level 3 is populated:
+
+- **Label skew.** Is BM systematically less likely to call something COUNTERCYCLICAL, or more likely to call something LONG_RUN? Compare row sums vs column sums of the confusion matrix.
+- **Sign skew.** Are sign disagreements concentrated on `0 ↔ +` or `0 ↔ -` (the model is unsure about magnitude direction) versus `+ ↔ -` (the model is flipping direction, much more concerning)?
+- **Confidence asymmetry.** Are BM-side confidences systematically lower than EN-side? If so, the deployed model is uncertain about BM content, which is itself useful information.
+
+::: {.callout-note title="Methodological caveat: translation, not independent source"}
+The BM Economic Reports are MoF translations of the EN versions, not independent fiscal-policy statements. This has two consequences for how to read Level 3:
+
+- **Correlated errors are invisible.** If Haiku misreads a motivation passage the same way in both languages (because the BM translation preserved the misleading phrasing), this test will record agreement and the error will not appear here. Catching correlated errors requires expert validation on the EN side.
+- **Some disagreements are translation artifacts.** When EN and BM C2b labels diverge, the cause might be the translator's word choice rather than the model's cross-language reasoning. The motivation language R&R rely on ("the actual words used by policymakers") only fully applies to the EN side; BM is a mediated rendering.
+
+The Sonnet matcher proposes EN ↔ BM matches but cannot add matches for clusters it flags as `bm_unmatched`. When reviewing the candidates CSV, also scan for BM clusters tagged `bm_unmatched` whose canonical name looks plausibly related to an EN cluster — those are matches the matcher missed and the human should manually convert by editing the CSV.
+:::
+
+```{r}
+#| label: direction-summary
+#| results: 'asis'
+
+if (!curated_pending && nrow(m$per_pair) > 0L) {
+  pp <- m$per_pair
+  cat("**Confidence asymmetry:**\n\n")
+  cat(sprintf("- EN high-confidence rate: %.0f%% (%d/%d)\n",
+              100 * mean(pp$en_confidence == "high", na.rm = TRUE),
+              sum(pp$en_confidence == "high", na.rm = TRUE), nrow(pp)))
+  cat(sprintf("- BM high-confidence rate: %.0f%% (%d/%d)\n\n",
+              100 * mean(pp$bm_confidence == "high", na.rm = TRUE),
+              sum(pp$bm_confidence == "high", na.rm = TRUE), nrow(pp)))
+}
+```
+
+## Implications for deployment scope
+
+This test, conditional on its results, speaks to a narrow population of BM documents. Reading the test out for deployment scope:
+
+- **Speaks to:** professional MoF translations of modern Economic Reports (2014+). The translations are commissioned alongside the EN versions and are expected to be high-quality.
+- **Does NOT speak to:** older Economic Report BM (1995-2013, 19 documents — these are MoF Bahasa originals, not parallel translations), **all Budget Speech BM (9 documents spanning 2000-2008, 2012, 2015 — none have EN parallels regardless of year, and the speech register differs structurally from Economic Report prose)**, or crisis-booklet BM (4 documents — branded marketing register).
+
+The 2024 and 2025 EN+BM ER pairs exist on disk but fall outside the current Malaysia pilot window (`pilot_year_max = 2022`). Extending the test to those years requires only an update to `build_country_configs()`; the consistency-test sub-pipeline auto-includes any new pair years from `MANIFEST.csv`.

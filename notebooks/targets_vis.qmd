@@ -1,0 +1,26 @@
+---
+title: "Targets pipeline visualization graph"
+---
+
+
+```{r}
+
+pacman::p_load(
+    targets,
+    here
+)
+
+here::i_am("notebooks/targets_vis.qmd")
+tar_config_set(
+    store = here("_targets"),
+    script = here("_targets.R")
+    )
+
+
+```
+
+
+```{r}
+#| results: "asis"
+tar_mermaid()
+```
