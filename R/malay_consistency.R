@@ -267,11 +267,17 @@ propose_en_bm_match_candidates <- function(clusters,
 
   if (nrow(clusters) == 0L) return(empty)
 
+  # run_c2a_deployment() does not emit a doc_language column; derive from
+  # the -BM suffix on doc_id so the per-language filters below have something
+  # to match on. Same pattern as aggregate_act_evidence_for_c2b().
+  ev <- c2a_evidence |>
+    dplyr::mutate(doc_language = derive_doc_language(doc_id))
+
   years <- sort(unique(clusters$year))
 
   results <- purrr::map_dfr(years, function(yr) {
     yr_clusters <- clusters |> dplyr::filter(year == yr)
-    yr_evidence <- c2a_evidence |> dplyr::filter(year == yr)
+    yr_evidence <- ev |> dplyr::filter(year == yr)
 
     en_clusters <- yr_clusters |> dplyr::filter(doc_language == "en")
     bm_clusters <- yr_clusters |> dplyr::filter(doc_language == "bm")
