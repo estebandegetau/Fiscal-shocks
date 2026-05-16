@@ -382,13 +382,48 @@ write_malay_er_candidates_csv <- function(candidates, path) {
 }
 
 
+#' Ensure the curated matches CSV exists, initialising an empty stub if absent
+#'
+#' On first pipeline run the curated CSV does not yet exist on disk.
+#' `format = "file"` requires the path to be present, so this helper writes a
+#' header-only stub (zero data rows) when the file is missing. Existing
+#' curated files are never overwritten — human edits are preserved across
+#' pipeline runs.
+#'
+#' `candidates_path` is unused inside the function; it is threaded through so
+#' that targets registers a dependency edge from the curated-file target to
+#' the candidates-file target, ensuring the stub is only initialised after
+#' Sonnet has produced candidates worth curating.
+#'
+#' @param curated_path Character path to the curated CSV
+#' @param candidates_path Character path to the candidates CSV (dependency only)
+#' @return Character `curated_path`
+#' @export
+ensure_curated_matches_file <- function(curated_path, candidates_path) {
+  if (!file.exists(curated_path)) {
+    dir.create(dirname(curated_path), showWarnings = FALSE, recursive = TRUE)
+    stub <- tibble::tibble(
+      year = integer(0),
+      en_cluster_id = integer(0),
+      bm_cluster_id = integer(0),
+      match_status = character(0),
+      notes = character(0)
+    )
+    readr::write_csv(stub, curated_path, na = "")
+  }
+  curated_path
+}
+
+
 #' Load human-curated matches or return empty stub
 #'
-#' Returns an empty tibble (with the curated-schema columns) if (a) the
-#' curated CSV does not exist, or (b) it is byte-identical to the candidates
-#' CSV (interpreted as "the human has not yet curated; this is just a copy").
-#' This is the graceful-skip mechanism that lets Levels 1-2 of the notebook
-#' render without forcing curation to be done before Level 3.
+#' Returns an empty tibble (with the curated-schema columns) when the curated
+#' CSV has no rows tagged `match_status = "curated"`. This is the graceful-skip
+#' mechanism that lets Levels 1-2 of the notebook render without forcing
+#' curation to be done before Level 3. Both the header-only stub initialised
+#' by `ensure_curated_matches_file()` and a verbatim copy of the candidates
+#' CSV (where all rows carry `match_status = "proposed"`) resolve to the empty
+#' stub via the `match_status == "curated"` filter.
 #'
 #' Curated schema (what the human edits to): year, en_cluster_id,
 #' bm_cluster_id, match_status, notes. `match_status` should be set to
@@ -396,10 +431,9 @@ write_malay_er_candidates_csv <- function(candidates, path) {
 #' ignored downstream.
 #'
 #' @param curated_path Character path to the curated CSV (file-target value)
-#' @param candidates_path Character path to the LLM-generated candidates CSV
 #' @return Tibble of curated matches (zero rows if not yet curated)
 #' @export
-load_curated_matches_or_stub <- function(curated_path, candidates_path) {
+load_curated_matches_or_stub <- function(curated_path) {
 
   empty <- tibble::tibble(
     year = integer(0),
@@ -409,12 +443,9 @@ load_curated_matches_or_stub <- function(curated_path, candidates_path) {
     notes = character(0)
   )
 
+  # Defensive: ensure_curated_matches_file() should have created the stub,
+  # but keep this guard so the loader is safe to call standalone.
   if (!file.exists(curated_path)) return(empty)
-  if (file.exists(candidates_path) &&
-      identical(readBin(curated_path, what = "raw", n = file.size(curated_path)),
-                readBin(candidates_path, what = "raw", n = file.size(candidates_path)))) {
-    return(empty)
-  }
 
   curated <- readr::read_csv(curated_path, show_col_types = FALSE)
 
@@ -424,6 +455,8 @@ load_curated_matches_or_stub <- function(curated_path, candidates_path) {
     stop("Curated matches CSV missing required columns: ",
          paste(missing, collapse = ", "))
   }
+
+  if (nrow(curated) == 0L) return(empty)
 
   curated |>
     dplyr::filter(match_status == "curated",

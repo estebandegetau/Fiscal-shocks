@@ -793,15 +793,17 @@ list(
 
   tar_target(
     malay_er_curated_matches_file,
-    here::here("data", "manual", "malaysia", "er_consistency_matches_curated.csv"),
+    ensure_curated_matches_file(
+      here::here("data", "manual", "malaysia", "er_consistency_matches_curated.csv"),
+      malay_er_candidates_file
+    ),
     format = "file",
-    packages = "here"
+    packages = c("here", "readr", "tibble")
   ),
 
   tar_target(
     malay_er_curated_matches,
-    load_curated_matches_or_stub(malay_er_curated_matches_file,
-                                 malay_er_candidates_file),
+    load_curated_matches_or_stub(malay_er_curated_matches_file),
     packages = c("readr", "tibble")
   ),
 
