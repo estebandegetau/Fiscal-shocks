@@ -65,6 +65,11 @@ Per year and language, count of distinct fiscal-measure clusters surfaced by the
 #| tbl-cap: "Distinct measure clusters per year, by language"
 
 m$level1 |>
+  dplyr::mutate(
+    drift_pct = dplyr::if_else(
+      is.na(drift_pct), "—", sprintf("%+.1f%%", 100 * drift_pct)
+    )
+  ) |>
   rename(
     Year = year,
     `n EN` = n_clusters_en,
@@ -73,9 +78,6 @@ m$level1 |>
     `Drift %` = drift_pct
   ) |>
   tt() |>
-  format_tt(j = "Drift %", fmt = function(x) {
-    ifelse(is.na(x), "—", sprintf("%+.1f%%", 100 * x))
-  }) |>
   tt_theme_report()
 ```
 
