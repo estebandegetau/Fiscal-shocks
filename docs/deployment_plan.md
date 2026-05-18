@@ -104,3 +104,59 @@ This yields **39 act-level observations** (matching `aligned_data`), each with a
 ### Not reusable (C1-specific)
 - `identify_chunk_tiers.R` — Tier system doesn't apply to C2
 - `generate_c1_examples.R` — C1-specific data structures
+
+---
+
+## Decision 5: Replace Within-Doc JW Clustering with LLM Dedup (2026-05-17)
+
+**Context.** Across the C2a → cluster path, `cluster_measure_names_within_doc()` groups raw `measure_name` strings by Jaro-Winkler distance ≤ 0.15, producing the per-act evidence bundles that feed C2b. The Malaysia EN/BM consistency test (`notebooks/malay_consistency.qmd`) revealed that JW at 0.15 fails to merge semantically-identical measures across four distinct failure modes within a *single* document:
+
+- **Verbose-vs-bare phrasing.** Same measure named with and without contextual suffixes. Example (2016 EN): `Goods and Services Tax (GST)` vs `Goods and Services Tax (GST) implementation in April 2015` vs `Goods and Services Tax (GST) and subsidy rationalization measures` — three separate clusters, all pairwise JW 0.17-0.19.
+- **Within-doc cross-language naming.** Same measure named in different languages within the same document. Example (2015 BM): the BM Economic Report has 9 chunks discussing GST; cluster 1 contains 4 chunks named `Goods and Services Tax (GST) / Cukai Barangan dan Perkhidmatan` (MIXED), cluster 2 contains 5 chunks named `Goods and Services Tax (GST) implementation in April 2015` (EN-only). Roughly half of BM-document extractions emerge in English regardless of source language, so this is structural rather than incidental.
+- **Word-order paraphrase.** Same act named with words reordered. Example (2014 BM): clusters 13/14 are `Islamic Financial Services Act 2013 (IFSA) and Financial Services Act 2013 (FSA)` vs `Financial Services Act 2013 (FSA) and Islamic Financial Services Act 2013 (IFSA)`.
+- **Mega-bundles (inverse problem).** C2a sometimes returns one `measure_name` describing 4-8 distinct measures (e.g. 2020 EN cluster 14: RPGT + NAHP + RTO + YHS + HOC + travel relief + tourism exemption). This is *under*-clustering at the LLM-extraction stage and cannot be fixed by any post-hoc clustering algorithm.
+
+Threshold sensitivity table in the consistency notebook quantified the JW failure: 2015 and 2016 drift fully collapses at JW ≤ 0.20 (entirely artifact); 2014 and 2019 partial. Bumping the JW threshold is not a real fix — paraphrase variants (Foreign Workers Levy JW=0.36) require thresholds so loose that genuinely distinct measures begin to over-merge.
+
+**Decision.** Replace the JW-based `cluster_measure_names_within_doc()` with an **LLM-based within-document dedup step** (Sonnet) that takes one document's `(chunk_id, measure_name, c2a_valid)` rows and returns cluster assignments. Insert this step between `c2a_evidence` and the clusters target.
+
+**Rationale.**
+
+- The four failure modes (verbose suffixes, within-doc cross-language naming, word-order paraphrase, mega-bundle splitting) are all natural-language reasoning problems that string-distance metrics cannot solve.
+- Sonnet is already in the pipeline for cross-doc EN↔BM matching (Level 2 of the consistency test). Reusing the same matcher for within-doc dedup keeps the architectural surface small.
+- Cost is modest: ~16 doc-level API calls for the Malay ER consistency test, ~99 for the full Malaysia deployment corpus. The within-doc input size is small (a list of 5-20 measure names per document) so per-call cost is low.
+- Cost-conscious variant: keep JW as an auto-merge pre-filter for the < 0.10 band, send only the ambiguous 0.10-0.40 middle band to the LLM. Pure-LLM is defensible at this corpus scale.
+- For the mega-bundle problem (E above), the LLM dedup step can also be asked to **split** a single measure name describing N distinct measures into N separate cluster members, which JW cannot do. This requires explicit prompt design and is a secondary objective.
+
+**Sequencing.**
+
+- The consistency test's Level 2 and Level 3 results are downstream of the cluster target. After this change is implemented, `malay_er_clusters` must be regenerated and the consistency notebook re-rendered before any Phase 2 expert validation runs. Corrupted (fragmented) C2b inputs would invalidate any expert-agreement metric.
+
+---
+
+## Decision 6: Country-of-Enactment Tagging to Filter Foreign Comparators (2026-05-17)
+
+**Context.** C1's S0 definition asks "does this passage describe an enacted fiscal measure" without specifying *which country's* fiscal measure. This was unproblematic for the US-only Phase 0 corpus because the Economic Report of the President rarely describes a *Mexican* (etc.) fiscal measure as if it were US policy. It becomes a deployment problem for Malaysia (and future SEA countries) because Economic Reports systematically discuss Japan, India, China, Australia, Egypt, Philippines, and Korea fiscal measures as comparators. C1 (correctly per its current definition) labels these passages FISCAL_MEASURE.
+
+The Malaysia EN/BM consistency test surfaced this clearly:
+
+- **2020 EN:** 15 clusters vs BM's 4. At least 3 EN clusters are foreign comparators — `Japan's Sales Tax Hike (8% to 10%)`, `India's income support scheme to farmers`, `Australia's Four Stimulus Packages` — bloating the EN-side count and creating apparent cross-language drift that is actually content-asymmetry of comparator coverage between the EN and BM editions.
+- **2017 BM:** Analogous BM-side contamination — `Japan's Consumption Tax Rate Increase Postponement` is a Japanese fiscal measure, and `Malaysia Sukuk Global Wakalah (April 2016 issuance)` is sovereign debt issuance rather than a fiscal-policy *measure* in the R&R sense.
+- **Other years:** Similar patterns across 2014 EN (Japan + Mexico + India + Brazil + Russia in one mega-cluster), 2015 EN (Egypt), 2019 EN (US, Japan, Philippines), 2019 BM (Philippines, Japan, Australia, Korea), 2020 BM (Japan, China).
+
+R&R did not address this problem because their methodology was designed for US-only analysis and the US economy is large enough that domestic fiscal policy dominates the source documents. The methodology must be extended for cross-country deployment.
+
+**Decision.** Add country-of-enactment tagging to C1 output. **Preferred architecture: standalone C1F filter codebook** running between C1 and C2a, producing a `country_iso` field per surviving fiscal-measure chunk. Filter `country_iso != target_country` before evidence assembly. Final architectural choice (standalone C1F vs C1 extension) deferred to implementation review.
+
+**Schema.** `country_iso` is an enum constrained to the deployment country list (`MY`, `US`, future SEA codes) plus `OTHER` as a required fallback for unanticipated comparators.
+
+**Rationale (standalone C1F preferred).**
+
+- **Avoids reopening C1's frozen S3 gate.** C1 v0.6.0 crossed S3 with the current schema. Extending C1 with a `country_iso` extra_output_field is structurally analogous to v0.6.0's `discusses_motivation/timing/magnitude` additions and could be defended with a narrow re-verification (Tests V/VI/VII subset showing the binary FISCAL_MEASURE decision is unchanged) — but this is still a re-gating exercise. A standalone C1F is cleaner.
+- **Isolates the new failure mode.** Country misidentification is a different kind of error than measure misidentification. Keeping them in separate codebooks makes per-failure-mode error analysis tractable and allows C1F to iterate independently of C1.
+- **Required for Phase 2 expert validation.** Without country filtering, expert agreement metrics will be biased downward because the model is "right" about a Japanese measure that the Malaysian expert reviewer will mark out-of-scope. This is a methodologically invalid form of disagreement.
+- **`OTHER` fallback is non-negotiable.** Malaysian Economic Reports cite at least 8 comparator countries in the 2014-2022 sample alone. An exhaustive enum would be brittle as new SEA countries come online; `OTHER` absorbs the unexpected.
+
+**Sequencing.**
+
+- Tackle in the same deployment-pipeline work cycle as Decision 5. Both are upstream of any expert-validation work and both invalidate Level 2/3 outputs of the consistency test, so deferring either creates rework.
