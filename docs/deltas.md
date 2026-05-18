@@ -9,6 +9,109 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## ~~2026-05-18: Cross-document act aggregator (C0) + multi-measure C1 — pipeline gaps surfaced by Malaysia consistency test~~ RESOLVED
+
+**Resolved:** Incorporated into `docs/strategy.md` and `docs/phase_1/malaysia_strategy.md` via /strategy-sync 2026-05-18.
+
+Edits applied to `docs/strategy.md` (14 sections):
+
+1. Architecture heading: 4 → 5 codebooks; intro paragraph mentions C0 sits between C2a and C2b (position open).
+2. Codebook table: new C0 row between C1 and C2 with status `⏸ Planned — design recorded 2026-05-18`.
+3. Sequencing diagram: rewritten as `C1 → C2a → [foreign-comparator filter] → C0 → C2b → C3 → RR6` with an explanatory note that C0's exact position is an open S0 design question.
+4. C1→C2 handoff note: extended to flag C0 as the new step operationalizing cross-document act identification.
+5. Success Criteria table: 3 new C0 rows (partition quality / per-act recall+precision / order invariance) with TBD thresholds per user disposition; "to be measured when C0 is built" qualifier.
+6. C2 verdict paragraph: new "Perfect-aggregation upper bound vs. realistic-input lower bound" framing per user challenge-1 disposition.
+7. Step-by-Step Development table: new Step 3 (C0) inserted, subsequent steps renumbered 4-8; Step 2 (C1) updated to flag v0.7.0 multi-measure schema; Step 4 (C2) updated with the upper-bound / lower-bound framing.
+8. C1 Blueprint: new "Schema v0.7.0 (planned)" paragraph documenting `measures[]` multi-output + per-measure `country` tag + backwards-compat accessor.
+9. C2 Blueprint > Two-stage architecture: new "Input schema (C2a v0.6.0 planned)" paragraph for per-evidence measure_name attribution; new "C0 act aggregation" paragraph linking to C0 Blueprint.
+10. C2 Blueprint > Iteration 47/48 Outcome: new "Aggregation context for the freeze" bullet making the upper-bound framing explicit and noting Phase 2 Malaysia is blocked.
+11. NEW SECTION "### C0: Act Aggregator Blueprint" inserted after C2 Blueprint per user placement choice. Contains: Design Rationale; Position (open S0 design question); Input; Output; S0 Codebook Design (omnibus rule deferred per user challenge-4 disposition); S1 Behavioral Tests (order invariance + rerun stability); S2 Zero-Shot Eval (clustering metrics, thresholds TBD per user disposition); S3 Error Analysis Plan; Iteration Strategy; Open Issues (position, omnibus, SEA-scale, OTHER-country, stability fallback).
+12. Files to Create: C0 codebook + supporting files (`R/c0_aggregator.R`, `notebooks/c0_aggregator.qmd`, `prompts/iterations/c0.yml`) added as planned; C1 v0.7.0 and C2a v0.6.0 schema-change notes added on existing entries.
+13. Targets Pipeline Plan code block: C0 targets added (`c0_codebook`, `c0_s1_results`, `c0_s2_test_set`, `c0_s2_results`, `c0_s2_eval`, `c0_s3_results`, `c0_act_partition`); foreign-comparator filter target (`c2a_evidence_filtered`) inserted; C2b target updated to consume `c0_act_partition`.
+14. Cross-Country Transfer > Expected Transfer Gaps table: new "Act aggregation (C0, planned)" row noting multilingual partition quality is a deployment risk.
+15. Verification Plan > Per Codebook: bullets extended with C0-specific behavior (order invariance, partition quality, split/merge taxonomy).
+16. Verification Plan > Phase 2 Malaysia Pilot: new prerequisite "0. C0 validated against US gold partition" item per user challenge-2 disposition.
+17. Key Decisions Summary: new bullet "Cross-document act aggregation as a fifth codebook (C0)" capturing the consistency-test evidence, the position-open status, the upper-bound / lower-bound framing, and the Malaysia deployment block.
+
+Edits applied to `docs/phase_1/malaysia_strategy.md` (3 sections):
+
+1. Deployment-status callout inserted after the Authoritative Methodology line: `.callout-warning` block explaining the 3 consistency-test findings, the C0 introduction, and that Phase 2 deployment is blocked on C0 readiness; also restates the upper-bound / lower-bound framing.
+2. Option 1 Implementation list: Phase 0 line updated to reflect "C1+C2 complete; C0 planned"; Phase 1 line flipped from "Active next step" to "BLOCKED on C0 readiness, 2026-05-18".
+3. Phase 1A Deployment checklist: prerequisite line added ("C0 validated against US gold partition") and pipeline ordering updated to show C1 v0.7.0 → C2a v0.6.0 → C0 → C2b.
+
+Rationale: user wanted a single composite delta covering all multi-measure-C1 + C0-aggregator architectural decisions surfaced by the Malaysia consistency test rather than separate entries per sub-decision. The 4 devil's-advocate challenges from the /strategy-sync review were dispositioned as follows: (1) C2 freeze reframed as upper-bound benchmark, not caveat — applied as new paragraph after the C2 verdict and as a new bullet in the Iteration 47/48 Outcome block; (2) Malaysia deployment explicitly blocked on C0 readiness — applied as callout in malaysia_strategy.md and as prerequisite in strategy.md Phase 2 Verification Plan; (3) C0 position recorded as open S0 design question, not locked decision — applied throughout (Architecture, Sequencing, Blueprint); (4) Omnibus operationalization recorded as open S0 design question — applied inside C0 Blueprint > S0 Codebook Design and in the Open Issues list. Per the conversation, this plan does NOT modify `prompts/`, `R/`, `_targets.R`, or `notebooks/`; implementation of the codebook changes follows separately under the 7-step sequencing plan captured inside this delta entry (Empirical scope check → Phase-0 ground-truth audit → Tag current state → C1 v0.7.0 → C2a v0.6.0 → C2 deliverable re-validation → C0 codebook), one iteration at a time per project workflow rule #7.
+
+---
+
+**Original delta content (preserved as audit trail):**
+
+**Type:** design-decision
+
+**Affects:**
+
+- `docs/strategy.md` > Architecture (4 → 5 codebooks); Sequencing Strategy; Success Criteria; Step-by-Step Development; C1 Blueprint; C2 Blueprint; Files to Create; Targets Pipeline Plan; Cross-Country Transfer Strategy; Verification Plan; Key Decisions Summary
+- `docs/strategy.md` > NEW section "C0: Act Aggregator Blueprint"
+- `docs/phase_1/malaysia_strategy.md` (deployment now blocked on C0 validation; consistency-test findings inform the gold-partition spec)
+- `prompts/c1_measure_id.yml` (planned schema change, v0.7.0: `measures[]` multi-output + per-measure `country` tag)
+- `prompts/c2a_extraction.yml` (planned schema change, v0.6.0: per-evidence `measure_name` attribution)
+- `prompts/c0_aggregator.yml` (new file, planned)
+- `prompts/iterations/c0.yml` (new iteration log, planned)
+
+**Detail:**
+
+The Malaysia consistency test (`notebooks/malay_consistency.qmd`, ran 2026-05-17) surfaced three coupled pipeline gaps that were invisible during Phase 0 because `aligned_data` imposed RR's act nomenclature on chunks via the tier system, sidestepping the act-identification problem entirely. In deployment to corpora without ground-truth labels, these gaps determine whether C2b sees the right evidence at all.
+
+*Finding 1 — within-doc Jaro-Winkler clustering is the upstream bottleneck.* The JW ≤ 0.15 step in the consistency test produces fragments not acts; the threshold-sensitivity table showed 2015/2016 drift collapses at JW ≤ 0.20 (clustering artifact) while 2017/2018/2020 drift persists (real extraction asymmetry). Fragmentation propagates: cross-language matching is overspecified at the cluster level, and C2b reads asymmetric evidence because BM fragments what EN aggregates. The 63% label / 74% sign agreement headline on n=27 matched pairs is an upper bound on cross-language noise rather than a measurement of cross-language model behaviour. The robust finding underneath: Haiku's C2b motivation classification agrees across languages 63% of the time *despite* asymmetric inputs; with clean cluster matches the rate is likely higher.
+
+*Finding 2 — C1's "most prominent act" rule is lossy on multi-act chunks.* C1 v0.6.0's `output_instructions` emit one `measure_name` per chunk ("If the chunk contains multiple fiscal measures, name the most prominent one"). C2a then extracts evidence under that single name. But chunks legitimately discuss multiple acts (e.g., "unlike Act X, which is blatantly exogenous, Act Y is eagerly endogenous"). Evidence from secondary acts gets mis-attributed to the most-prominent's name, propagating into aggregation (wrong rows merged) and C2b (mixed-motivation evidence pooled under one act). This was invisible in Phase 0 because the tier system silently mapped chunks to a single labeled act regardless of multi-act content.
+
+*Finding 3 — country-of-enactment contamination.* The 2020 EN consistency test extracted comparator acts from Japan, India, and Australia; 2017 BM did the same on the BM side. These are not Malaysian fiscal policy. C1 currently has no country-of-enactment field, so foreign comparators contaminate every downstream stage.
+
+**Design decision: a single new "C0: Act Aggregator" codebook** is inserted between C2a and C2b (recommended starting hypothesis; final position is an open S0 design question), replacing both the planned within-doc dedup and the cross-doc/cross-language matching infrastructure with one Sonnet-based partition step.
+
+*Position rationale.* Pre-C2a aggregation loses C2a's evidence-sharpening signal; post-C2b would require re-classification reconciliation; between-them runs aggregation once on per-measure evidence and feeds C2b unified buckets with no extra C2a calls. The pre-C2a alternative remains on the table for S0 design to evaluate against SEA-scale cost arithmetic.
+
+*Sub-decisions (locked):*
+
+- **C1 v0.7.0 schema:** `measure_name: str` becomes `measures: [{name, country, discusses_motivation, discusses_timing, discusses_magnitude}]`. `measures[0]` guaranteed to be most prominent (backwards-compat accessor: downstream code reading `measures[0].name` reproduces v0.6.0 single-name semantics; preserves C2 v0.9.1 freeze reproducibility during the multi-measure transition). `country: enum[<deployment>, OTHER]` is per-measure (chunks routinely interleave domestic and comparator policy).
+- **C2a v0.6.0 schema:** input is C1's measures list; each `evidence[]`, `enacted_signals[]`, `timing_signals[]` row carries a `measure_name` field pointing to which measure (from C1's list) it concerns. C2a is the first place where evidence is attributable to a single act.
+- **Foreign-comparator filter** between C2a and C0: keep only `country == <deployment>` rows; OTHER rows retained in corpus, bypassed from aggregator (diagnostic optionality).
+- **C0 input:** filtered C2a rows (doc_id, doc_year, doc_language, measure_name, measure_type, year_enacted, amount, brief evidence excerpt). One aggregator call per country (the per-country filter is what makes regional scalability tractable).
+- **C0 output:** `{act_id (stable hash), canonical_name, members: [(doc_id, chunk_id, measure_name)], confidence, rationale}` per act bucket.
+- **Stability requirement:** deterministic at temp=0; order-invariant under input row shuffles; post-processing canonicalisation (deterministic sort + hash) if raw Sonnet similarity output proves unstable.
+
+*C0 evaluation framework* (new, since H&K S0-S3 was designed for classification):
+
+- **S0:** codebook + decision rules (omnibus, foreign filter, output schema).
+- **S1 behavioral:** legal outputs; **order invariance** (partition unchanged under input row shuffles); rerun stability at temp=0.
+- **S2 zero-shot:** run C0 on Phase-0 C1+C2a outputs *without* imposing labels; compare partition to gold (tier→act mapping in `aligned_data`). Clustering metrics — Adjusted Rand Index (ARI), V-measure, per-act partition recall, per-act partition precision. Bootstrap CIs at act-level resampling unit. Thresholds TBD in S0 design.
+- **S3:** error analysis on splits and merges; foreign-comparator filter precision and recall.
+- Iteration log: `prompts/iterations/c0.yml`.
+
+*Sequencing plan* (one-change-per-iteration discipline applied across multiple iterations):
+
+1. **Empirical scope check:** hand-count multi-act frequency in 30-50 random C1-positive chunks. If <5% the multi-measure C1 refactor is polish; if >20% it is the dominant signal-quality bottleneck.
+2. **Phase-0 ground-truth audit:** does `R/identify_chunk_tiers.R` map a chunk to multiple acts when it legitimately matches both, or silently dedup? Determines whether we have a gradable gold set for multi-measure C1 *and* whether `aligned_data` supports the C0 S2 gold partition without re-curation.
+3. **Tag current state:** commit + targets cache snapshot for C1 / C2a / C2 deliverable.
+4. **C1 v0.7.0:** schema change + S0-S3 re-run.
+5. **C2a v0.6.0:** input schema change + S1 re-run.
+6. **Re-validate C2 deliverable** against iter-47 ground truth (under the imposed-label condition, preserving the perfect-aggregation upper-bound measurement); decision point if regression (revise C2b or accept and re-freeze as v0.10.0).
+7. **C0 codebook:** S0 → S1 → S2 → S3 against US gold partition before Malaysia deployment.
+
+**C2 v0.9.1 freeze reframing.** iter-47 measurements (bias-corrected exogenous precision 0.833, sign accuracy 0.955) were measured under the imposed perfect chunk→act mapping from `aligned_data`. These remain the **perfect-aggregation upper bound** on C2 deployment quality. C2 deployment metrics with C0-driven aggregation establish the **realistic-input lower bound**, and the gap between them quantifies aggregator-induced degradation. This is a benchmark framing, not a caveat: both numbers are useful, and the gap is itself a measurement we want.
+
+**Malaysia deployment.** Blocked on C0 readiness. The 2026-05-06 deployment authorization (C1 + C2 frozen) is suspended until C0 clears its S0-S3 gates on the US gold partition. `docs/phase_1/malaysia_strategy.md` updated accordingly.
+
+**Open issues carried forward:**
+
+- **C0 position** (between C2a and C2b vs. pre-C2a) — recommended starting hypothesis is between-C2a-and-C2b on cost grounds, but pre-C2a remains a valid alternative for S0 design to evaluate.
+- **Omnibus rule operationalization** — competing hypotheses are "same motivation = same act" (motivation-driven) vs. "same act name dominates regardless of motivation" (name-dominant). RR sometimes treat omnibus packages with distinct motivations (e.g., TRA-1986) as one act, which would mechanically fail the motivation-driven rule on `aligned_data`. Final definition deferred to S0 drafting and Phase-0 gold-partition audit.
+- **SEA-scale token budget** — one Sonnet call per country fits Malaysia (~99 docs); Philippines/Indonesia/Thailand/Vietnam may approach 200K tokens. Hybrid retrieval+verify (multilingual embeddings cluster candidates, LLM verifies) is the fallback if single-pass overflows.
+- **OTHER-country retention vs. drop** — provisional decision is retain-in-corpus + bypass-aggregator to keep diagnostic optionality cheap; revisit if diagnostic value proves negligible.
+- **Aggregator output stability fallback** — if temp=0 insufficient, deterministic post-processing on raw Sonnet similarity output.
+
+**Suggested edit:** Major restructuring of `docs/strategy.md` per the section list above (17 targeted edits including a new "C0: Act Aggregator Blueprint" section placed after the C2 Blueprint). Parallel update to `docs/phase_1/malaysia_strategy.md` adding a deployment-blocked callout, updating the "Phase 1 (Active next step)" framing, and adding the C0 prerequisite to the Phase 2A deployment checklist. Phase 2 Malaysia deployment-readiness gate becomes "C1 + C2 + C0 validated" rather than "C1 + C2 validated".
+
 ## 2026-05-13: Per-page OCR rescue replaces document-level scan detector in extraction pipeline
 
 **Type:** design-decision

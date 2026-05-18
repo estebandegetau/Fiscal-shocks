@@ -15,6 +15,18 @@
 
 **Authoritative Methodology**: See `docs/strategy.md` for the complete R&R + H&K framework. Phase 1 applies validated codebooks (C1 and C2) to Malaysia with expert validation.
 
+::: {.callout-warning title="Deployment status (2026-05-18): blocked on C0"}
+Malaysia deployment was authorized on 2026-05-06 with C1 v0.6.0 and C2b v0.9.1 frozen, but the Malaysia consistency test (`notebooks/malay_consistency.qmd`, 2026-05-17) surfaced three coupled pipeline gaps that require a new codebook (C0, the Act Aggregator) before deployment can proceed:
+
+1. Within-document Jaro-Winkler clustering fragments rather than aggregates fiscal acts (threshold-sensitivity confirmed the failure mode).
+2. C1's "most prominent measure" rule loses multi-act information that downstream stages need.
+3. C1 has no country-of-enactment field, so foreign comparators (Japan, India, Australia acts cited inside Malaysian Economic Reports) contaminate every downstream stage.
+
+C0 (Act Aggregator) partitions per-measure C2a evidence into act buckets across documents and languages, with a foreign-comparator filter that keeps only domestic acts. **Phase 2 deployment is blocked on C0 clearing its S0-S3 gates on the US gold partition.** References: `docs/deltas.md` 2026-05-18 entry; `docs/strategy.md` "C0: Act Aggregator Blueprint"; companion upstream changes C1 v0.7.0 (multi-measure schema + per-measure country tag) and C2a v0.6.0 (per-evidence measure_name attribution).
+
+C2 v0.9.1's iter-47 freeze numbers (exogenous precision 0.833, sign accuracy 0.955) remain valid as the **perfect-aggregation upper bound** on deployment-grade quality; Malaysia deployment will produce the **realistic-input lower bound**, and the gap between them quantifies aggregator-induced degradation.
+:::
+
 ## Strategic Options
 
 ### Option 1: Cross-Country Transfer Learning (Recommended)
@@ -23,8 +35,8 @@
 
 **Implementation**:
 
-1. **Phase 0 (Complete)**: C1 and C2 codebooks validated on 44 US acts using H&K stages S0-S3. C1 v0.6.0 frozen at iter 28 (S3 GATE PASSED); C2b v0.9.1 frozen at iter 48 (2026-05-06; bias-corrected exogenous precision 0.833, sign accuracy 0.955 PASS).
-2. **Phase 1 (Active next step)**: Deploy validated codebooks (C1 + C2) to Malaysia documents (1980-2022). Country deployment pipeline already wired (commit b92ee61).
+1. **Phase 0 (C1+C2 complete; C0 planned)**: C1 v0.6.0 frozen at iter 28 (S3 GATE PASSED); C2b v0.9.1 frozen at iter 48 (2026-05-06; bias-corrected exogenous precision 0.833, sign accuracy 0.955 PASS — now reframed as the perfect-aggregation upper bound). C0 (Act Aggregator) added 2026-05-18 to address cross-document act-identification gaps surfaced by the Malaysia consistency test; C1 v0.7.0 (multi-measure schema + country tag) and C2a v0.6.0 (per-evidence measure_name) are companion upstream changes. See `docs/strategy.md` C0 Blueprint.
+2. **Phase 1 (BLOCKED on C0 readiness, 2026-05-18)**: Deployment authorization from 2026-05-06 is suspended until C0 clears its S0-S3 gates on the US gold partition. Country deployment pipeline already wired (commit b92ee61), but the C2a → C2b handoff must route through C0's act partition before deployment can produce defensible results.
 3. **Validation**: Expert reviews codebook outputs, provides corrections
 4. **Iteration**: Use expert feedback to refine codebook definitions (S0 revision)
 
@@ -260,9 +272,11 @@ This is a **stronger** research contribution than just "we labeled more acts."
 
 ### Phase 1A: Deployment (Weeks 1-4)
 
+**Prerequisite (2026-05-18):** C0 (Act Aggregator) validated against US gold partition per `docs/strategy.md` Verification Plan. Deployment cannot proceed until C0 clears its S0-S3 gates; the consistency test demonstrated that the implicit chunk→act mapping `aligned_data` provided in Phase 0 does not generalize to corpora without imposed labels.
+
 - [ ] Download Malaysia government documents (1980-2022)
 - [ ] Run PDF extraction (PyMuPDF or pdftools)
-- [ ] Deploy codebooks C1 and C2 with US-validated definitions
+- [ ] Deploy codebooks C1 (v0.7.0 multi-measure) → C2a (v0.6.0 per-evidence measure_name) → C0 (act partition + foreign filter) → C2b with US-validated definitions
 - [ ] Generate candidate measure dataset
 - [ ] Document any extraction failures
 

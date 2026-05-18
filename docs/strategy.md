@@ -98,16 +98,17 @@ Known act recall (expanded year window) is **84.8%** (39/46 acts). The 7 missing
 
 ---
 
-## Architecture: 4 Codebooks × 5 Stages (C1+C2 implemented; C3+C4 planned)
+## Architecture: 5 Codebooks × 5 Stages (C1+C2 implemented; C0+C3+C4 planned)
 
-### The Four Codebooks (R&R Steps RR2-RR5)
+### The Five Codebooks (R&R Steps RR2-RR5 + cross-document act aggregation)
 
-C2 is internally a two-stage codebook (C2a evidence extraction → C2b act-level classification) but counts as a single codebook for stage-gating purposes. C3 and C4 are planned but not yet built; both will consume C2a's evidence pool (C2a v0.4.0 already extracts `timing_signals[]` for use by C3).
+C2 is internally a two-stage codebook (C2a evidence extraction → C2b act-level classification) but counts as a single codebook for stage-gating purposes. **C0 (Act Aggregator) sits between C2a and C2b in the pipeline** (recommended starting hypothesis; position is an open S0 design question — see C0 Blueprint): it partitions C2a per-measure evidence into act buckets across documents and languages, replacing the implicit chunk→act mapping that `aligned_data` provided in Phase 0. C3 and C4 are planned but not yet built; both will consume C2a's evidence pool (C2a v0.4.0 already extracts `timing_signals[]` for use by C3) and C0's act partition.
 
 | Codebook | R&R Step | Task | Output Type | Status |
 |----------|----------|------|-------------|--------|
-| **C1: Measure ID** | RR2 | Does passage describe a fiscal measure meeting "significant mention" rule? | Binary + extraction | ✅ S3 PASS (v0.6.0) |
-| **C2: Motivation + Sign** | RR3 (sign), RR5 (motivation) | 4-way R&R motivation classification (`SPENDING_DRIVEN`, `COUNTERCYCLICAL`, `DEFICIT_DRIVEN`, `LONG_RUN`); `exogenous` derived as `motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`; sign of effect on fiscal liabilities | 4-way label + sign + `enacted` | 🔄 S0 complete (v0.9.0); S1 next |
+| **C1: Measure ID** | RR2 | Does passage describe a fiscal measure meeting "significant mention" rule? | Binary + extraction | ✅ S3 PASS (v0.6.0); v0.7.0 multi-measure schema planned |
+| **C0: Act Aggregator** | (cross-document) | Partition C2a per-measure evidence into act buckets across documents and languages | Act partition (`act_id`, `canonical_name`, `members[]`) | ⏸ Planned — design recorded 2026-05-18 |
+| **C2: Motivation + Sign** | RR3 (sign), RR5 (motivation) | 4-way R&R motivation classification (`SPENDING_DRIVEN`, `COUNTERCYCLICAL`, `DEFICIT_DRIVEN`, `LONG_RUN`); `exogenous` derived as `motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`; sign of effect on fiscal liabilities | 4-way label + sign + `enacted` | ✅ S3 PASS (v0.9.1 FROZEN at iter 48); C2a v0.6.0 measure-attribution planned |
 | **C3: Timing** | RR4 | Extract implementation quarter(s) using midpoint rule, with phased and retroactive handling | `enacted_quarter[]` per act | ⏸ Planned — not yet built |
 | **C4: Magnitude** | RR3b | Extract full dollar magnitude of effect on fiscal liabilities | Magnitude per act (per quarter when phased) | ⏸ Planned — not yet built |
 
@@ -133,17 +134,22 @@ Fine-tuning is a **last resort** that should only be triggered based on S3 error
 
 **Rationale:**
 
-In production, C1 feeds C2, which feeds C3 and C4 (each consuming C2a's evidence pool), which feed RR6 aggregation:
+In production, C1 feeds C2a (evidence extraction); C0 (Act Aggregator) partitions C2a evidence into act buckets across documents and languages; C2b classifies each bucket; C3 and C4 (each consuming C2a's evidence pool plus C0's partition) feed RR6 aggregation:
 
 ```
-Documents → C1 (Measure ID) → C2 (Motivation + Sign) → C3 (Timing, planned) → RR6 Aggregation
-                                                    ↘
-                                                     C4 (Magnitude, planned)
+Documents → C1 (Measure ID, multi-measure)
+              → C2a (Evidence Extraction, per-measure attribution)
+                → [foreign-comparator filter: country == <deployment>]
+                  → C0 (Act Aggregator, planned)
+                    → C2b (Motivation + Sign)
+                      → C3 (Timing, planned) → RR6 Aggregation
+                                            ↘
+                                             C4 (Magnitude, planned)
 ```
 
-The headline shock series (RR6 output) requires C1 + C2 + C3. C4 is needed only for full dollar-magnitude reproduction of R&R's series, not for the binary-direction proxy that is our primary deliverable.
+C0's exact pipeline position (between C2a and C2b vs. pre-C2a) is an open S0 design question — see C0 Blueprint. The headline shock series (RR6 output) requires C1 + C2 + C0 + C3. C4 is needed only for full dollar-magnitude reproduction of R&R's series, not for the binary-direction proxy that is our primary deliverable.
 
-**Note on C1→C2 handoff.** C2 receives C1-filtered chunks (`FISCAL_MEASURE` with `discusses_motivation = TRUE`) via C1 v0.6.0's extra_output_fields, not raw heuristic tier labels. C2 is internally two-stage (C2a evidence extraction per chunk → C2b act-level classification from extracted evidence). This compresses signal and fits any context window. See C2 Blueprint for details.
+**Note on C1→C2 handoff.** C2 receives C1-filtered chunks (`FISCAL_MEASURE` with `discusses_motivation = TRUE`) via C1 v0.6.0's extra_output_fields, not raw heuristic tier labels. C2 is internally two-stage (C2a evidence extraction per chunk → C2b act-level classification from extracted evidence). This compresses signal and fits any context window. See C2 Blueprint for details. **C0 (Act Aggregator, planned)** is the new step between C2a and C2b that operationalizes cross-document act identification — in Phase 0 this was implicit via `aligned_data`'s imposed chunk→act mapping, but it must be measured explicitly in deployment.
 
 **Note on enacted-status filtering.** C1 is a recall-optimized relevance filter that captures proposals alongside enacted measures (see C1 Blueprint). C2b's `enacted` output handles enacted-status determination at the act level from aggregated evidence. In Phase 0, this pathway is untestable for the proposal-only direction (ground truth contains only enacted acts). Phase 1 validates against `us_shocks.csv`; Phase 2 relies on expert review.
 
@@ -164,6 +170,9 @@ Developing C1 before C2 allows us to:
 | C1: Measure ID | Tier 1 Recall | ≥95% | Diagnostic benchmark (label noise limits hard gating) |
 | C1: Measure ID | Combined Recall (Tier 1+2) | ≥90% | Diagnostic benchmark (Tier 2 labels are noisy) |
 | C1: Measure ID | Precision | ≥70% | Diagnostic benchmark (FPs include unlabeled real acts) |
+| C0: Act Aggregator (planned) | Partition quality (ARI, V-measure) | TBD in C0 S0 design | To be specified — clustering metrics against US gold partition (`aligned_data` tier→act mapping) |
+| C0: Act Aggregator (planned) | Per-act partition recall & precision | TBD in C0 S0 design | To be specified — fraction of labeled acts that form a bucket, fraction of bucket members truly belonging to that act |
+| C0: Act Aggregator (planned) | Order invariance & rerun stability | TBD in C0 S0 design | To be specified — partition unchanged under input row shuffles at temp=0 |
 | C2: Motivation + Sign | Exogenous Precision | ≥85% | Critical for shock series (binary, derived from 4-way label as `motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`) |
 | C2: Motivation + Sign | Sign Accuracy on True-Exogenous | ≥90% | Sign correctness on the deliverable population |
 | C2: Motivation + Sign | Motivation Weighted F1 | ≥0.70 | Secondary diagnostic on the 4-way classification (returns under v0.9.0 with the `classes` block) |
@@ -177,6 +186,8 @@ Developing C1 before C2 allows us to:
 **Note on C1 metrics.** C1 metrics are diagnostic benchmarks, not hard gates. The ground truth label set (44 acts identified in chunks via name matching) is noisy: Tier 2 matching misses acronyms and compound names, and FPs include real fiscal measures absent from the 44-act set (H&K Error Category F). S3 manual error audit is the actual stage gate for C1.
 
 **C2 verdict (iter 48, 2026-05-06).** C2b v0.9.1 is FROZEN as the C2 deliverable. Exogenous Precision 0.833 (bias-corrected; CI on n=18 likely contains the 0.85 gate); Sign Accuracy on True-Exogenous 0.955 PASSES the 0.90 gate; Motivation Weighted F1 0.665 (just below the 0.70 secondary diagnostic). See C2 Blueprint > Iteration 47/48 Outcome.
+
+**Perfect-aggregation upper bound vs. realistic-input lower bound (2026-05-18).** The iter-47 measurements above were taken under perfect upstream aggregation imposed by `aligned_data`'s tier→act mapping — i.e., the C2 pipeline received one chunk-set per act, correctly bucketed, regardless of how many measures any given chunk discussed or how cross-document name variance might fragment a single act. These numbers are the **perfect-aggregation upper bound** on deployment-grade C2 quality. Deployment results with C0-driven aggregation (see C0 Blueprint) establish the **realistic-input lower bound**, and the gap between the two quantifies aggregator-induced degradation as a measurement in its own right. This is a benchmark framing, not a caveat: both numbers are useful, and the gap is what we want to see.
 
 ### Per H&K Stage (All Codebooks)
 
@@ -258,12 +269,13 @@ Each R&R step is implemented and validated independently before proceeding to th
 | Step | Description | Deliverable |
 |------|-------------|-------------|
 | 1 | ✅ Source compilation complete (360 docs, 104K pages, 4 sources) | `notebooks/verify_body.qmd` updated |
-| 2 | ✅ C1 (Measure ID): S0-S3 complete. May require adjustments based on C2 development | `notebooks/c1_measure_id.qmd` |
-| 3 | ✅ C2 (Motivation + Sign): S0-S3 complete; v0.9.1 FROZEN at iter 48 (2026-05-06). Deferred recommendations recorded in `prompts/iterations/c2b.yml` | `notebooks/c2_motivation.qmd` |
-| 4 | Implement C3 (Timing) through H&K S0-S3 — planned, not yet started | `notebooks/c3_timing.qmd` |
-| 5 | Implement C4 (Magnitude) through H&K S0-S3 — planned, not yet started; optional for headline shock series | `notebooks/c4_magnitude.qmd` |
-| 6 | Implement RR6 aggregation, validate against `us_shocks.csv` (extensive-margin, sign correlation, quarter accuracy) | `notebooks/rr6_aggregation.qmd` |
-| 7 | End-to-end pipeline integration and testing | `notebooks/pipeline_integration.qmd` |
+| 2 | ✅ C1 (Measure ID): S0-S3 complete. v0.7.0 multi-measure schema planned (gated on empirical multi-act-frequency scope check, see C0 sequencing plan in delta 2026-05-18) | `notebooks/c1_measure_id.qmd` |
+| 3 | ⏸ C0 (Act Aggregator): planned. Implement through H&K S0-S3 against US gold partition derived from `aligned_data` tier→act mapping. Prerequisite: C1 v0.7.0 multi-measure schema + C2a v0.6.0 per-evidence measure_name attribution. Blocks Phase 2 Malaysia deployment | `notebooks/c0_aggregator.qmd` |
+| 4 | ✅ C2 (Motivation + Sign): S0-S3 complete; v0.9.1 FROZEN at iter 48 (2026-05-06) as **perfect-aggregation upper bound**. After C0 lands, re-validate against iter-47 ground truth (preserving the upper-bound measurement) and measure a new C0-driven **realistic-input lower bound**. Deferred recommendations recorded in `prompts/iterations/c2b.yml` | `notebooks/c2_motivation.qmd` |
+| 5 | Implement C3 (Timing) through H&K S0-S3 — planned, not yet started | `notebooks/c3_timing.qmd` |
+| 6 | Implement C4 (Magnitude) through H&K S0-S3 — planned, not yet started; optional for headline shock series | `notebooks/c4_magnitude.qmd` |
+| 7 | Implement RR6 aggregation, validate against `us_shocks.csv` (extensive-margin, sign correlation, quarter accuracy) | `notebooks/rr6_aggregation.qmd` |
+| 8 | End-to-end pipeline integration and testing | `notebooks/pipeline_integration.qmd` |
 
 ### C1: Measure Identification Blueprint
 
@@ -295,11 +307,17 @@ Chunks with relevance keys but no Tier 1/2 match are excluded from evaluation (a
 
 **Iteration Strategy.** If combined recall <90%: examine FN chunks for context dilution patterns; consider shorter chunk windows or multi-pass detection. If Tier 1 recall <95%: check substring matching in tier identification. If precision <70%: strengthen negative clarifications for fiscal-vocabulary-without-act patterns; add chunk-level negative examples to few-shot.
 
+**Schema v0.7.0 (planned, 2026-05-18).** v0.6.0's "name the most prominent measure" rule is lossy on multi-act chunks (e.g., "unlike Act X, which is blatantly exogenous, Act Y is eagerly endogenous" — evidence from Act Y gets attributed to Act X downstream). v0.7.0 replaces `measure_name: str` with `measures: [{name, country, discusses_motivation, discusses_timing, discusses_magnitude}]`. `measures[0]` is guaranteed to be the most prominent (backwards-compat accessor: downstream code reading `measures[0].name` reproduces v0.6.0 single-name semantics, preserving C2 v0.9.1 freeze reproducibility during the multi-measure transition). The per-measure `country: enum[<deployment>, OTHER]` tag captures country-of-enactment for foreign-comparator filtering at deployment (chunks routinely interleave domestic and comparator policy — the Malaysia consistency test surfaced Japan/India/Australia acts being treated as Malaysian by downstream stages). This work is gated on the empirical multi-act-frequency scope check (Step 1 of the C0 sequencing plan in `docs/deltas.md` 2026-05-18 entry): if multi-act chunk frequency is <5% the refactor is polish; if >20% it is the dominant signal-quality bottleneck and takes priority. S0-S3 re-validation required.
+
 ### C2: Motivation + Sign Blueprint
 
 **Design Rationale (v0.9.0).** C2 outputs a 4-way R&R motivation classification per act, plus a sign of effect on fiscal liabilities, an `enacted` boolean, a confidence label, and a brief reasoning that cites the decisive R&R criterion. The four motivation labels are R&R's own (`SPENDING_DRIVEN`, `COUNTERCYCLICAL`, `DEFICIT_DRIVEN`, `LONG_RUN`); `exogenous` is a derived metric (`motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`) rather than a codebook output. v0.9.0 reverses two earlier architectural decisions: (i) the v0.7.0 binary collapse (`exogenous` as a primary output), which the iter 39/iter 42 S2 runs showed was structurally underpowered (exogenous precision 0.500 — identical at v0.7.0 and v0.8.0); and (ii) the v0.8.0 folding of timing into C2b, which is now reverted — timing returns to a separate downstream codebook (C3, planned but not yet built). What did *not* reverse from v0.8.0: sign and `enacted` stay inside C2b (sign accuracy 0.957 PASS at iter 42 — no regression intended). The unchanged signal: v0.6.x's denser 4-way design hit a structural ceiling (wF1 ≈ 0.66) and overfit (iter 36 evidence-shuffle F–A median-stability gap = −0.333). v0.9.0's hypothesis is that the v0.6.x failure was rule-density and overfit-to-test-set, not class-structure per se: a 4-way design grounded in R&R's own language (made country-agnostic), with edge-case handling embedded inside class clarifications rather than as detached rule paragraphs, and with two specific guardrails targeting v0.8.0's documented failure modes (LONG_RUN recall collapse to 1/15; SPENDING_DRIVEN false positives 5/10), should both recover precision over the 0.500 floor and keep the F–A gap above −0.10.
 
 **Two-stage architecture.** C2 keeps the C2a (per-chunk evidence extraction) → C2b (act-level classification) split. **C2a v0.4.0** is unchanged: a pure extraction codebook (no `classes` block) that emits `evidence[]` (motivation quotes), `enacted_signals[]`, and `timing_signals[]` per chunk. The `timing_signals[]` array is preserved on the C2a side for use by the future C3 codebook; C2b v0.9.0 ignores it. **C2b v0.9.0** receives an act_name, year, evidence array, and enacted-status signals; it returns the v0.9.0 schema below. C3 (when built) and C4 (when built) will consume the same C2a evidence pool, reading `timing_signals[]` and motivation/magnitude evidence respectively.
+
+**Input schema (C2a v0.6.0 planned, 2026-05-18).** Each `evidence[]`, `enacted_signals[]`, and `timing_signals[]` row will carry a `measure_name` field pointing to which measure (from C1 v0.7.0's `measures[]` list) it concerns. C2a is the first place where evidence is attributable to a single act — currently, multi-act chunks have all their extracted evidence collapsed under whichever name C1's "most prominent" rule emitted, mis-attributing secondary-act evidence to the primary act. This work is gated on the C1 v0.7.0 multi-measure schema (see C1 Blueprint > Schema v0.7.0). S1 re-run required.
+
+**C0 act aggregation (between C2a and C2b, planned, 2026-05-18).** C2a outputs (filtered to deployment-country measures via the per-measure `country` tag from C1 v0.7.0) are partitioned into act buckets by the new C0 codebook before reaching C2b. In Phase 0 this aggregation was implicit (the tier system imposed chunk→act mappings via `aligned_data`); in deployment it must be measured explicitly. See C0 Blueprint for the partitioning rules and evaluation framework.
 
 **Output schema (v0.9.0).** `{label: SPENDING_DRIVEN|COUNTERCYCLICAL|DEFICIT_DRIVEN|LONG_RUN, enacted: bool, sign: increase|decrease|no_change, confidence: low|medium|high, reasoning: str}`. Exactly one motivation label per act; mixed-motivation acts follow R&R's "predominant motivation cited at time of passage" rule rather than a multi-label array. Sign refers to the net change in fiscal liabilities (increase = revenue-raising, decrease = revenue-reducing, no_change = revenue-neutral reform). The `reasoning` field is required to cite the decisive R&R criterion (e.g., "applies countercyclical-vs-long-run test: stated motive is to raise potential output despite a recession context") rather than a free narrative. `exogenous` is *not* a codebook field; it is derived downstream as `label ∈ {DEFICIT_DRIVEN, LONG_RUN}`.
 
@@ -332,7 +350,36 @@ Floor to beat (v0.7.0/v0.8.0 baseline): exogenous precision 0.500. Ceiling to ap
 - **S3 manual analysis (iter 47).** 24A / 2B / 0C / 0D / 2E / 11F across 39 acts. Bias-corrected exogenous precision 0.833 (with the 2 B-category "evaluation-framework gap" acts excluded from the denominator); sign accuracy on true-exogenous 0.955 PASSES. The 11 F-cluster acts (LR↔CC borderlines: Revenue Acts 1964/1971/1978/1977-Reduction; CC↔SPENDING: Tax Adjustment 1966, Crude Oil 1980; DD↔SD: Highway 1959; etc.) persist across 4 codebook versions (v0.4.0, v0.5.0, v0.6.1, v0.9.1) and 2 model generations (Sonnet, Haiku) — 8/9 iter-35 F-cluster acts remain F in v0.9.1. Cross-version persistence is the diagnostic signature of structurally borderline R&R-judgment-call cases, resolving the iter-46 ambiguity in favour of borderline-cases (reading-a) over overfit-anchors (reading-b).
 - **S3 automated tests (iter 48).** Test V exclusion-criteria overall consistency 0.789 — combos 1–3 strong (1.000 / 0.923 / 0.923) showing robustness to one-sided perturbation; combo 4 at 0.308 reveals partial — not absolute — `negative_clarification` enforcement. Test VI generic-label substitution: Δacc −0.034, change rate 0.079 (not anchoring on label-name strings). Test VII rotated-definition: follows-names 0.974 vs follows-definitions 0.026 (predictions stick with original label slots despite rotated definitions). Ablation: full 0.667, no_label_def 0.615 (−5.1pp), no_clarifications 0.641 (−2.6pp), all_removed 0.590 (−7.7pp); even all-removed retains 59% on the 4-way task. Combined with VI/VII this is consistent with the model classifying via internalized R&R-style fiscal-policy reasoning from pretraining; the codebook adds modest calibration on top of strong priors.
 - **Required infra fixes.** Two latent v0.7.0+ schema-migration misses in S3 had to be cleared before iter 48 could complete: commit `3642033` (`run_c2_error_analysis` read `pred_motivation` but the producer emits `pred_label`) and commit `4e291a4` (`classify_c2b_batch` extracted via `collapse_motivations(parsed$motivations)` but the v0.9.x output schema is flat `parsed$label`). Both bugs were masked by the no-classes early-return guard through v0.7.0–v0.9.0; v0.9.1's class block exercised them.
-- **FREEZE rationale.** Headline metrics PASS (sign accuracy) and borderline-PASS (exogenous precision) on a small ground-truth set whose remaining errors are dominated by structurally borderline R&R-judgment-call cases. Ablation shows codebook-only intervention has limited remaining headroom on Haiku for this task. The deliverable is country-agnostic by construction and ready for Malaysia (Phase 2) deployment. Three deferred items are recorded in `prompts/iterations/c2b.yml` iter 48 entry (not in this strategy doc): (i) iter 47's minor revision proposal restoring 2 lost rules; (ii) Test V combo 4 partial-exclusion finding as a known zero-shot limitation; (iii) C4 sign-mapping worked-examples requirement.
+- **FREEZE rationale.** Headline metrics PASS (sign accuracy) and borderline-PASS (exogenous precision) on a small ground-truth set whose remaining errors are dominated by structurally borderline R&R-judgment-call cases. Ablation shows codebook-only intervention has limited remaining headroom on Haiku for this task. The deliverable is country-agnostic by construction. Three deferred items are recorded in `prompts/iterations/c2b.yml` iter 48 entry (not in this strategy doc): (i) iter 47's minor revision proposal restoring 2 lost rules; (ii) Test V combo 4 partial-exclusion finding as a known zero-shot limitation; (iii) C4 sign-mapping worked-examples requirement.
+- **Aggregation context for the freeze (added 2026-05-18).** All iter-47 measurements were taken under the perfect upstream aggregation imposed by `aligned_data`'s tier→act mapping. They are the **perfect-aggregation upper bound** on deployment-grade C2 quality. The Malaysia consistency test (`notebooks/malay_consistency.qmd`, 2026-05-17) demonstrated that within-doc Jaro-Winkler clustering — the alternative to imposed labels — fragments rather than aggregates, and that C1's "most prominent measure" rule loses multi-act information that downstream stages need. Deployment-grade C2 quality therefore depends on the new C0 codebook (act aggregator); the gap between the perfect-aggregation upper bound (iter-47 numbers) and the realistic-input lower bound (deployment numbers with C0-driven aggregation) is itself the aggregator-induced degradation metric we want to measure. Phase 2 Malaysia deployment is **blocked on C0 readiness** (see C0 Blueprint).
+
+### C0: Act Aggregator Blueprint
+
+**Design Rationale (2026-05-18).** C0 partitions per-measure C2a evidence into act buckets across documents and languages. The Malaysia consistency test (`notebooks/malay_consistency.qmd`, 2026-05-17) surfaced three coupled pipeline gaps that motivate this codebook: (i) within-document Jaro-Winkler clustering at JW ≤ 0.15 produces fragments rather than acts (threshold-sensitivity confirmed 2015/2016 drift is a clustering artifact while 2017/2018/2020 drift is real extraction asymmetry); (ii) C1 v0.6.0's "most prominent measure" rule is lossy on multi-act chunks, mis-attributing secondary-act evidence to the primary act downstream; (iii) C1 has no country-of-enactment field, so foreign comparators (Japan, India, Australia acts cited inside Malaysian Economic Reports) contaminate every downstream stage. C0 replaces both the planned within-doc dedup step and the cross-document / cross-language matching infrastructure with one Sonnet-based partition step, run once per deployment country. In Phase 0 this aggregation was implicit (the tier system imposed chunk→act mappings via `aligned_data`); deployment requires it to be measured explicitly.
+
+**Position (open S0 design question).** Recommended starting hypothesis: C0 runs between C2a (per-measure evidence extraction) and C2b (act-level classification). This minimizes C2b cost (one classification per act bucket, on unified evidence) and avoids re-running C2a on aggregated inputs. The pre-C2a alternative (aggregate first, then run C2a once per act) minimizes C2a cost instead but loses C2a's evidence-sharpening signal during aggregation. Final position decided in S0 design after cost arithmetic at SEA scale; the choice does not affect the output schema below.
+
+**Input.** Filtered C2a rows per deployment country, after the foreign-comparator filter (`country == <deployment>` where `country` is the per-measure tag emitted by C1 v0.7.0). Each input row carries: `doc_id`, `doc_year`, `doc_language`, `measure_name` (the C2a per-evidence attribution from C2a v0.6.0), `measure_type` (from C1), `year_enacted` (from C2a `timing_signals[]` or `enacted_signals[]`), `amount` (when extracted), and a brief evidence excerpt (1-2 sentences from C2a `evidence[]`). One aggregator call per country — the per-country filter is what makes regional scalability tractable. OTHER-country rows are retained in the corpus but bypassed from the aggregator to preserve diagnostic optionality.
+
+**Output.** A partition: `{act_id (stable hash), canonical_name, members: [(doc_id, chunk_id, measure_name)], confidence, rationale}` per act bucket. `members` is what allows downstream code to join back to chunks and evidence. The aggregator must also flag any input rows it could not confidently assign to a bucket (`UNCERTAIN` bucket — defer to a single-member bucket rather than guess-merge).
+
+**S0 Codebook Design.** Codebook + decision rules covering omnibus operationalization, foreign-filter behavior, output schema, and the uncertain-fallback rule. Omnibus operationalization is the most contested rule: competing hypotheses are "same motivation = same act" (motivation-driven, splits omnibus packages with mixed motivations into separate buckets) and "same act name dominates regardless of motivation" (name-dominant, keeps omnibus packages whole). RR sometimes treat omnibus packages with distinct motivations as one act (e.g., TRA-1986), which would mechanically fail the motivation-driven rule on `aligned_data` gold. Final definition deferred to S0 drafting and a Phase-0 gold-partition audit of how `aligned_data` actually treats omnibus components. The aggregator reads motivation evidence from C2a `evidence[]` excerpts (not from C2b, which runs downstream) — this prevents circularity but depends on C2a having extracted motivation-bearing prose per measure.
+
+**S1 Behavioral Tests.** Test I (legal outputs): every input row appears in exactly one bucket; bucket schemas validate; `members` references resolve. Test II (definition recovery): synthetic input rows constructed from the codebook's omnibus and foreign-filter rules; C0 must produce the expected partition. Test III: N/A (no in-context examples in first cut). **Test IV — order invariance (critical for clustering):** partition unchanged under three input row shuffles (original / reversed / random). Adjusted Rand Index between partitions ≥ 0.95 (effectively identity if temp=0 is honoured). Rerun stability at temp=0: identical partition across 3 repeated calls on identical input. If stability fails, post-processing canonicalisation (deterministic sort + hash) on raw Sonnet similarity output is the fallback.
+
+**S2 Zero-Shot Eval.** Ground truth: the gold partition derived from `aligned_data`'s tier→act mapping (after the Phase-0 ground-truth audit confirms whether multi-act chunks are supported; if not, gold may need re-curation). Run C0 on Phase-0 C1 v0.7.0 + C2a v0.6.0 outputs *without* imposing labels, then compare the produced partition to gold. Clustering metrics: Adjusted Rand Index (ARI), V-measure (homogeneity + completeness), per-act partition recall (fraction of labeled acts that form a bucket containing all their gold members), per-act partition precision (fraction of bucket members truly belonging to that act). Bootstrap 1000 resamples at the act-level resampling unit for 95% CIs. Foreign-comparator filter precision and recall measured separately (on chunks tagged country=OTHER vs. country=domestic in gold). Thresholds TBD in S0 design — clustering metrics for fiscal-act partitioning do not have established benchmarks in the fiscal-policy literature, so the S0 process will set targets after a baseline run.
+
+**S3 Error Analysis Plan.** Split/merge taxonomy on Phase-0 gold partition: which acts get split into multiple buckets (over-fragmentation); which buckets pool multiple gold acts (over-aggregation); which omnibus packages are mis-handled. Foreign-comparator filter false positives (domestic acts mis-tagged OTHER) and false negatives (comparator acts mis-tagged domestic). Manual review on the largest splits and merges following the H&K A-F taxonomy adapted for clustering.
+
+**Iteration Strategy.** Step 0: audit `R/identify_chunk_tiers.R` for multi-act chunk handling (per delta 2026-05-18 sequencing-plan Step 2). This determines whether the gold partition supports the multi-measure C1 variant or needs re-curation. One change per iteration. Iteration log: `prompts/iterations/c0.yml`. If ARI is low and splits dominate: relax omnibus rule toward name-dominant. If ARI is low and merges dominate: tighten distinguishing-feature rules in the codebook. If order invariance fails: enforce temp=0 + deterministic post-processing. If foreign-filter precision is low: tighten C1 v0.7.0's country-tag clarifications rather than C0 itself (country tagging is C1's responsibility; C0 only filters).
+
+**Open Issues.**
+
+- **Pipeline position** (between C2a and C2b vs. pre-C2a). Recommended starting hypothesis is between-C2a-and-C2b on cost grounds; pre-C2a remains valid for S0 evaluation against SEA-scale cost arithmetic.
+- **Omnibus operationalization.** Motivation-driven vs. name-dominant; final rule deferred to S0 drafting and gold-partition audit.
+- **SEA-scale token budget.** Malaysia (~99 docs) fits one Sonnet call; Philippines / Indonesia / Thailand / Vietnam may approach 200K tokens. Hybrid retrieval+verify (multilingual embeddings cluster candidates, LLM verifies) is the fallback if single-pass overflows.
+- **OTHER-country retention.** Provisional decision: retain in corpus, bypass from aggregator. Revisit if diagnostic value proves negligible.
+- **Output stability fallback.** If temp=0 alone is insufficient, deterministic post-processing on raw Sonnet similarity output.
 
 ---
 
@@ -340,11 +387,18 @@ Floor to beat (v0.7.0/v0.8.0 baseline): exogenous precision 0.500. Ceiling to ap
 
 ### Codebooks (`/prompts/`)
 
-- ✅ `c1_measure_id.yml` (v0.6.0)
-- ✅ `c2a_extraction.yml` — per-chunk motivation, enacted-status, and timing evidence extraction (v0.4.0; `timing_signals[]` retained for future C3)
-- ✅ `c2b_classification.yml` — act-level 4-way R&R motivation classification + sign + `enacted` (v0.9.0; `exogenous` derived as `motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`)
+- ✅ `c1_measure_id.yml` (v0.6.0; v0.7.0 multi-measure schema planned 2026-05-18 — `measures[]` array + per-measure `country` tag; see C1 Blueprint > Schema v0.7.0)
+- ✅ `c2a_extraction.yml` — per-chunk motivation, enacted-status, and timing evidence extraction (v0.4.0; `timing_signals[]` retained for future C3; v0.6.0 per-evidence `measure_name` attribution planned 2026-05-18; see C2 Blueprint > Input schema)
+- ✅ `c2b_classification.yml` — act-level 4-way R&R motivation classification + sign + `enacted` (v0.9.1 FROZEN at iter 48, 2026-05-06; `exogenous` derived as `motivation ∈ {DEFICIT_DRIVEN, LONG_RUN}`)
+- ⏸ `c0_aggregator.yml` — cross-document act-aggregator codebook (planned 2026-05-18; partitions per-measure C2a evidence into act buckets; see C0 Blueprint)
 - ⏸ `c3_timing.yml` — act-level implementation quarter extraction from C2a's `timing_signals[]` (planned, not yet built)
 - ⏸ `c4_magnitude.yml` — act-level dollar-magnitude extraction (planned, not yet built; optional for headline shock series)
+
+### Supporting files (planned for C0)
+
+- ⏸ `R/c0_aggregator.R` — partition assembly, foreign-comparator filter, gold-partition evaluation helpers
+- ⏸ `notebooks/c0_aggregator.qmd` — H&K S0-S3 reporting notebook for C0
+- ⏸ `prompts/iterations/c0.yml` — iteration log
 
 ### H&K Stage Functions (`/R/`)
 
@@ -379,6 +433,7 @@ Concrete target definitions for the C1+C2 codebook evaluation pipeline, replacin
 tar_target(c1_codebook, load_validate_codebook("prompts/c1_measure_id.yml"))
 tar_target(c2a_codebook, load_validate_codebook("prompts/c2a_extraction.yml"))
 tar_target(c2b_codebook, load_validate_codebook("prompts/c2b_classification.yml"))
+tar_target(c0_codebook, load_validate_codebook("prompts/c0_aggregator.yml"))  # planned
 
 # C1: Measure ID pipeline
 tar_target(c1_s1_results, run_behavioral_tests_s1(c1_codebook, aligned_data))
@@ -387,13 +442,30 @@ tar_target(c1_s2_results, run_zero_shot(c1_codebook, c1_s2_test_set))
 tar_target(c1_s2_eval, evaluate_zero_shot(c1_s2_results, aligned_data))
 tar_target(c1_s3_results, run_error_analysis(c1_codebook, c1_s3_test_set, aligned_data))
 
-# C2: Motivation + Sign + Timing pipeline (two-codebook architecture)
+# C2: Motivation + Sign pipeline (two-codebook architecture; C0 inserts between C2a and C2b)
 # S1: independent behavioral tests per sub-codebook
 tar_target(c2_input_data, assemble_c2_input_data(c1_classified_chunks))
 tar_target(c2a_s1_results, run_c2a_behavioral_tests_s1(c2a_codebook, c2_input_data))
 tar_target(c2b_s1_results, run_c2b_behavioral_tests_s1(c2b_codebook))
-# S2/S3: end-to-end evaluation of composed C2a→C2b pipeline
-tar_target(c2_s2_results, run_zero_shot(c2a_codebook, c2b_codebook, c2_s2_test_set))
+
+# C2a: per-chunk evidence extraction (per-evidence measure_name attribution under v0.6.0)
+tar_target(c2a_evidence, run_c2a(c2a_codebook, c2_input_data))
+
+# C0 (planned): foreign-comparator filter + cross-document act aggregation
+tar_target(
+  c2a_evidence_filtered,
+  filter_by_country(c2a_evidence, country = "US")  # deployment country
+)
+tar_target(c0_s1_results, run_c0_behavioral_tests_s1(c0_codebook, c2a_evidence_filtered))
+tar_target(c0_s2_test_set, assemble_c0_gold_partition(aligned_data))
+tar_target(c0_s2_results, run_c0_aggregator(c0_codebook, c2a_evidence_filtered))
+tar_target(c0_s2_eval, evaluate_partition(c0_s2_results, c0_s2_test_set))  # ARI, V-measure, per-act recall/precision
+tar_target(c0_s3_results, run_c0_error_analysis(c0_codebook, c0_s2_results, c0_s2_test_set))
+tar_target(c0_act_partition, c0_s2_results$partition)  # downstream consumer
+
+# C2b: act-level classification on C0 buckets
+# S2/S3: end-to-end evaluation of composed C2a → C0 → C2b pipeline
+tar_target(c2_s2_results, run_c2b(c2b_codebook, c0_act_partition, c2a_evidence_filtered))
 tar_target(c2_s3_results, run_error_analysis(c2a_codebook, c2b_codebook, c2_s3_test_set))
 
 # Aggregation (RR6): cross-tabulate exogenous-flagged acts by enacted_quarter[]
@@ -419,6 +491,7 @@ The entire pipeline is designed for **country-agnostic transfer**. This means:
 | Component | Transfer Quality | Risk |
 |-----------|-----------------|------|
 | Motivation categories (C2) | High | Low |
+| Act aggregation (C0, planned) | Medium | Medium — multilingual partition quality depends on Sonnet's cross-language semantic matching; gold-partition eval is on EN-only US data and may not capture BM/Bahasa Indonesia drift |
 | Timing extraction (C3, planned) | High | Low — date arithmetic and midpoint rule are universal |
 | Sign of effect (folded into C2b) | High | Low — direction labels generalize |
 | Magnitude extraction (C4, planned) | Medium | Currency normalisation and reporting conventions vary |
@@ -440,9 +513,9 @@ The entire pipeline is designed for **country-agnostic transfer**. This means:
 ### Per Codebook
 
 1. **S0 Complete:** Codebook YAML reviewed by domain expert
-2. **S1 Pass:** All behavioral tests pass thresholds
-3. **S2 Baseline:** Zero-shot metrics computed and documented
-4. **S3 Complete:** Error analysis report with patterns identified
+2. **S1 Pass:** All behavioral tests pass thresholds (for C0: legal outputs, order invariance, rerun stability)
+3. **S2 Baseline:** Zero-shot metrics computed and documented (for C0: partition quality against US gold partition; thresholds TBD in S0)
+4. **S3 Complete:** Error analysis report with patterns identified (for C0: split/merge taxonomy, foreign-filter precision/recall)
 5. **S4 Decision:** Fine-tuning triggered only if codebook improvements exhausted
 
 ### Phase 1: US Full Production
@@ -457,6 +530,7 @@ The entire pipeline is designed for **country-agnostic transfer**. This means:
 
 ### Phase 2: Malaysia Pilot
 
+0. **Prerequisite (2026-05-18): C0 (Act Aggregator) validated against US gold partition.** Phase 2 deployment is blocked on C0 readiness — the Malaysia consistency test demonstrated that the deployment pipeline cannot rely on the imposed chunk→act mapping that `aligned_data` provided in Phase 0. See C0 Blueprint and `docs/phase_1/malaysia_strategy.md`.
 1. Run pipeline on Malaysia documents (1980-2022)
 2. Expert agreement ≥80% on measure identification
 3. Expert agreement ≥70% on motivation classification
@@ -473,6 +547,7 @@ The entire pipeline is designed for **country-agnostic transfer**. This means:
 - **Incremental validation**: Each codebook validated before proceeding to next
 - **C2 two-stage architecture**: Evidence extraction per chunk (C2a), then act-level classification from extracted evidence (C2b) — fits any context window, compresses signal, enables C1/C2 error decomposition
 - **Sign folded into C2b; timing and magnitude as separate downstream codebooks**: C2b v0.9.0 emits motivation (4-way) + sign + `enacted`. Timing returns to a planned C3 codebook (consuming C2a's `timing_signals[]`); full dollar magnitude returns to a planned C4 codebook. The 2026-05-02 decision to fold C3/C4 into C2b is partially reversed — sign stays, timing/magnitude leave. Rationale: v0.7.0/v0.8.0's binary-output design hit a 0.500 exogenous-precision floor that 4-way restoration aims to break, and the H&K framework expects one classification task per codebook for clean ablation; bundling all four R&R steps into one prompt diluted attention. The signed quarterly proxy `z ∈ {-1, 0, +1}` (Das et al. deliverable) requires C1 + C2 + C3; full dollar-magnitude reproduction additionally requires C4.
+- **Cross-document act aggregation as a fifth codebook (C0)** (2026-05-18): the Malaysia consistency test (`notebooks/malay_consistency.qmd`, 2026-05-17) demonstrated that within-doc Jaro-Winkler clustering is the upstream bottleneck of the deployment pipeline (fragments not acts; threshold-sensitivity confirmed the failure mode), C1's "most prominent measure" rule is lossy on multi-act chunks, and foreign comparators (Japan/India/Australia inside Malaysian ERs) contaminate downstream stages without a country-of-enactment filter. C0 replaces both the planned within-doc dedup and the cross-doc/cross-language matching infrastructure with one Sonnet-based partition step, run once per deployment country. Pipeline position (between C2a and C2b vs. pre-C2a) is an open S0 design question. C2 v0.9.1's iter-47 freeze numbers are reframed as the **perfect-aggregation upper bound**; deployment metrics with C0-driven aggregation establish the **realistic-input lower bound**, and the gap quantifies aggregator-induced degradation as a measurement in its own right. Phase 2 Malaysia deployment is blocked on C0 validation against the US gold partition. Companion C1 v0.7.0 (multi-measure schema + per-measure country tag) and C2a v0.6.0 (per-evidence measure_name attribution) are planned upstream changes that supply C0's input.
 
 ---
 
