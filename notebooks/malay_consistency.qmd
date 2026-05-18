@@ -9,7 +9,8 @@ date-format: long
 #| label: setup
 #| cache: false
 
-pacman::p_load(targets, tidyverse, tinytable, here, stringr)
+pacman::p_load(targets, tidyverse, tinytable, here, stringr,
+               stringdist, patchwork)
 
 here::i_am("notebooks/malay_consistency.qmd")
 tar_config_set(store = here("_targets"))
@@ -81,6 +82,131 @@ m$level1 |>
   tt_theme_report()
 ```
 
+## Diagnostic: within-document name variance
+
+The Level 1 drift counts depend entirely on the JW threshold (0.15) that groups near-duplicate `measure_name` strings into clusters within a single document. If JW fails to merge what is actually the same fiscal measure, the cluster count is inflated and apparent cross-language drift may be a clustering artifact rather than a real extraction asymmetry.
+
+The figures below show, for each document, the pairwise JW distance matrix among the distinct `measure_name` strings C1 produced. Cells in the bottom band (JW < 0.15) were merged into one cluster by the pipeline. Cells in the middle band (0.15 ≤ JW < 0.30) are the *near-miss* zone — same measure with verbose-vs-bare phrasing, swapped word order, or a parenthetical translation in one chunk but not another. Cells in the top band (JW ≥ 0.30) are genuinely distinct measures.
+
+Read each heatmap together with its numbered measure list (printed below it). Off-diagonal cells just above the 0.15 threshold linking semantically-identical names are the failure cases that drive over-fragmentation.
+
+```{r}
+#| label: fig-jw-within-doc
+#| fig-cap: "Pairwise Jaro-Winkler distance among distinct C1 measure names within each document. Red cells (JW < 0.15) were merged; orange cells (0.15-0.30) are near-misses that did not merge but plausibly should have; blue cells (≥ 0.30) are distinct."
+#| fig-width: 11
+#| fig-height: 6
+#| warning: false
+
+jw_band_fill <- ggplot2::scale_fill_stepsn(
+  colours = c("#b2182b", "#f4a582", "#92c5de", "#2166ac"),
+  breaks  = c(0.15, 0.30, 0.45),
+  limits  = c(0, 0.6),
+  oob     = scales::squish,
+  name    = "JW"
+)
+
+make_jw_panel <- function(yr, lang) {
+  measures <- malay_er_clusters |>
+    filter(year == yr, doc_language == lang) |>
+    distinct(measure_name) |>
+    pull(measure_name)
+  n <- length(measures)
+  if (n < 2L) return(NULL)
+
+  dm <- stringdist::stringdistmatrix(measures, measures, method = "jw")
+  df <- tidyr::expand_grid(i = seq_len(n), j = seq_len(n)) |>
+    mutate(jw = dm[cbind(i, j)]) |>
+    filter(j >= i)
+
+  heat <- ggplot(df, aes(j, i, fill = jw)) +
+    geom_tile(colour = "white", linewidth = 0.4) +
+    geom_text(aes(label = sprintf("%.2f", jw)),
+              colour = ifelse(df$jw < 0.30, "white", "black"),
+              size = 3) +
+    jw_band_fill +
+    scale_x_continuous(breaks = seq_len(n), position = "top",
+                       expand = c(0, 0)) +
+    scale_y_reverse(breaks = seq_len(n), expand = c(0, 0)) +
+    coord_fixed() +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 10) +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(face = "bold"))
+
+  legend_df <- tibble(
+    y = rev(seq_len(n)),
+    label = sprintf("%d. %s", seq_len(n),
+                    stringr::str_trunc(measures, 95))
+  )
+  legend <- ggplot(legend_df, aes(x = 0, y = y, label = label)) +
+    geom_text(hjust = 0, size = 3, family = "mono") +
+    scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0.5, n + 0.5), expand = c(0, 0)) +
+    theme_void()
+
+  combined <- heat + legend +
+    patchwork::plot_layout(widths = c(1, 1.4)) +
+    patchwork::plot_annotation(
+      title = sprintf("%d %s — %d distinct C1 measure names",
+                      yr, toupper(lang), n)
+    )
+  combined
+}
+
+panels <- list()
+for (yr in sort(unique(malay_er_clusters$year))) {
+  for (lang in c("en", "bm")) {
+    p <- make_jw_panel(yr, lang)
+    if (!is.null(p)) panels[[paste(yr, lang)]] <- p
+  }
+}
+for (p in panels) print(p)
+```
+
+### Threshold sensitivity of Level 1 drift
+
+The JW threshold (0.15) is the single tuning parameter behind Level 1. If apparent drift is sensitive to relaxing this threshold, the drift figure is a clustering artifact rather than evidence about cross-language model behaviour. The table below re-runs the same single-linkage hierarchical clustering on the same C1 `measure_name` strings at progressively looser thresholds, holding everything else fixed.
+
+```{r}
+#| label: tbl-threshold-sensitivity
+#| tbl-cap: "Signed drift (BM − EN) at varying JW thresholds. Production setting is JW ≤ 0.15 (leftmost column). A drift figure that collapses toward zero at relaxed thresholds was a clustering artifact; a drift figure that persists is a real extraction asymmetry."
+
+recluster_doc <- function(measures, threshold) {
+  measures <- unique(measures)
+  if (length(measures) <= 1L) return(length(measures))
+  d <- stringdist::stringdistmatrix(measures, measures, method = "jw") |>
+    stats::as.dist()
+  length(unique(stats::cutree(stats::hclust(d, method = "single"),
+                              h = threshold)))
+}
+
+thresholds <- c(0.15, 0.20, 0.25, 0.30, 0.35)
+
+threshold_sensitivity <- malay_er_clusters |>
+  group_by(doc_id, year, doc_language) |>
+  summarize(measures = list(measure_name), .groups = "drop") |>
+  tidyr::crossing(threshold = thresholds) |>
+  mutate(n_clusters = purrr::map2_int(measures, threshold, recluster_doc)) |>
+  select(year, doc_language, threshold, n_clusters) |>
+  tidyr::pivot_wider(names_from = doc_language, values_from = n_clusters,
+                     values_fill = 0L) |>
+  mutate(drift = bm - en)
+
+threshold_sensitivity |>
+  transmute(year,
+            col = sprintf("JW ≤ %.2f", threshold),
+            cell = sprintf("%+d  (%d/%d)", drift, en, bm)) |>
+  tidyr::pivot_wider(names_from = col, values_from = cell) |>
+  rename(Year = year) |>
+  tt() |>
+  tt_theme_report()
+```
+
+Each cell shows `drift  (n_EN/n_BM)`. Two patterns to read:
+
+- **Clustering-driven drift (years that collapse toward 0 as threshold relaxes)**: 2015 and 2016 are textbook artifacts — both drop to zero or near-zero at JW ≤ 0.20. 2014 and 2019 are partial artifacts.
+- **Real extraction asymmetry (years robust to threshold)**: 2017, 2018, and 2020 show drift that survives even at JW ≤ 0.30. These are not clustering failures and warrant a separate explanation. Cross-referencing the within-doc heatmaps above: 2020 EN contains several non-Malaysian comparator clusters (Japan, India, Australia stimulus packages), 2017 BM shows the same contamination on the BM side (Japan, Sukuk issuance), and 2018 BM extracted only 2 clusters from a full Economic Report — a suspiciously low recall figure unrelated to clustering. These residuals are tractable but require upstream fixes (country-of-enactment tagging in C1; investigation of the 2018 BM recall) rather than JW-threshold tuning.
+
 ## Level 2: Pairwise matching
 
 Per year, Sonnet proposes candidate EN ↔ BM cluster matches with confidence labels. A human reviewer reads the candidates CSV and produces a curated CSV with the matches they accept. This section's match rate is `n_curated / n_proposed`; `n_human_overrides` is the count of LLM-proposed matches the human rejected (a matcher-bias diagnostic).
@@ -126,6 +252,10 @@ if (curated_pending) {
 }
 ```
 
+This iteration accepted 27 of 28 LLM-proposed pairs and added zero matches manually. The single rejection is the 2014 passport-fee/omnibus row (EN cluster 4 ↔ BM cluster 3) where Sonnet paired a single-measure EN cluster with a multi-measure BM cluster spanning four unrelated programmes. The 96.4% match rate is a high-confidence Sonnet performance number on a small sample.
+
+Zero human-added matches is itself an interpretive finding rather than evidence of complete Sonnet recall. Several `bm_unmatched` clusters share semantic content with EN omnibus clusters. For example, BM 1 in 2014 (`Subsidi Bahan Api` / `Subsidi Gula`) overlaps thematically with EN 1 (the 2013 Budget omnibus, which mentions fuel and sugar subsidy reduction inside its prose), but EN 1 was already paired with BM 2 (the BM 2013 Budget omnibus). The decision not to manually pair these fragments reflects an upstream clustering asymmetry: BM tends to fragment a single fiscal act into multiple measure-name clusters (subsidies broken out separately from the budget envelope), while EN tends to keep them aggregated. There is no clean 1-to-1 manual match available when the underlying clusters are not 1-to-1 acts.
+
 ### Candidate matches per year
 
 ```{r}
@@ -157,6 +287,20 @@ For each year, the EN and BM cluster lists side-by-side, with canonical names an
 #| label: per-year-side-by-side
 #| results: 'asis'
 
+render_side <- function(df, label) {
+  cat(sprintf("::: {}\n\n**%s**\n\n", label))
+  if (nrow(df) == 0L) {
+    cat("_(no clusters)_\n\n")
+  } else {
+    tbl <- df |>
+      transmute(`ID` = cluster_id, `Canonical name` = canonical_name) |>
+      tt() |> tt_theme_report()
+    cat(knitr::knit_print(tbl))
+    cat("\n\n")
+  }
+  cat(":::\n\n")
+}
+
 if (nrow(malay_er_clusters) > 0L) {
   for (yr in sort(unique(malay_er_clusters$year))) {
     en_side <- malay_er_clusters |>
@@ -169,20 +313,10 @@ if (nrow(malay_er_clusters) > 0L) {
       arrange(cluster_id)
 
     cat(sprintf("\n#### %d\n\n", yr))
-    cat(":::: {layout-ncol=2}\n\n")
-    cat("**EN**\n\n")
-    if (nrow(en_side) == 0L) cat("_(no clusters)_\n\n") else {
-      en_side |>
-        transmute(`ID` = cluster_id, `Canonical name` = canonical_name) |>
-        tt() |> tt_theme_report() |> print()
-    }
-    cat("\n**BM**\n\n")
-    if (nrow(bm_side) == 0L) cat("_(no clusters)_\n\n") else {
-      bm_side |>
-        transmute(`ID` = cluster_id, `Canonical name` = canonical_name) |>
-        tt() |> tt_theme_report() |> print()
-    }
-    cat("\n::::\n\n")
+    cat("::::: {layout-ncol=2}\n\n")
+    render_side(en_side, "EN")
+    render_side(bm_side, "BM")
+    cat(":::::\n\n")
   }
 }
 ```
@@ -216,6 +350,18 @@ if (curated_pending || m$level3$n_pairs == 0L) {
     tt() |> tt_theme_report()
 }
 ```
+
+Three of the 10 disagreement rows on this run are curation artifacts where the matched cluster pair is not actually the same fiscal act:
+
+- **Pair 19 (2019):** EN = Japan sales tax increase; BM = Tax Reform for Acceleration and Inclusion Act (Philippines). Two foreign comparators that should both have been filtered out of the Malaysian corpus upstream.
+- **Pair 26 (2022):** EN = Fiscal Responsibility Act; BM = MySDG Trust Fund. Different acts.
+- **Pair 27 (2022):** EN = Sales Tax Exemption for Passenger Cars; BM = PEMULIH (COVID assistance). Different policies, same year.
+
+Reclassifying those three pairs as non-matches moves the headline to 70.8% label / 70.8% sign agreement on n = 24, just touching the Phase 2 C2 expert-agreement floor (≥70%) but with a CI still too wide for this test to resolve readiness on its own.
+
+The Phase-2 readiness question is also confounded by an upstream issue independent of curation. The C1 → C2a → within-doc clustering chain produces fragmented clusters that are not 1-to-1 with fiscal acts (see the within-doc heatmaps above). When Sonnet matches a BM omnibus cluster to an EN omnibus cluster, the BM omnibus has often had its deficit-driven instruments (subsidy cuts, cash transfers, levies) split off into separate clusters that go unmatched, while the EN side concatenates the full act. C2b is therefore reading asymmetric evidence on the two sides: the EN side sees a complete picture of the act, the BM side sees a fragment with the deficit-driven content removed. Apparent cross-language disagreement is partly a consequence of this asymmetric input rather than evidence about cross-language model behaviour.
+
+The robust finding underneath the noise is that Haiku's motivation classification lands on the same label across languages 63% of the time *despite* the asymmetric inputs. With clean cluster matches, the rate is likely higher. This is a robustness statement about C2b useful for deployment confidence on its own terms; the headline agreement rates as currently computed are better read as an upper bound on cross-language noise than as a measurement of cross-language model behaviour.
 
 ### Confusion matrix (EN labels vs BM labels)
 
@@ -270,11 +416,13 @@ if (curated_pending || nrow(m$per_pair) == 0L) {
 
 ## Direction of disagreement
 
-The value of this test is in the *pattern* of disagreement, not the headline rate. Quick reads to do once Level 3 is populated:
+The value of this test is in the *pattern* of disagreement, not the headline rate. Three patterns surface in the confusion matrix for this run:
 
-- **Label skew.** Is BM systematically less likely to call something COUNTERCYCLICAL, or more likely to call something LONG_RUN? Compare row sums vs column sums of the confusion matrix.
-- **Sign skew.** Are sign disagreements concentrated on `0 ↔ +` or `0 ↔ -` (the model is unsure about magnitude direction) versus `+ ↔ -` (the model is flipping direction, much more concerning)?
-- **Confidence asymmetry.** Are BM-side confidences systematically lower than EN-side? If so, the deployed model is uncertain about BM content, which is itself useful information.
+- **BM-side LONG_RUN over-representation.** The dominant off-diagonal cell is DEFICIT_DRIVEN (EN) → LONG_RUN (BM) at 4 pairs, with two secondary cells in the same direction: COUNTERCYCLICAL (EN) → LONG_RUN (BM) at 2 pairs, and LONG_RUN (EN) → SPENDING_DRIVEN (BM) at 2 pairs. The BM column total for LONG_RUN is 15 vs an EN row total of 12. The directional reading is that BM reaches for the long-run/structural label more readily than EN.
+- **Plausibly a clustering artifact, not a model bias.** If the BM omnibus cluster that gets matched to EN systematically excludes the deficit-driven instruments (subsidies, cash transfers) split off into separate clusters, the BM-side evidence base is depleted of deficit-driven framing and reads more structural by construction. Testing this requires pulling the per-side evidence for the 4 DEFICIT_DRIVEN→LONG_RUN pairs and checking whether the unmatched BM fragments in those years contain the deficit-driven content. If they do, the directional finding dissolves into clustering asymmetry; if they don't, a BM-side model bias survives the artifact.
+- **Sign-only disagreements (3 pairs) are cleaner signal.** Pair 2 (3G smartphone rebate, both LONG_RUN, EN +, BM −), pair 7 (subsidy rationalisation, both DEFICIT_DRIVEN, EN −, BM +), and pair 27 (likely curation error, see above). Two are likely BM-side direction-reasoning failures: subsidy reduction is fiscally contractionary, so EN's `-` is correct on pair 7; a rebate is expansionary, so EN's `+` is correct on pair 2.
+
+The `both_high_confidence` column in the disagreement table below sorts as a no-op because of a vectorisation bug in [malay_consistency.R:752](R/malay_consistency.R#L752) (`identical()` on a vector returns FALSE for any length > 1). Confidence asymmetry between EN and BM is therefore not yet readable from this notebook.
 
 ::: {.callout-note title="Methodological caveat: translation, not independent source"}
 The BM Economic Reports are MoF translations of the EN versions, not independent fiscal-policy statements. This has two consequences for how to read Level 3:
@@ -300,6 +448,18 @@ if (!curated_pending && nrow(m$per_pair) > 0L) {
               sum(pp$bm_confidence == "high", na.rm = TRUE), nrow(pp)))
 }
 ```
+
+## Iteration synthesis
+
+This iteration's primary deliverable is the diagnosis of where the pipeline breaks, not the headline agreement rates. Three findings, in order of load-bearing:
+
+1. **Within-doc measure-name clustering is the upstream bottleneck.** The JW ≤ 0.15 cluster step is producing fragments rather than acts. The within-doc heatmaps make this directly visible: many near-miss cells in the 0.15-0.30 band, particularly on the BM side. Fragmentation propagates downstream. Cross-language matching is overspecified at the cluster level rather than the act level, and C2b reads asymmetric evidence on the two sides because BM tends to fragment what EN aggregates. The Level 2 candidate quality and Level 3 disagreement patterns are partly artifacts of this upstream failure rather than evidence about cross-language model behaviour.
+2. **C2b classification is robust to degraded inputs.** Despite asymmetric evidence on the two sides, Haiku's motivation labels agree 63% of the time and signs agree 74% of the time. With clean cluster matches, the rate is likely higher. This is a robustness statement about the deployed model, useful for cross-language deployment confidence on its own terms.
+3. **The Phase-2 readiness question is unresolved.** The agreement rates as currently computed are an upper bound on cross-language noise because clustering noise is folded in, so they cannot resolve whether the BM-only deployment clears the ≥70% expert-agreement floor on C2. The test becomes diagnostic once clustering is fixed.
+
+The cheapest directional test of finding (1) is to re-run Levels 2 and 3 at relaxed JW thresholds (0.25, 0.30) using existing infrastructure. The threshold-sensitivity table earlier in this notebook shows the within-doc clustering effect on Level 1 drift; an analogous sweep at Level 3 would tell us whether the disagreement pattern is clustering-driven (rates climb when threshold relaxes) or model-driven (rates flat). The one-time re-curation cost is real but bounded: cluster IDs change across re-clustering runs, so the curated CSV needs to be redone, but a relaxed-threshold run produces fewer clusters per year and the second curation pass is faster than the first.
+
+A more architectural alternative is to push canonicalisation into C1 itself rather than papering over name variance downstream. Two downstream variants are also available: tightening the JW threshold parameter (cheap, mechanical) and replacing the JW step with a Sonnet-based dedup pass between `c2a_evidence` and `clusters` (more expensive, robust to phrasing variance). The cheap threshold sweep above informs which is worth building.
 
 ## Implications for deployment scope
 
