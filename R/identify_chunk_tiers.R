@@ -641,6 +641,52 @@ assemble_c1_chunk_data <- function(c1_chunk_tiers, chunks,
 }
 
 
+#' Derive multi-act chunks for C1 v0.7.0 under-listing diagnostic
+#'
+#' Identifies chunks whose Tier 1 ground truth contains >= `min_acts` distinct
+#' labeled act names. These are chunks that legitimately discuss multiple acts
+#' from `aligned_data`; the C1 v0.7.0 multi-measure schema's central failure
+#' mode is collapsing two such acts into one `measures[]` entry. Test input
+#' for `test_under_listing()`.
+#'
+#' @param c1_chunk_data List from `assemble_c1_chunk_data()` with `$tier1`
+#'   containing chunk_id, doc_id, text, act_name, year (one row per
+#'   chunk × labeled act).
+#' @param min_acts Integer minimum distinct acts per chunk (default 2L)
+#' @return Tibble with `chunk_id`, `doc_id`, `text`, `year`, `expected_acts`
+#'   (list-column of character vectors), `n_expected` (integer). One row per
+#'   multi-act chunk.
+#' @export
+derive_multi_act_chunks <- function(c1_chunk_data, min_acts = 2L) {
+  tier1 <- c1_chunk_data$tier1
+  if (is.null(tier1) || nrow(tier1) == 0L) {
+    return(tibble::tibble(
+      chunk_id = integer(0), doc_id = character(0),
+      text = character(0), year = integer(0),
+      expected_acts = list(), n_expected = integer(0)
+    ))
+  }
+
+  grouped <- tier1 |>
+    dplyr::group_by(chunk_id, doc_id) |>
+    dplyr::summarise(
+      text          = dplyr::first(text),
+      year          = dplyr::first(year),
+      expected_acts = list(unique(act_name)),
+      n_expected    = dplyr::n_distinct(act_name),
+      .groups       = "drop"
+    ) |>
+    dplyr::filter(n_expected >= min_acts)
+
+  message(sprintf(
+    "derive_multi_act_chunks: %d chunks with >= %d distinct Tier-1 acts",
+    nrow(grouped), min_acts
+  ))
+
+  grouped
+}
+
+
 #' Prepare C1 chunk-based evaluation data
 #'
 #' Orchestrator that calls tier identification functions and returns

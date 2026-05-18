@@ -80,20 +80,26 @@ run_error_analysis <- function(codebook,
                                max_tokens = 1024,
                                provider = "anthropic",
                                base_url = NULL,
-                               api_key = NULL) {
+                               api_key = NULL,
+                               country_iso = "US",
+                               multi_act_chunks = NULL) {
 
-  message("Running S3 error analysis...")
+  message(sprintf("Running S3 error analysis (country_iso = %s)...", country_iso))
 
   # Extract texts and labels from pre-assembled test set
   test_texts <- s3_test_set$text
   true_labels <- s3_test_set$true_label
 
-  # Compute baseline predictions once, share across all tests
+  # Compute baseline predictions once, share across all tests.
+  # baseline_details now carries a `measures` list-column under C1 v0.7.0 —
+  # used by compute_overlisting_diagnostic() and
+  # compute_country_distribution_diagnostic() below.
   message("  Computing baseline predictions...")
   baseline_details <- classify_batch_for_test(
     codebook, test_texts, model,
     return_details = TRUE, max_tokens = max_tokens,
-    provider = provider, base_url = base_url, api_key = api_key
+    provider = provider, base_url = base_url, api_key = api_key,
+    country_iso = country_iso
   )
   baseline_preds <- baseline_details$label
 
@@ -153,6 +159,49 @@ run_error_analysis <- function(codebook,
     baseline_preds = baseline_preds
   )
 
+  # C1 v0.7.0 multi-measure failure-mode diagnostics
+  # ----------------------------------------------------------------------
+  # Over-listing: mean(length(measures)) on Tier-1 chunks; tail (>=3)
+  # surfaced for manual review. Computed from baseline_details (no extra
+  # API cost).
+  message("  Over-listing diagnostic...")
+  overlisting <- compute_overlisting_diagnostic(
+    baseline_details, s3_test_set, tier_filter = 1L
+  )
+  message(sprintf(
+    "    Tier-1 chunks: mean(len(measures)) = %.2f, max = %d, tail (>=3) = %d/%d",
+    overlisting$mean_n_measures, overlisting$max_n_measures,
+    overlisting$n_tail, overlisting$n_chunks
+  ))
+
+  # Country distribution: surface chunks whose measures include a non-corpus
+  # country (potential comparators). Phase 0 US deployment expects ~all
+  # country == country_iso; OTHER tags are surfaced for sanity check.
+  message("  Country distribution diagnostic...")
+  country_dist <- compute_country_distribution_diagnostic(
+    baseline_details, country_iso = country_iso
+  )
+  message(sprintf(
+    "    Measures with country == %s: %d; OTHER: %d; chunks with any OTHER: %d",
+    country_iso, country_dist$n_domestic, country_dist$n_other,
+    country_dist$n_chunks_with_other
+  ))
+
+  # Under-listing: API-calling. Only runs if caller supplied multi_act_chunks
+  # (derived programmatically from c1_chunk_tiers' tier1 where chunk_id has
+  # >=2 distinct act_name matches). Skipped here when input is absent.
+  under_listing <- if (!is.null(multi_act_chunks) && nrow(multi_act_chunks) > 0L) {
+    message("  Under-listing diagnostic (API-calling)...")
+    test_under_listing(
+      codebook, multi_act_chunks, model = model, max_tokens = max_tokens,
+      provider = provider, base_url = base_url, api_key = api_key,
+      country_iso = country_iso
+    )
+  } else {
+    message("  Under-listing diagnostic: skipped (no multi_act_chunks supplied)")
+    NULL
+  }
+
   message("\nS3 error analysis complete.")
 
   list(
@@ -160,10 +209,118 @@ run_error_analysis <- function(codebook,
     test_vi = test_vi,
     test_vii = test_vii,
     ablation = ablation,
+    overlisting = overlisting,
+    country_distribution = country_dist,
+    under_listing = under_listing,
     baseline_details = baseline_details,
     model = model,
     n_test_texts = length(test_texts),
     timestamp = Sys.time()
+  )
+}
+
+
+#' Over-listing diagnostic: distribution of len(measures) per chunk
+#'
+#' C1 v0.7.0 multi-measure failure mode #1 — model fragments one named act
+#' into multiple `measures[]` entries (e.g., separate entries for distinct
+#' provisions of the same omnibus bill). On chunks where the gold partition
+#' (Tier 1) shows exactly one labeled act per chunk, mean(len(measures))
+#' substantially above 1.0 signals fragmentation.
+#'
+#' @param baseline_details Tibble from `classify_batch_for_test(return_details=TRUE)`
+#'   with `text_id`, `label`, `measures` (list-column).
+#' @param s3_test_set Tibble used to compute baseline_details, with `tier`,
+#'   `chunk_id`, `doc_id` columns (row-aligned to baseline_details via text_id).
+#' @param tier_filter Integer tier to restrict to (default 1L for "exactly one
+#'   gold act"). Use NA_integer_ to compute across all rows.
+#' @return List: mean_n_measures, p50, p90, max_n_measures, n_tail (chunks
+#'   with >=3 measures), n_chunks (denominator), tail_chunk_ids (character
+#'   vector for manual review).
+#' @export
+compute_overlisting_diagnostic <- function(baseline_details, s3_test_set,
+                                           tier_filter = 1L) {
+  # Row-align via text_id (baseline_details is in s3_test_set order)
+  joined <- baseline_details |>
+    dplyr::mutate(
+      tier     = s3_test_set$tier,
+      chunk_id = s3_test_set$chunk_id,
+      doc_id   = s3_test_set$doc_id,
+      n_measures = purrr::map_int(measures, length)
+    )
+
+  if (!is.na(tier_filter)) {
+    joined <- joined |> dplyr::filter(tier == tier_filter)
+  }
+
+  # Only count rows where the model produced a measures[] array
+  # (NOT_FISCAL_MEASURE has n_measures = 0 by design — exclude from
+  # fragmentation count, otherwise we deflate the mean)
+  joined <- joined |> dplyr::filter(label == "FISCAL_MEASURE")
+
+  if (nrow(joined) == 0L) {
+    return(list(
+      mean_n_measures = NA_real_, p50 = NA_real_, p90 = NA_real_,
+      max_n_measures = NA_integer_, n_tail = 0L, n_chunks = 0L,
+      tail_chunk_ids = character(0)
+    ))
+  }
+
+  tail_mask <- joined$n_measures >= 3L
+
+  list(
+    mean_n_measures = mean(joined$n_measures),
+    p50             = stats::median(joined$n_measures),
+    p90             = stats::quantile(joined$n_measures, 0.9, names = FALSE),
+    max_n_measures  = max(joined$n_measures),
+    n_tail          = sum(tail_mask),
+    n_chunks        = nrow(joined),
+    tail_chunk_ids  = paste(joined$doc_id[tail_mask],
+                            joined$chunk_id[tail_mask], sep = "||")
+  )
+}
+
+
+#' Country distribution diagnostic: per-measure country tag distribution
+#'
+#' C1 v0.7.0 multi-measure failure mode #3 — country misattribution. Surfaces
+#' the count of per-measure country tags across baseline predictions and the
+#' set of chunks containing at least one OTHER tag (potential foreign
+#' comparators). For US Phase 0 this is a sanity check (expect ~all domestic);
+#' for Malaysia Phase 2 the OTHER count is the comparator-filter recall
+#' signal.
+#'
+#' @param baseline_details Tibble from `classify_batch_for_test(return_details=TRUE)`
+#'   with `measures` list-column.
+#' @param country_iso Character corpus country ISO code (default "US")
+#' @return List: n_domestic (measures with country == country_iso), n_other
+#'   (measures with country == "OTHER"), n_chunks_with_other (chunks where
+#'   at least one measure tagged OTHER), other_chunk_text_ids (for manual
+#'   review).
+#' @export
+compute_country_distribution_diagnostic <- function(baseline_details,
+                                                     country_iso = "US") {
+  per_chunk <- baseline_details |>
+    dplyr::mutate(
+      has_other = purrr::map_lgl(measures, function(ms) {
+        if (length(ms) == 0L) return(FALSE)
+        any(vapply(ms, function(m) identical(m$country, "OTHER"), logical(1)))
+      })
+    )
+
+  all_countries <- baseline_details$measures |>
+    purrr::map(function(ms) vapply(ms, function(m) m$country %||% NA_character_,
+                                   character(1))) |>
+    unlist()
+
+  n_domestic <- sum(all_countries == country_iso, na.rm = TRUE)
+  n_other <- sum(all_countries == "OTHER", na.rm = TRUE)
+
+  list(
+    n_domestic = n_domestic,
+    n_other = n_other,
+    n_chunks_with_other = sum(per_chunk$has_other),
+    other_chunk_text_ids = per_chunk$text_id[per_chunk$has_other]
   )
 }
 

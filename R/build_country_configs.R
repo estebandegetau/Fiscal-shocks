@@ -10,6 +10,10 @@
 #'
 #' Fields per element:
 #'   - country: character ISO-style identifier (lowercase)
+#'   - country_iso: character ISO 3166-1 alpha-2 code (e.g. "MY", "US")
+#'     substituted into C1 v0.7.0's `{country_iso}` token at prompt-
+#'     construction time. Per-measure `country` enum becomes
+#'     `[<country_iso>, OTHER]` at runtime.
 #'   - pilot_year_min, pilot_year_max: integer pilot window (hardcoded
 #'     filter applied inside the country-specific URL fetcher)
 #'   - primary_language: character (ISO 639-1) used as the default
@@ -22,6 +26,7 @@ build_country_configs <- function() {
   list(
     malaysia = list(
       country = "malaysia",
+      country_iso = "MY",
       pilot_year_min = 1980L,
       pilot_year_max = 2025L,
       primary_language = "en",

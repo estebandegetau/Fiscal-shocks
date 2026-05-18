@@ -105,12 +105,18 @@ get_valid_labels <- function(codebook) {
 #'   across all classes. Valid values: "label_definition", "clarifications",
 #'   "negative_clarifications", "positive_examples", "negative_examples",
 #'   "output_instructions". Used for H&K-style component-type ablation.
+#' @param country_iso Character ISO-style code (default "US") substituted for
+#'   the literal `{country_iso}` token wherever it appears in YAML strings
+#'   (instructions, clarifications, output_instructions). Used by C1 v0.7.0+
+#'   for runtime country-of-enactment enum rendering; harmless for codebooks
+#'   that do not use the token.
 #' @return Character string with the assembled system prompt
 #' @export
 construct_codebook_prompt <- function(codebook,
                                       class_order = NULL,
                                       exclude_components = NULL,
-                                      exclude_sections = NULL) {
+                                      exclude_sections = NULL,
+                                      country_iso = "US") {
   parts <- character()
 
   # Task description and instructions
@@ -178,10 +184,12 @@ construct_codebook_prompt <- function(codebook,
       for (j in seq_along(cls$positive_examples)) {
         ex <- cls$positive_examples[[j]]
         json_fields <- list(
-          label = jsonlite::unbox(cls$label),
-          measure_name = jsonlite::unbox(NA)
+          label = jsonlite::unbox(cls$label)
         )
-        # Include extra_output_fields (e.g., relevance flags) if defined
+        # Include extra_output_fields (e.g., relevance flags) if defined.
+        # Output schema (e.g., C1 v0.7.0's `measures[]` array) is documented in
+        # `output_instructions`, not hardcoded here — keeps this renderer generic
+        # across codebook types.
         if (!is.null(codebook$extra_output_fields)) {
           for (ef in codebook$extra_output_fields) {
             json_fields[[ef$name]] <- jsonlite::unbox(NA)
@@ -228,7 +236,87 @@ construct_codebook_prompt <- function(codebook,
     parts <- c(parts, "# Output Instructions\n\n", codebook$output_instructions, "\n")
   }
 
-  paste(parts, collapse = "")
+  assembled <- paste(parts, collapse = "")
+
+  # Runtime country-of-enactment token substitution. Codebooks may reference
+  # {country_iso} anywhere in instructions / clarifications / output_instructions;
+  # resolve to the deployment ISO code before sending to the model. Codebooks
+  # that do not use the token are unaffected.
+  assembled <- gsub("{country_iso}", country_iso, assembled, fixed = TRUE)
+
+  # Implementation guard: any literal {country_iso} that survives substitution
+  # would let the model see an unresolved template token and hallucinate a
+  # country tag. Fail loudly rather than silently emit a broken prompt.
+  if (grepl("{country_iso}", assembled, fixed = TRUE)) {
+    stop("construct_codebook_prompt: unresolved {country_iso} token remains ",
+         "in assembled prompt after substitution")
+  }
+
+  assembled
+}
+
+
+#' Validate and normalise C1 v0.7.0 `measures[]` array
+#'
+#' Enforces the v0.7.0 schema contract on the model's `measures` output:
+#'   - For label == "FISCAL_MEASURE", `measures` must be a non-empty list;
+#'     empty measures are flagged as `parse_failure = TRUE` (do not retry —
+#'     temperature 0 is deterministic, retries waste cost).
+#'   - For label == "NOT_FISCAL_MEASURE", non-empty `measures` is discarded
+#'     with a warning (symmetric edge case — model occasionally over-emits).
+#'   - Each measure's `country` field is coerced to one of
+#'     `c(country_iso, "OTHER")`; unrecognised values become `"OTHER"` with
+#'     a warning. Country is the only enum field; per-measure boolean flags
+#'     are passed through as-is.
+#'
+#' @param parsed Parsed JSON response (list with `label`, `measures`, ...)
+#' @param country_iso Character — the resolved corpus-country ISO code
+#' @return List with components:
+#'   - `measures`: normalised list (possibly empty)
+#'   - `parse_failure`: logical, TRUE iff schema contract was violated in a
+#'     way that should be flagged downstream
+#' @keywords internal
+validate_c1_measures <- function(parsed, country_iso) {
+  label <- parsed$label %||% NA_character_
+  measures <- parsed$measures
+  if (is.null(measures)) measures <- list()
+
+  parse_failure <- FALSE
+
+  if (identical(label, "FISCAL_MEASURE") && length(measures) == 0L) {
+    # Edge case #4: FISCAL_MEASURE with empty measures[] — schema violation.
+    # Flag, do not retry. Chunk still counted in chunk-level binary metric.
+    parse_failure <- TRUE
+  }
+
+  if (identical(label, "NOT_FISCAL_MEASURE") && length(measures) > 0L) {
+    # Edge case #5: NOT_FISCAL_MEASURE with non-empty measures[]. Warn,
+    # discard `measures`. Don't raise — chunk-level binary metric is still
+    # well-defined.
+    warning(
+      "validate_c1_measures: NOT_FISCAL_MEASURE response had non-empty ",
+      "measures[]; discarding ", length(measures), " measure(s)"
+    )
+    measures <- list()
+  }
+
+  # Coerce `country` enum on every measure; warn on coercion.
+  legal_countries <- c(country_iso, "OTHER")
+  if (length(measures) > 0L) {
+    measures <- lapply(measures, function(m) {
+      country <- m$country %||% NA_character_
+      if (!country %in% legal_countries) {
+        warning(sprintf(
+          "validate_c1_measures: illegal country value '%s' coerced to 'OTHER' (legal: %s)",
+          country, paste(legal_countries, collapse = ", ")
+        ))
+        m$country <- "OTHER"
+      }
+      m
+    })
+  }
+
+  list(measures = measures, parse_failure = parse_failure)
 }
 
 
@@ -251,7 +339,13 @@ construct_codebook_prompt <- function(codebook,
 #' @param use_cache Logical, use Anthropic prompt caching (default FALSE).
 #'   When TRUE, system prompt and few-shot examples are sent as content block
 #'   arrays with cache_control markers for Anthropic's prompt caching.
-#' @return List with label, reasoning, and raw response
+#' @param country_iso Character ISO-style code (default "US") propagated to
+#'   `construct_codebook_prompt()` for `{country_iso}` token substitution and
+#'   used by `validate_c1_measures()` to validate the per-measure `country`
+#'   enum.
+#' @return List with label, measures (list, possibly empty under C1 v0.7.0
+#'   semantics), reasoning, raw_response, stop_reason, parse_failure, and
+#'   self-consistency fields.
 #' @export
 classify_with_codebook <- function(text,
                                    codebook,
@@ -267,10 +361,11 @@ classify_with_codebook <- function(text,
                                    use_cache = FALSE,
                                    provider = "anthropic",
                                    base_url = NULL,
-                                   api_key = NULL) {
+                                   api_key = NULL,
+                                   country_iso = "US") {
   # Build system prompt from codebook if not overridden
   if (is.null(system_prompt)) {
-    system_prompt <- construct_codebook_prompt(codebook)
+    system_prompt <- construct_codebook_prompt(codebook, country_iso = country_iso)
   }
 
   # Prompt caching is Anthropic-only; disable for other providers
@@ -361,7 +456,8 @@ classify_with_codebook <- function(text,
       api_key = api_key
     )
 
-    # Extract additional fields from the majority result
+    # Extract the majority sample's full parsed payload so v0.7.0 `measures`
+    # comes along with the majority `label`.
     majority_result <- NULL
     for (r in result$all_results) {
       if (!is.null(r$label) && r$label == result$prediction) {
@@ -370,15 +466,16 @@ classify_with_codebook <- function(text,
       }
     }
 
+    validated <- validate_c1_measures(majority_result %||% list(),
+                                      country_iso = country_iso)
+
     list(
       label = result$prediction,
-      measure_name = majority_result$measure_name %||% NA_character_,
-      discusses_motivation = majority_result$discusses_motivation %||% NA,
-      discusses_timing = majority_result$discusses_timing %||% NA,
-      discusses_magnitude = majority_result$discusses_magnitude %||% NA,
+      measures = validated$measures,
       reasoning = majority_result$reasoning %||% NA_character_,
       raw_response = majority_result$raw_response %||% NA_character_,
       stop_reason = majority_result$stop_reason %||% NA_character_,
+      parse_failure = validated$parse_failure,
       confidence = result$confidence,
       agreement_rate = result$agreement_rate,
       all_predictions = result$all_predictions
@@ -401,15 +498,15 @@ classify_with_codebook <- function(text,
     parsed <- parse_fn(raw_text)
     label <- extract_class_fn(parsed)
 
+    validated <- validate_c1_measures(parsed, country_iso = country_iso)
+
     list(
       label = label,
-      measure_name = parsed$measure_name %||% NA_character_,
-      discusses_motivation = parsed$discusses_motivation %||% NA,
-      discusses_timing = parsed$discusses_timing %||% NA,
-      discusses_magnitude = parsed$discusses_magnitude %||% NA,
+      measures = validated$measures,
       reasoning = parsed$reasoning %||% NA_character_,
       raw_response = raw_text,
       stop_reason = response$stop_reason %||% NA_character_,
+      parse_failure = validated$parse_failure,
       confidence = if (!is.na(label)) 1.0 else 0.0,
       agreement_rate = 1.0,
       all_predictions = label

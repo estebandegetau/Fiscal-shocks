@@ -12,8 +12,15 @@
 #' @export
 assemble_c1_classified_chunks <- function(c1_s2_results, chunks, aligned_data) {
 
-  # Select C1 classification outputs
+  # Boundary pre-filter for the C1 v0.7.0 → C2 handoff. `c1_s2_results` is
+  # long-form (one row per chunk × measure); the downstream join on
+  # `act_name` and the C2 inputs expect one row per (chunk × act). Restrict
+  # to `measure_rank == 1L` so the join sees the prominent measure only and
+  # reproduces v0.6.0 single-name semantics. NOT_FISCAL_MEASURE / parse_failure
+  # rows already have measure_rank = NA — keep them via the OR clause so we
+  # don't lose chunk-level negative records.
   classified <- c1_s2_results |>
+    dplyr::filter(is.na(measure_rank) | measure_rank == 1L) |>
     dplyr::select(
       chunk_id, doc_id, act_name, year, tier,
       pred_label, discusses_motivation, discusses_timing, discusses_magnitude,

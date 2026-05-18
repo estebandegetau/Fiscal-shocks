@@ -277,16 +277,33 @@ classify_chunks_for_fold <- function(chunks, tier, fold, act_name, year,
 #' Computes combined recall (Tier 1+2), Tier 1 recall, Tier 2 recall,
 #' precision, F1, and accuracy with bootstrap CIs.
 #'
-#' @param results Tibble from run_zero_shot() or run_loocv()
+#' @param results Tibble from run_zero_shot() or run_loocv(). Under C1 v0.7.0
+#'   this is long-form (one row per chunk × measure with measure_rank); the
+#'   function pre-flattens to one row per (chunk × ground-truth act) for all
+#'   chunk-level binary metrics so v0.6.0 metric semantics are preserved.
+#'   The unflattened long-form input is retained for the v0.7.0-only
+#'   `multi_measure_act_recall` secondary metric.
 #' @param codebook_type Character codebook identifier ("C1", "C2", etc.)
 #' @param n_bootstrap Integer bootstrap resamples (default 1000)
 #' @param ci_level Numeric confidence level (default 0.95)
-#' @return List with tier-stratified metrics, CIs, confusion matrix, and errors
+#' @return List with tier-stratified metrics, CIs, confusion matrix, errors,
+#'   and (under v0.7.0) `multi_measure_act_recall` secondary metric.
 #' @export
 evaluate_classification <- function(results,
                                     codebook_type = "C1",
                                     n_bootstrap = 1000,
                                     ci_level = 0.95) {
+
+  # Long-form pre-flatten for C1 v0.7.0: retain (chunk × ground-truth act)
+  # at the prominent-measure row. NA measure_rank rows (NOT_FISCAL_MEASURE
+  # or parse_failure) are kept because they carry chunk-level binary signal.
+  # Unflattened `results` is preserved as `results_long` for the multi-measure
+  # secondary diagnostic below.
+  results_long <- results
+  if ("measure_rank" %in% names(results)) {
+    results <- results |>
+      dplyr::filter(is.na(measure_rank) | measure_rank == 1L)
+  }
 
   valid_results <- results |>
     dplyr::filter(!is.na(pred_label))
@@ -366,6 +383,56 @@ evaluate_classification <- function(results,
     ) |>
     dplyr::arrange(recall)
 
+  # C1 v0.7.0 secondary diagnostic: multi_measure_act_recall.
+  # For each labeled act with Tier-1 chunks (chunks where the verbatim labeled
+  # passage is known to appear), fraction of those chunks where ANY measure in
+  # results_long has measure_name string-matching act_name (case-insensitive
+  # symmetric substring containment, to handle abbreviations like "TRA-86" vs
+  # "Tax Reform Act of 1986"). Restricted to Tier 1 to avoid the model-
+  # preserves-chunk-wording confound in fuzzier tiers. Diagnostic only; not
+  # gated. Computed only when `measure_rank` is present (long-form C1 v0.7.0+).
+  multi_measure_act_recall <- if ("measure_rank" %in% names(results_long) &&
+                                  "measure_name" %in% names(results_long)) {
+    tier1_long <- results_long |>
+      dplyr::filter(tier == 1L, text_type == "positive")
+    if (nrow(tier1_long) == 0L) {
+      tibble::tibble(
+        act_name = character(0), n_chunks = integer(0),
+        n_recalled = integer(0), recall = numeric(0)
+      )
+    } else {
+      tier1_long |>
+        dplyr::group_by(act_name, chunk_id, doc_id) |>
+        dplyr::summarise(
+          recalled = {
+            act <- dplyr::first(act_name)
+            names_pred <- measure_name[!is.na(measure_name)]
+            if (length(names_pred) == 0L) {
+              FALSE
+            } else {
+              act_lc <- tolower(act)
+              any(vapply(names_pred, function(p) {
+                p_lc <- tolower(p)
+                grepl(p_lc, act_lc, fixed = TRUE) ||
+                  grepl(act_lc, p_lc, fixed = TRUE)
+              }, logical(1)))
+            }
+          },
+          .groups = "drop"
+        ) |>
+        dplyr::group_by(act_name) |>
+        dplyr::summarise(
+          n_chunks   = dplyr::n(),
+          n_recalled = sum(recalled),
+          recall     = n_recalled / n_chunks,
+          .groups    = "drop"
+        ) |>
+        dplyr::arrange(recall)
+    }
+  } else {
+    NULL
+  }
+
   list(
     codebook_type = codebook_type,
     combined_recall = metrics$recall,
@@ -385,6 +452,7 @@ evaluate_classification <- function(results,
     confusion_matrix = cm,
     error_analysis = errors,
     act_recall = act_recall,
+    multi_measure_act_recall = multi_measure_act_recall,
     n_total = n_total,
     n_valid = n_valid,
     n_tier1 = nrow(tier1_results),
@@ -509,10 +577,76 @@ assemble_zero_shot_test_set <- function(codebook,
 }
 
 
+#' Fan one classification result into long-form rows (one per measure)
+#'
+#' C1 v0.7.0 output is a `measures[]` array per chunk. This helper emits one
+#' tibble row per measure with `measure_rank = seq_along(measures)` and
+#' per-measure fields (`measure_name`, `country`, `discusses_motivation`,
+#' `discusses_timing`, `discusses_magnitude`). Chunk-level fields supplied by
+#' `base_row` repeat across the chunk's rows.
+#'
+#' Three boundary cases produce a single row with `measure_rank = NA`:
+#'   - NOT_FISCAL_MEASURE (or NA label from API failure): NA measure fields.
+#'   - parse_failure (FISCAL_MEASURE with empty `measures[]`): NA measure
+#'     fields, `parse_failure = TRUE`.
+#'   - Empty `measures` for any reason: NA measure fields.
+#'
+#' `base_row` must be a one-row tibble carrying the chunk-level columns to
+#' replicate (e.g., chunk_id, doc_id, tier, true_label, pred_label, reasoning,
+#' raw_response, stop_reason, confidence).
+#'
+#' @param base_row One-row tibble of chunk-level fields
+#' @param measures List of measure objects (possibly empty) from `pred$measures`
+#' @param parse_failure Logical (default FALSE) — propagated to every fan-out row
+#' @return Tibble — one or more rows in long form
+#' @keywords internal
+fan_measures_long <- function(base_row, measures, parse_failure = FALSE) {
+  # Per-measure country tag is named `measure_country` rather than `country`
+  # to avoid collision with chunk-level `country` columns that some callers
+  # (e.g. `run_c1_deployment`) carry to track corpus country.
+  if (length(measures) == 0L) {
+    return(tibble::tibble(
+      base_row,
+      measure_name         = NA_character_,
+      measure_country      = NA_character_,
+      discusses_motivation = NA,
+      discusses_timing     = NA,
+      discusses_magnitude  = NA,
+      measure_rank         = NA_integer_,
+      parse_failure        = parse_failure
+    ))
+  }
+
+  measure_rows <- purrr::map_dfr(seq_along(measures), function(k) {
+    m <- measures[[k]]
+    tibble::tibble(
+      measure_name         = m$name %||% NA_character_,
+      measure_country      = m$country %||% NA_character_,
+      discusses_motivation = m$discusses_motivation %||% NA,
+      discusses_timing     = m$discusses_timing %||% NA,
+      discusses_magnitude  = m$discusses_magnitude %||% NA,
+      measure_rank         = as.integer(k),
+      parse_failure        = parse_failure
+    )
+  })
+
+  # Cartesian product of base_row (1) × measure_rows (N) → N rows
+  tibble::as_tibble(cbind(
+    base_row[rep(1L, nrow(measure_rows)), , drop = FALSE],
+    measure_rows
+  ))
+}
+
+
 #' Run zero-shot classification on a test set
 #'
 #' API-calling function. Classifies each chunk in the test set exactly once
-#' using the codebook prompt with no few-shot examples.
+#' using the codebook prompt with no few-shot examples. Under C1 v0.7.0,
+#' output is long-form: one row per (chunk × measure), with chunk-level
+#' fields repeating across the chunk's rows and a `measure_rank` column
+#' identifying the most-prominent measure (rank 1L) vs. secondaries.
+#' Downstream consumers that need v0.6.0 single-name semantics can recover
+#' them via `dplyr::filter(measure_rank == 1L)`.
 #'
 #' @param codebook A validated codebook object
 #' @param test_set Tibble from assemble_zero_shot_test_set()
@@ -524,7 +658,14 @@ assemble_zero_shot_test_set <- function(codebook,
 #' @param provider Character API provider (default "anthropic")
 #' @param base_url Character optional base URL override
 #' @param api_key Character optional API key override
-#' @return Tibble with classification results matching evaluate_classification() input schema
+#' @param country_iso Character ISO-style code (default "US") propagated to
+#'   `classify_with_codebook()` for runtime `{country_iso}` substitution and
+#'   per-measure `country` enum validation.
+#' @return Long-form tibble: one row per (chunk × measure). Columns include
+#'   chunk-level fields (chunk_id, doc_id, tier, pred_label, reasoning,
+#'   raw_response, stop_reason, confidence, correct) and per-measure fields
+#'   (measure_name, country, discusses_motivation, discusses_timing,
+#'   discusses_magnitude, measure_rank, parse_failure).
 #' @export
 run_zero_shot <- function(codebook,
                           test_set,
@@ -536,13 +677,14 @@ run_zero_shot <- function(codebook,
                           max_tokens = 1024,
                           provider = "anthropic",
                           base_url = NULL,
-                          api_key = NULL) {
+                          api_key = NULL,
+                          country_iso = "US") {
 
   n_chunks <- nrow(test_set)
-  message(sprintf("Running %s zero-shot classification on %d chunks...",
-                  codebook_type, n_chunks))
+  message(sprintf("Running %s zero-shot classification on %d chunks (country_iso = %s)...",
+                  codebook_type, n_chunks, country_iso))
 
-  system_prompt <- construct_codebook_prompt(codebook)
+  system_prompt <- construct_codebook_prompt(codebook, country_iso = country_iso)
 
   if (show_progress) {
     pb <- progress::progress_bar$new(
@@ -569,43 +711,57 @@ run_zero_shot <- function(codebook,
         use_cache = use_cache,
         provider = provider,
         base_url = base_url,
-        api_key = api_key
+        api_key = api_key,
+        country_iso = country_iso
       )
     }, error = function(e) {
       list(label = NA_character_, reasoning = e$message,
            confidence = NA_real_, raw_response = NA_character_,
-           stop_reason = NA_character_)
+           stop_reason = NA_character_, measures = list(),
+           parse_failure = TRUE)
     })
 
-    tibble::tibble(
-      fold = 1L,
-      act_name = test_set$act_name[j],
-      year = test_set$year[j],
-      chunk_id = test_set$chunk_id[j],
-      doc_id = test_set$doc_id[j],
-      tier = test_set$tier[j],
-      text_type = test_set$text_type[j],
-      true_label = test_set$true_label[j],
-      pred_label = pred$label %||% NA_character_,
-      confidence = pred$confidence %||% NA_real_,
-      discusses_motivation = pred$discusses_motivation %||% NA,
-      discusses_timing = pred$discusses_timing %||% NA,
-      discusses_magnitude = pred$discusses_magnitude %||% NA,
-      reasoning = pred$reasoning %||% NA_character_,
+    base_row <- tibble::tibble(
+      fold         = 1L,
+      act_name     = test_set$act_name[j],
+      year         = test_set$year[j],
+      chunk_id     = test_set$chunk_id[j],
+      doc_id       = test_set$doc_id[j],
+      tier         = test_set$tier[j],
+      text_type    = test_set$text_type[j],
+      true_label   = test_set$true_label[j],
+      pred_label   = pred$label %||% NA_character_,
+      confidence   = pred$confidence %||% NA_real_,
+      reasoning    = pred$reasoning %||% NA_character_,
       raw_response = pred$raw_response %||% NA_character_,
-      stop_reason = pred$stop_reason %||% NA_character_,
-      correct = identical(pred$label, test_set$true_label[j])
+      stop_reason  = pred$stop_reason %||% NA_character_,
+      correct      = identical(pred$label, test_set$true_label[j])
+    )
+
+    fan_measures_long(
+      base_row,
+      measures = pred$measures %||% list(),
+      parse_failure = isTRUE(pred$parse_failure)
     )
   })
 
   results <- results |>
     dplyr::mutate(model = model, provider = provider)
 
-  # Summary
-  pos_results <- results |> dplyr::filter(text_type == "positive")
-  neg_results <- results |> dplyr::filter(text_type == "negative")
+  # Chunk-level summary (deduplicate to one row per chunk for binary metrics).
+  chunk_results <- results |>
+    dplyr::distinct(chunk_id, doc_id, .keep_all = TRUE)
+  pos_results <- chunk_results |> dplyr::filter(text_type == "positive")
+  neg_results <- chunk_results |> dplyr::filter(text_type == "negative")
+  n_parse_failures <- sum(chunk_results$parse_failure, na.rm = TRUE)
+  n_multi_measure <- results |>
+    dplyr::group_by(chunk_id, doc_id) |>
+    dplyr::summarise(n_measures = sum(!is.na(measure_rank)), .groups = "drop") |>
+    dplyr::filter(n_measures > 1L) |>
+    nrow()
 
-  message(sprintf("\nZero-shot classification complete:"))
+  message(sprintf("\nZero-shot classification complete (long-form rows = %d, unique chunks = %d):",
+                  nrow(results), nrow(chunk_results)))
   message(sprintf("  Positive chunks: %d (%.1f%% correct) [Tier1: %d, Tier2: %d]",
                   nrow(pos_results),
                   mean(pos_results$correct, na.rm = TRUE) * 100,
@@ -614,6 +770,9 @@ run_zero_shot <- function(codebook,
   message(sprintf("  Negative chunks: %d (%.1f%% correct)",
                   nrow(neg_results),
                   mean(neg_results$correct, na.rm = TRUE) * 100))
+  message(sprintf("  Multi-measure chunks: %d (>=2 measures)", n_multi_measure))
+  message(sprintf("  Parse failures (FISCAL_MEASURE with empty measures[]): %d",
+                  n_parse_failures))
 
   results
 }

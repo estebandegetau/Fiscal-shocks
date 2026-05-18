@@ -26,7 +26,8 @@ run_behavioral_tests_s1 <- function(codebook,
                                      max_tokens = 1024,
                                      provider = "anthropic",
                                      base_url = NULL,
-                                     api_key = NULL) {
+                                     api_key = NULL,
+                                     country_iso = "US") {
   set.seed(seed)
 
   n_pos <- floor(n_test / 2)
@@ -65,7 +66,8 @@ run_behavioral_tests_s1 <- function(codebook,
   test_i <- test_legal_outputs(codebook, test_texts, model,
                                max_tokens = max_tokens,
                                provider = provider, base_url = base_url,
-                               api_key = api_key)
+                               api_key = api_key,
+                               country_iso = country_iso)
   message(sprintf("    %s (%.0f%% valid)",
                   if (test_i$pass) "PASS" else "FAIL", test_i$rate * 100))
 
@@ -74,12 +76,15 @@ run_behavioral_tests_s1 <- function(codebook,
   test_ii <- test_definition_recovery(codebook, model,
                                       max_tokens = max_tokens,
                                       provider = provider, base_url = base_url,
-                                      api_key = api_key)
+                                      api_key = api_key,
+                                      country_iso = country_iso)
   message(sprintf("    %s (%d/%d correct)",
                   if (test_ii$pass) "PASS" else "FAIL",
                   test_ii$n_correct, test_ii$n_total))
 
-  # Test III: Example Recovery (skip if no examples in codebook)
+  # Test III: Example Recovery (skip if no examples in codebook).
+  # C1 v0.7.0 has no positive/negative examples in the YAML — Test III is
+  # formally N/A (auto-skipped). Recorded as `skipped = TRUE` in the iter log.
   has_examples <- any(vapply(codebook$classes, function(cls) {
     length(cls$positive_examples) > 0 || length(cls$negative_examples) > 0
   }, logical(1)))
@@ -89,7 +94,8 @@ run_behavioral_tests_s1 <- function(codebook,
     test_iii <- test_example_recovery(codebook, model,
                                       max_tokens = max_tokens,
                                       provider = provider, base_url = base_url,
-                                      api_key = api_key)
+                                      api_key = api_key,
+                                      country_iso = country_iso)
     message(sprintf("    %s (%d/%d correct)",
                     if (test_iii$pass) "PASS" else "FAIL",
                     test_iii$n_correct, test_iii$n_total))
@@ -117,7 +123,8 @@ run_behavioral_tests_s1 <- function(codebook,
   test_iv <- test_order_invariance(codebook, order_texts, model,
                                    max_tokens = max_tokens,
                                    provider = provider, base_url = base_url,
-                                   api_key = api_key)
+                                   api_key = api_key,
+                                   country_iso = country_iso)
   message(sprintf(
     "    %s (max change rate: %.1f%% [rev=%.1f%%, shuf=%.1f%%], kappa=%.3f %s)",
     if (test_iv$pass) "PASS" else "FAIL",

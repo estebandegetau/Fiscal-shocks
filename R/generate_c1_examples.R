@@ -120,7 +120,15 @@ generate_c1_loocv_fold_examples <- function(train_data,
         input = row$text,
         output = list(
           label = "FISCAL_MEASURE",
-          measure_name = row$act_name,
+          measures = list(
+            list(
+              name                 = row$act_name,
+              country              = "US",
+              discusses_motivation = TRUE,
+              discusses_timing     = TRUE,
+              discusses_magnitude  = TRUE
+            )
+          ),
           reasoning = sprintf(
             "This passage describes the %s, an enacted fiscal measure with substantive detail about its provisions.",
             row$act_name
@@ -152,7 +160,7 @@ generate_c1_loocv_fold_examples <- function(train_data,
         input = short_passage,
         output = list(
           label = "NOT_FISCAL_MEASURE",
-          measure_name = NULL,
+          measures = list(),
           reasoning = "This passage does not describe a specific enacted fiscal measure with substantive detail about its provisions."
         )
       )

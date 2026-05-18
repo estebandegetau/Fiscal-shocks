@@ -496,7 +496,9 @@ list(
     garbage_collection = TRUE
   ),
 
-  # S1: Behavioral tests (Tests I-IV) on chunk-length inputs
+  # S1: Behavioral tests (Tests I-IV) on chunk-length inputs.
+  # country_iso = "US" — Phase 0 dev evaluation uses US documents; the
+  # {country_iso} token in the C1 v0.7.0 YAML resolves to "US" here.
   tar_target(
     c1_s1_results,
     run_behavioral_tests_s1(
@@ -507,7 +509,8 @@ list(
       max_tokens = 1024,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
-      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+      api_key = Sys.getenv("ANTHROPIC_API_KEY"),
+      country_iso = "US"
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
@@ -529,7 +532,8 @@ list(
   ),
 
   # S2: Zero-shot evaluation — classify test set (API calls)
-  # Each chunk classified exactly once with codebook prompt, no few-shot
+  # Each chunk classified exactly once with codebook prompt, no few-shot.
+  # Output is long-form under C1 v0.7.0 (one row per chunk × measure).
   tar_target(
     c1_s2_results,
     run_zero_shot(
@@ -540,7 +544,8 @@ list(
       max_tokens = 1024,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
-      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+      api_key = Sys.getenv("ANTHROPIC_API_KEY"),
+      country_iso = "US"
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
@@ -560,7 +565,17 @@ list(
     packages = c("tidyverse")
   ),
 
-  # S3: Error analysis — Tests V-VII + ablation (API calls)
+  # S3 under-listing diagnostic input (no API calls): chunks whose Tier 1
+  # ground truth contains >= 2 distinct labeled acts. Test input for the
+  # C1 v0.7.0 multi-measure under-listing test inside `run_error_analysis()`.
+  tar_target(
+    c1_multi_act_chunks,
+    derive_multi_act_chunks(c1_chunk_data, min_acts = 2L),
+    packages = c("tidyverse")
+  ),
+
+  # S3: Error analysis — Tests V-VII + ablation + v0.7.0 multi-measure
+  # diagnostics (over-listing, country distribution, under-listing). API calls.
   tar_target(
     c1_s3_results,
     run_error_analysis(
@@ -570,7 +585,9 @@ list(
       max_tokens = 1024,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
-      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+      api_key = Sys.getenv("ANTHROPIC_API_KEY"),
+      country_iso = "US",
+      multi_act_chunks = c1_multi_act_chunks
     ),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
@@ -665,6 +682,7 @@ list(
     run_c1_deployment(
       country_chunks,
       c1_codebook,
+      country_iso = country_configs[[unique(country_chunks$country)[1]]]$country_iso %||% "US",
       model = "claude-haiku-4-5-20251001",
       max_tokens = 1024,
       provider = "anthropic",
@@ -733,6 +751,7 @@ list(
     malay_er_c1,
     run_c1_deployment(
       malay_er_chunks, c1_codebook,
+      country_iso = "MY",
       model = "claude-haiku-4-5-20251001",
       max_tokens = 1024,
       provider = "anthropic",

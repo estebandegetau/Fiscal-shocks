@@ -25,10 +25,21 @@ test_legal_outputs <- function(codebook,
                                max_tokens = 1024,
                                provider = "anthropic",
                                base_url = NULL,
-                               api_key = NULL) {
+                               api_key = NULL,
+                               country_iso = "US") {
   valid_labels <- get_valid_labels(codebook)
-  system_prompt <- construct_codebook_prompt(codebook)
+  system_prompt <- construct_codebook_prompt(codebook, country_iso = country_iso)
   n <- length(test_texts)
+
+  # Schema-aware validation: codebooks emitting C1 v0.7.0's `measures[]` array
+  # get the expanded check (non-empty array under FISCAL_MEASURE, empty under
+  # NOT_FISCAL_MEASURE, all five per-measure fields present, country enum
+  # restricted to {country_iso, "OTHER"}, boolean fields are logicals).
+  uses_measures_schema <- grepl(
+    "measures",
+    paste(codebook$output_instructions, collapse = " "),
+    fixed = TRUE
+  )
 
   results <- purrr::map(seq_along(test_texts), function(i) {
     response <- tryCatch({
@@ -41,26 +52,75 @@ test_legal_outputs <- function(codebook,
         max_tokens = max_tokens,
         provider = provider,
         base_url = base_url,
-        api_key = api_key
+        api_key = api_key,
+        country_iso = country_iso
       )
     }, error = function(e) {
       list(label = NA_character_, reasoning = e$message,
-           raw_response = NA_character_, stop_reason = NA_character_)
+           raw_response = NA_character_, stop_reason = NA_character_,
+           measures = list(), parse_failure = TRUE)
     })
 
+    # Base v0.6.x check
+    label <- response$label %||% NA_character_
+    valid_json <- !is.na(label)
+    valid_label <- label %in% valid_labels
+
+    # v0.7.0 expanded measures[] checks (only if codebook uses the schema)
+    if (uses_measures_schema) {
+      measures <- response$measures %||% list()
+      legal_countries <- c(country_iso, "OTHER")
+
+      # Cardinality: FISCAL_MEASURE → non-empty; NOT_FISCAL_MEASURE → empty
+      measures_cardinality_ok <- if (identical(label, "FISCAL_MEASURE")) {
+        length(measures) > 0L && !isTRUE(response$parse_failure)
+      } else if (identical(label, "NOT_FISCAL_MEASURE")) {
+        length(measures) == 0L
+      } else {
+        FALSE
+      }
+
+      # Per-measure field validation (only meaningful for non-empty arrays)
+      fields_ok <- TRUE
+      if (length(measures) > 0L) {
+        required <- c("name", "country", "discusses_motivation",
+                      "discusses_timing", "discusses_magnitude")
+        for (m in measures) {
+          if (!all(required %in% names(m))) { fields_ok <- FALSE; break }
+          if (!is.character(m$name) || nchar(m$name) == 0L) { fields_ok <- FALSE; break }
+          if (!m$country %in% legal_countries) { fields_ok <- FALSE; break }
+          for (flag in c("discusses_motivation", "discusses_timing", "discusses_magnitude")) {
+            if (!is.logical(m[[flag]])) { fields_ok <- FALSE; break }
+          }
+          if (!fields_ok) break
+        }
+      }
+
+      valid_schema <- measures_cardinality_ok && fields_ok
+      n_measures <- length(measures)
+    } else {
+      valid_schema <- TRUE
+      n_measures <- NA_integer_
+    }
+
     tibble::tibble(
-      text_id = i,
-      label = response$label %||% NA_character_,
-      valid_json = !is.na(response$label),
-      valid_label = response$label %in% valid_labels,
-      reasoning = response$reasoning %||% NA_character_,
+      text_id      = i,
+      label        = label,
+      valid_json   = valid_json,
+      valid_label  = valid_label,
+      valid_schema = valid_schema,
+      n_measures   = n_measures,
+      reasoning    = response$reasoning %||% NA_character_,
       raw_response = response$raw_response %||% NA_character_,
-      stop_reason = response$stop_reason %||% NA_character_
+      stop_reason  = response$stop_reason %||% NA_character_
     )
   })
 
   details <- dplyr::bind_rows(results)
-  n_valid <- sum(details$valid_json & details$valid_label, na.rm = TRUE)
+  n_valid <- sum(
+    details$valid_json & details$valid_label & details$valid_schema,
+    na.rm = TRUE
+  )
 
   list(
     test = "I_legal_outputs",
@@ -89,8 +149,9 @@ test_definition_recovery <- function(codebook,
                                      max_tokens = 1024,
                                      provider = "anthropic",
                                      base_url = NULL,
-                                     api_key = NULL) {
-  system_prompt <- construct_codebook_prompt(codebook)
+                                     api_key = NULL,
+                                     country_iso = "US") {
+  system_prompt <- construct_codebook_prompt(codebook, country_iso = country_iso)
   valid_labels <- get_valid_labels(codebook)
 
   results <- purrr::map(codebook$classes, function(cls) {
@@ -167,8 +228,12 @@ test_example_recovery <- function(codebook,
                                   max_tokens = 1024,
                                   provider = "anthropic",
                                   base_url = NULL,
-                                  api_key = NULL) {
-  system_prompt <- construct_codebook_prompt(codebook)
+                                  api_key = NULL,
+                                  country_iso = "US") {
+  # C1 v0.7.0 has no positive_examples or negative_examples — Test III
+  # degenerates to N/A with n_total = 0 and trivially passes. Record this in
+  # the iteration log; do not interpret as a real test result.
+  system_prompt <- construct_codebook_prompt(codebook, country_iso = country_iso)
   valid_labels <- get_valid_labels(codebook)
   results <- list()
 
@@ -369,7 +434,8 @@ test_order_invariance <- function(codebook,
                                   max_tokens = 1024,
                                   provider = "anthropic",
                                   base_url = NULL,
-                                  api_key = NULL) {
+                                  api_key = NULL,
+                                  country_iso = "US") {
   n_classes <- length(codebook$classes)
   original_order <- seq_len(n_classes)
   reversed_order <- rev(original_order)
@@ -390,10 +456,16 @@ test_order_invariance <- function(codebook,
     }
   }
 
-  # Build prompts for each ordering
-  prompt_original <- construct_codebook_prompt(codebook, class_order = original_order)
-  prompt_reversed <- construct_codebook_prompt(codebook, class_order = reversed_order)
-  prompt_shuffled <- construct_codebook_prompt(codebook, class_order = shuffled_order)
+  # Build prompts for each ordering (country_iso resolves {country_iso} tokens)
+  prompt_original <- construct_codebook_prompt(codebook,
+                                                class_order = original_order,
+                                                country_iso = country_iso)
+  prompt_reversed <- construct_codebook_prompt(codebook,
+                                                class_order = reversed_order,
+                                                country_iso = country_iso)
+  prompt_shuffled <- construct_codebook_prompt(codebook,
+                                                class_order = shuffled_order,
+                                                country_iso = country_iso)
 
   # Classify each text under all three orderings
   results <- purrr::map(seq_along(test_texts), function(i) {
@@ -408,7 +480,8 @@ test_order_invariance <- function(codebook,
           max_tokens = max_tokens,
           provider = provider,
           base_url = base_url,
-          api_key = api_key
+          api_key = api_key,
+          country_iso = country_iso
         )$label
       }, error = function(e) NA_character_)
     }
@@ -803,8 +876,12 @@ test_swapped_labels <- function(codebook,
 #' @param model Model ID
 #' @param system_prompt Optional override system prompt
 #' @param return_details If TRUE, return a tibble with full model output
-#'   (label, reasoning, raw_response, measure_name, stop_reason) instead of
-#'   a character vector of labels
+#'   (label, reasoning, raw_response, measures list-column, parse_failure,
+#'   stop_reason) instead of a character vector of labels. Under C1 v0.7.0
+#'   the per-measure fields live inside the `measures` list-column; use
+#'   `tidyr::unnest_wider(measures)` or `purrr::map_*` to extract.
+#' @param country_iso Character ISO-style code propagated to
+#'   `classify_with_codebook()` for runtime `{country_iso}` substitution.
 #' @return Character vector of predicted labels (default), or tibble if
 #'   return_details = TRUE
 #' @keywords internal
@@ -814,9 +891,10 @@ classify_batch_for_test <- function(codebook, texts, model,
                                     max_tokens = 1024,
                                     provider = "anthropic",
                                     base_url = NULL,
-                                    api_key = NULL) {
+                                    api_key = NULL,
+                                    country_iso = "US") {
   if (is.null(system_prompt)) {
-    system_prompt <- construct_codebook_prompt(codebook)
+    system_prompt <- construct_codebook_prompt(codebook, country_iso = country_iso)
   }
 
   results <- purrr::map(texts, function(txt) {
@@ -830,31 +908,143 @@ classify_batch_for_test <- function(codebook, texts, model,
         max_tokens = max_tokens,
         provider = provider,
         base_url = base_url,
-        api_key = api_key
+        api_key = api_key,
+        country_iso = country_iso
       )
     }, error = function(e) {
       list(label = NA_character_, reasoning = NA_character_,
-           raw_response = NA_character_, measure_name = NA_character_,
-           stop_reason = NA_character_, confidence = 0.0,
-           agreement_rate = NA_real_)
+           raw_response = NA_character_, stop_reason = NA_character_,
+           measures = list(), parse_failure = TRUE,
+           confidence = 0.0, agreement_rate = NA_real_)
     })
   })
 
   if (return_details) {
     tibble::tibble(
-      text_id = seq_along(texts),
-      label = purrr::map_chr(results, ~ .x$label %||% NA_character_),
-      reasoning = purrr::map_chr(results, ~ .x$reasoning %||% NA_character_),
-      raw_response = purrr::map_chr(results, ~ .x$raw_response %||% NA_character_),
-      measure_name = purrr::map_chr(results, ~ .x$measure_name %||% NA_character_),
-      discusses_motivation = purrr::map_lgl(results, ~ .x$discusses_motivation %||% NA),
-      discusses_timing = purrr::map_lgl(results, ~ .x$discusses_timing %||% NA),
-      discusses_magnitude = purrr::map_lgl(results, ~ .x$discusses_magnitude %||% NA),
-      stop_reason = purrr::map_chr(results, ~ .x$stop_reason %||% NA_character_)
+      text_id       = seq_along(texts),
+      label         = purrr::map_chr(results, ~ .x$label %||% NA_character_),
+      reasoning     = purrr::map_chr(results, ~ .x$reasoning %||% NA_character_),
+      raw_response  = purrr::map_chr(results, ~ .x$raw_response %||% NA_character_),
+      measures      = purrr::map(results, ~ .x$measures %||% list()),
+      parse_failure = purrr::map_lgl(results, ~ isTRUE(.x$parse_failure)),
+      stop_reason   = purrr::map_chr(results, ~ .x$stop_reason %||% NA_character_)
     )
   } else {
     purrr::map_chr(results, ~ .x$label %||% NA_character_)
   }
+}
+
+
+#' Test: Multi-measure extraction (under-listing diagnostic for C1 v0.7.0)
+#'
+#' API-calling. Runs C1 on chunks known to contain >=2 distinct labeled acts
+#' (derived from `c1_chunk_tiers$tier1` by counting per-chunk act_name
+#' occurrences). For each chunk, reports whether the model emitted
+#' `length(measures) >= n_expected_acts` and whether each expected act name
+#' appears (case-insensitive fixed-substring match) in any returned measure.
+#' Surfaces failure modes where v0.7.0 collapses multiple acts into one
+#' measure entry — the multi-measure schema's central failure mode.
+#'
+#' Input format: tibble with columns `chunk_id`, `doc_id`, `text`,
+#' `expected_acts` (list-column of character vectors, length >= 2).
+#'
+#' @param codebook Validated C1 codebook
+#' @param multi_act_chunks Tibble with chunk_id, doc_id, text, expected_acts
+#' @param model Model ID
+#' @param country_iso Character ISO code propagated to the classifier
+#' @return List with overall recall + per-chunk details. Pass criterion not
+#'   gated — this is a diagnostic, not a hard test. Tail (len(measures) <
+#'   len(expected_acts)) is surfaced for S3 manual review.
+#' @export
+test_under_listing <- function(codebook,
+                                multi_act_chunks,
+                                model = "claude-haiku-4-5-20251001",
+                                max_tokens = 1024,
+                                provider = "anthropic",
+                                base_url = NULL,
+                                api_key = NULL,
+                                country_iso = "US") {
+  n <- nrow(multi_act_chunks)
+  if (n == 0L) {
+    return(list(
+      test = "under_listing",
+      pass = NA, n_total = 0L, mean_recall = NA_real_,
+      details = tibble::tibble()
+    ))
+  }
+
+  message(sprintf("Running under-listing diagnostic on %d multi-act chunks...", n))
+
+  system_prompt <- construct_codebook_prompt(codebook, country_iso = country_iso)
+
+  details <- purrr::map_dfr(seq_len(n), function(i) {
+    expected <- multi_act_chunks$expected_acts[[i]]
+    pred <- tryCatch({
+      classify_with_codebook(
+        text = multi_act_chunks$text[i],
+        codebook = codebook,
+        model = model,
+        temperature = 0,
+        system_prompt = system_prompt,
+        max_tokens = max_tokens,
+        provider = provider,
+        base_url = base_url,
+        api_key = api_key,
+        country_iso = country_iso
+      )
+    }, error = function(e) {
+      list(label = NA_character_, measures = list(), parse_failure = TRUE)
+    })
+
+    pred_names <- vapply(pred$measures %||% list(),
+                         function(m) m$name %||% NA_character_,
+                         character(1))
+    # Per-act recall via case-insensitive fixed-substring containment.
+    # Symmetrical: act_name substring in pred OR pred substring in act_name
+    # to handle abbreviations (e.g., act="Tax Reform Act of 1986" vs.
+    # pred="Tax Reform Act"). String-match limit noted in iteration log;
+    # use fuzzy match in a follow-up if precision suffers.
+    recall_per_act <- vapply(expected, function(act) {
+      if (length(pred_names) == 0L) return(FALSE)
+      act_lc <- tolower(act)
+      any(vapply(pred_names, function(p) {
+        if (is.na(p)) return(FALSE)
+        p_lc <- tolower(p)
+        grepl(p_lc, act_lc, fixed = TRUE) ||
+          grepl(act_lc, p_lc, fixed = TRUE)
+      }, logical(1)))
+    }, logical(1))
+
+    tibble::tibble(
+      chunk_id        = multi_act_chunks$chunk_id[i],
+      doc_id          = multi_act_chunks$doc_id[i],
+      label           = pred$label %||% NA_character_,
+      n_expected      = length(expected),
+      n_measures      = length(pred_names),
+      n_acts_found    = sum(recall_per_act),
+      per_act_recall  = mean(recall_per_act),
+      expected_acts   = list(expected),
+      predicted_names = list(pred_names),
+      parse_failure   = isTRUE(pred$parse_failure)
+    )
+  })
+
+  mean_recall <- mean(details$per_act_recall, na.rm = TRUE)
+  n_full_recall <- sum(details$per_act_recall == 1.0, na.rm = TRUE)
+
+  message(sprintf(
+    "  Under-listing: mean per-act recall = %.2f, full-recall chunks = %d/%d",
+    mean_recall, n_full_recall, n
+  ))
+
+  list(
+    test = "under_listing",
+    pass = NA,  # diagnostic only — surface for manual review
+    n_total = n,
+    mean_recall = mean_recall,
+    n_full_recall = n_full_recall,
+    details = details
+  )
 }
 
 

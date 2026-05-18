@@ -1,6 +1,6 @@
 codebook:
   name: "C1: Fiscal Measure Identification"
-  version: "0.6.0"
+  version: "0.7.0"
   instructions: >
     You are an expert in fiscal policy analysis classifying chunks from official government
     economic and budget documents. Your task is to scan the entire chunk and determine whether
@@ -11,6 +11,14 @@ codebook:
     one substantive discussion of a specific fiscal measure, regardless of what the rest of the
     chunk discusses. Read the class definitions carefully and classify the chunk using only the
     provided labels.
+
+
+    The chunk you are analysing comes from a corpus published by the government of
+    **{country_iso}**. Some chunks discuss fiscal measures enacted by other countries
+    (foreign comparators, supranational bodies); these still qualify as FISCAL_MEASURE
+    because they describe fiscal policy, but their country-of-enactment is `OTHER`, not
+    `{country_iso}`. The country-of-enactment tag is applied per measure, since a single
+    chunk may discuss measures from multiple countries.
 
   classes:
     - label: "FISCAL_MEASURE"
@@ -25,6 +33,7 @@ codebook:
         - "Retrospective references that name a specific act and provide substantive detail about its provisions — such as rate changes, affected populations, or revenue effects — should be classified as FISCAL_MEASURE, even if the passage was written years after enactment"
         - "The passage names a specific act, proposal, or executive action and provides some indication of its fiscal implications — this could include rate changes, affected populations, revenue estimates, effective dates, program descriptions, or even a general description of the measure's purpose and scope — rather than merely naming the measure or describing only its political history without indicating what it would change"
         - "The significance of a measure is determined by how substantively the passage discusses it, not by its revenue impact; even small fiscal changes qualify if described in detail"
+        - "Foreign-government fiscal measures (e.g., a chunk from a {country_iso} government document that discusses a Japanese consumption-tax change or a U.S. stimulus package as a comparator) still qualify as FISCAL_MEASURE; tag the per-measure country as `OTHER`"
 
       negative_clarification:
         - "Simple extensions or renewals of existing provisions that do not alter rates, coverage, or scope are excluded from classification as fiscal measures"
@@ -48,36 +57,63 @@ codebook:
         - "A passage is not excluded from FISCAL_MEASURE classification merely because it contains fiscal vocabulary such as 'tax', 'revenue', 'spending', or 'budget'; it must describe a specific fiscal measure to qualify"
         - "Brief historical references that merely name past legislation without substantive detail about provisions are NOT_FISCAL_MEASURE, but retrospective descriptions that provide substantive detail about an act's specific provisions should be classified as FISCAL_MEASURE"
 
-  extra_output_fields:
-    - name: "discusses_motivation"
-      type: "boolean"
-      conditional_on: "FISCAL_MEASURE"
-    - name: "discusses_timing"
-      type: "boolean"
-      conditional_on: "FISCAL_MEASURE"
-    - name: "discusses_magnitude"
-      type: "boolean"
-      conditional_on: "FISCAL_MEASURE"
-
   output_instructions: >
     Classify the chunk using exactly one of: FISCAL_MEASURE, NOT_FISCAL_MEASURE.
 
-    If the chunk contains multiple fiscal measures, name the most prominent one.
 
-    If FISCAL_MEASURE, also assess three relevance flags for downstream analysis:
+    If FISCAL_MEASURE, return the list of all distinct fiscal measures discussed in the chunk
+    in the `measures` array. **List all measures discussed; the first array element must be
+    the most prominent.** A chunk legitimately may discuss two or more acts (for example,
+    "unlike Act X, which was countercyclical, Act Y was long-run") — list each as a separate
+    `measures[]` entry so downstream analysis can attribute evidence to the correct act.
+    Empty `measures: []` is invalid for FISCAL_MEASURE labels.
 
-    - discusses_motivation: Does this passage discuss **why** the fiscal measure was enacted — its purpose, stated goals, or the economic/political conditions that prompted it?
 
-    - discusses_timing: Does this passage discuss **when** the fiscal measure takes or took effect — implementation dates, phase-in schedules, or retroactive provisions?
+    **One act = one entry.** If a chunk discusses multiple provisions of a single named
+    act (e.g., a rate-reduction provision and a rebate provision of the same tax act, or
+    several sections of one omnibus bill referred to by the omnibus name), list that act
+    **once** with a single `measures[]` entry; do not split sub-provisions of the same act
+    into separate entries. Two entries are warranted only when the chunk names two (or
+    more) distinct acts.
 
-    - discusses_magnitude: Does this passage discuss **how large** the fiscal measure is — revenue estimates, dollar amounts, rate changes, or affected population sizes?
+
+    For each measure, populate five per-measure fields:
+
+
+    - `name`: the act name, proposal name, or executive-action descriptor as it appears in
+      the chunk (preserve the chunk's wording rather than canonicalising)
+
+    - `country`: `{country_iso}` if the measure was enacted (or proposed) by the {country_iso}
+      government; `OTHER` if it is a foreign comparator, a measure of a supranational body
+      (IMF programs, EU directives, ASEAN agreements, etc. — always `OTHER` regardless of
+      which member country implements them), or otherwise enacted by a different country.
+      The only two legal values are `{country_iso}` and `OTHER`.
+
+    - `discusses_motivation`: does the chunk discuss **why** this measure was enacted — its
+      purpose, stated goals, or the economic/political conditions that prompted it?
+
+    - `discusses_timing`: does the chunk discuss **when** this measure takes or took effect —
+      implementation dates, phase-in schedules, or retroactive provisions?
+
+    - `discusses_magnitude`: does the chunk discuss **how large** this measure is — revenue
+      estimates, dollar amounts, rate changes, or affected population sizes?
+
+
+    If NOT_FISCAL_MEASURE, return `measures: []` (empty array).
+
 
     Return your answer as JSON:
+
     {
       "label": "FISCAL_MEASURE" or "NOT_FISCAL_MEASURE",
-      "measure_name": "Name of the most prominent act or proposal if FISCAL_MEASURE, null otherwise",
-      "discusses_motivation": true or false (if FISCAL_MEASURE, null otherwise),
-      "discusses_timing": true or false (if FISCAL_MEASURE, null otherwise),
-      "discusses_magnitude": true or false (if FISCAL_MEASURE, null otherwise),
+      "measures": [
+        {
+          "name": "Name of the fiscal measure",
+          "country": "{country_iso}" or "OTHER",
+          "discusses_motivation": true or false,
+          "discusses_timing": true or false,
+          "discusses_magnitude": true or false
+        }
+      ],
       "reasoning": "Brief explanation citing specific evidence from the chunk"
     }
