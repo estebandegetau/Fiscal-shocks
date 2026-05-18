@@ -8,7 +8,7 @@ This file provides context for Claude Code when working on Phase 2 (Malaysia Pil
 
 **Timeline**: 12 weeks (4 weeks deployment, 4 weeks validation, 2 weeks refinement, 2 weeks documentation)
 
-**Status**: READY TO DEPLOY — Phase 0 C1+C2 codebooks frozen (C2b v0.9.1, iter 48, 2026-05-06). User decision on iter 48 explicitly authorizes Malaysia deployment as the active next step. Country deployment pipeline already wired (commit b92ee61: dynamic-branched URLs → C2a evidence).
+**Status**: BLOCKED on C0 (Act Aggregator) readiness per 2026-05-18 strategy update — the Malaysia consistency test (2026-05-17) demonstrated that deployment-grade C2 quality requires explicit cross-document act aggregation, which Phase 0 sidestepped via `aligned_data`'s imposed tier→act mapping. The 2026-05-18 sequencing plan (`docs/deltas.md`): C1 v0.7.0 implemented (Step 4 ✅, commit 50e67e9); next Step 5 (C2a v0.6.0), Step 6 (C2 re-validation), Step 7 (C0 codebook S0-S3 against US gold partition). The 2026-05-06 deployment authorization (C2b v0.9.1 freeze) is suspended until C0 clears its gates. Country deployment pipeline remains wired (commit b92ee61: dynamic-branched URLs → C2a evidence) and ready to run once the upstream blockers clear.
 
 **Expected Output**: 20-40 expert-validated Malaysia fiscal acts
 
