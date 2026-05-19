@@ -2833,3 +2833,94 @@ iterations:
       model thoroughness without introducing new errors. During C2
       development, monitor the 3 F-error pattern (spending-side fiscal
       policy) as planned.
+
+  - iteration: 29
+    codebook_version: "0.7.0"
+    date: "2026-05-19"
+    git_commit: "e74a520"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      First S1 run on C1 v0.7.0 (multi-measure schema, commit 50e67e9
+      landed 2026-05-18). v0.7.0 replaces v0.6.0's single flat
+      `measure_name` field with a `measures[]` array, each entry carrying
+      `name`, per-measure `country`, and three boolean relevance flags
+      (`discusses_motivation`, `discusses_timing`, `discusses_magnitude`).
+      country_iso = "US" substituted into the {country_iso} token at
+      runtime. No code changes between this run and the v0.7.0 landing —
+      this is the first behavioral test of the new schema.
+    results:
+      overall_pass: false
+      metrics:
+        - test: "I_legal_outputs"
+          value: 0.9500
+          threshold: 1.0000
+          pass: false
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+      test_iv_diagnostics:
+        change_rate_reversed: 0.0000
+        change_rate_shuffled: 0.0000
+        fleiss_kappa: 1.0000
+        kappa_interpretation: "Near-perfect agreement"
+      n_test_texts: 20
+      failure_detail:
+        text_id: 7
+        stop_reason: "max_tokens"
+        n_measures_emitted_before_truncation: 14
+        raw_response_chars: 3700
+        max_tokens_cap: 1024
+        notes: >
+          Treasury historical-summary chunk (Revenue Acts 1941-1944,
+          Excise Tax Act 1947, Individual Income Tax Act 1944, Current
+          Tax Payment Act 1943, Tax Adjustment Act 1945, etc.). Response
+          began correctly with the expected JSON envelope and emitted
+          14 well-formed measure objects before being truncated
+          mid-array at the 1024-token cap. Other tests pass cleanly
+          (II 100%, IV 0% change rate, kappa 1.0).
+      output_length_distribution:
+        - n_measures: "0 (NOT_FISCAL_MEASURE)"
+          n_chunks: 6
+          raw_chars_range: "1013-1296"
+        - n_measures: "1-6"
+          n_chunks: 11
+          raw_chars_range: "1191-2453"
+        - n_measures: "8"
+          n_chunks: 1
+          raw_chars_range: "2936"
+        - n_measures: "11"
+          n_chunks: 1
+          raw_chars_range: "3747 (closest non-failure to cap)"
+        - n_measures: "14+ (truncated)"
+          n_chunks: 1
+          raw_chars_range: "3700 (max_tokens reached)"
+    interpretation: >
+      New schema yields output that exceeds given max_tokens. Not a
+      codebook semantics issue. The v0.7.0 multi-measure schema produces
+      substantially more output per chunk than v0.6.0 (~90 output
+      tokens per measure object vs v0.6.0's single flat measure_name).
+      The max_tokens=1024 cap was sized for v0.6.0 and is now
+      insufficient for dense Treasury historical-summary chunks that
+      legitimately list 12+ acts. Same failure mode as iteration 22
+      (Gemini hitting the then-500 cap, resolved by bumping to 1024).
+      Test II (definition recovery 100%) and Test IV (order invariance
+      0% change, kappa 1.0) both pass cleanly, confirming the v0.7.0
+      codebook itself behaves correctly under the new schema.
+    decision: >
+      Increase max_tokens to 3072 (covers ~30 measures, comfortably
+      above the observed maximum of 14+ and provides headroom for
+      denser Malaysia/SEA documents in Phase 2). Apply to c1_s1_results
+      in _targets.R; verify downstream targets (c1_s2_results,
+      c1_s3_results, country_c1_predictions) share the same cap and
+      bump consistently. Commit before re-running S1.
