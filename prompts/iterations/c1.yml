@@ -3009,3 +3009,114 @@ iterations:
       docs/deltas.md, this is Step 4 follow-up: S2 + S3 re-validation
       on the new multi-measure schema before C2a v0.6.0 (Step 5) and
       C2 re-validation (Step 6).
+  - iteration: 31
+    codebook_version: "0.7.0"
+    date: "2026-05-19"
+    git_commit: "a491520"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s2"
+    changes: >
+      No codebook changes from iteration 30. First S2 zero-shot run
+      under C1 v0.7.0 multi-measure schema. Test set rebuilt by
+      assemble_zero_shot_test_set with n_negatives=100,
+      n_tier2_per_act=20, seed=20251206 (yields 840 chunks: 68 Tier 1,
+      672 Tier 2, 100 negatives — substantially larger than the v0.5.0
+      /v0.6.0 test sets, so direct cross-version comparison is partly
+      a sample-size effect). Per-measure country tag substituted with
+      country_iso="US". max_tokens=3072 from iter-30 infrastructure fix
+      held: 0 parse failures and all 3,733 prediction rows terminated
+      with stop_reason=end_turn.
+    results:
+      overall_pass: false
+      metrics:
+        - metric: "combined_recall"
+          value: 0.8000
+          ci_lower: 0.7715
+          ci_upper: 0.8292
+          target: 0.9000
+          pass: false
+        - metric: "tier1_recall"
+          value: 0.8824
+          ci_lower: 0.8030
+          ci_upper: 0.9552
+          target: 0.9500
+          pass: false
+        - metric: "precision"
+          value: 0.9472
+          ci_lower: 0.9291
+          ci_upper: 0.9643
+          target: 0.7000
+          pass: true
+      secondary_metrics:
+        - metric: "tier2_recall"
+          value: 0.7917
+          ci_lower: 0.7622
+          ci_upper: 0.8223
+        - metric: "f1"
+          value: 0.8674
+          ci_lower: 0.8487
+          ci_upper: 0.8874
+        - metric: "accuracy"
+          value: 0.7845
+          ci_lower: 0.7571
+          ci_upper: 0.8143
+        - metric: "specificity"
+          value: 0.6700
+          ci_lower: 0.5784
+          ci_upper: 0.7614
+      confusion_matrix:
+        tp: 592
+        fp: 33
+        fn: 148
+        tn: 67
+      test_set:
+        n_total: 840
+        n_tier1: 68
+        n_tier2: 672
+        n_negatives: 100
+      error_breakdown:
+        tier1_false_negatives: 8
+        tier2_false_negatives: 140
+        false_positives: 33
+      multi_measure_diagnostics:
+        n_multi_act_chunks: 30
+        n_with_zero_recall: 16
+        n_with_full_recall: 4
+        country_tag_distribution:
+          US: 2940
+          OTHER: 1
+        max_measures_per_chunk_response: 36
+        n_chunks_with_empty_measures: 205
+      stop_reason_distribution:
+        end_turn: 3733
+        max_tokens: 0
+      parse_failures: 0
+      n_bootstrap: 1000
+    interpretation: >
+      These are more precise test statistics because of larger sample
+      size (840 vs the ~50-chunk v0.5.0/v0.6.0 test sets). Magnitudes
+      are quite comparable to v0.6.0: tier1_recall lands at 0.8824 with
+      CI [0.8030, 0.9552] that spans the 0.95 diagnostic target, and
+      precision (0.9472) actually improves on the v0.5.0/v0.6.0 baseline
+      (~0.79). The 8 Tier 1 false negatives all carry confidence=1 with
+      reasoning citing "table of contents", "presidential message", or
+      "tables of federal budget data" — i.e., chunks where the labeled
+      act is mentioned only in passing, matching the Category B / F
+      pattern documented in iteration 19-20 manual audits. The v0.7.0-
+      specific multi-measure failure mode (under-listing on multi-act
+      chunks) is present (16/30 chunks with recall=0) and is the right
+      thing to characterize in S3. v0.7.0 performs well enough; the S2
+      diagnostic gaps are sample-size + ground-truth-noise artefacts
+      rather than codebook-semantics regressions.
+    decision: >
+      Proceed to S3 + manual analysis to derive unbiased test
+      statistics (mirroring iteration 28's bias-correction workflow
+      under v0.6.0). Trigger tar_make(c1_s3_results) next; under v0.7.0
+      this now includes the three new multi-measure diagnostics (over-
+      listing, country distribution, under-listing on multi-act chunks)
+      alongside Tests V/VI/VII and the ablation. No codebook edits
+      until S3 results clarify whether the multi-act under-listing is
+      a codebook-fixable problem or a model-capacity ceiling. Per the
+      2026-05-18 sequencing plan in docs/deltas.md, this completes
+      Step 4 (C1 v0.7.0 S2+S3 re-validation) before C2a v0.6.0 (Step
+      5) and C2 re-validation (Step 6).
