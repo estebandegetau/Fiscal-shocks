@@ -2924,3 +2924,88 @@ iterations:
       in _targets.R; verify downstream targets (c1_s2_results,
       c1_s3_results, country_c1_predictions) share the same cap and
       bump consistently. Commit before re-running S1.
+
+  - iteration: 30
+    codebook_version: "0.7.0"
+    date: "2026-05-19"
+    git_commit: "9016c1b"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      No codebook changes from iteration 29. Infrastructure fix only:
+      bumped c1_s1_results max_tokens from 1024 to 3072 in _targets.R
+      (commit 9016c1b). Re-run of v0.7.0 S1 to confirm the iter-29
+      Test I failure was a pure cap issue, not a codebook-semantics
+      defect. Downstream c1_s2_results, c1_s3_results, and
+      country_c1_predictions already carry max_tokens = 3072 (lines
+      544, 585, 687 of _targets.R).
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_definition_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+        - test: "IV_order_invariance"
+          value: 0.0000
+          threshold: 0.0500
+          pass: true
+      test_iv_diagnostics:
+        change_rate_reversed: 0.0000
+        change_rate_shuffled: 0.0000
+        fleiss_kappa: 1.0000
+        kappa_interpretation: "Near-perfect agreement"
+      n_test_texts: 20
+      stop_reason_distribution:
+        end_turn: 20
+        max_tokens: 0
+      output_length_distribution:
+        - n_measures: "0 (NOT_FISCAL_MEASURE)"
+          n_chunks: 6
+        - n_measures: "1-6"
+          n_chunks: 11
+        - n_measures: "9"
+          n_chunks: 2
+        - n_measures: "13"
+          n_chunks: 1
+        - n_measures: "14"
+          n_chunks: 1
+      headroom_check:
+        max_raw_response_chars: 3996
+        max_tokens_cap: 3072
+        text_id_7_status: >
+          Previously truncated at 14 measures with stop_reason=max_tokens
+          (iter 29). Now emits 14 measures cleanly with
+          stop_reason=end_turn and raw_response_chars=3511. Comfortable
+          margin remains under the 3072 cap.
+    interpretation: >
+      C1 v0.7.0 S1 gate PASSED. All four behavioral tests clear their
+      thresholds: Test I 100% legal outputs (up from iter-29's 95%),
+      Test II 100% definition recovery, Test III vacuously passes (no
+      in-context examples in C1 v0.7.0 per design), Test IV 0% change
+      rate with Fleiss kappa = 1.0 across both reversed and shuffled
+      orderings. The iter-29 failure was confirmed as a pure
+      infrastructure cap issue — bumping max_tokens from 1024 to 3072
+      eliminated the Treasury-historical-summary truncation without any
+      codebook edits. All 20 chunks now terminate with end_turn. The
+      v0.7.0 multi-measure schema (measures[] array with per-measure
+      country tag and three relevance flags) validates correctly on
+      every Test I chunk and shows expected cardinality distribution
+      (0 measures on the 6 negative chunks; 1-14 on the 14 positive
+      chunks).
+    decision: >
+      Proceed to S2 zero-shot evaluation on C1 v0.7.0. No codebook
+      changes required. Trigger tar_make(c1_s2_results) and
+      tar_make(c1_s2_eval) next. Per the 2026-05-18 sequencing plan in
+      docs/deltas.md, this is Step 4 follow-up: S2 + S3 re-validation
+      on the new multi-measure schema before C2a v0.6.0 (Step 5) and
+      C2 re-validation (Step 6).
