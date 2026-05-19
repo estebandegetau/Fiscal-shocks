@@ -65,7 +65,7 @@ make_chunks <- function(pages_df,
         dplyr::group_by(dplyr::across(dplyr::all_of(id_col))) |>
         dplyr::summarise(
           text = list(purrr::reduce(text, c)),
-          dplyr::across(-text, ~ dplyr::first(.x)),
+          dplyr::across(-text, \(x) if (is.list(x)) list(dplyr::first(x)) else dplyr::first(x)),
           .groups = "drop"
         )
     }
