@@ -3354,3 +3354,581 @@ iterations:
       the 2026-05-18 sequencing plan in docs/deltas.md, completing
       the manual audit closes Step 4 (C1 v0.7.0 S3 re-validation) and
       unblocks Step 5 (C2a v0.6.0).
+
+  - iteration: 33
+    codebook_version: "0.7.0"
+    date: "2026-05-20"
+    git_commit: "47368fb"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s3_manual_analysis"
+    changes: >
+      Manual error analysis of v0.7.0 S3 baseline predictions using H&K
+      6-category framework (A-F). All 40 baseline chunks inspected.
+      Replicates iter 28's v0.6.0 workflow and iter 20's category
+      framework. In-progress: 27 confident-bucket A judgments approved
+      en bloc; the 13 discussion-bucket chunks are being walked through
+      individually with this entry updated incrementally.
+    results:
+      n_inspected: 40
+      n_confident_bucket_approved: 27
+      chunk_judgments:
+        - text_id: 1
+          chunk_id: 7
+          doc_id: "ERP-2003"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 2
+          chunk_id: 10
+          doc_id: "ERP-1972"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 4
+          chunk_id: 1
+          doc_id: "ERP-1954"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 5
+          chunk_id: 9
+          doc_id: "ERP-1966"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 6
+          chunk_id: 2
+          doc_id: "BUDGET-1966"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 8
+          chunk_id: 49
+          doc_id: "AR_TREASURY-1946"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 9
+          chunk_id: 4
+          doc_id: "BUDGET-1946"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 10
+          chunk_id: 3
+          doc_id: "AR_TREASURY-1965"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 11
+          chunk_id: 5
+          doc_id: "BUDGET-1998"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 12
+          chunk_id: 4
+          doc_id: "AR_TREASURY-1946"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 14
+          chunk_id: 60
+          doc_id: "AR_TREASURY-1966"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 16
+          chunk_id: 56
+          doc_id: "AR_TREASURY-1979"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 17
+          chunk_id: 4
+          doc_id: "ERP-1972"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 19
+          chunk_id: 25
+          doc_id: "ERP-1977"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct, sound reasoning"
+        - text_id: 21
+          chunk_id: 27
+          doc_id: "BUDGET-1954"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 22
+          chunk_id: 43
+          doc_id: "AR_TREASURY-1955"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 24
+          chunk_id: 177
+          doc_id: "BUDGET-1948"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 25
+          chunk_id: 21
+          doc_id: "AR_TREASURY-1963"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 29
+          chunk_id: 49
+          doc_id: "ERP-2005"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 30
+          chunk_id: 27
+          doc_id: "ERP-1983"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 32
+          chunk_id: 58
+          doc_id: "BUDGET-1979"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 33
+          chunk_id: 95
+          doc_id: "AR_TREASURY-1962"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 34
+          chunk_id: 26
+          doc_id: "BUDGET-1964"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 36
+          chunk_id: 71
+          doc_id: "BUDGET-1983"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 37
+          chunk_id: 30
+          doc_id: "ERP-1961"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 38
+          chunk_id: 45
+          doc_id: "ERP-2007"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 39
+          chunk_id: 25
+          doc_id: "AR_TREASURY-1960"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "A"
+          notes: "Correct rejection"
+        - text_id: 3
+          chunk_id: 3
+          doc_id: "BUDGET-1947"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "E"
+          notes: >
+            R&R quote (passage_idx 4 of Revenue Act of 1945: "No backlog
+            of demand can exist very long ... possibility of a
+            deflationary spiral ... full employment program") is verbatim
+            in the chunk at char ~19,000 of a 23,790-char chunk. Model
+            reasoning enumerated many relevant program/initiative names
+            (IMF, Bretton Woods, Trade Agreements Act, Selective Service
+            Act, lend-lease, UK loan) but ruled the chunk
+            "primarily strategic and policy-oriented rather than a
+            detailed discussion of specific fiscal measures." Failed to
+            connect the deflationary-spiral / tax-reduction-for-
+            reconversion passage to the Revenue Act of 1945. Same root
+            cause as text_id 7: model applied an overly restrictive
+            "substantive" bar despite the codebook explicitly
+            authorizing "even a general description of the measure's
+            purpose and scope" as qualifying. v0.7.0-specific
+            regression (not an FN in v0.6.0).
+        - text_id: 7
+          chunk_id: 1
+          doc_id: "BUDGET-1979"
+          tier: 1
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "E"
+          notes: >
+            R&R quote (passage_idx 4 of Revenue Act of 1978: "ensure a
+            vigorous economy, a declining unemployment rate, a strong
+            expansion of private investment") appears verbatim at char
+            ~10,900 of an 18,635-char chunk, embedded in substantive
+            discussion of the President's $25B tax-reduction proposal
+            (purpose, magnitude, policy intent — all qualifying per
+            the codebook). Model explicitly cited the "$25 billion tax
+            reduction" mention in its reasoning but ruled it "merely
+            named without substantive fiscal detail." Same overly-
+            restrictive "substantive" bar as text_id 3. v0.7.0-specific
+            regression (not an FN in v0.6.0). One hypothesis: the
+            v0.7.0 multi-measure schema (per-measure name + country +
+            3 relevance flags) raises the implicit threshold for what
+            the model considers worth listing as a measure.
+        - text_id: 13
+          chunk_id: 94
+          doc_id: "AR_TREASURY-1961"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: >
+            Tier 2 name-match attached "Social Security Amendments of
+            1950" to a 34,851-char chunk of pure tabular trust-fund
+            data. The act name appears exactly once, as a 13-word
+            table footnote citation at char ~28,362 ("To cover
+            employees of States and their political subdivisions,
+            Social Security Amendments of 1950"). The IKA process
+            isn't perfect — this chunk does not discuss fiscal policy
+            in a meaningful way; the act is mentioned only as a
+            citation marker for one row of Table 72. Weaker than v0.6.0
+            iter 28 text_id 24 (which had multiple substantive
+            footnotes with provisions and dollar amounts).
+        - text_id: 15
+          chunk_id: 84
+          doc_id: "BUDGET-1972"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: >
+            Tier 2 name-match on "Tax Reform Act of 1969" attached to
+            the budget document back-matter index. Chunk is purely
+            alphabetical index entries with page references. Model
+            correctly identifies the chunk as containing no substantive
+            fiscal-measure discussion. Standard IKA-on-index noise
+            pattern documented in v0.5.0/v0.6.0 manual analyses.
+        - text_id: 18
+          chunk_id: 104
+          doc_id: "AR_TREASURY-1946"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: >
+            Tier 2 name-match on "Revenue Act of 1945" attached to the
+            Treasury report back-matter index. Chunk is alphabetical
+            index entries (T section, including "Revenue Act of 1945,
+            major provisions 92" and similar). Model correctly
+            identifies no substantive discussion. Standard IKA-on-
+            index noise pattern.
+        - text_id: 20
+          chunk_id: 88
+          doc_id: "BUDGET-1986"
+          tier: 2
+          gold: "FISCAL_MEASURE"
+          predicted: "NOT_FISCAL_MEASURE"
+          category: "B"
+          notes: >
+            Tier 2 name-match on "Tax Equity and Fiscal Responsibility
+            Act of 1982" attached to the budget back-matter index
+            (S section). Pure alphabetical index entries with page
+            references. Model correctly identifies no substantive
+            discussion. Standard IKA-on-index noise pattern.
+        - text_id: 23
+          chunk_id: 30
+          doc_id: "ERP-1974"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "F"
+          notes: >
+            Codebook gap — flag for future improvement. Model
+            identifies IET, Voluntary Foreign Credit Restraint Program,
+            and controls on foreign investment with substantive rate
+            changes, timing, and magnitude. These are real fiscal
+            measures by the codebook's own criteria, but they are
+            capital-controls / balance-of-payments instruments that
+            R&R's 44-act revenue-side list excludes by methodology.
+            The C1 codebook's negative_clarification does not
+            explicitly exclude this class. Consistent F-treatment with
+            iter 20 (v0.5.0) and iter 28 (v0.6.0). Future codebook
+            revision should consider an explicit negative_clarification
+            for foreign-credit / capital-controls instruments.
+        - text_id: 26
+          chunk_id: 76
+          doc_id: "AR_TREASURY-1974"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "B"
+          notes: >
+            Incomplete gold standard. Model identifies the
+            Administration's 1974 windfall profits tax proposal with
+            detailed rate brackets (10%-85% on price increases),
+            graduated 36-month phase-out, and motivation (tax windfalls
+            from oil price spikes while preserving production
+            incentives). The eventual Crude Oil Windfall Profit Tax
+            Act of 1980 IS in R&R's 44-act list as a Tier 1 anchor
+            act. IKA name-matching missed this chunk because the
+            1974 proposal name doesn't match the 1980 enacted name.
+            Per the codebook, proposals qualify — the model is
+            correct. Gold is incomplete due to name-mismatch between
+            proposal phase and enacted phase of the same measure.
+        - text_id: 27
+          chunk_id: 22
+          doc_id: "BUDGET-1986"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "F"
+          notes: >
+            Codebook gap — flag for future improvement. The
+            spending/tax distinction is blurry at best. The 2-year
+            moratorium on direct loan obligations for elderly/
+            handicapped housing clearly changes citizens' fiscal
+            liabilities (affected populations lose access to subsidized
+            housing; downstream section 8 subsidy flows change). The
+            codebook's current negative_clarification excluding
+            "spending authorizations that set program funding levels
+            without altering ... direct transfer payments to individuals
+            or firms" is too restrictive — many program-funding changes
+            DO alter direct transfers in substance, even if not in
+            tax-code form. Same pattern as v0.5.0 iter 20 texts 23, 32,
+            33 (deferred to C2). Future codebook revision should
+            address the spending/tax-policy ambiguity explicitly rather
+            than relying on a hard exclusion that the model (correctly)
+            ignores.
+        - text_id: 28
+          chunk_id: 33
+          doc_id: "BUDGET-2006"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "F"
+          notes: >
+            Codebook gap — same spending/tax-policy ambiguity as
+            text_id 27. SAFETEA ($283.9B over six years), TEA-21,
+            Passenger Rail Investment Reform Act are large
+            transportation reauthorization programs. The codebook's
+            negative_clarification on "spending authorizations that
+            set program funding levels" targets exactly this case, but
+            the model (consistent with iter 27 and the broader
+            spending-side scope question) treats them as fiscal
+            measures. Future codebook revision should resolve this.
+        - text_id: 31
+          chunk_id: 83
+          doc_id: "AR_TREASURY-1974"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "F"
+          notes: >
+            Codebook gap — flag for future improvement. Duplicate
+            pattern of text_id 23 (same year, same act family). Model
+            correctly identifies Executive Order 11754 IET rate cuts
+            (0.75% to 0.25%, then to zero in January 1974) plus
+            Foreign Direct Investment Program and VFCR amendments
+            with rates, dates, and motivation. Per the codebook,
+            executive actions with rate changes qualify. But IET /
+            foreign-credit instruments are outside R&R's 44-act
+            revenue-side list. Future codebook revision should add
+            an explicit negative_clarification for capital-controls
+            and balance-of-payments instruments (consistent with the
+            text_id 23 recommendation).
+        - text_id: 35
+          chunk_id: 22
+          doc_id: "BUDGET-2002"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "B"
+          notes: >
+            Incorrect gold standard. The Balanced Budget Act of 1997
+            is on R&R's identified-measures list, and this chunk
+            discusses its CSRS contribution rate provisions with
+            specific timing (effective 1998, set to expire 2003) and
+            magnitude (agency contributions rising from 7% to 8.51%).
+            Per the codebook, this qualifies as substantive discussion
+            of a specific fiscal measure on R&R's list. IKA name-
+            matching missed this chunk (the BBA 1997 mention is
+            substantive but compact). The other two model-identified
+            items (FCC spectrum authorization, ANWR leasing) are more
+            ambiguous spending-side proposals — same family as text_id
+            27/28 — but the BBA 1997 piece alone establishes the
+            FISCAL_MEASURE label correctly.
+        - text_id: 40
+          chunk_id: 10
+          doc_id: "ERP-1962"
+          tier: null
+          gold: "NOT_FISCAL_MEASURE"
+          predicted: "FISCAL_MEASURE"
+          category: "B"
+          notes: >
+            Incorrect gold standard. Model identifies (i) the proposed
+            8% tax credit on expenditures for new durable equipment —
+            this is the Investment Tax Credit proposal that became the
+            Revenue Act of 1962, which IS on R&R's list as a Tier 1
+            anchor act; (ii) the January 1960 Federal social insurance
+            tax increase (~$2B/year) with timing and magnitude. The
+            ITC proposal is discussed with motivation (raise after-tax
+            return on investment) and magnitude (8%) — per the
+            codebook, proposals qualify. Same proposal-phase / enacted-
+            phase IKA name-mismatch as text_id 26 (the proposal
+            became 7% in the enacted Revenue Act of 1962).
+      category_distribution:
+        - category: "A_llm_correct"
+          count: 27
+          pct: 67.5
+        - category: "B_incorrect_gold"
+          count: 7
+          pct: 17.5
+        - category: "C_document_error"
+          count: 0
+          pct: 0.0
+        - category: "D_non_compliance"
+          count: 0
+          pct: 0.0
+        - category: "E_semantics_reasoning"
+          count: 2
+          pct: 5.0
+        - category: "F_other"
+          count: 4
+          pct: 10.0
+      bias_corrected_metrics:
+        excluded_B: 7
+        excluded_C: 0
+        effective_n: 33
+        confusion_matrix:
+          tp: 14
+          tn: 13
+          fp: 4
+          fn: 2
+        accuracy: 81.8
+        precision: 77.8
+        recall: 87.5
+        tier1_recall: 80.0
+        tier2_recall: 100.0
+        specificity: 76.5
+        note: >
+          Excludes 7 Category B chunks (4 Tier-2 IKA-on-index noise:
+          text_ids 13, 15, 18, 20; plus 3 cases where gold is incomplete
+          on real R&R-list act discussions: text_ids 26, 35, 40). Keeps
+          4 Category F chunks in the FP denominator as codebook-scope
+          ambiguity (text_ids 23, 27, 28, 31). Keeps 2 Category E
+          chunks in the FN denominator as genuine semantic errors
+          (text_ids 3, 7 — both Tier 1, both v0.7.0-specific
+          regressions).
+      comparison_vs_v060_iter28:
+        v060_distribution: "31A / 6B / 0C / 0D / 0E / 3F"
+        v070_distribution: "27A / 7B / 0C / 0D / 2E / 4F"
+        e_count_delta: "+2 (new semantic errors at Tier 1)"
+        v060_accuracy: 91.2
+        v070_accuracy: 81.8
+        v060_precision: 83.3
+        v070_precision: 77.8
+        v060_recall: 100.0
+        v070_recall: 87.5
+        v060_tier1_recall: 100.0
+        v070_tier1_recall: 80.0
+        regression_summary: >
+          v0.7.0 introduces 2 new Tier 1 false negatives (text_ids 3
+          and 7) that are TRUE semantic errors, not IKA noise. In both
+          cases, R&R quotes are verbatim in the chunk, the model's
+          reasoning enumerates relevant material, but the model rules
+          the discussion "merely named without substantive fiscal
+          detail" — applying a stricter bar than the codebook
+          authorizes ("even a general description of the measure's
+          purpose and scope" qualifies per current C1 clarification).
+          Hypothesized cause: v0.7.0 multi-measure schema (per-measure
+          name + country + 3 relevance flags) raises the implicit
+          threshold for what counts as a measure worth listing.
+          v0.6.0 had E=0 (gate passed cleanly). v0.7.0 has E=2 (gate
+          questionable on Tier 1 semantic-error grounds; recommended
+          remediations below).
+      codebook_gap_flags:
+        - "Foreign-credit / capital-controls instruments (IET, VFCR, FDI Program): codebook lacks explicit negative_clarification; model correctly identifies them as fiscal measures, but they are out of R&R's 44-act revenue-side scope. text_ids 23, 31."
+        - "Spending-side authorizations (housing moratoria, postal service, transportation reauthorization): codebook excludes via negative_clarification, but the spending/tax distinction is blurry — moratoria on direct-loan obligations clearly change citizens' fiscal liabilities. text_ids 27, 28."
+        - "Overly-restrictive 'substantive' threshold: model applies a stricter bar than the codebook authorizes for what counts as substantive discussion of a proposal/measure when only purpose+scope+magnitude are given. text_ids 3, 7 (both v0.7.0-specific Tier 1 FNs)."
+    interpretation: >
+      New schema either changes the model's classification framework or
+      distracts it from reasoning the main codebook task (fiscal shock
+      identification). The 2 new Tier 1 E errors (text_ids 3, 7) are
+      both cases where the model recognized the relevant content and
+      then applied an overly restrictive bar — consistent with the
+      hypothesis that asking for per-measure structure (name + country
+      + 3 relevance flags) raises the model's threshold for what counts
+      as a measure worth listing. Tier 2 recall remains at ceiling
+      (100%) after excluding IKA noise; specificity drops modestly
+      because the codebook-gap F-category continues to flag substantive
+      foreign-credit and spending-side content as FISCAL_MEASURE. Net:
+      v0.7.0 is fit-for-purpose for Phase 2 deployment despite the
+      Tier 1 regression — the multi-measure schema unlocks the per-
+      measure structure required for C2a (Phase 5) and Malaysia (Phase
+      2) downstream consumption.
+    decision: >
+      Defer identified gap fixes to a future C1 version. Accept v0.7.0
+      as-is for deployment. Three gaps recorded for future revision
+      (foreign-credit/capital-controls, spending-side authorizations,
+      overly-restrictive substantive threshold) but not blocking. C1
+      S3 manual audit closes Step 4 of the 2026-05-18 sequencing plan
+      in docs/deltas.md. Next: Step 5 (C2a v0.6.0).
