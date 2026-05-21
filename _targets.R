@@ -861,6 +861,62 @@ list(
     malay_consistency,
     path = here("notebooks/malay_consistency.qmd"),
     cache = FALSE
+  ),
+
+  # =============================================================================
+  # C0 Act Aggregator — empirical design notebook
+  # Compares 5 methods for aggregating C1 measure_name strings into act-level
+  # canonical clusters. Anchored to US gold standard (Tier 1/2 chunks where
+  # c1_s2_results already carries the chunk's gold act_name).
+  #
+  # Phase A (below): deterministic, no API cost. Builds the pool and gold
+  # pairs, runs JW single-linkage at a 5-threshold × {unblocked, year_window=2}
+  # grid, evaluates with pairwise P/R/F1, ARI, purity, over/under-merge
+  # (bootstrap CIs resampled at gold-row level).
+  #
+  # Phase B (embeddings, LLM judge, stateful builder) will be added once the
+  # embedding-provider decision is made; those targets must be explicitly
+  # named in tar_make() and require API keys in .env.
+  # =============================================================================
+
+  tar_target(
+    c0_us_measure_pool,
+    build_c0_measure_pool(c1_s2_results),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    c0_eval_gold_pairs,
+    build_c0_eval_gold_pairs(c1_s2_results),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    c0_jw_clusters,
+    run_jw_clusters_grid(
+      c0_us_measure_pool,
+      thresholds = c(0.10, 0.15, 0.20, 0.25, 0.30),
+      year_windows = list(NULL, 2L)
+    ),
+    packages = c("tidyverse", "stringdist", "igraph")
+  ),
+
+  tar_target(
+    c0_jw_metrics,
+    evaluate_clusters_grid(
+      c0_jw_clusters,
+      c0_eval_gold_pairs,
+      group_keys = "variant_id",
+      n_boot = 1000L,
+      seed = 20260521L
+    ),
+    packages = "tidyverse"
+  ),
+
+  tar_quarto(
+    c0_aggregator,
+    path = here("notebooks/c0_aggregator.qmd"),
+    cache = FALSE
   )
 
 

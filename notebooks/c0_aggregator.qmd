@@ -1,0 +1,335 @@
+---
+title: "C0 Act Aggregator — Method Comparison"
+subtitle: "Aggregating C1 measure names into act-level canonical clusters"
+date: today
+date-format: long
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, stringdist, patchwork,
+               scales, forcats)
+
+here::i_am("notebooks/c0_aggregator.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/tt_theme.R"))
+source(here("R/c0_aggregator.R"))
+
+tar_load(c(
+  c0_us_measure_pool,
+  c0_eval_gold_pairs,
+  c0_jw_clusters,
+  c0_jw_metrics
+))
+
+phase_b_pending <- TRUE  # flip to FALSE once Phase B targets are wired
+```
+
+## Framing
+
+C1 v0.7.0 extracts a `measure_name` string per chunk × measure, but the same fiscal act surfaces under many different forms ("ERTA", "Economic Recovery Tax Act of 1981", "Economic Recovery Tax Act (ERTA)", "the 1981 tax cut"). Downstream consumers — C2b motivation, deployment summaries, and any cross-country comparison — need a stable canonical mapping at the **act** level. The job of a "C0" Act Aggregator is to produce that mapping.
+
+The Malaysia EN/BM consistency notebook ([malay_consistency.qmd](malay_consistency.qmd)) showed that JW single-linkage at threshold 0.15 fragments acts (especially BM-side, where "Subsidi Bahan Api" + "Subsidi Gula" split off from a single budget envelope), and that this fragmentation propagates downstream: C2b reads asymmetric evidence on the two language sides and apparent disagreement is partly clustering noise. So before designing a C0 codebook we need empirical evidence on which aggregation strategy holds up.
+
+This notebook compares five methods on a label-anchored evaluation set (US C1 outputs joined to Romer & Romer's 40 gold-standard acts) and an out-of-distribution stress test (Malaysia EN/BM paired pairs).
+
+**Scope.** Corpus-wide per country (one canonical list across all years of a corpus), not per-document and not cross-country. The C1 deployment runs per-country; C0 will too.
+
+**Asymmetric failure cost.** Over-merging (collapse two real acts into one cluster) corrupts C2b inputs — bad. Under-merging (one act stays split across two clusters) just produces parallel-but-correct classifications — recoverable downstream. The headline pick should weight precision over recall.
+
+**What "win" means.** High pairwise F1 (the metric most sensitive to both kinds of error), high Adjusted Rand Index (partition-level agreement, chance-corrected), and a low over-merge:under-merge ratio. Bootstrap 95% CIs included but read as noise floors — pairs are not iid (they share names) so CIs are approximate.
+
+## Descriptive baseline
+
+```{r}
+#| label: tbl-pool-summary
+#| tbl-cap: "Measure-name pool from c1_s2_results"
+
+tibble::tibble(
+  Metric = c("Total FISCAL_MEASURE rows",
+             "Distinct measure_name strings (any rank)",
+             "Distinct measure_name strings (rank == 1)",
+             "Years spanned",
+             "Distinct doc_id"),
+  Value = c(
+    sprintf("%d", nrow(c0_us_measure_pool)),
+    sprintf("%d", dplyr::n_distinct(c0_us_measure_pool$measure_name)),
+    sprintf("%d", c0_us_measure_pool |>
+              dplyr::filter(measure_rank == 1L) |>
+              dplyr::pull(measure_name) |> dplyr::n_distinct()),
+    sprintf("%d-%d", min(c0_us_measure_pool$year, na.rm = TRUE),
+            max(c0_us_measure_pool$year, na.rm = TRUE)),
+    sprintf("%d", dplyr::n_distinct(c0_us_measure_pool$doc_id))
+  )
+) |> tt() |> tt_theme_report()
+```
+
+Surface-form variance per gold act — the magnitude of the canonicalization problem. For each gold act_name with at least one chunk in `c0_eval_gold_pairs`, count the distinct C1 surface forms (rank=1 only) that map to it.
+
+```{r}
+#| label: fig-variance-per-act
+#| fig-cap: "Distinct C1 rank-1 surface forms per gold act (top 25 most fragmented)"
+#| fig-width: 9
+#| fig-height: 6
+
+variance_per_act <- c0_eval_gold_pairs |>
+  dplyr::distinct(measure_name, gold_act_name) |>
+  dplyr::count(gold_act_name, name = "n_surface_forms") |>
+  dplyr::arrange(dplyr::desc(n_surface_forms))
+
+variance_per_act |>
+  utils::head(25) |>
+  dplyr::mutate(gold_act_name = forcats::fct_reorder(
+    stringr::str_trunc(gold_act_name, 60), n_surface_forms)) |>
+  ggplot(aes(n_surface_forms, gold_act_name)) +
+  geom_col(fill = "#4477AA") +
+  geom_text(aes(label = n_surface_forms), hjust = -0.2, size = 3) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.1))) +
+  labs(x = "Distinct rank-1 surface forms", y = NULL) +
+  theme_minimal(base_size = 10)
+```
+
+```{r}
+#| label: tbl-variance-summary
+#| tbl-cap: "Distribution of surface-form fragmentation across the 39 gold acts"
+
+variance_per_act |>
+  dplyr::summarize(
+    `Acts evaluated` = dplyr::n(),
+    `Median surface forms / act` = stats::median(n_surface_forms),
+    `Mean surface forms / act`   = round(mean(n_surface_forms), 2),
+    `Max surface forms / act`    = max(n_surface_forms),
+    `Acts with ≥ 5 forms`        = sum(n_surface_forms >= 5L),
+    `Acts with exactly 1 form`   = sum(n_surface_forms == 1L)
+  ) |>
+  tidyr::pivot_longer(everything(), names_to = "Metric", values_to = "Value") |>
+  tt() |> tt_theme_report()
+```
+
+The headline: even with R&R's well-known and well-named acts, the median act surfaces under multiple forms; the tail is heavy. A C0 that returns one cluster per surface form (i.e., no merging) is useless; a C0 that merges everything is also useless. The methods below try to land somewhere useful.
+
+## Eval set construction
+
+```{r}
+#| label: tbl-gold-construction
+#| tbl-cap: "Gold-pair construction. Tier 1 is the clean signal; Tier 1+2 trades signal for power."
+
+tibble::tibble(
+  Slice = c("Tier 1 only (rank == 1, FISCAL_MEASURE, verbatim-passage chunks)",
+            "Tier 1 + Tier 2 (adds substring/cooccurrence chunks)",
+            "Ambiguous names (1 measure_name → >1 gold_act_name) in T1+T2"),
+  `n rows` = c(
+    sum(c0_eval_gold_pairs$tier == 1L),
+    nrow(c0_eval_gold_pairs),
+    sum(c0_eval_gold_pairs$ambiguous)
+  ),
+  `n distinct names` = c(
+    c0_eval_gold_pairs |> dplyr::filter(tier == 1L) |>
+      dplyr::pull(measure_name) |> dplyr::n_distinct(),
+    dplyr::n_distinct(c0_eval_gold_pairs$measure_name),
+    c0_eval_gold_pairs |> dplyr::filter(ambiguous) |>
+      dplyr::pull(measure_name) |> dplyr::n_distinct()
+  ),
+  `n distinct gold acts` = c(
+    c0_eval_gold_pairs |> dplyr::filter(tier == 1L) |>
+      dplyr::pull(gold_act_name) |> dplyr::n_distinct(),
+    dplyr::n_distinct(c0_eval_gold_pairs$gold_act_name),
+    NA_integer_
+  )
+) |> tt() |> tt_theme_report()
+```
+
+**On ambiguity.** Roughly 60% of the Tier 1+2 rows have a `measure_name` that's been paired with more than one `gold_act_name` across chunks. Most cases trace to Tier 2's permissive matching: a chunk may be tagged with act X because act X is mentioned somewhere, but the most-prominent measure C1 extracts is a different act. The evaluator handles this by majority-voting per `measure_name` within each bootstrap resample (so the contingency table operates on unique names). Tier 1 is shown as the cleaner anchor; Tier 1+2 is shown for statistical power.
+
+**Gold-set leakage caveat.** The Tier 1/Tier 2 tags themselves were assigned by fuzzy-matching the gold `act_name` against the chunk text, so methods that exploit surface similarity (especially JW) will look artificially strong on this evaluation. Treat the per-act recall column as a complement — methods that nail F1 but miss specific acts may be exploiting the leakage.
+
+## Method 1 — JW single-linkage
+
+```{r}
+#| label: tbl-jw-metrics
+#| tbl-cap: "JW single-linkage method, threshold sweep × {unblocked, year_window = 2}"
+
+ladder_t1 <- format_method_ladder(c0_jw_metrics, eval_tier = "tier1") |>
+  dplyr::arrange(variant_id)
+ladder_t12 <- format_method_ladder(c0_jw_metrics, eval_tier = "tier12") |>
+  dplyr::arrange(variant_id)
+
+ladder_t1 |>
+  tt(notes = "All cells: point estimate [95% bootstrap CI]. Tier 1 only (clean, n≈27 names).") |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: tbl-jw-metrics-t12
+#| tbl-cap: "JW: Tier 1 + Tier 2 evaluation (more power, more noise)"
+
+ladder_t12 |>
+  tt() |> tt_theme_report()
+```
+
+```{r}
+#| label: fig-jw-f1
+#| fig-cap: "Pairwise F1 across JW thresholds × year-blocking, both eval tiers"
+#| fig-width: 9
+#| fig-height: 4
+
+c0_jw_metrics |>
+  dplyr::filter(metric == "pairwise_f1") |>
+  dplyr::mutate(
+    threshold = as.numeric(stringr::str_extract(variant_id, "(?<=t)\\d\\.\\d{2}")),
+    blocking  = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                               "year ±2", "unblocked")
+  ) |>
+  ggplot(aes(threshold, value, colour = blocking, fill = blocking)) +
+  geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), alpha = 0.2, colour = NA) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  facet_wrap(~ eval_tier, scales = "fixed") +
+  scale_colour_brewer(palette = "Set1") +
+  scale_fill_brewer(palette = "Set1") +
+  labs(x = "JW threshold (merge if distance ≤ threshold)",
+       y = "Pairwise F1",
+       colour = NULL, fill = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top")
+```
+
+```{r}
+#| label: fig-jw-overunder
+#| fig-cap: "Over-merge vs under-merge counts across JW variants, Tier 1+2 evaluation. Up-and-right is precision-loving; down-and-left is balanced."
+#| fig-width: 8
+#| fig-height: 4
+
+c0_jw_metrics |>
+  dplyr::filter(metric == "pairwise_f1", eval_tier == "tier12") |>
+  dplyr::mutate(
+    threshold = as.numeric(stringr::str_extract(variant_id, "(?<=t)\\d\\.\\d{2}")),
+    blocking  = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                               "year ±2", "unblocked")
+  ) |>
+  ggplot(aes(under_merge_count, over_merge_count, colour = blocking,
+             label = sprintf("t=%.2f", threshold))) +
+  geom_point(size = 2) +
+  geom_text(size = 3, hjust = -0.2, vjust = -0.4,
+            check_overlap = TRUE, show.legend = FALSE) +
+  scale_x_log10() + scale_y_log10() +
+  scale_colour_brewer(palette = "Set1") +
+  labs(x = "Under-merge pair count (log)",
+       y = "Over-merge pair count (log)",
+       colour = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top")
+```
+
+Read the table together with the F1 plot. A few things to flag for the reader:
+
+- The threshold that maximises F1 on Tier 1 may differ from the one that maximises it on Tier 1+2 — Tier 1+2 is noisier and tends to push the optimum toward looser merging (which captures more of the Tier 2 surface-variation tail).
+- Year-blocking should reduce over-merge counts (it prevents merging name strings that span >2 years), with little hit to recall. If the unblocked variant's over-merge column collapses sharply once year-blocking goes on, year-blocking is buying real precision.
+- The over-merge:under-merge plot makes the asymmetric failure cost visible. JW at the tightest thresholds sits low on both axes; relaxing the threshold trades under- for over-merging linearly.
+
+## Method 2 — Multilingual embedding + HDBSCAN
+
+::: {.callout-warning title="Phase B pending"}
+Embedding-provider decision is deferred. Once the choice lands (Voyage AI, BGE-M3 local, or OpenAI), the targets `c0_us_embeddings`, `c0_hdbscan_clusters`, and `c0_hdbscan_metrics` will be wired and this section will populate with a threshold-sweep table and a UMAP scatter coloured by predicted cluster and by gold.
+:::
+
+## Method 3 — Year-blocked variants
+
+JW year-blocked results are shown alongside unblocked in §4; the embedding year-blocked variant lands here once Phase B is built.
+
+::: {.callout-warning title="Phase B pending"}
+Embedding year-blocked variant pending.
+:::
+
+## Method 4 — Hybrid (embedding nearest-neighbours + LLM pairwise judge)
+
+::: {.callout-warning title="Phase B pending"}
+The hybrid pipeline (embedding top-k → Haiku YES/NO verifier → union-find) lands once Phase B is built. Expected to dominate the cost/quality frontier: cheap blocker + targeted LLM verification only on the candidate pairs that survive embedding similarity.
+:::
+
+## Method 5 — Stateful LLM canonical-list build
+
+::: {.callout-warning title="Phase B pending"}
+The stateful walker (Haiku reads each doc's measure names, matches to existing canonicals or proposes new ones) lands once Phase B is built. Will include a multi-seed shuffle probe for order sensitivity.
+:::
+
+## Method comparison ladder
+
+```{r}
+#| label: tbl-ladder
+#| tbl-cap: "Method comparison — best variant per method, Tier 1 evaluation"
+
+if (phase_b_pending) {
+  ladder_t1 |>
+    dplyr::slice_max(F1, n = 1L, with_ties = TRUE) |>
+    dplyr::mutate(Method = "JW (best variant)", .before = 1) |>
+    tt() |> tt_theme_report()
+} else {
+  # Phase B: combine JW + HDBSCAN + Hybrid + Stateful best variants into one table
+  NULL
+}
+```
+
+Phase B methods will be added to this table as each lands. The single-row JW best variant is shown now as the baseline to beat.
+
+## Out-of-distribution: Malaysia EN/BM
+
+::: {.callout-warning title="Phase B pending"}
+Once Phase B is built, the best variant from each method is applied to the Malaysia EN+BM measure pool (`malay_er_c1_measures`); we report the fraction of `malay_er_curated_matches` EN↔BM pairs that land in the same predicted cluster. Methods that rely on surface similarity (JW) are expected to fail here because the language families are different; multilingual embedding methods should hold up.
+:::
+
+## Cost diagnostics
+
+```{r}
+#| label: tbl-cost
+#| tbl-cap: "Per-method API cost (Phase A only)"
+
+tibble::tibble(
+  Method = c("Method 1: JW single-linkage"),
+  `Tokens (input)` = "0",
+  `Tokens (output)` = "0",
+  `Pilot cost (USD)` = "0.00",
+  `Projected SEA cost (USD)` = "0.00",
+  Notes = "Pure-R, no API calls"
+) |> tt() |> tt_theme_report()
+```
+
+::: {.callout-warning title="Phase B pending"}
+Phase B cost diagnostics — Voyage embedding cost, Haiku pairwise-judge cost, Haiku stateful-builder cost, projected SEA scale — will populate from `logs/api_calls.csv` filtered by method tag once Phase B targets run.
+:::
+
+## Synthesis
+
+::: {.callout-note title="Pending: requires Phase B"}
+The synthesis section will recommend a method + parameter setting for the C0 codebook once all five methods are evaluated. Until then, the JW results provide a baseline: pick the variant with the best Tier 1 F1 *and* the lowest over-merge count among variants within 0.05 F1 of the maximum, on the asymmetric-failure-cost argument.
+
+For now, the load-bearing decision after this notebook is the **embedding provider** (Voyage vs BGE-M3 vs OpenAI). Phase B cannot run without that.
+:::
+
+### Reading the JW results in isolation
+
+```{r}
+#| label: tbl-jw-pick
+#| tbl-cap: "JW variant picked under the asymmetric-cost rule (Tier 1+2 eval): best F1 among variants with low over-merge"
+
+jw_pick <- c0_jw_metrics |>
+  dplyr::filter(metric == "pairwise_f1", eval_tier == "tier12") |>
+  dplyr::arrange(over_merge_count, dplyr::desc(value))
+
+jw_pick |>
+  dplyr::transmute(
+    variant_id,
+    F1 = sprintf("%.3f", value),
+    `CI` = sprintf("[%.3f, %.3f]", ci_lo, ci_hi),
+    `Over-merge` = over_merge_count,
+    `Under-merge` = under_merge_count,
+    `n clusters` = n_predicted_clusters
+  ) |>
+  utils::head(5) |>
+  tt() |> tt_theme_report()
+```
+
+This shortlist is intentionally sorted by `over_merge_count` ascending — the column the C0 user should weight most. The top row is the most precision-friendly JW variant; the F1 column says whether that precision came at an unacceptable recall hit.
+
