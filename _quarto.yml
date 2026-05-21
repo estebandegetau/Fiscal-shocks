@@ -65,6 +65,6 @@ execute:
 
 
 citeproc: true
-csl: https://www.zotero.org/styles/chicago-author-date-classic-no-url
+csl: chicago-author-date-classic-no-url.csl
 
 bibliography: references.bib
