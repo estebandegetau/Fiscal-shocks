@@ -3,6 +3,8 @@ title: "C0 Act Aggregator — Method Comparison"
 subtitle: "Aggregating C1 measure names into act-level canonical clusters"
 date: today
 date-format: long
+execute:
+  cache: true
 ---
 
 ```{r}
@@ -10,7 +12,7 @@ date-format: long
 #| cache: false
 
 pacman::p_load(targets, tidyverse, tinytable, here, stringdist, patchwork,
-               scales, forcats)
+               scales, forcats, tidytext)
 
 here::i_am("notebooks/c0_aggregator.qmd")
 tar_config_set(store = here("_targets"))
@@ -39,9 +41,23 @@ This notebook compares five methods on a label-anchored evaluation set (US C1 ou
 
 **Asymmetric failure cost.** Over-merging (collapse two real acts into one cluster) corrupts C2b inputs — bad. Under-merging (one act stays split across two clusters) just produces parallel-but-correct classifications — recoverable downstream. The headline pick should weight precision over recall.
 
+**From asymmetric cost to precision over recall.** Pairwise F1 scores the clustering at the level of pairs of measure names: for each pair, the method either merges them or not, and gold either agrees or not. That gives the standard 2×2 table, with a false positive corresponding to an over-merge (method merges two names from different gold acts) and a false negative to an under-merge (method splits two names that share a gold act). Precision (TP / (TP + FP)) is therefore degraded by over-merges, and recall (TP / (TP + FN)) by under-merges. "Over-merging is the costly error" and "false positives are the costly error" are the same statement once the pairwise framing is adopted, so weighting precision over recall is the operational form of the asymmetric-cost argument.
+
+**Gold partition caveat.** This framing assumes the gold partition is itself correct. If R&R's act list splits something a domain expert would have merged (or vice versa), the precision/recall labels inherit that. The Tier 1/Tier 2 leakage caveat below addresses a different concern (how chunks were tagged with gold acts); partition-correctness of the gold list itself is a separate assumption.
+
 **What "win" means.** High pairwise F1 (the metric most sensitive to both kinds of error), high Adjusted Rand Index (partition-level agreement, chance-corrected), and a low over-merge:under-merge ratio. Bootstrap 95% CIs included but read as noise floors — pairs are not iid (they share names) so CIs are approximate.
 
 ## Descriptive baseline
+
+@tbl-pool-summary sizes the canonicalization problem at the chunk-measure level. Its five rows describe the C1 v0.7.0 output pool feeding C0:
+
+- **Total FISCAL_MEASURE rows** counts chunk × measure entries C1 flagged as FISCAL_MEASURE. Because v0.7.0 returns a `measures[]` array per chunk, one chunk can contribute multiple rows.
+- **Distinct measure_name strings (any rank)** counts unique surface forms across the full pool, including secondary measures from chunks whose primary measure was something else. This is the maximum pool size C0 would face if it had to canonicalize every name C1 ever emits.
+- **Distinct measure_name strings (rank == 1)** counts only the primary surface form per chunk. The codebook contract ([c1_measure_id.yml](../prompts/c1_measure_id.yml)) requires the first array element to be the most prominent measure discussed, so rank == 1 is C1's primary pick per chunk. This is the realistic pool size for a primary-measure-only deployment, which matches the current C2b assumption.
+- **Years spanned** is the inclusive range of document years contributing chunks.
+- **Distinct doc_id** is the number of source documents represented.
+
+The gap between rows 2 and 3 quantifies how much of the surface-form pool comes from secondary mentions. A small gap means rank-1 carries most of the variance and C0 can be evaluated on the rank-1 subset without much loss. A large gap means non-primary measures contribute substantial unique forms, and C0's effective scope (primary-only vs all) becomes a load-bearing methodological choice. The eval set in §3 is built on rank == 1 only.
 
 ```{r}
 #| label: tbl-pool-summary
@@ -91,6 +107,65 @@ variance_per_act |>
   theme_minimal(base_size = 10)
 ```
 
+@tbl-surface-forms-per-act drills into the same data as @fig-variance-per-act, using the full any-rank measure pool (rather than the rank-1 subset used by the figure). Gold acts appear as group headers most-fragmented first, annotated with the total number of distinct C1 surface forms that ever appeared in chunks tagged with that act at any rank. Under each group, the top five most-frequently-emitted surface forms with the count of chunk-rows in which C1 emitted them. The shape of the within-group distribution is what C0 has to recover: a dominant first form with a long tail rewards conservative merging because the dominant form is already a serviceable canonical; a flat distribution needs more aggressive merging to collapse parallel forms.
+
+```{r}
+#| label: tbl-surface-forms-per-act
+#| tbl-cap: "Top 5 C1 surface forms per gold act (any rank). Group headers list the total number of distinct surface forms for the act; acts with fewer than five forms show all of them."
+
+chunk_to_gold <- c0_eval_gold_pairs |>
+  dplyr::distinct(chunk_id, gold_act_name)
+
+any_rank_pool <- c0_us_measure_pool |>
+  dplyr::inner_join(chunk_to_gold, by = "chunk_id",
+                    relationship = "many-to-many")
+
+top5_per_act <- any_rank_pool |>
+  dplyr::count(gold_act_name, measure_name, name = "n_appearances") |>
+  dplyr::group_by(gold_act_name) |>
+  dplyr::arrange(dplyr::desc(n_appearances), measure_name, .by_group = TRUE) |>
+  dplyr::slice_head(n = 5L) |>
+  dplyr::ungroup()
+
+act_summary_anyrank <- any_rank_pool |>
+  dplyr::group_by(gold_act_name) |>
+  dplyr::summarize(
+    n_surface_forms = dplyr::n_distinct(measure_name),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(dplyr::desc(n_surface_forms), gold_act_name)
+
+# Interleave group-header rows (no count) with indented data rows so we get
+# precise control over bolding and indentation.
+indent <- strrep(" ", 4L)
+rows <- list()
+for (i in seq_len(nrow(act_summary_anyrank))) {
+  act     <- act_summary_anyrank$gold_act_name[i]
+  n_forms <- act_summary_anyrank$n_surface_forms[i]
+  forms   <- top5_per_act |> dplyr::filter(gold_act_name == act)
+
+  rows[[length(rows) + 1L]] <- tibble::tibble(
+    `Surface form` = sprintf("%s (%d surface forms)", act, n_forms),
+    Appearances   = ""
+  )
+  rows[[length(rows) + 1L]] <- tibble::tibble(
+    `Surface form` = paste0(indent, forms$measure_name),
+    Appearances   = as.character(forms$n_appearances)
+  )
+}
+display_df <- dplyr::bind_rows(rows)
+
+header_positions <- which(display_df$Appearances == "")
+
+display_df |>
+  tt() |>
+  tinytable::format_tt(escape = TRUE) |>
+  tt_theme_report() |>
+  tinytable::style_tt(i = header_positions, bold = TRUE) |>
+  tinytable::style_tt(j = 1, align = "l") |>
+  tinytable::style_tt(j = 2, align = "r")
+```
+
 ```{r}
 #| label: tbl-variance-summary
 #| tbl-cap: "Distribution of surface-form fragmentation across the 39 gold acts"
@@ -112,33 +187,61 @@ The headline: even with R&R's well-known and well-named acts, the median act sur
 
 ## Eval set construction
 
+The eval set projects the chunk-tier system through C1's LLM output along the chain `aligned_data → c1_chunk_data → c1_s2_results → c0_eval_gold_pairs`:
+
+1. **`c1_chunk_data`** (built by `R/identify_chunk_tiers.R`) emits `(chunk_id, doc_id, act_name, tier)` rows by string-matching gold passages and act-name subcomponents against chunk text. Tier 1 marks chunks containing a verbatim gold passage; Tier 2 marks chunks matching an act name via subcomponent decomposition or co-occurrence rules. Chunks matching multiple acts within the same tier are row-replicated, one row per (chunk × act). The Tier 1 / Tier 2 exclusion is chunk-level, not (chunk, act)-level: any chunk that is Tier 1 for *some* act is barred from Tier 2 consideration for *every* act, so Tier 2 evidence on mixed-tier multi-act chunks is dropped at the source.
+
+2. **`c1_s2_results`** runs the C1 LLM on these tagged chunks via leave-one-act-out cross-validation; each (chunk × gold act) pair is its own fold with its own few-shot set. The LLM's emitted `measures[]` array is exploded into one row per (chunk × gold act × measure_rank), so a chunk tagged with two gold acts is classified twice and may carry different `measure_name` strings under each gold tag.
+
+3. **`build_c0_eval_gold_pairs()`** (in `R/c0_aggregator.R`) keeps only rows with `measure_rank == 1`, `pred_label == FISCAL_MEASURE`, and `tier ∈ {1, 2}`; renames `act_name → gold_act_name`; and flags surface forms paired with >1 distinct gold act as `ambiguous` for the evaluator to majority-vote.
+
+Two consequences carry into every downstream metric. (i) The rank-1 filter discards non-primary measures the LLM emitted, so a chunk discussing N gold acts contributes at most N rows with only the rank-1 surface form for each. (ii) Chunks the LLM mislabeled `NOT_FISCAL_MEASURE` drop out entirely, silently truncating multi-act representation whenever the LLM's per-fold output is inconsistent.
+
 ```{r}
 #| label: tbl-gold-construction
-#| tbl-cap: "Gold-pair construction. Tier 1 is the clean signal; Tier 1+2 trades signal for power."
+#| tbl-cap: "Eval-set composition. Rows count `(measure_name, gold_act_name, chunk_id)` tuples; distinct surface forms count unique `measure_name` strings — the population the clusterer canonicalizes. The two indented rows partition the Tier 1 + Tier 2 pool by whether each surface form maps to one (unambiguous) or more (ambiguous) gold acts. Percentages are shares of the Tier 1 + Tier 2 totals."
+
+t1_slice    <- c0_eval_gold_pairs |> dplyr::filter(tier == 1L)
+unamb_slice <- c0_eval_gold_pairs |> dplyr::filter(!ambiguous)
+amb_slice   <- c0_eval_gold_pairs |> dplyr::filter(ambiguous)
+
+n_rows_all  <- nrow(c0_eval_gold_pairs)
+n_names_all <- dplyr::n_distinct(c0_eval_gold_pairs$measure_name)
+
+fmt_pct <- function(x, total) {
+  sprintf("%d (%d%%)", x, round(100 * x / total))
+}
 
 tibble::tibble(
-  Slice = c("Tier 1 only (rank == 1, FISCAL_MEASURE, verbatim-passage chunks)",
-            "Tier 1 + Tier 2 (adds substring/cooccurrence chunks)",
-            "Ambiguous names (1 measure_name → >1 gold_act_name) in T1+T2"),
-  `n rows` = c(
-    sum(c0_eval_gold_pairs$tier == 1L),
-    nrow(c0_eval_gold_pairs),
-    sum(c0_eval_gold_pairs$ambiguous)
+  Slice = c(
+    "Tier 1 (verbatim passage match)",
+    "Tier 1 + Tier 2 (full eval pool)",
+    "    ↳ unambiguous names (1 gold act per name)",
+    "    ↳ ambiguous names (≥2 gold acts per name)"
   ),
-  `n distinct names` = c(
-    c0_eval_gold_pairs |> dplyr::filter(tier == 1L) |>
-      dplyr::pull(measure_name) |> dplyr::n_distinct(),
-    dplyr::n_distinct(c0_eval_gold_pairs$measure_name),
-    c0_eval_gold_pairs |> dplyr::filter(ambiguous) |>
-      dplyr::pull(measure_name) |> dplyr::n_distinct()
+  `Chunk × gold-act rows` = c(
+    as.character(nrow(t1_slice)),
+    as.character(n_rows_all),
+    fmt_pct(nrow(unamb_slice), n_rows_all),
+    fmt_pct(nrow(amb_slice),   n_rows_all)
   ),
-  `n distinct gold acts` = c(
-    c0_eval_gold_pairs |> dplyr::filter(tier == 1L) |>
-      dplyr::pull(gold_act_name) |> dplyr::n_distinct(),
-    dplyr::n_distinct(c0_eval_gold_pairs$gold_act_name),
-    NA_integer_
+  `Distinct surface forms` = c(
+    as.character(dplyr::n_distinct(t1_slice$measure_name)),
+    as.character(n_names_all),
+    fmt_pct(dplyr::n_distinct(unamb_slice$measure_name), n_names_all),
+    fmt_pct(dplyr::n_distinct(amb_slice$measure_name),   n_names_all)
+  ),
+  `Gold acts covered` = c(
+    as.character(dplyr::n_distinct(t1_slice$gold_act_name)),
+    as.character(dplyr::n_distinct(c0_eval_gold_pairs$gold_act_name)),
+    "—",
+    "—"
   )
-) |> tt() |> tt_theme_report()
+) |>
+  tt() |>
+  tt_theme_report() |>
+  tinytable::style_tt(j = 1,   align = "l") |>
+  tinytable::style_tt(j = 2:4, align = "r")
 ```
 
 **On ambiguity.** Roughly 60% of the Tier 1+2 rows have a `measure_name` that's been paired with more than one `gold_act_name` across chunks. Most cases trace to Tier 2's permissive matching: a chunk may be tagged with act X because act X is mentioned somewhere, but the most-prominent measure C1 extracts is a different act. The evaluator handles this by majority-voting per `measure_name` within each bootstrap resample (so the contingency table operates on unique names). Tier 1 is shown as the cleaner anchor; Tier 1+2 is shown for statistical power.
@@ -147,50 +250,197 @@ tibble::tibble(
 
 ## Method 1 — JW single-linkage
 
+Before reading the threshold sweep, @fig-jw-within-act shows what JW is being asked to recover. Each row is a gold act with ≥2 surface forms in the eval pool; the box and jittered points show the pairwise JW distances among the surface forms tagged to that act. Vertical dashes mark the swept thresholds (0.10–0.30). An act whose distribution sits entirely left of a threshold line is fully recoverable at that threshold; an act whose distances spread past 0.30 cannot be merged without dragging in surface forms from neighbouring acts (i.e., over-merge). Ambiguous names are kept under every gold act they're tagged to, matching the descriptive intent of the figure rather than the evaluator's majority-vote.
+
+```{r}
+#| label: fig-jw-within-act
+#| fig-cap: "Within-gold-act pairwise JW distances. Vertical dashes mark the swept thresholds. Acts with a single surface form contribute no pairs and are omitted."
+#| fig-width: 10
+#| fig-height: 8
+
+within_act_jw <- function(pool) {
+  pool |>
+    dplyr::distinct(measure_name, gold_act_name) |>
+    dplyr::group_by(gold_act_name) |>
+    dplyr::filter(dplyr::n() >= 2L) |>
+    dplyr::group_modify(~ {
+      names <- .x$measure_name
+      d <- stringdist::stringdistmatrix(names, names, method = "jw")
+      tibble::tibble(jw_distance = d[upper.tri(d)])
+    }) |>
+    dplyr::ungroup()
+}
+
+tier1_pairs  <- c0_eval_gold_pairs |>
+  dplyr::filter(tier == 1L) |>
+  within_act_jw()
+tier12_pairs <- within_act_jw(c0_eval_gold_pairs)
+
+plot_within <- function(df, title) {
+  df |>
+    dplyr::mutate(gold_act_name = forcats::fct_reorder(
+      stringr::str_trunc(gold_act_name, 50),
+      jw_distance, .fun = stats::median)) |>
+    ggplot(aes(jw_distance, gold_act_name)) +
+    geom_vline(xintercept = c(0.10, 0.15, 0.20, 0.25, 0.30),
+               linetype = "dashed", colour = "grey60", linewidth = 0.3) +
+    geom_boxplot(outlier.shape = NA, fill = "#4477AA", alpha = 0.3,
+                 linewidth = 0.3) +
+    geom_jitter(width = 0, height = 0.15, size = 0.7, alpha = 0.6,
+                colour = "#4477AA") +
+    scale_x_continuous(limits = c(0, NA),
+                       breaks = c(0, 0.10, 0.15, 0.20, 0.25, 0.30, 0.5)) +
+    labs(title = title, x = "Within-act pairwise JW distance", y = NULL) +
+    theme_minimal(base_size = 9)
+}
+
+p_a <- plot_within(tier1_pairs,  "A. Tier 1 only")
+p_b <- plot_within(tier12_pairs, "B. Tier 1 + Tier 2")
+
+p_a + p_b + patchwork::plot_layout(ncol = 2)
+```
+
+**What this means for Method 1.** The median within-act JW distance is ~0.47 on both tiers, while the loosest threshold swept is 0.30. The typical pair of surface forms that *ought* to be merged is therefore geometrically out of reach for JW at any threshold the table considers; only a small minority of pairs (near-duplicates differing in spacing, punctuation, or abbreviation expansion) sit below 0.30. The implication is unavoidable: **JW single-linkage cannot canonicalize this pool on its own.** The threshold sweep in @tbl-jw-metrics is best read as quantifying the asymmetric precision/recall cost given that fundamental ceiling, not as a search for a workable operating point. A method that can bridge `ERTA` ↔ `Economic Recovery Tax Act of 1981` — semantic, not lexical — is required, which is what Phase B is for.
+
+@fig-jw-name-to-gold checks the same geometry from a different angle: instead of pairwise distances among surface forms, it measures each surface form's JW distance to its gold-act label. If C0 had the gold canonical list as an oracle and tried to map surface forms to it by JW, the swept thresholds tell us how many surface forms it would catch. The answer mirrors @fig-jw-within-act: median ~0.41 on both tiers, well above 0.30. A handful of exact matches sit at 0 (surface form is the gold label string verbatim), but most surface forms are too lexically distant from their canonical to be matched without semantic reasoning.
+
+```{r}
+#| label: fig-jw-name-to-gold
+#| fig-cap: "Surface-name → gold-label JW distance. Same panels, threshold lines, and visual style as @fig-jw-within-act; each point is one (measure_name, gold_act_name) pair."
+#| fig-width: 10
+#| fig-height: 8
+
+name_to_gold_jw <- function(pool) {
+  pool |>
+    dplyr::distinct(measure_name, gold_act_name) |>
+    dplyr::mutate(jw_distance = stringdist::stringdist(
+      measure_name, gold_act_name, method = "jw"))
+}
+
+tier1_to_gold  <- c0_eval_gold_pairs |>
+  dplyr::filter(tier == 1L) |>
+  name_to_gold_jw()
+tier12_to_gold <- name_to_gold_jw(c0_eval_gold_pairs)
+
+plot_to_gold <- function(df, title) {
+  df |>
+    dplyr::mutate(gold_act_name = forcats::fct_reorder(
+      stringr::str_trunc(gold_act_name, 50),
+      jw_distance, .fun = stats::median)) |>
+    ggplot(aes(jw_distance, gold_act_name)) +
+    geom_vline(xintercept = c(0.10, 0.15, 0.20, 0.25, 0.30),
+               linetype = "dashed", colour = "grey60", linewidth = 0.3) +
+    geom_boxplot(outlier.shape = NA, fill = "#CC6677", alpha = 0.3,
+                 linewidth = 0.3) +
+    geom_jitter(width = 0, height = 0.15, size = 0.7, alpha = 0.6,
+                colour = "#CC6677") +
+    scale_x_continuous(limits = c(0, NA),
+                       breaks = c(0, 0.10, 0.15, 0.20, 0.25, 0.30, 0.5)) +
+    labs(title = title, x = "Surface-name → gold-label JW distance", y = NULL) +
+    theme_minimal(base_size = 9)
+}
+
+p_a <- plot_to_gold(tier1_to_gold,  "A. Tier 1 only")
+p_b <- plot_to_gold(tier12_to_gold, "B. Tier 1 + Tier 2")
+
+p_a + p_b + patchwork::plot_layout(ncol = 2)
+```
+
+The within-act figures pin down what JW can mechanically do; the tables and figures below quantify the consequences on the precision-over-recall lens the Framing committed to. Each row of the ladders is one variant (threshold × year-blocking choice); each cell carries a 95% bootstrap CI from resampling gold rows.
+
+- **Precision** is the share of predicted-merge pairs that share a gold act. It is degraded by over-merging and is the column the asymmetric-cost argument weights most.
+- **Recall** is the share of gold-merge pairs the method captures. It is degraded by under-merging, the recoverable failure mode.
+- **F1** is their harmonic mean. Useful single-number summary, but symmetric in P and R, so it under-weights the cost asymmetry the C2b consumer cares about.
+- **ARI** (Adjusted Rand Index) is partition-level chance-corrected agreement with the gold partition. It complements F1: pairwise F1 can be inflated by near-singleton partitions that score well on rare-pair accounting, and ARI catches that.
+- **Purity** is the mean within-cluster plurality-class share. The most precision-flavoured of the three: it ignores under-merges entirely and trivially reaches 1.0 in the one-name-per-cluster limit, so read it together with `n clusters`.
+- **Over:Under** is the ratio of over-merge pair count to under-merge pair count. The most direct asymmetric-cost summary: values below 1 mean the variant makes fewer over-merges than under-merges (precision-friendly); large values mean precision has been sacrificed to capture recall.
+- **n clusters** is the partition size. There are ≈39 gold acts in the eval, so healthy variants sit in roughly that order of magnitude; far below means severe over-merging, far above means failure to merge anything.
+
+CIs are wide because the eval is small (≈27 distinct names in Tier 1, ≈50 in Tier 1+2) and pairs share names so are not iid; read them as noise floors rather than formal confidence intervals.
+
+The figures below give the same data three additional ways. @fig-jw-f1 traces Precision, Recall, and F1 across the threshold sweep so the reader can see how the P/R trade-off evolves as JW relaxes; @fig-jw-overunder is the raw-counts log-log scatter showing the failure-mode geometry; @fig-jw-pr is the same scatter on the bounded Precision/Recall axes, where the upper-left corner is the asymmetric-cost ideal.
+
+```{r}
+#| label: prep-jw-ladder
+
+shape_jw_ladder <- function(eval_tier) {
+  format_method_ladder(c0_jw_metrics, eval_tier = eval_tier) |>
+    dplyr::mutate(
+      `JW threshold` = as.numeric(
+        stringr::str_extract(variant_id, "(?<=t)\\d\\.\\d{2}")),
+      blocking = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                                "Year ±2", "Unblocked")
+    ) |>
+    dplyr::arrange(blocking, `JW threshold`) |>
+    dplyr::select(-variant_id)
+}
+
+render_jw_ladder <- function(ladder) {
+  panel_starts <- ladder |>
+    dplyr::mutate(.row = dplyr::row_number()) |>
+    dplyr::group_by(blocking) |>
+    dplyr::summarize(start = min(.row), .groups = "drop") |>
+    dplyr::arrange(start)
+  group_index <- stats::setNames(as.list(panel_starts$start),
+                                 panel_starts$blocking)
+
+  display <- ladder |>
+    dplyr::select(-blocking) |>
+    dplyr::relocate(`JW threshold`) |>
+    dplyr::mutate(`JW threshold` = sprintf("%.2f", `JW threshold`))
+
+  display |>
+    tinytable::tt() |>
+    tt_theme_report() |>
+    tinytable::group_tt(i = group_index)
+}
+
+ladder_t1  <- shape_jw_ladder("tier1")
+ladder_t12 <- shape_jw_ladder("tier12")
+```
+
 ```{r}
 #| label: tbl-jw-metrics
-#| tbl-cap: "JW single-linkage method, threshold sweep × {unblocked, year_window = 2}"
+#| tbl-cap: "JW single-linkage, Tier 1 evaluation (clean, n≈27 names). Cells: point estimate [95% bootstrap CI]. Over:Under ratio = over-merge pair count / under-merge pair count; lower is more precision-friendly."
 
-ladder_t1 <- format_method_ladder(c0_jw_metrics, eval_tier = "tier1") |>
-  dplyr::arrange(variant_id)
-ladder_t12 <- format_method_ladder(c0_jw_metrics, eval_tier = "tier12") |>
-  dplyr::arrange(variant_id)
-
-ladder_t1 |>
-  tt(notes = "All cells: point estimate [95% bootstrap CI]. Tier 1 only (clean, n≈27 names).") |>
-  tt_theme_report()
+render_jw_ladder(ladder_t1)
 ```
 
 ```{r}
 #| label: tbl-jw-metrics-t12
-#| tbl-cap: "JW: Tier 1 + Tier 2 evaluation (more power, more noise)"
+#| tbl-cap: "JW single-linkage, Tier 1 + Tier 2 evaluation (more power, more noise). Same column definitions as @tbl-jw-metrics."
 
-ladder_t12 |>
-  tt() |> tt_theme_report()
+render_jw_ladder(ladder_t12)
 ```
 
 ```{r}
 #| label: fig-jw-f1
-#| fig-cap: "Pairwise F1 across JW thresholds × year-blocking, both eval tiers"
-#| fig-width: 9
-#| fig-height: 4
+#| fig-cap: "Pairwise Precision, Recall, and F1 across JW thresholds × year-blocking, both eval tiers. Ribbons are 95% bootstrap CIs."
+#| fig-width: 10
+#| fig-height: 6
 
 c0_jw_metrics |>
-  dplyr::filter(metric == "pairwise_f1") |>
+  dplyr::filter(metric %in% c("pairwise_precision", "pairwise_recall",
+                              "pairwise_f1")) |>
   dplyr::mutate(
     threshold = as.numeric(stringr::str_extract(variant_id, "(?<=t)\\d\\.\\d{2}")),
     blocking  = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
-                               "year ±2", "unblocked")
+                               "year ±2", "unblocked"),
+    metric    = forcats::fct_recode(metric,
+                                    Precision = "pairwise_precision",
+                                    Recall    = "pairwise_recall",
+                                    F1        = "pairwise_f1") |>
+                forcats::fct_relevel("Precision", "Recall", "F1")
   ) |>
   ggplot(aes(threshold, value, colour = blocking, fill = blocking)) +
   geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), alpha = 0.2, colour = NA) +
   geom_line(linewidth = 0.8) +
   geom_point(size = 2) +
-  facet_wrap(~ eval_tier, scales = "fixed") +
+  facet_grid(eval_tier ~ metric) +
   scale_colour_brewer(palette = "Set1") +
   scale_fill_brewer(palette = "Set1") +
   labs(x = "JW threshold (merge if distance ≤ threshold)",
-       y = "Pairwise F1",
+       y = NULL,
        colour = NULL, fill = NULL) +
   theme_minimal(base_size = 10) +
   theme(legend.position = "top")
@@ -223,11 +473,52 @@ c0_jw_metrics |>
   theme(legend.position = "top")
 ```
 
-Read the table together with the F1 plot. A few things to flag for the reader:
+```{r}
+#| label: fig-jw-pr
+#| fig-cap: "Pairwise Precision vs Recall across JW variants, Tier 1+2 evaluation. Upper-left is the precision-favouring corner the asymmetric-cost framing prefers; upper-right is the unreachable ideal."
+#| fig-width: 8
+#| fig-height: 4
 
-- The threshold that maximises F1 on Tier 1 may differ from the one that maximises it on Tier 1+2 — Tier 1+2 is noisier and tends to push the optimum toward looser merging (which captures more of the Tier 2 surface-variation tail).
-- Year-blocking should reduce over-merge counts (it prevents merging name strings that span >2 years), with little hit to recall. If the unblocked variant's over-merge column collapses sharply once year-blocking goes on, year-blocking is buying real precision.
-- The over-merge:under-merge plot makes the asymmetric failure cost visible. JW at the tightest thresholds sits low on both axes; relaxing the threshold trades under- for over-merging linearly.
+c0_jw_metrics |>
+  dplyr::filter(metric %in% c("pairwise_precision", "pairwise_recall"),
+                eval_tier == "tier12") |>
+  dplyr::select(variant_id, metric, value) |>
+  tidyr::pivot_wider(names_from = metric, values_from = value) |>
+  dplyr::mutate(
+    threshold = as.numeric(stringr::str_extract(variant_id, "(?<=t)\\d\\.\\d{2}")),
+    blocking  = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                               "year ±2", "unblocked")
+  ) |>
+  ggplot(aes(pairwise_recall, pairwise_precision, colour = blocking,
+             label = sprintf("t=%.2f", threshold))) +
+  geom_point(size = 2) +
+  geom_text(size = 3, hjust = -0.2, vjust = -0.4,
+            check_overlap = TRUE, show.legend = FALSE) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1)) +
+  scale_colour_brewer(palette = "Set1") +
+  labs(x = "Pairwise Recall",
+       y = "Pairwise Precision",
+       colour = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top")
+```
+
+### Reading the JW results together
+
+Three patterns hold up across the ladder, the metric grid, and the two scatters.
+
+First, JW's precision ceiling is meaningful but its recall floor is rock-bottom. At the tightest year-blocked thresholds (Tier 1, t = 0.10–0.20, Year ±2), Precision reaches 0.50 with Over:Under at 0.10 — a precision-friendly operating point. But Recall pins at ≈0.09 for the same variant, because the within-act distance figure already established the geometric ceiling: most of the surface-form pairs that *ought* to merge sit beyond 0.30, geometrically out of reach for JW at any threshold considered here.
+
+Second, relaxing the threshold trades precision for recall along a roughly monotonic front in @fig-jw-pr, but the trade is bad: pairwise F1 stays below ≈0.15 across the entire sweep, and Over:Under explodes to 84× at threshold 0.30 unblocked. There is no operating point on the front that delivers acceptable recall without catastrophic over-merging.
+
+Third, year-blocking shifts the curve in the right direction at every threshold — lower Over:Under, tighter precision CIs, negligible recall cost. This is a structural finding rather than a JW-specific one: the year-window prior will be worth carrying into the embedding and hybrid methods in Phase B.
+
+### Bottom line for Method 1
+
+JW single-linkage cannot canonicalise this measure pool on its own. The geometric ceiling from the within-act figures is binding, and the eval confirms it: pairwise F1 ≤ 0.15 anywhere on the precision-friendly side of the front, and any threshold loose enough to lift Recall meaningfully above 0.30 also lifts Over:Under into double digits. The gap between *ERTA* and *Economic Recovery Tax Act of 1981* is semantic, not lexical, and JW has no machinery to bridge it.
+
+What JW remains useful for is the role its mechanics actually support: a precision-friendly **blocker** — a cheap pre-filter that catches near-duplicate surface forms (spacing, punctuation, abbreviation expansion) at near-zero false-positive cost. Method 4's hybrid pipeline below uses exactly this property: JW (or a cheap analog) prunes the pair space, and a semantic verifier handles the merges that surface similarity cannot. The load-bearing canonicalisation work, though, has to come from a method that understands meaning — Methods 2–5 are the candidate replacements.
 
 ## Method 2 — Multilingual embedding + HDBSCAN
 

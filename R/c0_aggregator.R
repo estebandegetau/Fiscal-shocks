@@ -448,13 +448,15 @@ evaluate_clusters_grid <- function(predicted_grid, gold,
 #' Format the headline comparison ladder for the notebook
 #'
 #' Takes the long metrics tibble produced by `evaluate_clusters_grid()` and
-#' returns the F1 cell formatted as `"%.3f [lo, hi]"` for each variant under
-#' a chosen `eval_tier`, plus over/under-merge counts.
+#' returns Precision, Recall, F1, ARI, Purity cells formatted as
+#' `"%.3f [lo, hi]"` for each variant under a chosen `eval_tier`, plus an
+#' Over:Under ratio summarising asymmetric failure cost.
 #'
 #' @param metrics_long Output of `evaluate_clusters_grid()`.
 #' @param eval_tier "tier1" or "tier12".
 #' @param group_keys Character vector of grouping columns.
-#' @return Wide tibble: group_keys..., F1, ARI, Purity, over:under, n_clusters.
+#' @return Wide tibble: group_keys..., Precision, Recall, F1, ARI, Purity,
+#'   Over:Under, n clusters.
 #' @export
 format_method_ladder <- function(metrics_long,
                                  eval_tier = "tier1",
@@ -467,18 +469,36 @@ format_method_ladder <- function(metrics_long,
     )
   }
 
+  fmt_ratio <- function(over, under) {
+    dplyr::case_when(
+      is.na(over) | is.na(under)       ~ "—",
+      under == 0L & over == 0L         ~ "0 : 0",
+      under == 0L                      ~ sprintf("%d : 0", over),
+      TRUE                             ~ sprintf("%.2f", over / under)
+    )
+  }
+
   metrics_long |>
     dplyr::filter(eval_tier == .env$eval_tier,
-                  metric %in% c("pairwise_f1", "ari", "purity")) |>
+                  metric %in% c("pairwise_precision", "pairwise_recall",
+                                "pairwise_f1", "ari", "purity")) |>
     dplyr::mutate(cell = fmt(value, ci_lo, ci_hi)) |>
     dplyr::select(dplyr::all_of(group_keys), metric, cell,
                   over_merge_count, under_merge_count,
                   n_predicted_clusters) |>
     tidyr::pivot_wider(names_from = metric, values_from = cell) |>
-    dplyr::rename(F1 = pairwise_f1, ARI = ari, Purity = purity,
-                  `Over-merge` = over_merge_count,
-                  `Under-merge` = under_merge_count,
-                  `n clusters` = n_predicted_clusters)
+    dplyr::mutate(
+      `Over:Under` = fmt_ratio(over_merge_count, under_merge_count)
+    ) |>
+    dplyr::rename(Precision = pairwise_precision,
+                  Recall    = pairwise_recall,
+                  F1        = pairwise_f1,
+                  ARI       = ari,
+                  Purity    = purity,
+                  `n clusters` = n_predicted_clusters) |>
+    dplyr::select(dplyr::all_of(group_keys),
+                  Precision, Recall, F1, ARI, Purity,
+                  `Over:Under`, `n clusters`)
 }
 
 
