@@ -12,7 +12,7 @@ execute:
 #| cache: false
 
 pacman::p_load(targets, tidyverse, tinytable, here, stringdist, patchwork,
-               scales, forcats, tidytext)
+               scales, forcats, tidytext, uwot)
 
 here::i_am("notebooks/c0_aggregator.qmd")
 tar_config_set(store = here("_targets"))
@@ -23,10 +23,16 @@ tar_load(c(
   c0_us_measure_pool,
   c0_eval_gold_pairs,
   c0_jw_clusters,
-  c0_jw_metrics
+  c0_jw_metrics,
+  c0_us_embeddings,
+  c0_hdbscan_clusters,
+  c0_hdbscan_metrics,
+  c0_f16_quantization_probe
 ))
 
-phase_b_pending <- TRUE  # flip to FALSE once Phase B targets are wired
+# Methods 2 + 3 (HDBSCAN, unblocked + year-blocked) are wired below.
+# Methods 4 + 5 (hybrid LLM judge, stateful builder) remain Phase B-pending.
+phase_b_pending <- FALSE
 ```
 
 ## Framing
@@ -520,19 +526,208 @@ JW single-linkage cannot canonicalise this measure pool on its own. The geometri
 
 What JW remains useful for is the role its mechanics actually support: a precision-friendly **blocker** — a cheap pre-filter that catches near-duplicate surface forms (spacing, punctuation, abbreviation expansion) at near-zero false-positive cost. Method 4's hybrid pipeline below uses exactly this property: JW (or a cheap analog) prunes the pair space, and a semantic verifier handles the merges that surface similarity cannot. The load-bearing canonicalisation work, though, has to come from a method that understands meaning — Methods 2–5 are the candidate replacements.
 
+## F16 quantization sanity check
+
+Method 1 closed on the observation that the gap to canonicalise this pool is semantic, not lexical. The next three sections test whether multilingual embeddings can bridge it. Before reading the eval, one preliminary: the embeddings come from a community F16 port of `intfloat/multilingual-e5-large-instruct` (`jeffh/intfloat-multilingual-e5-large-instruct:f16`) running locally under Ollama. F16 compresses the reference FP32 weights and could in principle distort the embedding geometry that HDBSCAN relies on. Two cheap probes on the gold eval pool check that the port preserves the semantic structure HDBSCAN needs.
+
+```{r}
+#| label: tbl-f16-probe
+#| tbl-cap: "F16 quantization probe. Top-1 NN same-act rate is the share of eval names whose nearest-neighbour by cosine shares a gold act (restricted to acts with ≥2 members so the metric is well-defined). Separation = median within-act cosine − median between-act cosine; positive means the F16 port preserves the act-level structure."
+
+c0_f16_quantization_probe |>
+  dplyr::transmute(
+    `Top-1 NN same-act rate`        = sprintf("%.3f", top1_nn_same_act_rate),
+    `Median within-act cosine`      = sprintf("%.3f", median_within_act_cosine),
+    `Median between-act cosine`     = sprintf("%.3f", median_between_act_cosine),
+    `Separation`                    = sprintf("%.3f", separation),
+    `Eval names`                    = n_eval_names,
+    `Eval acts`                     = n_eval_acts
+  ) |>
+  tt() |> tt_theme_report()
+```
+
+```{r}
+#| label: f16-verdict
+#| echo: false
+#| results: asis
+
+p <- c0_f16_quantization_probe
+sep_ok <- !is.na(p$separation) && p$separation >= 0.05
+top_ok <- !is.na(p$top1_nn_same_act_rate) && p$top1_nn_same_act_rate >= 0.40
+
+if (sep_ok && top_ok) {
+  cat(sprintf(
+    "**Verdict.** Separation %.3f ≥ 0.05 floor and top-1 NN rate %.3f ≥ 0.40 floor. F16 preserves the act-level structure on this pool; Method 2 results below can be read as embedding-quality signal rather than quantization noise.\n",
+    p$separation, p$top1_nn_same_act_rate))
+} else {
+  cat("**Verdict — FAIL.** ")
+  if (!sep_ok) cat(sprintf("Separation %.3f < 0.05 floor. ", p$separation %||% NA_real_))
+  if (!top_ok) cat(sprintf("Top-1 NN rate %.3f < 0.40 floor. ", p$top1_nn_same_act_rate %||% NA_real_))
+  cat("Cross-check against an FP32 reference (e.g. DeepInfra-hosted multilingual-e5-large-instruct) before reading Method 2 results as embedding-quality signal.\n")
+}
+```
+
+E5-family embeddings always live in a narrow band of the unit sphere, so absolute cosines aren't crisp — the probe targets the *relative* gap between within-act and between-act pairs, which is the property HDBSCAN cares about.
+
 ## Method 2 — Multilingual embedding + HDBSCAN
 
-::: {.callout-warning title="Phase B pending"}
-Embedding-provider decision is deferred. Once the choice lands (Voyage AI, BGE-M3 local, or OpenAI), the targets `c0_us_embeddings`, `c0_hdbscan_clusters`, and `c0_hdbscan_metrics` will be wired and this section will populate with a threshold-sweep table and a UMAP scatter coloured by predicted cluster and by gold.
-:::
+Switching from string distance to embedding distance is what the within-act geometry from §Method 1 demanded. Method 2 embeds each measure name with `intfloat/multilingual-e5-large-instruct`, L2-normalises the vectors so cosine ranking equals euclidean ranking, then runs HDBSCAN over the resulting distance matrix. Three `min_cluster_size` values are swept — 2 (most permissive), 3, and 5 (close to the median gold-act size). Singleton "noise" points HDBSCAN refuses to merge are kept as their-own-clusters so the pairwise scoring treats them as under-merges, not over-merges (the recoverable failure mode the Framing committed to).
+
+```{r}
+#| label: prep-hdb-ladder
+
+shape_hdb_ladder <- function(eval_tier, blocking) {
+  format_method_ladder(c0_hdbscan_metrics, eval_tier = eval_tier) |>
+    dplyr::mutate(
+      `min_cluster_size` = as.integer(
+        stringr::str_extract(variant_id, "(?<=m)\\d+")),
+      .blocking = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                                 "yw2", "unblocked")
+    ) |>
+    dplyr::filter(.blocking == blocking) |>
+    dplyr::arrange(`min_cluster_size`) |>
+    dplyr::select(-variant_id, -.blocking)
+}
+
+render_hdb_ladder <- function(ladder) {
+  ladder |>
+    dplyr::relocate(`min_cluster_size`) |>
+    tinytable::tt() |>
+    tt_theme_report()
+}
+
+ladder_hdb_t1   <- shape_hdb_ladder("tier1",  "unblocked")
+ladder_hdb_t12  <- shape_hdb_ladder("tier12", "unblocked")
+ladder_hdb_yw_t1  <- shape_hdb_ladder("tier1",  "yw2")
+ladder_hdb_yw_t12 <- shape_hdb_ladder("tier12", "yw2")
+```
+
+```{r}
+#| label: tbl-hdb-metrics
+#| tbl-cap: "HDBSCAN unblocked, Tier 1 evaluation. Same metric definitions as @tbl-jw-metrics."
+
+render_hdb_ladder(ladder_hdb_t1)
+```
+
+```{r}
+#| label: tbl-hdb-metrics-t12
+#| tbl-cap: "HDBSCAN unblocked, Tier 1 + Tier 2 evaluation."
+
+render_hdb_ladder(ladder_hdb_t12)
+```
+
+```{r}
+#| label: fig-hdb-pr
+#| fig-cap: "HDBSCAN Precision vs Recall across the (min_cluster_size × year-blocking) grid, Tier 1+2 evaluation. Upper-left is the precision-favouring corner the asymmetric-cost framing prefers."
+#| fig-width: 8
+#| fig-height: 4
+
+c0_hdbscan_metrics |>
+  dplyr::filter(metric %in% c("pairwise_precision", "pairwise_recall"),
+                eval_tier == "tier12") |>
+  dplyr::select(variant_id, metric, value) |>
+  tidyr::pivot_wider(names_from = metric, values_from = value) |>
+  dplyr::mutate(
+    min_cluster_size = as.integer(stringr::str_extract(variant_id, "(?<=m)\\d+")),
+    blocking         = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                                      "year ±2", "unblocked")
+  ) |>
+  ggplot(aes(pairwise_recall, pairwise_precision, colour = blocking,
+             label = sprintf("m=%d", min_cluster_size))) +
+  geom_point(size = 2) +
+  geom_text(size = 3, hjust = -0.2, vjust = -0.4,
+            check_overlap = TRUE, show.legend = FALSE) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1)) +
+  scale_colour_brewer(palette = "Set1") +
+  labs(x = "Pairwise Recall", y = "Pairwise Precision", colour = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top")
+```
+
+```{r}
+#| label: fig-umap-clusters
+#| fig-cap: "UMAP projection of E5 embeddings. Left: coloured by predicted HDBSCAN cluster (best unblocked variant by Tier 1 F1); singleton/noise names in grey. Right: coloured by gold act for names in the unambiguous eval pool; names outside the eval pool in grey. Same 2D coordinates in both panels."
+#| fig-width: 10
+#| fig-height: 5
+
+set.seed(20260523L)
+umap_xy <- uwot::umap(c0_us_embeddings,
+                      n_neighbors = 15L, min_dist = 0.1,
+                      metric = "cosine", verbose = FALSE)
+umap_df <- tibble::tibble(
+  measure_name = rownames(c0_us_embeddings),
+  umap_x = umap_xy[, 1L],
+  umap_y = umap_xy[, 2L]
+)
+
+best_hdb_variant_f1 <- c0_hdbscan_metrics |>
+  dplyr::filter(metric == "pairwise_f1", eval_tier == "tier1",
+                stringr::str_detect(variant_id, "unblocked")) |>
+  dplyr::slice_max(value, n = 1L, with_ties = FALSE) |>
+  dplyr::pull(variant_id)
+
+hdb_best <- c0_hdbscan_clusters |>
+  dplyr::filter(variant_id == best_hdb_variant_f1) |>
+  dplyr::transmute(
+    measure_name,
+    cluster_label = dplyr::if_else(n_members >= 2L,
+                                   sprintf("c%d", cluster_id),
+                                   NA_character_)
+  )
+
+gold_unamb <- c0_eval_gold_pairs |>
+  dplyr::filter(!ambiguous) |>
+  dplyr::distinct(measure_name, gold_act_name)
+
+p_pred <- umap_df |>
+  dplyr::left_join(hdb_best, by = "measure_name") |>
+  ggplot(aes(umap_x, umap_y, colour = cluster_label)) +
+  geom_point(size = 1.4, alpha = 0.85) +
+  scale_colour_discrete(na.value = "grey75", guide = "none") +
+  labs(title = sprintf("Predicted HDBSCAN clusters (variant %s)",
+                       best_hdb_variant_f1),
+       x = NULL, y = NULL) +
+  theme_minimal(base_size = 9) +
+  theme(axis.text = element_blank(), panel.grid.minor = element_blank())
+
+p_gold <- umap_df |>
+  dplyr::left_join(gold_unamb, by = "measure_name") |>
+  dplyr::mutate(gold_label = stringr::str_trunc(gold_act_name, 30)) |>
+  ggplot(aes(umap_x, umap_y, colour = gold_label)) +
+  geom_point(size = 1.4, alpha = 0.85) +
+  scale_colour_discrete(na.value = "grey75", guide = "none") +
+  labs(title = "Gold act (unambiguous eval names)",
+       x = NULL, y = NULL) +
+  theme_minimal(base_size = 9) +
+  theme(axis.text = element_blank(), panel.grid.minor = element_blank())
+
+p_pred + p_gold + patchwork::plot_layout(ncol = 2)
+```
+
+### Reading the HDBSCAN results
+
+The headline comparison is @fig-hdb-pr against @fig-jw-pr: if HDBSCAN's frontier sits up and to the right of JW's, embeddings have bought us what JW couldn't. The UMAP scatter is diagnostic — predicted clusters that overlap a single gold colour on the right panel are correct merges; predicted clusters spanning multiple gold colours are over-merges; gold colours fragmented across multiple predicted clusters are under-merges. The Synthesis section at the bottom of the notebook applies the same precision-friendly shortlist rule used for JW to pick a candidate variant.
 
 ## Method 3 — Year-blocked variants
 
-JW year-blocked results are shown alongside unblocked in §4; the embedding year-blocked variant lands here once Phase B is built.
+Method 3 reruns the same HDBSCAN sweep with the year-window mask from §Method 1: pairs whose chunk years differ by more than 2 are forced to maximum distance and so cannot merge. The prior is that the same act tends to surface in a narrow temporal window, so the mask should reduce cross-decade over-merges without sacrificing recall.
 
-::: {.callout-warning title="Phase B pending"}
-Embedding year-blocked variant pending.
-:::
+```{r}
+#| label: tbl-hdb-yw2-metrics
+#| tbl-cap: "HDBSCAN year-blocked (±2), Tier 1 evaluation."
+
+render_hdb_ladder(ladder_hdb_yw_t1)
+```
+
+```{r}
+#| label: tbl-hdb-yw2-metrics-t12
+#| tbl-cap: "HDBSCAN year-blocked (±2), Tier 1 + Tier 2 evaluation."
+
+render_hdb_ladder(ladder_hdb_yw_t12)
+```
+
+The year-blocked points are shown alongside the unblocked points in @fig-hdb-pr (different colour). The JW year-blocking finding from §Method 1 was modestly precision-friendly with negligible recall cost; if the embedding equivalent shifts the front in the same direction, the temporal prior is structural rather than JW-specific and should carry into Methods 4–5 when they land.
 
 ## Method 4 — Hybrid (embedding nearest-neighbours + LLM pairwise judge)
 
@@ -550,20 +745,39 @@ The stateful walker (Haiku reads each doc's measure names, matches to existing c
 
 ```{r}
 #| label: tbl-ladder
-#| tbl-cap: "Method comparison — best variant per method, Tier 1 evaluation"
+#| tbl-cap: "Method comparison — best variant per method by Tier 1 F1, Tier 1 evaluation. Methods 4 + 5 are still Phase B-pending."
 
-if (phase_b_pending) {
-  ladder_t1 |>
-    dplyr::slice_max(F1, n = 1L, with_ties = TRUE) |>
-    dplyr::mutate(Method = "JW (best variant)", .before = 1) |>
-    tt() |> tt_theme_report()
-} else {
-  # Phase B: combine JW + HDBSCAN + Hybrid + Stateful best variants into one table
-  NULL
-}
+# Pick best by numeric F1 (read from the raw metrics tibble, not the
+# formatted ladder cells where slicing is lexicographic).
+best_jw_id  <- c0_jw_metrics |>
+  dplyr::filter(metric == "pairwise_f1", eval_tier == "tier1") |>
+  dplyr::slice_max(value, n = 1L, with_ties = FALSE) |>
+  dplyr::pull(variant_id)
+best_hdb_id <- c0_hdbscan_metrics |>
+  dplyr::filter(metric == "pairwise_f1", eval_tier == "tier1") |>
+  dplyr::slice_max(value, n = 1L, with_ties = FALSE) |>
+  dplyr::pull(variant_id)
+
+best_jw_row <- format_method_ladder(c0_jw_metrics, eval_tier = "tier1") |>
+  dplyr::filter(variant_id == best_jw_id) |>
+  dplyr::transmute(
+    Method  = "JW (best variant)",
+    Variant = best_jw_id,
+    Precision, Recall, F1, ARI, Purity, `Over:Under`, `n clusters`
+  )
+best_hdb_row <- format_method_ladder(c0_hdbscan_metrics, eval_tier = "tier1") |>
+  dplyr::filter(variant_id == best_hdb_id) |>
+  dplyr::transmute(
+    Method  = "HDBSCAN (best variant)",
+    Variant = best_hdb_id,
+    Precision, Recall, F1, ARI, Purity, `Over:Under`, `n clusters`
+  )
+
+dplyr::bind_rows(best_jw_row, best_hdb_row) |>
+  tt() |> tt_theme_report()
 ```
 
-Phase B methods will be added to this table as each lands. The single-row JW best variant is shown now as the baseline to beat.
+Two rows now — JW and HDBSCAN — both picked by Tier 1 F1 within their own method. If HDBSCAN's row dominates on F1 *and* sits at lower Over:Under than JW, embeddings have delivered the semantic bridge JW couldn't. If HDBSCAN's F1 is higher but Over:Under explodes, embeddings have bought recall at the cost of the precision-friendly profile the Framing demands — the Synthesis section's shortlist rule will favour a different variant in that case. Methods 4 + 5 will extend this table once they land.
 
 ## Out-of-distribution: Malaysia EN/BM
 
@@ -575,28 +789,32 @@ Once Phase B is built, the best variant from each method is applied to the Malay
 
 ```{r}
 #| label: tbl-cost
-#| tbl-cap: "Per-method API cost (Phase A only)"
+#| tbl-cap: "Per-method cost. Methods 1–3 are zero-cost (pure-R or local Ollama). Methods 4–5 will populate from `logs/api_calls.csv` once wired."
 
 tibble::tibble(
-  Method = c("Method 1: JW single-linkage"),
-  `Tokens (input)` = "0",
-  `Tokens (output)` = "0",
-  `Pilot cost (USD)` = "0.00",
-  `Projected SEA cost (USD)` = "0.00",
-  Notes = "Pure-R, no API calls"
+  Method = c("Method 1: JW single-linkage",
+             "Method 2: E5-multilingual + HDBSCAN",
+             "Method 3: E5-multilingual + HDBSCAN (year-blocked)"),
+  `Tokens (input)`          = c("0", "≈4K", "≈4K"),
+  `Tokens (output)`         = c("0", "0", "0"),
+  `Pilot cost (USD)`        = c("0.00", "0.00", "0.00"),
+  `Projected SEA cost (USD)`= c("0.00", "0.00", "0.00"),
+  Notes = c("Pure-R, no API calls",
+            "Local Ollama (jeffh/intfloat-multilingual-e5-large-instruct:f16); embeddings cached in `c0_us_embeddings`",
+            "Reuses Method 2 embeddings; year-blocking applied at the distance-matrix step")
 ) |> tt() |> tt_theme_report()
 ```
 
-::: {.callout-warning title="Phase B pending"}
-Phase B cost diagnostics — Voyage embedding cost, Haiku pairwise-judge cost, Haiku stateful-builder cost, projected SEA scale — will populate from `logs/api_calls.csv` filtered by method tag once Phase B targets run.
+::: {.callout-warning title="Methods 4 + 5 still pending"}
+Phase B cost diagnostics for Method 4 (Haiku pairwise-judge) and Method 5 (Haiku stateful-builder) will populate from `logs/api_calls.csv` filtered by method tag once those targets run.
 :::
 
 ## Synthesis
 
-::: {.callout-note title="Pending: requires Phase B"}
-The synthesis section will recommend a method + parameter setting for the C0 codebook once all five methods are evaluated. Until then, the JW results provide a baseline: pick the variant with the best Tier 1 F1 *and* the lowest over-merge count among variants within 0.05 F1 of the maximum, on the asymmetric-failure-cost argument.
+::: {.callout-note title="Methods 4 + 5 still pending"}
+A final method + parameter recommendation waits for all five methods to be evaluated. Methods 1–3 (JW, HDBSCAN unblocked, HDBSCAN year-blocked) are now wired; Methods 4 (hybrid LLM judge) and 5 (stateful builder) remain to land.
 
-For now, the load-bearing decision after this notebook is the **embedding provider** (Voyage vs BGE-M3 vs OpenAI). Phase B cannot run without that.
+Until then, the shortlist below applies the precision-friendly rule from the Framing to each finished method in isolation: among variants with the lowest over-merge count, pick the variant with the highest F1. Compare the JW pick against the HDBSCAN pick to see whether the semantic bridge embeddings provide outweighs whatever lexical-only precision JW retains.
 :::
 
 ### Reading the JW results in isolation
@@ -623,4 +841,27 @@ jw_pick |>
 ```
 
 This shortlist is intentionally sorted by `over_merge_count` ascending — the column the C0 user should weight most. The top row is the most precision-friendly JW variant; the F1 column says whether that precision came at an unacceptable recall hit.
+
+### Reading the HDBSCAN results in isolation
+
+```{r}
+#| label: tbl-hdb-pick
+#| tbl-cap: "HDBSCAN variant picked under the asymmetric-cost rule (Tier 1+2 eval): best F1 among variants with low over-merge. Both unblocked and year-blocked variants compete."
+
+c0_hdbscan_metrics |>
+  dplyr::filter(metric == "pairwise_f1", eval_tier == "tier12") |>
+  dplyr::arrange(over_merge_count, dplyr::desc(value)) |>
+  dplyr::transmute(
+    variant_id,
+    F1            = sprintf("%.3f", value),
+    `CI`          = sprintf("[%.3f, %.3f]", ci_lo, ci_hi),
+    `Over-merge`  = over_merge_count,
+    `Under-merge` = under_merge_count,
+    `n clusters`  = n_predicted_clusters
+  ) |>
+  utils::head(5) |>
+  tt() |> tt_theme_report()
+```
+
+Same sort rule as the JW shortlist. Reading across the two: if the HDBSCAN top row has both lower over-merge *and* higher F1 than the JW top row, embeddings are the load-bearing method going forward. If HDBSCAN wins on F1 but trails on over-merge, the precision-friendly C0 user keeps JW as the conservative default and treats HDBSCAN as a recall-extender — Method 4's hybrid pipeline is the natural reconciliation.
 

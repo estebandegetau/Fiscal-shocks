@@ -584,3 +584,86 @@ get_api_cost_summary <- function() {
 if (!exists("%||%", mode = "function", envir = environment())) {
   `%||%` <- function(x, y) if (is.null(x)) y else x
 }
+
+
+#' Get embeddings from an OpenAI-compatible embedding API
+#'
+#' Vectorised wrapper that POSTs to `<base_url>/embeddings`. For instruction-
+#' tuned models (e.g. multilingual-e5-large-instruct), pass `instruction` and
+#' each text is wrapped as "Instruct: {instruction}\nQuery: {text}" per the
+#' E5-instruct HF model card. For clustering / symmetric similarity, every
+#' input gets the instruction prefix.
+#'
+#' @param texts Character vector of strings to embed. Duplicates are
+#'   deduplicated before the API call; the returned matrix is indexed by
+#'   unique input strings.
+#' @param model Character model ID (e.g.
+#'   "jeffh/intfloat-multilingual-e5-large-instruct:f16").
+#' @param instruction Optional character. NULL disables wrapping.
+#' @param provider Character: "ollama" (default), "openai", "openrouter".
+#' @param base_url Character override for the API base.
+#' @param api_key Character override for the API key.
+#' @param batch_size Integer; texts per HTTP call.
+#'
+#' @return Numeric matrix N x D where N = length(unique(texts)),
+#'   rownames = unique input strings.
+#' @export
+call_embedding_api <- function(texts,
+                               model,
+                               instruction = NULL,
+                               provider = "ollama",
+                               base_url = NULL,
+                               api_key = NULL,
+                               batch_size = 32L) {
+  stopifnot(is.character(texts), length(texts) >= 1L)
+
+  defaults <- list(
+    ollama     = list(base_url = "http://localhost:11434/v1", api_key = NULL),
+    openai     = list(base_url = "https://api.openai.com/v1",
+                      api_key  = Sys.getenv("OPENAI_API_KEY")),
+    openrouter = list(base_url = "https://openrouter.ai/api/v1",
+                      api_key  = Sys.getenv("OPENROUTER_API_KEY"))
+  )
+  if (!provider %in% names(defaults)) {
+    stop("Unknown embedding provider: '", provider,
+         "'. Supported: ", paste(names(defaults), collapse = ", "))
+  }
+  base_url <- base_url %||% defaults[[provider]]$base_url
+  api_key  <- api_key  %||% defaults[[provider]]$api_key
+
+  unique_texts <- unique(texts)
+  prepared <- if (is.null(instruction)) {
+    unique_texts
+  } else {
+    sprintf("Instruct: %s\nQuery: %s", instruction, unique_texts)
+  }
+
+  url <- paste0(sub("/+$", "", base_url), "/embeddings")
+  batches <- split(prepared, ceiling(seq_along(prepared) / batch_size))
+  out <- vector("list", length(batches))
+
+  for (i in seq_along(batches)) {
+    req <- httr2::request(url) |>
+      httr2::req_headers(`content-type` = "application/json") |>
+      httr2::req_body_json(list(
+        model = model,
+        input = unname(batches[[i]])
+      )) |>
+      httr2::req_retry(max_tries = 1)
+
+    if (!is.null(api_key) && nzchar(api_key)) {
+      req <- req |>
+        httr2::req_headers(Authorization = paste("Bearer", api_key))
+    }
+
+    response <- httr2::req_perform(req)
+    result   <- httr2::resp_body_json(response)
+
+    out[[i]] <- do.call(rbind,
+                        lapply(result$data, \(d) unlist(d$embedding)))
+  }
+
+  mat <- do.call(rbind, out)
+  rownames(mat) <- unique_texts
+  mat
+}

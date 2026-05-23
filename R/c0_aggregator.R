@@ -502,5 +502,268 @@ format_method_ladder <- function(metrics_long,
 }
 
 
+# ---------------------------------------------------------------------------
+# Phase B — Multilingual embedding + HDBSCAN clustering (Methods 2 + 3)
+# ---------------------------------------------------------------------------
+
+#' Embed the C0 measure-name pool with an instruction-tuned model
+#'
+#' Wraps call_embedding_api() on the chosen rank subset of the pool and
+#' L2-normalises the returned vectors so euclidean distance ranks the same
+#' as cosine similarity (lets us reuse dbscan's euclidean-default machinery).
+#'
+#' @param measure_pool Output of build_c0_measure_pool().
+#' @param model Character: Ollama/OpenAI model id.
+#' @param instruction Character: instruction string for the E5-instruct prefix.
+#'   Applied to every input — the symmetric/clustering convention from the
+#'   intfloat/multilingual-e5-large-instruct HF model card.
+#' @param rank_filter Integer: which measure_rank to keep (default 1L).
+#' @param provider,base_url,api_key Passed through to call_embedding_api().
+#' @return Numeric matrix N x D with rownames = unique measure_name strings,
+#'   rows L2-normalised.
+#' @export
+embed_c0_measure_pool <- function(measure_pool,
+                                  model,
+                                  instruction,
+                                  rank_filter = 1L,
+                                  provider = "ollama",
+                                  base_url = NULL,
+                                  api_key = NULL) {
+
+  names_vec <- measure_pool |>
+    dplyr::filter(measure_rank == rank_filter,
+                  !is.na(measure_name), nchar(measure_name) > 0L) |>
+    dplyr::pull(measure_name) |>
+    unique()
+
+  if (length(names_vec) == 0L) {
+    return(matrix(numeric(0), nrow = 0L, ncol = 0L))
+  }
+
+  emb <- call_embedding_api(
+    texts = names_vec,
+    model = model,
+    instruction = instruction,
+    provider = provider,
+    base_url = base_url,
+    api_key = api_key
+  )
+
+  row_norms <- sqrt(rowSums(emb^2))
+  row_norms[row_norms == 0] <- 1
+  emb / row_norms
+}
+
+
+#' HDBSCAN clustering of measure names on cosine distance
+#'
+#' Builds a pairwise cosine-distance matrix from L2-normalised embedding
+#' rows, optionally masks pairs outside a year window to 1.0 (max distance),
+#' and runs dbscan::hdbscan on the resulting `dist`. HDBSCAN noise points
+#' (cluster 0) are mapped to unique negative cluster IDs so downstream
+#' pairwise scoring treats them as their own singleton — the correct
+#' semantics for "model declined to merge it" (under-merge, not over-merge).
+#'
+#' Canonical name per cluster: longest member (alphabetical tiebreak),
+#' matching cluster_measure_names_corpus() convention.
+#'
+#' @param embeddings Matrix from embed_c0_measure_pool(); rownames =
+#'   measure_name strings.
+#' @param measure_pool Used to resolve per-name min year for year-blocking.
+#' @param min_cluster_size Integer >= 2; passed as `minPts` to hdbscan.
+#' @param year_window Integer or NULL; if integer, mask pairs with
+#'   `|year_a - year_b| > year_window` to distance 1.0.
+#' @return Tibble: measure_name, cluster_id, canonical_name,
+#'   min_cluster_size, year_window, n_members.
+#' @export
+cluster_measure_names_hdbscan <- function(embeddings,
+                                          measure_pool,
+                                          min_cluster_size,
+                                          year_window = NULL) {
+
+  stopifnot(is.matrix(embeddings),
+            is.numeric(min_cluster_size), min_cluster_size >= 2L)
+  if (!is.null(year_window)) stopifnot(year_window >= 0L)
+
+  names_vec <- rownames(embeddings)
+  n <- length(names_vec)
+
+  if (n < 2L) {
+    return(tibble::tibble(
+      measure_name = names_vec %||% character(0),
+      cluster_id = if (n == 0L) integer(0) else 1L,
+      canonical_name = names_vec %||% character(0),
+      min_cluster_size = as.integer(min_cluster_size),
+      year_window = year_window %||% NA_integer_,
+      n_members = if (n == 0L) integer(0) else 1L
+    ))
+  }
+
+  # Cosine distance on L2-normalised vectors = 1 - dot product.
+  d <- 1 - tcrossprod(embeddings)
+  d[d < 0] <- 0  # floating-point safety
+
+  if (!is.null(year_window)) {
+    name_year <- measure_pool |>
+      dplyr::group_by(measure_name) |>
+      dplyr::summarize(year_min = suppressWarnings(min(year, na.rm = TRUE)),
+                       .groups = "drop") |>
+      dplyr::mutate(year_min = dplyr::if_else(is.finite(year_min),
+                                              as.integer(year_min),
+                                              NA_integer_))
+    years <- name_year$year_min[match(names_vec, name_year$measure_name)]
+    year_diff <- outer(years, years, FUN = \(a, b) abs(a - b))
+    year_diff[is.na(year_diff)] <- year_window + 1L
+    d[year_diff > year_window] <- 1.0
+  }
+
+  hd <- dbscan::hdbscan(stats::as.dist(d),
+                        minPts = as.integer(min_cluster_size))
+  cl <- hd$cluster
+
+  noise_idx <- which(cl == 0L)
+  if (length(noise_idx) > 0L) {
+    cl[noise_idx] <- -seq_along(noise_idx)
+  }
+
+  assignment <- tibble::tibble(measure_name = names_vec,
+                               cluster_id = as.integer(cl))
+
+  canonical <- assignment |>
+    dplyr::mutate(nchar = nchar(measure_name)) |>
+    dplyr::arrange(dplyr::desc(nchar), measure_name) |>
+    dplyr::group_by(cluster_id) |>
+    dplyr::summarize(canonical_name = dplyr::first(measure_name),
+                     n_members = dplyr::n(),
+                     .groups = "drop")
+
+  assignment |>
+    dplyr::left_join(canonical, by = "cluster_id") |>
+    dplyr::mutate(min_cluster_size = as.integer(min_cluster_size),
+                  year_window = year_window %||% NA_integer_)
+}
+
+
+#' Run HDBSCAN clustering across a (min_cluster_size x year_window) grid
+#'
+#' Returns one long tibble with the same column shape as
+#' run_jw_clusters_grid() so evaluate_clusters_grid() works unchanged.
+#'
+#' @param embeddings Output of embed_c0_measure_pool().
+#' @param measure_pool Output of build_c0_measure_pool().
+#' @param min_cluster_sizes Integer vector of HDBSCAN minPts values to sweep.
+#' @param year_windows List of values for year_window; use NULL for unblocked.
+#' @return Tibble with columns: variant_id (chr), min_cluster_size,
+#'   year_window, measure_name, cluster_id, canonical_name, n_members.
+#' @export
+run_hdbscan_clusters_grid <- function(embeddings,
+                                      measure_pool,
+                                      min_cluster_sizes = c(2L, 3L, 5L),
+                                      year_windows = list(NULL, 2L)) {
+
+  grid <- tidyr::expand_grid(
+    min_cluster_size = as.integer(min_cluster_sizes),
+    year_window_idx  = seq_along(year_windows)
+  )
+
+  purrr::pmap_dfr(grid, function(min_cluster_size, year_window_idx) {
+    yw <- year_windows[[year_window_idx]]
+    cl <- cluster_measure_names_hdbscan(
+      embeddings,
+      measure_pool,
+      min_cluster_size = min_cluster_size,
+      year_window = yw
+    )
+    cl |>
+      dplyr::mutate(
+        variant_id = sprintf("hdb_m%d_%s",
+                             min_cluster_size,
+                             if (is.null(yw)) "unblocked"
+                             else sprintf("yw%d", yw))
+      )
+  })
+}
+
+
+#' Sanity-probe the F16 embedding port against the eval gold pool
+#'
+#' Two diagnostic checks that don't require a reference FP32 host:
+#'   - top1_nn_same_act_rate: for each eval name in an act with >= 2
+#'     members, is its top-1 nearest neighbour (by cosine, excluding
+#'     itself) tagged with the same gold act?
+#'   - separation: median within-act pairwise cosine MINUS median
+#'     between-act pairwise cosine. Positive = semantic structure
+#'     preserved by the F16 port.
+#'
+#' Headline floors used by the notebook: separation >= 0.05 and
+#' top1 >= 0.40 mean the F16 port isn't corrupting the model; below
+#' either threshold, escalate to an FP32 cross-check.
+#'
+#' @param embeddings Output of embed_c0_measure_pool() (L2-normalised).
+#' @param eval_gold_pairs Output of build_c0_eval_gold_pairs().
+#' @return One-row tibble: top1_nn_same_act_rate,
+#'   median_within_act_cosine, median_between_act_cosine, separation,
+#'   n_eval_names, n_eval_acts.
+#' @export
+probe_f16_quantization <- function(embeddings, eval_gold_pairs) {
+
+  unamb <- eval_gold_pairs |>
+    dplyr::filter(!ambiguous) |>
+    dplyr::distinct(measure_name, gold_act_name)
+
+  shared <- intersect(rownames(embeddings), unamb$measure_name)
+  if (length(shared) < 2L) {
+    return(tibble::tibble(
+      top1_nn_same_act_rate     = NA_real_,
+      median_within_act_cosine  = NA_real_,
+      median_between_act_cosine = NA_real_,
+      separation                = NA_real_,
+      n_eval_names              = length(shared),
+      n_eval_acts               = 0L
+    ))
+  }
+
+  E <- embeddings[shared, , drop = FALSE]
+  cos <- tcrossprod(E)  # L2-normalised => dot product == cosine
+
+  label_lookup <- stats::setNames(unamb$gold_act_name, unamb$measure_name)
+  labels <- label_lookup[shared]
+
+  # Top-1 NN restricted to names in acts with >= 2 members so the metric is
+  # well-defined (a singleton act can never produce a same-act NN).
+  act_sizes <- table(labels)
+  evaluable <- labels %in% names(act_sizes)[act_sizes >= 2L]
+
+  diag(cos) <- -Inf
+  nn_idx <- apply(cos, 1L, which.max)
+  nn_labels <- labels[nn_idx]
+  top1_rate <- if (any(evaluable)) {
+    mean(nn_labels[evaluable] == labels[evaluable])
+  } else NA_real_
+
+  # Restore diagonal for within/between accounting.
+  diag(cos) <- 1
+  upper <- upper.tri(cos)
+  pair_cos <- cos[upper]
+  pair_same_act <- outer(labels, labels, FUN = "==")[upper]
+
+  within  <- pair_cos[pair_same_act]
+  between <- pair_cos[!pair_same_act]
+
+  median_within  <- if (length(within)  > 0L) stats::median(within)  else NA_real_
+  median_between <- if (length(between) > 0L) stats::median(between) else NA_real_
+  separation     <- median_within - median_between
+
+  tibble::tibble(
+    top1_nn_same_act_rate     = top1_rate,
+    median_within_act_cosine  = median_within,
+    median_between_act_cosine = median_between,
+    separation                = separation,
+    n_eval_names              = length(shared),
+    n_eval_acts               = dplyr::n_distinct(labels)
+  )
+}
+
+
 # %||% is from rlang via tidyverse but we may not have it loaded directly.
 `%||%` <- function(a, b) if (is.null(a)) b else a

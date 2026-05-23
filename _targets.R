@@ -874,9 +874,10 @@ list(
   # grid, evaluates with pairwise P/R/F1, ARI, purity, over/under-merge
   # (bootstrap CIs resampled at gold-row level).
   #
-  # Phase B (embeddings, LLM judge, stateful builder) will be added once the
-  # embedding-provider decision is made; those targets must be explicitly
-  # named in tar_make() and require API keys in .env.
+  # Phase B (embeddings + HDBSCAN) lives below alongside Phase A; embedding
+  # decision: intfloat/multilingual-e5-large-instruct served locally via
+  # Ollama (F16 community port), no API key required. LLM judge (Method 4)
+  # and stateful builder (Method 5) remain deferred.
   # =============================================================================
 
   tar_target(
@@ -910,6 +911,61 @@ list(
       n_boot = 1000L,
       seed = 20260521L
     ),
+    packages = "tidyverse"
+  ),
+
+  # Phase B: Method 2 + 3 (embedding + HDBSCAN, unblocked and year-blocked).
+  # Embedding via local Ollama on jeffh/intfloat-multilingual-e5-large-instruct
+  # (F16). Model + instruction string are isolated as their own targets so
+  # changing either invalidates only c0_us_embeddings, not downstream funcs.
+
+  tar_target(
+    c0_embedding_model,
+    "jeffh/intfloat-multilingual-e5-large-instruct:f16"
+  ),
+
+  tar_target(
+    c0_embedding_instruction,
+    "Represent this fiscal-act name for clustering with paraphrases"
+  ),
+
+  tar_target(
+    c0_us_embeddings,
+    embed_c0_measure_pool(
+      c0_us_measure_pool,
+      model = c0_embedding_model,
+      instruction = c0_embedding_instruction
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    format = "qs"
+  ),
+
+  tar_target(
+    c0_hdbscan_clusters,
+    run_hdbscan_clusters_grid(
+      c0_us_embeddings,
+      c0_us_measure_pool,
+      min_cluster_sizes = c(2L, 3L, 5L),
+      year_windows = list(NULL, 2L)
+    ),
+    packages = c("tidyverse", "dbscan")
+  ),
+
+  tar_target(
+    c0_hdbscan_metrics,
+    evaluate_clusters_grid(
+      c0_hdbscan_clusters,
+      c0_eval_gold_pairs,
+      group_keys = "variant_id",
+      n_boot = 1000L,
+      seed = 20260521L
+    ),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    c0_f16_quantization_probe,
+    probe_f16_quantization(c0_us_embeddings, c0_eval_gold_pairs),
     packages = "tidyverse"
   ),
 
