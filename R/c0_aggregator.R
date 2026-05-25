@@ -555,6 +555,52 @@ embed_c0_measure_pool <- function(measure_pool,
 }
 
 
+#' Embed gold-act labels in the same space as the measure pool
+#'
+#' Pull unique `gold_act_name` strings from the eval pool and embed them
+#' with the same model + instruction used for `embed_c0_measure_pool()`,
+#' so cosine similarity between a surface measure_name embedding and a
+#' gold-label embedding is well-defined. L2-normalised to match the
+#' measure-pool convention.
+#'
+#' @param eval_gold_pairs Output of build_c0_eval_gold_pairs().
+#' @param model,instruction,provider,base_url,api_key Same parameters as
+#'   embed_c0_measure_pool(); pass the same values to keep the embedding
+#'   space consistent.
+#' @return Numeric matrix N x D with rownames = unique gold_act_name
+#'   strings, rows L2-normalised.
+#' @export
+embed_c0_gold_labels <- function(eval_gold_pairs,
+                                 model,
+                                 instruction,
+                                 provider = "ollama",
+                                 base_url = NULL,
+                                 api_key = NULL) {
+
+  labels_vec <- eval_gold_pairs |>
+    dplyr::filter(!is.na(gold_act_name), nchar(gold_act_name) > 0L) |>
+    dplyr::pull(gold_act_name) |>
+    unique()
+
+  if (length(labels_vec) == 0L) {
+    return(matrix(numeric(0), nrow = 0L, ncol = 0L))
+  }
+
+  emb <- call_embedding_api(
+    texts = labels_vec,
+    model = model,
+    instruction = instruction,
+    provider = provider,
+    base_url = base_url,
+    api_key = api_key
+  )
+
+  row_norms <- sqrt(rowSums(emb^2))
+  row_norms[row_norms == 0] <- 1
+  emb / row_norms
+}
+
+
 #' HDBSCAN clustering of measure names on cosine distance
 #'
 #' Builds a pairwise cosine-distance matrix from L2-normalised embedding

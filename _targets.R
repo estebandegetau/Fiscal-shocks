@@ -924,6 +924,15 @@ list(
     "jeffh/intfloat-multilingual-e5-large-instruct:f16"
   ),
 
+  # FP32 reference of the same model, hosted on DeepInfra. Used only by
+  # the probe section of c0_aggregator.qmd to disentangle "F16 broke the
+  # geometry" from "the model itself can't do this task". Methods 2/3
+  # (HDBSCAN) continue to read c0_us_embeddings (F16).
+  tar_target(
+    c0_embedding_model_fp32,
+    "intfloat/multilingual-e5-large-instruct"
+  ),
+
   tar_target(
     c0_embedding_instruction,
     "Represent this fiscal-act name for clustering with paraphrases"
@@ -935,6 +944,45 @@ list(
       c0_us_measure_pool,
       model = c0_embedding_model,
       instruction = c0_embedding_instruction
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    format = "qs"
+  ),
+
+  tar_target(
+    c0_us_gold_embeddings,
+    embed_c0_gold_labels(
+      c0_eval_gold_pairs,
+      model = c0_embedding_model,
+      instruction = c0_embedding_instruction
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    format = "qs"
+  ),
+
+  tar_target(
+    c0_us_embeddings_fp32,
+    embed_c0_measure_pool(
+      c0_us_measure_pool,
+      model       = c0_embedding_model_fp32,
+      instruction = c0_embedding_instruction,
+      provider    = "openai",
+      base_url    = "https://api.deepinfra.com/v1/openai",
+      api_key     = Sys.getenv("DEEPINFRA_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    format = "qs"
+  ),
+
+  tar_target(
+    c0_us_gold_embeddings_fp32,
+    embed_c0_gold_labels(
+      c0_eval_gold_pairs,
+      model       = c0_embedding_model_fp32,
+      instruction = c0_embedding_instruction,
+      provider    = "openai",
+      base_url    = "https://api.deepinfra.com/v1/openai",
+      api_key     = Sys.getenv("DEEPINFRA_API_KEY")
     ),
     packages = c("tidyverse", "httr2", "jsonlite"),
     format = "qs"
@@ -966,6 +1014,30 @@ list(
   tar_target(
     c0_f16_quantization_probe,
     probe_f16_quantization(c0_us_embeddings, c0_eval_gold_pairs),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    c0_f16_quantization_probe_tier1,
+    probe_f16_quantization(
+      c0_us_embeddings,
+      dplyr::filter(c0_eval_gold_pairs, tier == 1L)
+    ),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    c0_fp32_reference_probe,
+    probe_f16_quantization(c0_us_embeddings_fp32, c0_eval_gold_pairs),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    c0_fp32_reference_probe_tier1,
+    probe_f16_quantization(
+      c0_us_embeddings_fp32,
+      dplyr::filter(c0_eval_gold_pairs, tier == 1L)
+    ),
     packages = "tidyverse"
   ),
 

@@ -25,9 +25,13 @@ tar_load(c(
   c0_jw_clusters,
   c0_jw_metrics,
   c0_us_embeddings,
+  c0_us_gold_embeddings,
   c0_hdbscan_clusters,
   c0_hdbscan_metrics,
-  c0_f16_quantization_probe
+  c0_f16_quantization_probe,
+  c0_f16_quantization_probe_tier1,
+  c0_fp32_reference_probe,
+  c0_fp32_reference_probe_tier1
 ))
 
 # Methods 2 + 3 (HDBSCAN, unblocked + year-blocked) are wired below.
@@ -526,22 +530,31 @@ JW single-linkage cannot canonicalise this measure pool on its own. The geometri
 
 What JW remains useful for is the role its mechanics actually support: a precision-friendly **blocker** — a cheap pre-filter that catches near-duplicate surface forms (spacing, punctuation, abbreviation expansion) at near-zero false-positive cost. Method 4's hybrid pipeline below uses exactly this property: JW (or a cheap analog) prunes the pair space, and a semantic verifier handles the merges that surface similarity cannot. The load-bearing canonicalisation work, though, has to come from a method that understands meaning — Methods 2–5 are the candidate replacements.
 
-## F16 quantization sanity check
+## Embedding-geometry probe (F16 vs FP32)
 
-Method 1 closed on the observation that the gap to canonicalise this pool is semantic, not lexical. The next three sections test whether multilingual embeddings can bridge it. Before reading the eval, one preliminary: the embeddings come from a community F16 port of `intfloat/multilingual-e5-large-instruct` (`jeffh/intfloat-multilingual-e5-large-instruct:f16`) running locally under Ollama. F16 compresses the reference FP32 weights and could in principle distort the embedding geometry that HDBSCAN relies on. Two cheap probes on the gold eval pool check that the port preserves the semantic structure HDBSCAN needs.
+Method 1 closed on the observation that the gap to canonicalise this pool is semantic, not lexical. The next three sections test whether multilingual embeddings can bridge it. Before reading the eval, one preliminary: the Methods 2/3 embeddings come from a community F16 port of `intfloat/multilingual-e5-large-instruct` (`jeffh/intfloat-multilingual-e5-large-instruct:f16`) running locally under Ollama. F16 compresses the reference FP32 weights and could in principle distort the embedding geometry that HDBSCAN relies on. Two cheap probes on the gold eval pool check that the port preserves the semantic structure HDBSCAN needs.
+
+The probes run on a 2×2 grid: **precision** (F16 local vs FP32 reference via DeepInfra) × **eval slice** (full unambiguous pool vs Tier 1 only). The FP32 reference disentangles two distinct failure modes the F16-only probe couldn't separate: "F16 quantization broke the geometry" (FP32 passes where F16 fails) vs "the model itself can't do this task" (both precisions fail). The Tier 1 slice in turn strips Tier 2's permissive IKA tagging, which §"Eval-set noise probe" below shows is genuinely noisy. Reading the four cells together discriminates quantization noise, model-capacity ceiling, and label noise.
 
 ```{r}
 #| label: tbl-f16-probe
-#| tbl-cap: "F16 quantization probe. Top-1 NN same-act rate is the share of eval names whose nearest-neighbour by cosine shares a gold act (restricted to acts with ≥2 members so the metric is well-defined). Separation = median within-act cosine − median between-act cosine; positive means the F16 port preserves the act-level structure."
+#| tbl-cap: "Embedding-geometry probe on a 2×2 (precision × eval slice) grid. Top-1 NN same-act rate is the share of eval names whose nearest-neighbour by cosine shares a gold act (restricted to acts with ≥2 members so the metric is well-defined). Separation = median within-act cosine − median between-act cosine; positive means the embedding preserves the act-level structure. F16 rows come from the local Ollama port (`jeffh/intfloat-multilingual-e5-large-instruct:f16`); FP32 rows from DeepInfra-hosted `intfloat/multilingual-e5-large-instruct`. Same instruction prefix on both."
 
-c0_f16_quantization_probe |>
+dplyr::bind_rows(
+  dplyr::mutate(c0_f16_quantization_probe,       Precision = "F16 (local Ollama)",  `Eval slice` = "Full pool (Tier 1 + 2)"),
+  dplyr::mutate(c0_f16_quantization_probe_tier1, Precision = "F16 (local Ollama)",  `Eval slice` = "Tier 1 only"),
+  dplyr::mutate(c0_fp32_reference_probe,         Precision = "FP32 (DeepInfra)",    `Eval slice` = "Full pool (Tier 1 + 2)"),
+  dplyr::mutate(c0_fp32_reference_probe_tier1,   Precision = "FP32 (DeepInfra)",    `Eval slice` = "Tier 1 only")
+) |>
   dplyr::transmute(
-    `Top-1 NN same-act rate`        = sprintf("%.3f", top1_nn_same_act_rate),
-    `Median within-act cosine`      = sprintf("%.3f", median_within_act_cosine),
-    `Median between-act cosine`     = sprintf("%.3f", median_between_act_cosine),
-    `Separation`                    = sprintf("%.3f", separation),
-    `Eval names`                    = n_eval_names,
-    `Eval acts`                     = n_eval_acts
+    Precision,
+    `Eval slice`,
+    `Top-1 NN same-act rate`    = sprintf("%.3f", top1_nn_same_act_rate),
+    `Median within-act cosine`  = sprintf("%.3f", median_within_act_cosine),
+    `Median between-act cosine` = sprintf("%.3f", median_between_act_cosine),
+    `Separation`                = sprintf("%.3f", separation),
+    `Eval names`                = n_eval_names,
+    `Eval acts`                 = n_eval_acts
   ) |>
   tt() |> tt_theme_report()
 ```
@@ -551,23 +564,178 @@ c0_f16_quantization_probe |>
 #| echo: false
 #| results: asis
 
-p <- c0_f16_quantization_probe
-sep_ok <- !is.na(p$separation) && p$separation >= 0.05
-top_ok <- !is.na(p$top1_nn_same_act_rate) && p$top1_nn_same_act_rate >= 0.40
+slice_pass <- function(p) {
+  sep_ok <- !is.na(p$separation) && p$separation >= 0.05
+  top_ok <- !is.na(p$top1_nn_same_act_rate) && p$top1_nn_same_act_rate >= 0.40
+  list(sep_ok = sep_ok, top_ok = top_ok, pass = sep_ok && top_ok)
+}
 
-if (sep_ok && top_ok) {
-  cat(sprintf(
-    "**Verdict.** Separation %.3f ≥ 0.05 floor and top-1 NN rate %.3f ≥ 0.40 floor. F16 preserves the act-level structure on this pool; Method 2 results below can be read as embedding-quality signal rather than quantization noise.\n",
-    p$separation, p$top1_nn_same_act_rate))
+p_f16_full  <- c0_f16_quantization_probe
+p_f16_t1    <- c0_f16_quantization_probe_tier1
+p_fp32_full <- c0_fp32_reference_probe
+p_fp32_t1   <- c0_fp32_reference_probe_tier1
+
+v_f16_t1  <- slice_pass(p_f16_t1)
+v_fp32_t1 <- slice_pass(p_fp32_t1)
+
+fmt_slice <- function(label, p, v) {
+  sprintf("%s: separation %.3f (floor 0.05), top-1 NN rate %.3f (floor 0.40) — %s",
+          label, p$separation %||% NA_real_,
+          p$top1_nn_same_act_rate %||% NA_real_,
+          if (v$pass) "**PASS**" else "**FAIL**")
+}
+
+cat(fmt_slice("F16, Tier 1",  p_f16_t1,  v_f16_t1),  "  \n")
+cat(fmt_slice("FP32, Tier 1", p_fp32_t1, v_fp32_t1), "\n\n")
+
+cat("Reading Tier 1 vs Tier 1 keeps the gold-partition noise floor constant on both rows so the F16↔FP32 contrast is apples-to-apples.\n\n")
+
+if (!v_f16_t1$pass && v_fp32_t1$pass) {
+  cat("**Verdict — F16 quantization is the culprit.** The FP32 reference clears the floors that F16 misses, so the embedding geometry HDBSCAN needs exists at full precision and is being degraded by the F16 port. The diagnostic conclusion is that migrating Methods 2 + 3 to FP32 is worth a separate plan. Until that lands, Methods 2/3 read below remain on F16 and should be interpreted as a lower bound on what the embedding family can achieve.\n")
+} else if (!v_f16_t1$pass && !v_fp32_t1$pass) {
+  cat("**Verdict — embedding-model ceiling, not quantization.** Both F16 and FP32 fail the same floors, so the issue is not F16 specifically — `multilingual-e5-large-instruct` itself does not produce the relative cosine spread the floors require on this pool. Two interpretations to weigh: (i) E5-instruct embeddings live in a tight band of the unit sphere by design, and the 0.05/0.40 floors may be inappropriate for this family; (ii) the model is genuinely under-resolving fiscal-act semantics and a stronger or differently-tuned embedding family is needed. Either way, the FP32 migration is *not* the fix. Read Methods 2/3 below as the empirical end-to-end test — if HDBSCAN's Tier 1 numbers are competitive with JW, the floors were the over-strict reading.\n")
+} else if (v_f16_t1$pass && v_fp32_t1$pass) {
+  cat("**Verdict — F16 was fine all along.** Both precisions clear the floors on Tier 1, so the earlier full-pool failure was carried by Tier 2 label noise rather than quantization or model capacity. Methods 2/3 read below on F16 with no caveat.\n")
 } else {
-  cat("**Verdict — FAIL.** ")
-  if (!sep_ok) cat(sprintf("Separation %.3f < 0.05 floor. ", p$separation %||% NA_real_))
-  if (!top_ok) cat(sprintf("Top-1 NN rate %.3f < 0.40 floor. ", p$top1_nn_same_act_rate %||% NA_real_))
-  cat("Cross-check against an FP32 reference (e.g. DeepInfra-hosted multilingual-e5-large-instruct) before reading Method 2 results as embedding-quality signal.\n")
+  cat("**Verdict — anomalous.** F16 passes Tier 1 but FP32 fails; this is unexpected since FP32 has strictly more precision. Inspect the raw probe outputs, confirm the FP32 endpoint returned full-rank vectors, and check the instruction-prefix handling before drawing conclusions.\n")
 }
 ```
 
-E5-family embeddings always live in a narrow band of the unit sphere, so absolute cosines aren't crisp — the probe targets the *relative* gap between within-act and between-act pairs, which is the property HDBSCAN cares about.
+E5-family embeddings always live in a narrow band of the unit sphere, so absolute cosines aren't crisp — the probe targets the *relative* gap between within-act and between-act pairs, which is the property HDBSCAN cares about. Methods 2 and 3 below continue to read `c0_us_embeddings` (the F16 matrix); the FP32 numbers above are diagnostic only.
+
+## Eval-set noise probe: surface-year vs doc-year mismatch
+
+An alternative explanation for a soft F16 verdict — and a noise source the within-act geometry from §Method 1 already hinted at — is that the gold pairs themselves are temporally noisy. If C1 sometimes catches contemporary discussions of acts passed decades earlier (e.g. a 2010 ERP paragraph referring back to the Revenue Act of 1964), the resulting `(measure_name, gold_act_name)` pair will look lexically distant — not because the model misclassified, but because the surface form drifts as the act becomes historical context rather than current policy. @fig-eval-noise-temporal probes this directly: for each eval tuple whose surface form contains a 4-digit year, plot the gap between the document's publication year and the year referenced in the surface form against the JW distance to the gold label.
+
+```{r}
+#| label: fig-eval-noise-temporal
+#| fig-cap: "Temporal mismatch in eval pairs. Each point is one (measure_name, gold_act_name, chunk_id) tuple whose surface form contains a 4-digit year. x = doc publication year − year referenced in the surface form (large positive ⇒ retrospective reference); y = JW distance from surface form to gold label. Tuples whose surface form has no extractable year are omitted."
+#| fig-width: 8
+#| fig-height: 5
+year_pattern <- "\\b(19|20)\\d{2}\\b"
+
+chunk_doc_year <- c0_us_measure_pool |>
+    dplyr::distinct(chunk_id, doc_year = year)
+
+noise_diag <- c0_eval_gold_pairs |>
+    dplyr::distinct(measure_name, gold_act_name, chunk_id, tier) |>
+    dplyr::left_join(chunk_doc_year, by = "chunk_id") |>
+    dplyr::mutate(
+        surface_year = as.integer(stringr::str_extract(measure_name, year_pattern)),
+        year_diff = doc_year - surface_year,
+        jw_distance = stringdist::stringdist(measure_name, gold_act_name,
+            method = "jw"
+        ),
+        tier_label = factor(tier,
+            levels = c(1L, 2L),
+            labels = c("Tier 1", "Tier 2")
+        )
+    ) |>
+    dplyr::filter(!is.na(surface_year), !is.na(doc_year))
+
+ggplot(noise_diag, aes(year_diff, jw_distance, colour = tier_label)) +
+    geom_hline(
+        yintercept = c(0.10, 0.15, 0.20, 0.25, 0.30),
+        linetype = "dashed", colour = "grey60", linewidth = 0.3
+    ) +
+    geom_vline(
+        xintercept = 0, linetype = "dotted",
+        colour = "grey40", linewidth = 0.3
+    ) +
+    geom_point(alpha = 0.5, size = 1.6) +
+    geom_smooth(aes(colour = tier_label),
+        se = FALSE,
+       linewidth = 0.4, linetype = "dashed"
+    ) +
+    scale_colour_brewer(palette = "Set1") +
+    labs(
+        x = "Doc year − surface-referenced year",
+        y = "JW distance (surface name → gold label)",
+        colour = NULL
+    ) +
+    theme_minimal(base_size = 10) +
+    theme(legend.position = "top")
+```
+
+@fig-eval-noise-temporal-cosine repeats the panel on the semantic axis: y is cosine distance between the surface-name and gold-label embeddings (E5-multilingual F16, L2-normalised — so cosine distance = 1 − dot product, on the same scale as the F16 probe). The interpretation flips relative to JW: if retrospective references drift *only* lexically (paraphrase) but stay semantically anchored, the cloud should stay flat as x grows; if they drift semantically as well (different terminology or focus when describing the act decades later), the cloud should rise. Reading the two figures together separates the two failure modes.
+
+```{r}
+#| label: fig-eval-noise-temporal-cosine
+#| fig-cap: "Same panel as @fig-eval-noise-temporal but with cosine distance (E5-multilingual F16 embeddings, L2-normalised) on y. Pairs are dropped when either the surface form or the gold label is absent from its respective embedding matrix."
+#| fig-width: 8
+#| fig-height: 5
+
+surface_in_emb <- intersect(noise_diag$measure_name,
+                            rownames(c0_us_embeddings))
+gold_in_emb    <- intersect(noise_diag$gold_act_name,
+                            rownames(c0_us_gold_embeddings))
+
+noise_diag_cos <- noise_diag |>
+  dplyr::filter(measure_name %in% surface_in_emb,
+                gold_act_name %in% gold_in_emb)
+
+S <- c0_us_embeddings[noise_diag_cos$measure_name, , drop = FALSE]
+G <- c0_us_gold_embeddings[noise_diag_cos$gold_act_name, , drop = FALSE]
+noise_diag_cos$cos_distance <- 1 - rowSums(S * G)
+
+ggplot(noise_diag_cos, aes(year_diff, cos_distance, colour = tier_label)) +
+  geom_vline(xintercept = 0, linetype = "dotted",
+             colour = "grey40", linewidth = 0.3) +
+  geom_point(alpha = 0.5, size = 1.6) +
+  geom_smooth(se = FALSE, linewidth = 0.4, linetype = "dashed") +
+  scale_colour_brewer(palette = "Set1") +
+  labs(x = "Doc year − surface-referenced year",
+       y = "Cosine distance (surface name → gold label)",
+       colour = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top")
+```
+
+Finally, @fig-jw-vs-cosine puts the two distance measures head-to-head on the full eval pool (no year filter): one point per distinct `(measure_name, gold_act_name)` pair, x is the JW distance, y is the cosine distance. The correlation answers whether the embedding is buying us anything JW couldn't already give us — a strong positive correlation would mean E5 is essentially re-deriving lexical similarity, while a weak correlation means the two distance measures disagree on which pairs are similar, and there is genuine semantic signal in the embedding above and beyond surface overlap. Both Pearson (linear) and Spearman (rank) correlations are reported because the JW–cosine relationship is plausibly nonlinear.
+
+```{r}
+#| label: fig-jw-vs-cosine
+#| fig-cap: "JW distance vs cosine distance for every distinct (measure_name, gold_act_name) pair in the eval pool. Colour marks the cleanest tier in which the pair appears (Tier 1 if at least one chunk pairs the surface form with the gold act via verbatim match). Pairs whose surface form or gold label is missing from its embedding matrix are dropped. Annotated correlations include the full pool; the dashed line is an unweighted linear fit."
+#| fig-width: 8
+#| fig-height: 5
+
+pair_min_tier <- c0_eval_gold_pairs |>
+  dplyr::group_by(measure_name, gold_act_name) |>
+  dplyr::summarize(tier = min(tier, na.rm = TRUE), .groups = "drop") |>
+  dplyr::mutate(tier_label = factor(tier, levels = c(1L, 2L),
+                                    labels = c("Tier 1", "Tier 2")))
+
+distance_pairs <- pair_min_tier |>
+  dplyr::filter(measure_name  %in% rownames(c0_us_embeddings),
+                gold_act_name %in% rownames(c0_us_gold_embeddings)) |>
+  dplyr::mutate(jw_distance = stringdist::stringdist(
+    measure_name, gold_act_name, method = "jw"))
+
+S <- c0_us_embeddings[distance_pairs$measure_name, , drop = FALSE]
+G <- c0_us_gold_embeddings[distance_pairs$gold_act_name, , drop = FALSE]
+distance_pairs$cos_distance <- 1 - rowSums(S * G)
+
+cor_pearson  <- stats::cor(distance_pairs$jw_distance,
+                           distance_pairs$cos_distance, method = "pearson")
+cor_spearman <- stats::cor(distance_pairs$jw_distance,
+                           distance_pairs$cos_distance, method = "spearman")
+
+ggplot(distance_pairs, aes(jw_distance, cos_distance, colour = tier_label)) +
+  geom_point(alpha = 0.5, size = 1.6) +
+  geom_smooth(method = "lm", se = TRUE,
+              linewidth = 0.4, linetype = "dashed") +
+  annotate("label", x = Inf, y = -Inf,
+           label = sprintf("Pearson  r = %.2f\nSpearman ρ = %.2f\nn = %d pairs",
+                           cor_pearson, cor_spearman, nrow(distance_pairs)),
+           hjust = 1.05, vjust = -0.2, size = 3.2,
+           label.size = 0, fill = scales::alpha("white", 0.7)) +
+  scale_colour_brewer(palette = "Set1") +
+  labs(x = "JW distance (surface name → gold label)",
+       y = "Cosine distance (surface name → gold label)",
+       colour = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top")
+```
 
 ## Method 2 — Multilingual embedding + HDBSCAN
 
