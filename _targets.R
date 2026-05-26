@@ -33,7 +33,7 @@ crew_default <- crew::crew_controller_local(
 
 crew_c0_umap <- crew::crew_controller_local(
   name         = "c0_umap",
-  workers      = 3L,
+  workers      = 6L,
   seconds_idle = 15L
 )
 
