@@ -731,6 +731,258 @@ run_hdbscan_clusters_grid <- function(embeddings,
 }
 
 
+#' UMAP-reduce L2-normalised embeddings for downstream clustering
+#'
+#' Thin wrapper around `uwot::umap()` that fixes `metric = "cosine"` (the
+#' input embeddings are L2-normalised, matching the F16/FP32 probes) and
+#' restores rownames on the reduced matrix so downstream code can index by
+#' `measure_name`. Sets the RNG seed before each call so that under a fixed
+#' seed the reduction is deterministic across a grid sweep.
+#'
+#' @param embeddings Matrix from `embed_c0_measure_pool()`; rownames =
+#'   measure_name strings; rows L2-normalised.
+#' @param n_neighbors,n_components,min_dist UMAP hyperparameters; see
+#'   `uwot::umap()`. The C0 sweep grid is built in `c0_umap_grid`.
+#' @param seed Integer; passed to `set.seed()` immediately before the
+#'   `uwot::umap()` call. Single source of stochasticity for Methods 2 + 3
+#'   with UMAP — same seed across the grid means each UMAP cell is
+#'   reproducible in isolation.
+#' @return Numeric matrix N x n_components with rownames preserved from
+#'   `embeddings`.
+#' @export
+umap_reduce_embeddings <- function(embeddings,
+                                   n_neighbors,
+                                   n_components,
+                                   min_dist,
+                                   seed) {
+
+  stopifnot(is.matrix(embeddings),
+            is.numeric(n_neighbors), n_neighbors >= 2L,
+            is.numeric(n_components), n_components >= 1L,
+            is.numeric(min_dist), min_dist >= 0,
+            is.numeric(seed))
+
+  set.seed(as.integer(seed))
+  reduced <- uwot::umap(
+    embeddings,
+    n_neighbors  = as.integer(n_neighbors),
+    n_components = as.integer(n_components),
+    min_dist     = min_dist,
+    metric       = "cosine",
+    verbose      = FALSE
+  )
+  rownames(reduced) <- rownames(embeddings)
+  reduced
+}
+
+
+#' HDBSCAN clustering on a UMAP-reduced embedding matrix
+#'
+#' Mirrors `cluster_measure_names_hdbscan()` but operates on the
+#' UMAP-reduced space using Euclidean distance (the BERTopic-standard
+#' choice — UMAP output is not L2-normalised so cosine on it is not
+#' meaningful). The year-window mask uses a sentinel of
+#' `max(d) + 1` because Euclidean distances on UMAP output are unbounded,
+#' unlike cosine where the natural sentinel is 1.0.
+#'
+#' Noise handling, canonical-name selection, and output columns are
+#' identical to `cluster_measure_names_hdbscan()`.
+#'
+#' @param reduced Matrix from `umap_reduce_embeddings()`; rownames =
+#'   measure_name strings.
+#' @param measure_pool Used to resolve per-name min year for year-blocking.
+#' @param min_cluster_size Integer >= 2; passed as `minPts` to hdbscan.
+#' @param year_window Integer or NULL; if integer, mask pairs with
+#'   `|year_a - year_b| > year_window` to `max(d) + 1`.
+#' @return Tibble: measure_name, cluster_id, canonical_name,
+#'   min_cluster_size, year_window, n_members.
+#' @export
+cluster_reduced_embeddings_hdbscan <- function(reduced,
+                                               measure_pool,
+                                               min_cluster_size,
+                                               year_window = NULL) {
+
+  stopifnot(is.matrix(reduced),
+            is.numeric(min_cluster_size), min_cluster_size >= 2L)
+  if (!is.null(year_window)) stopifnot(year_window >= 0L)
+
+  names_vec <- rownames(reduced)
+  n <- length(names_vec)
+
+  if (n < 2L) {
+    return(tibble::tibble(
+      measure_name = names_vec %||% character(0),
+      cluster_id = if (n == 0L) integer(0) else 1L,
+      canonical_name = names_vec %||% character(0),
+      min_cluster_size = as.integer(min_cluster_size),
+      year_window = year_window %||% NA_integer_,
+      n_members = if (n == 0L) integer(0) else 1L
+    ))
+  }
+
+  d <- as.matrix(stats::dist(reduced, method = "euclidean"))
+
+  if (!is.null(year_window)) {
+    name_year <- measure_pool |>
+      dplyr::group_by(measure_name) |>
+      dplyr::summarize(year_min = suppressWarnings(min(year, na.rm = TRUE)),
+                       .groups = "drop") |>
+      dplyr::mutate(year_min = dplyr::if_else(is.finite(year_min),
+                                              as.integer(year_min),
+                                              NA_integer_))
+    years <- name_year$year_min[match(names_vec, name_year$measure_name)]
+    year_diff <- outer(years, years, FUN = \(a, b) abs(a - b))
+    year_diff[is.na(year_diff)] <- year_window + 1L
+    sentinel <- max(d, na.rm = TRUE) + 1
+    d[year_diff > year_window] <- sentinel
+  }
+
+  hd <- dbscan::hdbscan(stats::as.dist(d),
+                        minPts = as.integer(min_cluster_size))
+  cl <- hd$cluster
+
+  noise_idx <- which(cl == 0L)
+  if (length(noise_idx) > 0L) {
+    cl[noise_idx] <- -seq_along(noise_idx)
+  }
+
+  assignment <- tibble::tibble(measure_name = names_vec,
+                               cluster_id = as.integer(cl))
+
+  canonical <- assignment |>
+    dplyr::mutate(nchar = nchar(measure_name)) |>
+    dplyr::arrange(dplyr::desc(nchar), measure_name) |>
+    dplyr::group_by(cluster_id) |>
+    dplyr::summarize(canonical_name = dplyr::first(measure_name),
+                     n_members = dplyr::n(),
+                     .groups = "drop")
+
+  assignment |>
+    dplyr::left_join(canonical, by = "cluster_id") |>
+    dplyr::mutate(min_cluster_size = as.integer(min_cluster_size),
+                  year_window = year_window %||% NA_integer_)
+}
+
+
+#' Run UMAP + HDBSCAN clustering for one UMAP cell
+#'
+#' UMAP-reduces the embeddings once with the supplied hyperparameters and
+#' sweeps `(min_cluster_size, year_window)` on the reduced space. Returns a
+#' long-form tibble with one row per (measure_name x HDBSCAN sub-cell) and
+#' a `variant_id` encoding the full four-dimensional sweep cell:
+#' `hdb_umap_nn{n_neighbors}_nc{n_components}_md{min_dist}_m{min_cluster_size}_{block}`.
+#'
+#' This is the per-branch unit of the dynamic-branched `c0_hdbscan_umap_*`
+#' targets in `_targets.R`. `run_hdbscan_umap_clusters_grid()` is a thin
+#' loop wrapper around this for the non-branched / interactive call path.
+#'
+#' @param embeddings Output of `embed_c0_measure_pool()` (L2-normalised).
+#' @param measure_pool Output of `build_c0_measure_pool()`.
+#' @param n_neighbors,n_components,min_dist Scalar UMAP hyperparameters.
+#' @param min_cluster_sizes Integer vector of HDBSCAN minPts values to sweep.
+#' @param year_windows List of values for year_window; use NULL for unblocked.
+#' @param seed Integer; passed through to `umap_reduce_embeddings()`.
+#' @return Tibble with columns: measure_name, cluster_id, canonical_name,
+#'   min_cluster_size, year_window, n_members, variant_id.
+#' @export
+run_hdbscan_umap_clusters_one_cell <- function(embeddings,
+                                               measure_pool,
+                                               n_neighbors,
+                                               n_components,
+                                               min_dist,
+                                               min_cluster_sizes = c(2L, 3L, 5L),
+                                               year_windows = list(NULL, 2L),
+                                               seed) {
+
+  stopifnot(is.matrix(embeddings),
+            length(n_neighbors) == 1L,
+            length(n_components) == 1L,
+            length(min_dist) == 1L,
+            is.numeric(seed))
+
+  reduced <- umap_reduce_embeddings(
+    embeddings,
+    n_neighbors  = n_neighbors,
+    n_components = n_components,
+    min_dist     = min_dist,
+    seed         = seed
+  )
+
+  hdb_grid <- tidyr::expand_grid(
+    min_cluster_size = as.integer(min_cluster_sizes),
+    year_window_idx  = seq_along(year_windows)
+  )
+
+  purrr::pmap_dfr(hdb_grid,
+    function(min_cluster_size, year_window_idx) {
+      yw <- year_windows[[year_window_idx]]
+      cl <- cluster_reduced_embeddings_hdbscan(
+        reduced,
+        measure_pool,
+        min_cluster_size = min_cluster_size,
+        year_window = yw
+      )
+      cl |>
+        dplyr::mutate(
+          variant_id = sprintf(
+            "hdb_umap_nn%d_nc%d_md%.3f_m%d_%s",
+            as.integer(n_neighbors),
+            as.integer(n_components),
+            min_dist,
+            as.integer(min_cluster_size),
+            if (is.null(yw)) "unblocked" else sprintf("yw%d", yw)
+          )
+        )
+    })
+}
+
+
+#' Run UMAP + HDBSCAN clustering across a (UMAP x HDBSCAN) grid
+#'
+#' Thin loop calling `run_hdbscan_umap_clusters_one_cell()` once per row of
+#' `umap_grid` and `bind_rows`'ing the results. Provided for interactive /
+#' non-targets use; the production pipeline branches dynamically over
+#' `c0_umap_grid` rows and calls the one-cell helper directly.
+#'
+#' @param embeddings Output of `embed_c0_measure_pool()` (L2-normalised).
+#' @param measure_pool Output of `build_c0_measure_pool()`.
+#' @param umap_grid Tibble with columns `n_neighbors`, `n_components`,
+#'   `min_dist`; one row per UMAP cell.
+#' @param min_cluster_sizes Integer vector of HDBSCAN minPts values to sweep.
+#' @param year_windows List of values for year_window; use NULL for unblocked.
+#' @param seed Integer; single seed applied per UMAP cell.
+#' @return Tibble with columns: variant_id (chr), min_cluster_size,
+#'   year_window, measure_name, cluster_id, canonical_name, n_members.
+#' @export
+run_hdbscan_umap_clusters_grid <- function(embeddings,
+                                           measure_pool,
+                                           umap_grid,
+                                           min_cluster_sizes = c(2L, 3L, 5L),
+                                           year_windows = list(NULL, 2L),
+                                           seed) {
+
+  stopifnot(is.matrix(embeddings),
+            tibble::is_tibble(umap_grid) || is.data.frame(umap_grid),
+            all(c("n_neighbors", "n_components", "min_dist") %in%
+                  names(umap_grid)),
+            nrow(umap_grid) >= 1L,
+            is.numeric(seed))
+
+  purrr::pmap_dfr(umap_grid,
+    function(n_neighbors, n_components, min_dist) {
+      run_hdbscan_umap_clusters_one_cell(
+        embeddings, measure_pool,
+        n_neighbors  = n_neighbors,
+        n_components = n_components,
+        min_dist     = min_dist,
+        min_cluster_sizes = min_cluster_sizes,
+        year_windows = year_windows,
+        seed = seed
+      )
+    })
+}
+
+
 #' Sanity-probe the F16 embedding port against the eval gold pool
 #'
 #' Two diagnostic checks that don't require a reference FP32 host:

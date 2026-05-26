@@ -21,6 +21,22 @@ pacman::p_load(
 )
 # library(tarchetypes) # Load other packages as needed.
 
+# Heterogeneous crew controllers. Most targets dispatch through `default`
+# (essentially sequential — one worker — but goes through the crew layer).
+# C0 UMAP-sweep targets opt into `c0_umap` (3 workers) via per-target
+# resources. See https://books.ropensci.org/targets/crew.html#heterogeneous-workers
+crew_default <- crew::crew_controller_local(
+  name         = "default",
+  workers      = 1L,
+  seconds_idle = 30L
+)
+
+crew_c0_umap <- crew::crew_controller_local(
+  name         = "c0_umap",
+  workers      = 3L,
+  seconds_idle = 15L
+)
+
 # Set target options:
 tar_option_set(
   packages = c(
@@ -36,10 +52,10 @@ tar_option_set(
     "tidytext",
     "tidyr",
     "quanteda"
-  ), 
+  ),
   garbage_collection = T,
-  error = "abridge"
- 
+  error = "abridge",
+  controller = crew::crew_controller_group(crew_default, crew_c0_umap)
 )
 
 # Run the R scripts in the R/ folder with your custom functions:
@@ -1009,6 +1025,47 @@ list(
       seed = 20260521L
     ),
     packages = "tidyverse"
+  ),
+
+  tar_target(
+    c0_umap_grid,
+    tidyr::expand_grid(
+      n_neighbors  = c(5L, 15L, 30L),
+      n_components = c(2L, 5L, 10L),
+      min_dist     = c(0.0, 0.01, 0.1)
+    ),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    c0_hdbscan_umap_clusters,
+    run_hdbscan_umap_clusters_one_cell(
+      embeddings        = c0_us_embeddings,
+      measure_pool      = c0_us_measure_pool,
+      n_neighbors       = c0_umap_grid$n_neighbors,
+      n_components      = c0_umap_grid$n_components,
+      min_dist          = c0_umap_grid$min_dist,
+      min_cluster_sizes = c(2L, 3L, 5L),
+      year_windows      = list(NULL, 2L),
+      seed              = 20260526L
+    ),
+    pattern   = map(c0_umap_grid),
+    packages  = c("tidyverse", "dbscan", "uwot"),
+    resources = tar_resources(crew = tar_resources_crew(controller = "c0_umap"))
+  ),
+
+  tar_target(
+    c0_hdbscan_umap_metrics,
+    evaluate_clusters_grid(
+      c0_hdbscan_umap_clusters,
+      c0_eval_gold_pairs,
+      group_keys = "variant_id",
+      n_boot = 1000L,
+      seed = 20260521L
+    ),
+    pattern   = map(c0_hdbscan_umap_clusters),
+    packages  = "tidyverse",
+    resources = tar_resources(crew = tar_resources_crew(controller = "c0_umap"))
   ),
 
   tar_target(

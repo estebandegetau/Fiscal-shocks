@@ -28,6 +28,9 @@ tar_load(c(
   c0_us_gold_embeddings,
   c0_hdbscan_clusters,
   c0_hdbscan_metrics,
+  c0_umap_grid,
+  c0_hdbscan_umap_clusters,
+  c0_hdbscan_umap_metrics,
   c0_f16_quantization_probe,
   c0_f16_quantization_probe_tier1,
   c0_fp32_reference_probe,
@@ -748,7 +751,7 @@ shape_hdb_ladder <- function(eval_tier, blocking) {
   format_method_ladder(c0_hdbscan_metrics, eval_tier = eval_tier) |>
     dplyr::mutate(
       `min_cluster_size` = as.integer(
-        stringr::str_extract(variant_id, "(?<=m)\\d+")),
+        stringr::str_extract(variant_id, "(?<=_m)\\d+(?=_)")),
       .blocking = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
                                  "yw2", "unblocked")
     ) |>
@@ -796,7 +799,7 @@ c0_hdbscan_metrics |>
   dplyr::select(variant_id, metric, value) |>
   tidyr::pivot_wider(names_from = metric, values_from = value) |>
   dplyr::mutate(
-    min_cluster_size = as.integer(stringr::str_extract(variant_id, "(?<=m)\\d+")),
+    min_cluster_size = as.integer(stringr::str_extract(variant_id, "(?<=_m)\\d+(?=_)")),
     blocking         = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
                                       "year ±2", "unblocked")
   ) |>
@@ -897,6 +900,223 @@ render_hdb_ladder(ladder_hdb_yw_t12)
 
 The year-blocked points are shown alongside the unblocked points in @fig-hdb-pr (different colour). The JW year-blocking finding from §Method 1 was modestly precision-friendly with negligible recall cost; if the embedding equivalent shifts the front in the same direction, the temporal prior is structural rather than JW-specific and should carry into Methods 4–5 when they land.
 
+## Methods 2 + 3 with UMAP dimensionality reduction
+
+The F16 and FP32 embedding-geometry probes above both failed the `separation ≥ 0.05` and `top-1 NN same-act rate ≥ 0.40` floors on the gold pool. The verdict text considered two interpretations — F16 quantization noise, and the embedding-model ceiling — but did not weigh a third: **high-dimensional distance concentration**. `intfloat/multilingual-e5-large-instruct` returns 1024-dimensional vectors, and the unblocked HDBSCAN above operates on the full-dimensional cosine distance matrix. Density-based clustering is known to degrade above k≈50 dim through hubness and farthest-to-nearest ratio compression; the standard fix in the BERTopic / Top2Vec neighbourhood is to interpose UMAP between the embedding and the clusterer, collapsing the ambient dim to ~5–10 and (optionally) packing within-cluster points tightly via `min_dist = 0`. This section ports that recipe into Methods 2 + 3 and reads the with-vs-without delta against the no-UMAP baseline above.
+
+The sweep grid is the cartesian product of three UMAP hyperparameters with the existing HDBSCAN grid:
+
+- `n_neighbors ∈ {5, 15, 30}` — uwot default 15; the small end emphasises local structure, the large end emphasises global structure.
+- `n_components ∈ {2, 5, 10}` — uwot default 2; BERTopic's standard is 5; 10 is the upper end of clustering practice.
+- `min_dist ∈ {0.0, 0.01, 0.1}` — uwot default 0.01; 0.0 is BERTopic's tight-packing default; 0.1 matches the existing diagnostic UMAP plot at @fig-umap-clusters.
+- Inner sweep matches the no-UMAP variants: `min_cluster_size ∈ {2, 3, 5}` and `year_window ∈ {unblocked, ±2}`.
+
+That gives 27 UMAP cells × 6 HDBSCAN cells = 162 variants. Metric `"cosine"` is fixed (the input embeddings are L2-normalised); UMAP is reduced once per UMAP cell and reused across the inner HDBSCAN sub-cells. The seed is fixed at the target level (`run_hdbscan_umap_clusters_grid(seed = 20260526L)`) so the entire sweep is deterministic under `tar_make()`. Distance metric inside HDBSCAN switches from cosine on the raw embeddings to Euclidean on the UMAP output (UMAP does not preserve L2-normalisation, so cosine on the reduced space is not meaningful); the year-window mask uses a `max(d) + 1` sentinel instead of the cosine `1.0` cap.
+
+```{r}
+#| label: prep-hdb-umap
+
+# Parse the four sweep dimensions out of the variant_id once so every chunk
+# below can read them by name.
+parse_umap_variant <- function(metrics_or_clusters_df) {
+  metrics_or_clusters_df |>
+    dplyr::mutate(
+      umap_n_neighbors  = as.integer(stringr::str_extract(variant_id,
+                                                          "(?<=nn)\\d+")),
+      umap_n_components = as.integer(stringr::str_extract(variant_id,
+                                                          "(?<=nc)\\d+")),
+      umap_min_dist     = as.numeric(stringr::str_extract(variant_id,
+                                                          "(?<=md)\\d+\\.\\d+")),
+      min_cluster_size  = as.integer(stringr::str_extract(variant_id,
+                                                          "(?<=_m)\\d+(?=_)")),
+      blocking          = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                                         "year ±2", "unblocked")
+    )
+}
+
+hdb_umap_metrics_parsed <- parse_umap_variant(c0_hdbscan_umap_metrics)
+```
+
+```{r}
+#| label: prep-hdb-umap-shortlist
+
+# Per-(blocking, min_cluster_size) winner using the precision-friendly rule:
+# lowest over_merge_count first, then highest F1. Returns variant_ids to join
+# back against the formatted ladder for display.
+pick_umap_winners <- function(eval_tier_value) {
+  c0_hdbscan_umap_metrics |>
+    dplyr::filter(metric == "pairwise_f1",
+                  eval_tier == eval_tier_value) |>
+    parse_umap_variant() |>
+    dplyr::group_by(blocking, min_cluster_size) |>
+    dplyr::arrange(over_merge_count, dplyr::desc(value),
+                   .by_group = TRUE) |>
+    dplyr::slice_head(n = 1L) |>
+    dplyr::ungroup() |>
+    dplyr::select(variant_id, blocking, min_cluster_size,
+                  umap_n_neighbors, umap_n_components, umap_min_dist)
+}
+
+assemble_umap_shortlist <- function(eval_tier_value) {
+  winners <- pick_umap_winners(eval_tier_value)
+  formatted <- format_method_ladder(c0_hdbscan_umap_metrics,
+                                    eval_tier = eval_tier_value)
+  winners |>
+    dplyr::inner_join(formatted, by = "variant_id") |>
+    dplyr::arrange(blocking, min_cluster_size) |>
+    dplyr::transmute(
+      `Blocking`       = blocking,
+      `min_cluster_size`,
+      `n_neighbors`    = umap_n_neighbors,
+      `n_components`   = umap_n_components,
+      `min_dist`       = sprintf("%.3f", umap_min_dist),
+      Precision, Recall, F1, ARI, `Over:Under`, `n clusters`
+    )
+}
+```
+
+```{r}
+#| label: tbl-hdb-umap-best
+#| tbl-cap: "Best UMAP cell per (min_cluster_size × year-blocking) sub-cell, Tier 1 evaluation. Within each sub-cell we sort by `over_merge_count` ascending then F1 descending (same shortlist rule as @tbl-hdb-pick) and report the winner. Cells: point estimate [95% bootstrap CI]."
+
+assemble_umap_shortlist("tier1") |> tt() |> tt_theme_report()
+```
+
+```{r}
+#| label: tbl-hdb-umap-best-t12
+#| tbl-cap: "Same shortlist rule on Tier 1 + Tier 2 evaluation (more power, more noise)."
+
+assemble_umap_shortlist("tier12") |> tt() |> tt_theme_report()
+```
+
+```{r}
+#| label: fig-hdb-umap-pr
+#| fig-cap: "Pairwise Precision vs Recall, UMAP-reduced HDBSCAN, Tier 1+2 evaluation. Each small point is one (UMAP cell × HDBSCAN cell) variant, faceted by `n_components` to show how the BERTopic-style choice of intermediate dimensionality moves the front. The labelled large diamond is the best no-UMAP HDBSCAN variant from §Method 2/3 (same shortlist rule), included as a reference. Upper-left is the precision-favouring corner the asymmetric-cost framing prefers."
+#| fig-width: 10
+#| fig-height: 5
+
+baseline_best_id <- c0_hdbscan_metrics |>
+  dplyr::filter(metric == "pairwise_f1", eval_tier == "tier12") |>
+  dplyr::slice_min(over_merge_count, n = 1L, with_ties = TRUE) |>
+  dplyr::slice_max(value, n = 1L, with_ties = FALSE) |>
+  dplyr::pull(variant_id)
+
+baseline_pr <- c0_hdbscan_metrics |>
+  dplyr::filter(variant_id == baseline_best_id,
+                metric %in% c("pairwise_precision", "pairwise_recall"),
+                eval_tier == "tier12") |>
+  dplyr::select(metric, value) |>
+  tidyr::pivot_wider(names_from = metric, values_from = value)
+
+umap_pr <- hdb_umap_metrics_parsed |>
+  dplyr::filter(metric %in% c("pairwise_precision", "pairwise_recall"),
+                eval_tier == "tier12") |>
+  dplyr::select(variant_id, metric, value,
+                umap_n_neighbors, umap_n_components, umap_min_dist,
+                min_cluster_size, blocking) |>
+  tidyr::pivot_wider(names_from = metric, values_from = value)
+
+ggplot(umap_pr, aes(pairwise_recall, pairwise_precision,
+                    colour = factor(umap_n_components),
+                    shape = blocking)) +
+  geom_point(size = 1.8, alpha = 0.75) +
+  geom_point(data = baseline_pr,
+             aes(pairwise_recall, pairwise_precision),
+             inherit.aes = FALSE,
+             shape = 18, size = 5, colour = "black") +
+  geom_text(data = baseline_pr,
+            aes(pairwise_recall, pairwise_precision,
+                label = "no-UMAP baseline"),
+            inherit.aes = FALSE,
+            hjust = -0.15, vjust = -0.3, size = 3) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1)) +
+  scale_colour_brewer(palette = "Dark2") +
+  labs(x = "Pairwise Recall", y = "Pairwise Precision",
+       colour = "n_components", shape = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top")
+```
+
+```{r}
+#| label: fig-umap-separation-probe
+#| fig-cap: "Embedding-geometry probe repeated on the UMAP-reduced space. For each UMAP cell we compute, on the gold eval pool (Tier 1 only — strips Tier 2 label noise to match the F16/FP32 probe at @tbl-f16-probe), the median Euclidean distance among pairs sharing a gold act vs the median across pairs from different gold acts. `separation = between − within`; positive means the UMAP reduction preserves act-level structure. Each point is one UMAP cell; colour marks `n_components`. If separation rises materially above 0 across cells (the no-UMAP probe failed even after L2-normalisation), high-D distance concentration was the binding constraint and the no-UMAP verdict's third hypothesis is the live one."
+#| fig-width: 9
+#| fig-height: 5
+
+eval_tier1_pool <- c0_eval_gold_pairs |>
+  dplyr::filter(tier == 1L, !ambiguous) |>
+  dplyr::distinct(measure_name, gold_act_name)
+
+within_between_separation <- function(reduced, eval_pool) {
+  eval_in <- eval_pool |>
+    dplyr::filter(measure_name %in% rownames(reduced))
+  acts_with_pairs <- eval_in |>
+    dplyr::count(gold_act_name) |>
+    dplyr::filter(n >= 2L) |>
+    dplyr::pull(gold_act_name)
+  eval_in <- eval_in |>
+    dplyr::filter(gold_act_name %in% acts_with_pairs)
+  if (nrow(eval_in) < 4L) return(tibble::tibble(
+    median_within = NA_real_, median_between = NA_real_,
+    separation = NA_real_, n_names = nrow(eval_in)))
+
+  names_vec <- eval_in$measure_name
+  acts_vec  <- eval_in$gold_act_name
+  d <- as.matrix(stats::dist(reduced[names_vec, , drop = FALSE],
+                             method = "euclidean"))
+  same_act <- outer(acts_vec, acts_vec, FUN = "==")
+  upper <- upper.tri(d)
+  within  <- d[upper & same_act]
+  between <- d[upper & !same_act]
+  mw <- stats::median(within,  na.rm = TRUE)
+  mb <- stats::median(between, na.rm = TRUE)
+  tibble::tibble(median_within = mw, median_between = mb,
+                 separation = mb - mw, n_names = nrow(eval_in))
+}
+
+umap_seed <- 20260526L
+sep_by_cell <- purrr::pmap_dfr(c0_umap_grid,
+  function(n_neighbors, n_components, min_dist) {
+    reduced <- umap_reduce_embeddings(
+      c0_us_embeddings,
+      n_neighbors  = n_neighbors,
+      n_components = n_components,
+      min_dist     = min_dist,
+      seed         = umap_seed
+    )
+    res <- within_between_separation(reduced, eval_tier1_pool)
+    dplyr::bind_cols(
+      tibble::tibble(n_neighbors  = as.integer(n_neighbors),
+                     n_components = as.integer(n_components),
+                     min_dist     = min_dist),
+      res
+    )
+  })
+
+ggplot(sep_by_cell,
+       aes(min_dist, separation,
+           colour = factor(n_components),
+           shape  = factor(n_neighbors))) +
+  geom_hline(yintercept = 0, linetype = "dotted", colour = "grey40") +
+  geom_point(size = 2.4, alpha = 0.85,
+             position = position_jitter(width = 0.005, height = 0,
+                                        seed = 20260526L)) +
+  scale_colour_brewer(palette = "Dark2") +
+  labs(x = "UMAP min_dist", y = "Separation (between − within, Euclidean)",
+       colour = "n_components", shape = "n_neighbors") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top")
+```
+
+### Reading the UMAP results
+
+The UMAP variant set is large (27 cells), so the precision-friendly shortlist tables above are the primary read. The asymmetric-cost lens applies unchanged: among UMAP cells with low `over_merge_count`, pick the F1 winner; compare against the no-UMAP baseline diamond in @fig-hdb-umap-pr. Three patterns to look for:
+
+- **UMAP shifts the front up-and-right of the no-UMAP diamond.** If the cloud of UMAP variants in @fig-hdb-umap-pr sits at meaningfully higher precision AND comparable-or-higher recall, BERTopic-style dim-reduction is the load-bearing improvement and C0 should deploy with UMAP.
+- **UMAP recovers separation above the F16/FP32 probe floor.** Positive `separation` values in @fig-umap-separation-probe confirm high-D distance concentration was the binding constraint that the §"Embedding-geometry probe" verdict missed. Negative or near-zero values across all cells means dim-reduction is *not* the fix and the writeup needs to escalate to a different embedding family (the "model ceiling" branch of the existing verdict becomes the live interpretation).
+- **`n_components` is the load-bearing UMAP hyperparameter.** Theory says intermediate dim (5–10) should beat both extremes (2 = throws away too much, 30+ = retains the concentration problem). If the facets in @fig-hdb-umap-pr are flat in `n_components`, the UMAP improvement is robust to that choice. If they aren't, that's the parameter the synthesis section needs to fix at the winning value.
+
 ## Method 4 — Hybrid (embedding nearest-neighbours + LLM pairwise judge)
 
 ::: {.callout-warning title="Phase B pending"}
@@ -926,6 +1146,11 @@ best_hdb_id <- c0_hdbscan_metrics |>
   dplyr::slice_max(value, n = 1L, with_ties = FALSE) |>
   dplyr::pull(variant_id)
 
+best_hdb_umap_id <- c0_hdbscan_umap_metrics |>
+  dplyr::filter(metric == "pairwise_f1", eval_tier == "tier1") |>
+  dplyr::slice_max(value, n = 1L, with_ties = FALSE) |>
+  dplyr::pull(variant_id)
+
 best_jw_row <- format_method_ladder(c0_jw_metrics, eval_tier = "tier1") |>
   dplyr::filter(variant_id == best_jw_id) |>
   dplyr::transmute(
@@ -940,12 +1165,20 @@ best_hdb_row <- format_method_ladder(c0_hdbscan_metrics, eval_tier = "tier1") |>
     Variant = best_hdb_id,
     Precision, Recall, F1, ARI, Purity, `Over:Under`, `n clusters`
   )
+best_hdb_umap_row <- format_method_ladder(c0_hdbscan_umap_metrics,
+                                          eval_tier = "tier1") |>
+  dplyr::filter(variant_id == best_hdb_umap_id) |>
+  dplyr::transmute(
+    Method  = "HDBSCAN + UMAP (best variant)",
+    Variant = best_hdb_umap_id,
+    Precision, Recall, F1, ARI, Purity, `Over:Under`, `n clusters`
+  )
 
-dplyr::bind_rows(best_jw_row, best_hdb_row) |>
+dplyr::bind_rows(best_jw_row, best_hdb_row, best_hdb_umap_row) |>
   tt() |> tt_theme_report()
 ```
 
-Two rows now — JW and HDBSCAN — both picked by Tier 1 F1 within their own method. If HDBSCAN's row dominates on F1 *and* sits at lower Over:Under than JW, embeddings have delivered the semantic bridge JW couldn't. If HDBSCAN's F1 is higher but Over:Under explodes, embeddings have bought recall at the cost of the precision-friendly profile the Framing demands — the Synthesis section's shortlist rule will favour a different variant in that case. Methods 4 + 5 will extend this table once they land.
+Three rows now — JW, no-UMAP HDBSCAN, and UMAP+HDBSCAN — all picked by Tier 1 F1 within their own method. Reading across the rows: if UMAP+HDBSCAN dominates the no-UMAP row on F1 *and* sits at lower Over:Under, BERTopic-style dim-reduction is the load-bearing improvement. If UMAP+HDBSCAN wins on F1 but trails on Over:Under, embeddings + UMAP bought recall at the cost of the precision-friendly profile the Framing demands — the Synthesis shortlist below will pick differently. Methods 4 + 5 will extend this table once they land.
 
 ## Out-of-distribution: Malaysia EN/BM
 
@@ -1014,12 +1247,19 @@ This shortlist is intentionally sorted by `over_merge_count` ascending — the c
 
 ```{r}
 #| label: tbl-hdb-pick
-#| tbl-cap: "HDBSCAN variant picked under the asymmetric-cost rule (Tier 1+2 eval): best F1 among variants with low over-merge. Both unblocked and year-blocked variants compete."
+#| tbl-cap: "HDBSCAN variant picked under the asymmetric-cost rule (Tier 1+2 eval): best F1 among variants with low over-merge. Union of no-UMAP variants (from `c0_hdbscan_metrics`) and UMAP-reduced variants (from `c0_hdbscan_umap_metrics`); `Method` marks which family each row comes from."
 
-c0_hdbscan_metrics |>
-  dplyr::filter(metric == "pairwise_f1", eval_tier == "tier12") |>
+dplyr::bind_rows(
+  c0_hdbscan_metrics |>
+    dplyr::filter(metric == "pairwise_f1", eval_tier == "tier12") |>
+    dplyr::mutate(Method = "HDBSCAN"),
+  c0_hdbscan_umap_metrics |>
+    dplyr::filter(metric == "pairwise_f1", eval_tier == "tier12") |>
+    dplyr::mutate(Method = "HDBSCAN + UMAP")
+) |>
   dplyr::arrange(over_merge_count, dplyr::desc(value)) |>
   dplyr::transmute(
+    Method,
     variant_id,
     F1            = sprintf("%.3f", value),
     `CI`          = sprintf("[%.3f, %.3f]", ci_lo, ci_hi),
@@ -1027,9 +1267,9 @@ c0_hdbscan_metrics |>
     `Under-merge` = under_merge_count,
     `n clusters`  = n_predicted_clusters
   ) |>
-  utils::head(5) |>
+  utils::head(8) |>
   tt() |> tt_theme_report()
 ```
 
-Same sort rule as the JW shortlist. Reading across the two: if the HDBSCAN top row has both lower over-merge *and* higher F1 than the JW top row, embeddings are the load-bearing method going forward. If HDBSCAN wins on F1 but trails on over-merge, the precision-friendly C0 user keeps JW as the conservative default and treats HDBSCAN as a recall-extender — Method 4's hybrid pipeline is the natural reconciliation.
+Same sort rule as the JW shortlist. Reading across the three families (JW above, no-UMAP HDBSCAN, UMAP+HDBSCAN): the deployment pick is the top row of this table. If a UMAP+HDBSCAN variant displaces no-UMAP HDBSCAN at the top, deploy with UMAP for Malaysia. If both no-UMAP rows trail JW on over-merge, the precision-friendly C0 user keeps JW as the conservative default and treats the embedding methods as recall-extenders — Method 4's hybrid pipeline is the natural reconciliation.
 
