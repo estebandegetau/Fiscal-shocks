@@ -17,6 +17,7 @@ pacman::p_load(targets, tidyverse, tinytable, here, stringdist, patchwork,
 here::i_am("notebooks/c0_aggregator.qmd")
 tar_config_set(store = here("_targets"))
 source(here("R/tt_theme.R"))
+source(here("R/identify_chunk_tiers.R"))  # generate_subcomponents, squish_for_matching
 source(here("R/c0_aggregator.R"))
 
 tar_load(c(
@@ -39,7 +40,14 @@ tar_load(c(
   c0_hdbscan_umap_probe,
   c0_hdbscan_umap_probe_tier1,
   c0_hdbscan_umap_probe_fp32,
-  c0_hdbscan_umap_probe_tier1_fp32
+  c0_hdbscan_umap_probe_tier1_fp32,
+  c0_us_rr_acts,
+  c0_jw_rr_matches,
+  c0_jw_rr_metrics,
+  c0_hdbscan_rr_matches,
+  c0_hdbscan_rr_metrics,
+  c0_hdbscan_umap_rr_matches,
+  c0_hdbscan_umap_rr_metrics
 ))
 
 # Methods 2 + 3 (HDBSCAN, unblocked + year-blocked) are wired below.
@@ -59,11 +67,11 @@ This notebook compares five methods on a label-anchored evaluation set (US C1 ou
 
 **Asymmetric failure cost.** Over-merging (collapse two real acts into one cluster) corrupts C2b inputs — bad. Under-merging (one act stays split across two clusters) just produces parallel-but-correct classifications — recoverable downstream. The headline pick should weight precision over recall.
 
-**From asymmetric cost to precision over recall.** Pairwise F1 scores the clustering at the level of pairs of measure names: for each pair, the method either merges them or not, and gold either agrees or not. That gives the standard 2×2 table, with a false positive corresponding to an over-merge (method merges two names from different gold acts) and a false negative to an under-merge (method splits two names that share a gold act). Precision (TP / (TP + FP)) is therefore degraded by over-merges, and recall (TP / (TP + FN)) by under-merges. "Over-merging is the costly error" and "false positives are the costly error" are the same statement once the pairwise framing is adopted, so weighting precision over recall is the operational form of the asymmetric-cost argument.
+**From asymmetric cost to coverage + spurious rate.** The operational form of the asymmetric-cost argument depends on what gold the eval scores against. Earlier drafts of this notebook used pairwise Precision/Recall against `c0_eval_gold_pairs` (the chunk-tier-tagged pool described below), with the reading that pairwise precision was costly to lose and pairwise recall recoverable. The current draft scores against Romer & Romer's 49-act list in `us_shocks.csv` — independent of any pipeline output. The asymmetry translates cleanly: **low spurious rate** (few clusters that match no RR act) takes the place of high precision; **high coverage** (many RR acts hit by some cluster) takes the place of high recall; **low fragmentation** (few clusters per matched RR act) is the new precision-flavoured tiebreak. §"Why we pivoted away from pairwise P/R" below documents the structural ceiling that forced the change.
 
-**Gold partition caveat.** This framing assumes the gold partition is itself correct. If R&R's act list splits something a domain expert would have merged (or vice versa), the precision/recall labels inherit that. The Tier 1/Tier 2 leakage caveat below addresses a different concern (how chunks were tagged with gold acts); partition-correctness of the gold list itself is a separate assumption.
+**Gold partition caveat.** The new framework scores against R&R's act list as if it were ground truth. If R&R's partition splits something a domain expert would have merged (or vice versa), the metric labels inherit that. The chunk-tier leakage caveat that applied to the old pairwise eval no longer applies (the RR-aligned framework bypasses chunk-tier tagging entirely), but the act-list correctness assumption is the same.
 
-**What "win" means.** High pairwise F1 (the metric most sensitive to both kinds of error), high Adjusted Rand Index (partition-level agreement, chance-corrected), and a low over-merge:under-merge ratio. Bootstrap 95% CIs included but read as noise floors — pairs are not iid (they share names) so CIs are approximate.
+**What "win" means.** High coverage with low spurious rate, low fragmentation index, and high year alignment (most name-matched clusters also satisfy a ±2-year window around the act's signing year). Metrics reported under two complementary name gates side by side — keyword containment (precision-friendly, immune to name-rewriting) and JW-min ≤ 0.30 (continuous, sensitive to abbreviations). The gap between the two surfaces methods that emit RR-style canonical names without doing more aggregation work. Bootstrap 95% CIs from resampling the 49 RR acts; n_boot = 1000 in the pipeline.
 
 ## Descriptive baseline
 
@@ -456,7 +464,9 @@ for (this_doc in us_1980_docs) {
 Reading @fig-emb-within-doc-1980 against @fig-jw-within-doc-1980, an immediate conclusion is that imposing the Rank-1 filter as in @fig-emb-within-doc-1980 does not imply losing important fiscal changes. Indeed, doing so, refines the surfaced names and are more in tune with the acts @romer identify. Importantly, there is little within-document-within act name variance and it could be recupperated both with JW distance and with embeddings.
 
 
-## Eval set construction
+## Tier-tagged eval set (descriptive)
+
+This section documents `c0_eval_gold_pairs`, the chunk-tier-tagged pool used by the embedding-geometry probes in §"Embedding-geometry probe (F16 vs FP32)" and §"Eval-set noise probe". It is **not** the headline gold for method comparison — that role belongs to R&R's 49-act list, evaluated under the framework defined in §"Evaluation against RR's act list" below. The structural reason for the split is in §"Why we pivoted away from pairwise P/R", which follows immediately.
 
 The eval set projects the chunk-tier system through C1's LLM output along the chain `aligned_data → c1_chunk_data → c1_s2_results → c0_eval_gold_pairs`:
 
@@ -518,6 +528,98 @@ tibble::tibble(
 **On ambiguity.** Roughly 60% of the Tier 1+2 rows have a `measure_name` that's been paired with more than one `gold_act_name` across chunks. Most cases trace to Tier 2's permissive matching: a chunk may be tagged with act X because act X is mentioned somewhere, but the most-prominent measure C1 extracts is a different act. The evaluator handles this by majority-voting per `measure_name` within each bootstrap resample (so the contingency table operates on unique names). Tier 1 is shown as the cleaner anchor; Tier 1+2 is shown for statistical power.
 
 **Gold-set leakage caveat.** The Tier 1/Tier 2 tags themselves were assigned by fuzzy-matching the gold `act_name` against the chunk text, so methods that exploit surface similarity (especially JW) will look artificially strong on this evaluation. Treat the per-act recall column as a complement — methods that nail F1 but miss specific acts may be exploiting the leakage.
+
+## Why we pivoted away from pairwise P/R
+
+`c0_eval_gold_pairs` has a structural ceiling on pairwise recall that comes from how the pool is constructed, not from any clusterer's performance. `build_c0_eval_gold_pairs()` assigns *every* rank-1 measure C1 extracted in a chunk to *every* gold act that chunk was tier-tagged with — including chunks where C1's primary measure was a different act. The act `gold_act_name` becomes a bag of co-occurring rank-1 measures rather than a list of surface variants of one act. Concretely, "Tax Reform Act of 1969" picks up members `{ERISA, Asset Depreciation Range (ADR), H.R. 10947, tax bill passed in December}` — distinct policy items, not paraphrases. No string-embedding clusterer can or should merge those.
+
+Even on the Tier 1 slice (verbatim-passage tag, supposedly the clean anchor), the same pattern holds. "Deficit Reduction Act of 1984" Tier-1 members include `{Economic Recovery Tax Act, Job Training Partnership Act, tax proposals (marginal income tax rate reductions and depreciation reform)}`. The Tier 1 filter constrains where C1 emitted its measure, not what measure it emitted.
+
+The §UMAP investigation in the 2026-05-28 commit cycle confirmed this empirically: 16 of 35 eligible Tier 1 acts have top-1 NN same-act rate = 0 on F16 raw embeddings (20/35 under the UMAP precision-friendly winner); across the 162-cell UMAP grid, `cor(% acts reconstructed intact, F1) = +0.82` while `cor(separation, pairwise_recall) = −0.07` — pairwise F1 is essentially a one-variable story about how often a gold act survives HDBSCAN as a single cluster, and that variable is capped by gold-pool construction upstream of the embedding. No UMAP variant strictly dominated the no-UMAP baseline in @fig-hdb-umap-pr because both hit the same ceiling. See §"Reading the UMAP results" for the full diagnostic.
+
+The pivot. Method comparison now scores against R&R's authoritative 49-act list in `us_shocks.csv`, which is independent of any pipeline output. The pairwise-P/R evaluation against `c0_eval_gold_pairs` is preserved for the embedding-geometry probes (where median within/between separation is the metric, not a partition recall) and the eval-set noise probe (where the temporal mismatch is the diagnostic) — but no longer drives method selection.
+
+## Evaluation against RR's act list
+
+### Reference: what `us_shocks.csv` provides
+
+`c0_us_rr_acts` collapses `us_shocks` (one row per act × quarter × measure_type) to one row per distinct act with `year_signed = year(Date signed)`. 49 acts spanning 1945–2007. The first few rows:
+
+```{r}
+#| label: tbl-rr-act-head
+#| tbl-cap: "First five rows of the RR canonical-act list (`c0_us_rr_acts`), sorted by year_signed."
+tar_load(c0_us_rr_acts)
+c0_us_rr_acts |>
+  utils::head(5) |>
+  tt() |> tt_theme_report()
+```
+
+This list is the metric's reference: a predicted cluster is "good" iff some member surface form (and the cluster's representative year) matches an entry in this list under the gates below.
+
+### Matching gates
+
+Two complementary name gates, evaluated side by side in every metric table that follows. Both combined with a year window.
+
+**Keyword containment** (precision-friendly). For each RR act, decompose the act name via `generate_subcomponents()` (the function `R/identify_chunk_tiers.R` already uses for Tier 2 chunk tagging — same decomposition, no new code path) into a set of searchable terms: the full canonical name, "and"-splits, parentheticals, embedded "{X} Act of {YYYY}" patterns, Public Law numbers, action+subject phrases. The shared `BROAD_EXCLUSIONS` list strips overly generic fragments. A cluster keyword-matches an RR act iff *any* of its surface forms (after `squish_for_matching()` normalisation) contains *any* of the act's subcomponent terms. Property: immune to name-rewriting — a method that re-emits the canonical act name as cluster representative gets no extra credit because the test runs against the cluster's *members*, not its canonical.
+
+**JW-min** (continuous, abbreviation-sensitive). For each (cluster, RR act) pair, compute `min` over cluster members of `stringdist::stringdist(member, rr_act_name, method = "jw")` on lowercased strings. Threshold ≤ 0.30. Property: catches near-canonical matches that keyword-containment misses (e.g. typographic variants); also catches *false* matches across acts whose names share rare tokens. The JW gate is the relaxed one — it rewards methods that emit RR-style canonical names because those land at JW = 0 against the act.
+
+The gap between coverage under keyword and coverage under JW is itself diagnostic: a method whose keyword and JW coverage agree is recovering the canonical forms via aggregation; a method with much higher JW coverage than keyword coverage is mostly re-emitting canonical names without aggregating much.
+
+### Year window
+
+Cluster representative year = median of years extracted from members' surface forms via `extract_year_from_string()` (regex `\b(19|20)\d{2}\b`), falling back to the mode of `doc_year` from `c0_us_measure_pool` when no member name carries an extractable year. Year gate: `|cluster_year - year_signed| ≤ 2`. Width ±2 chosen to (i) align with the Method 3 year-blocking variants so methods that respect the year prior get credit, and (ii) absorb retrospective references whose mode `doc_year` lags the signing year by 1–2.
+
+Joint match gate per name gate: name match AND year match. A cluster that name-matches an act but is 30 years off does *not* match.
+
+### Headline metrics
+
+Under each name gate, four numbers per variant:
+
+- **Coverage** = |{RR acts with ≥1 matching cluster}| / 49. Recall-flavoured.
+- **Spurious rate** = |{clusters with no RR-act match}| / n_clusters. Precision-flavoured; this is the metric the asymmetric-cost framing weights most.
+- **Fragmentation index** = mean over matched RR acts of (# distinct clusters claiming that act). ≥ 1 by construction. Equals 1 when each matched act has exactly one cluster; grows when methods fragment acts.
+- **Year alignment** = of name-matched pairs (name gate only, ignoring the year gate), share where the year gate also passes. Tests whether name and year signals agree — low values under the JW gate indicate the JW threshold is producing cross-decade false positives.
+
+Coverage and spurious rate are the headline pair. Fragmentation is the precision-flavoured tiebreak between methods at similar coverage. Year alignment is mostly diagnostic.
+
+### Bootstrap CI
+
+Resample the 49 RR acts with replacement, recompute the four metrics, take the 0.025 and 0.975 percentiles. `n_boot = 1000` in the pipeline (the smoke test uses 100 for speed). The bootstrap perturbs *which* acts the method is held accountable for, which is the noise the CI should capture (acts vary in difficulty for any given clusterer). It does *not* perturb the cluster set — clusters are deterministic outputs of each method × hyperparameter cell.
+
+### Worked example
+
+@tbl-rr-worked-example demonstrates the matching gates on one act and two contrasting clusters. The first cluster contains the canonical surface form (`Economic Recovery Tax Act of 1981`) and matches under both gates. The second is a hypothetical singleton cluster of just `ERTA`: the keyword check fails (the subcomponent term is the full canonical name; "erta" does not contain "economic recovery tax act of 1981"), and the JW distance from "erta" to the canonical name is well above 0.30. An ERTA-only cluster therefore receives no credit — the method must merge ERTA with the canonical form for either gate to pass, which is exactly the aggregation behaviour C0 is meant to demonstrate.
+
+```{r}
+#| label: tbl-rr-worked-example
+#| tbl-cap: "Worked example: matching two hypothetical clusters against `Economic Recovery Tax Act of 1981` under the keyword and JW gates."
+erta_act <- "Economic Recovery Tax Act of 1981"
+erta_subs <- generate_subcomponents(erta_act)
+member_a  <- "Economic Recovery Tax Act of 1981"
+member_b  <- "ERTA"
+
+kw_a <- any(stringr::str_detect(squish_for_matching(member_a),
+                                 stringr::fixed(tolower(erta_subs$term))))
+kw_b <- any(stringr::str_detect(squish_for_matching(member_b),
+                                 stringr::fixed(tolower(erta_subs$term))))
+jw_a <- stringdist::stringdist(tolower(member_a), tolower(erta_act),
+                                method = "jw")
+jw_b <- stringdist::stringdist(tolower(member_b), tolower(erta_act),
+                                method = "jw")
+
+tibble::tibble(
+  `Cluster member`              = c(member_a, member_b),
+  `Subcomponent terms`          = c(paste(erta_subs$term, collapse = "; "),
+                                    paste(erta_subs$term, collapse = "; ")),
+  `Keyword check`               = c(ifelse(kw_a, "PASS", "FAIL"),
+                                    ifelse(kw_b, "PASS", "FAIL")),
+  `JW distance`                 = sprintf("%.2f", c(jw_a, jw_b)),
+  `JW ≤ 0.30`                   = c(ifelse(jw_a <= 0.30, "PASS", "FAIL"),
+                                    ifelse(jw_b <= 0.30, "PASS", "FAIL"))
+) |>
+  tt() |> tt_theme_report()
+```
 
 ## Method 1 — JW single-linkage
 
