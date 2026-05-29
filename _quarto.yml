@@ -25,6 +25,7 @@ keywords:
   - AI for social science
 
 website: 
+  reader-mode: true
   sidebar: 
     style: "floating"
     search: true
@@ -47,11 +48,21 @@ website:
           - notebooks/verify_api_inputs.qmd
       - section: "Codebook Evaluation"
         contents:
+          - notebooks/c0_aggregator.qmd
           - notebooks/c1_measure_id.qmd
       - section: "Progress Reports"
         contents: reports/
       - section: "Deployment"
-        contents: notebooks/verify_country_body.qmd
+        contents: 
+          - notebooks/verify_malaysia_urls.qmd
+          - notebooks/malay_consistency.qmd
+          - notebooks/verify_country_body.qmd
+
+format: 
+  html:
+    theme: 
+      light: flatly
+      dark: darkly
 
 
 title-block-banner: true
