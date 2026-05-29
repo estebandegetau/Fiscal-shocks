@@ -1153,5 +1153,418 @@ probe_umap_geometry <- function(reduced, eval_gold_pairs) {
 }
 
 
+# =============================================================================
+# Phase A — Evaluation against R&R's act list (us_shocks)
+# =============================================================================
+# Sibling of evaluate_clusters_grid() that scores predicted clusters against
+# the 49-act canonical list in data/raw/us_shocks.csv instead of the noisy
+# c0_eval_gold_pairs pool. Match gate = (name distance below threshold) AND
+# (|cluster_year - act year_signed| ≤ year_window). Name distance reported
+# under two complementary metrics:
+#
+#   - keyword: any cluster member contains any subcomponent term of the RR
+#     act name (after `squish_for_matching()`), via `generate_subcomponents()`
+#     reused from R/identify_chunk_tiers.R. Immune to name rewriting.
+#   - jw:      `min over cluster members of stringdist(member, rr_act_name,
+#     method = "jw") ≤ jw_threshold`. Sensitive to abbreviation.
+#
+# Headline metrics under the joint name + year gate:
+#   - coverage           = |{rr_act with ≥1 matching cluster}| / 49
+#   - spurious_rate      = |{cluster with no rr_act match}|    / n_clusters
+#   - fragmentation_index= mean over matched acts of (# clusters claiming act)
+#   - year_alignment     = of name-matched pairs, share with year_match too
+#
+# Bootstrap CI: resample the 49 acts with replacement (act-level perturbation).
+# =============================================================================
+
+
+#' Extract the first 4-digit year (19XX or 20XX) from a string
+#'
+#' Vectorised wrapper around the year regex used across the codebase.
+#' Returns `NA_integer_` when no year is present.
+#'
+#' @param text Character vector.
+#' @return Integer vector of the same length.
+#' @export
+extract_year_from_string <- function(text) {
+  as.integer(stringr::str_extract(text, "\\b(19|20)\\d{2}\\b"))
+}
+
+
+#' Build the canonical R&R act list from `us_shocks.csv`
+#'
+#' Collapses `us_shocks` (one row per act × quarter × measure_type) to one row
+#' per distinct act. Representative year is taken from `date_signed`, which is
+#' constant within an act in us_shocks. Consumes the `us_shocks` pipeline
+#' target (post-`clean_us_shocks()`, so columns are snake_cased).
+#'
+#' @param us_shocks Tibble from the `us_shocks` target with columns `act_name`
+#'   and `date_signed`. (If you read the raw CSV directly, apply
+#'   `clean_us_shocks()` first.)
+#' @return Tibble `(act_id, act_name, year_signed)`, sorted by year_signed
+#'   then act_name. Expected `nrow == 49`.
+#' @export
+build_us_rr_acts <- function(us_shocks) {
+  us_shocks |>
+    dplyr::group_by(act_name) |>
+    dplyr::summarize(date_signed = dplyr::first(date_signed),
+                     .groups = "drop") |>
+    dplyr::mutate(
+      year_signed = lubridate::year(lubridate::ymd(date_signed))
+    ) |>
+    dplyr::arrange(year_signed, act_name) |>
+    dplyr::mutate(act_id = dplyr::row_number()) |>
+    dplyr::select(act_id, act_name, year_signed)
+}
+
+
+#' Match predicted clusters against R&R's canonical act list
+#'
+#' For each (variant × cluster × rr_act) triple, computes name distance and
+#' year distance and the gate booleans. Returns only triples where the keyword
+#' OR JW name gate passes — clusters absent from the output are spurious under
+#' both gates.
+#'
+#' Cluster representative year is the median of years extracted from cluster
+#' members' surface forms via `extract_year_from_string()`. If no member has
+#' an extractable year, falls back to the mode of `doc_year` from
+#' `measure_pool`.
+#'
+#' @param clusters Long tibble from `run_*_clusters_grid()` containing
+#'   `group_keys`, `cluster_id`, `measure_name`.
+#' @param measure_pool Tibble from `build_c0_measure_pool()` carrying `year`
+#'   (doc year) per measure_name × chunk row.
+#' @param rr_acts Output of `build_us_rr_acts()`.
+#' @param group_keys Character vector of variant-identifier columns (default
+#'   "variant_id").
+#' @param jw_threshold Numeric, JW-min ≤ this counts as a name match (default
+#'   0.30).
+#' @param year_window Integer, |cluster_year - year_signed| ≤ this counts as
+#'   a year match (default 2L).
+#' @return Long tibble: `group_keys..., cluster_id, act_id, act_name,
+#'   year_signed, cluster_year, year_diff, jw_min_distance,
+#'   name_match_keyword, name_match_jw, year_match, match_keyword, match_jw`.
+#' @export
+match_clusters_to_rr_acts <- function(clusters, measure_pool, rr_acts,
+                                       group_keys = "variant_id",
+                                       jw_threshold = 0.30,
+                                       year_window = 2L) {
+
+  stopifnot(all(group_keys %in% names(clusters)))
+  stopifnot(all(c("cluster_id", "measure_name") %in% names(clusters)))
+  stopifnot(all(c("act_id", "act_name", "year_signed") %in% names(rr_acts)))
+
+  rr_terms <- purrr::map(rr_acts$act_name, function(n) {
+    unique(tolower(generate_subcomponents(n)$term))
+  })
+  names(rr_terms) <- as.character(rr_acts$act_id)
+
+  all_members <- unique(clusters$measure_name)
+  all_members <- all_members[!is.na(all_members)]
+  members_sq <- squish_for_matching(all_members)
+  members_lc <- tolower(all_members)
+
+  member_lookup <- tibble::tibble(
+    measure_name = all_members,
+    member_sq    = members_sq,
+    member_lc    = members_lc
+  )
+
+  act_lookup <- rr_acts |>
+    dplyr::transmute(act_id, act_name_lc = tolower(act_name))
+
+  member_grid <- tidyr::expand_grid(
+    measure_name = all_members,
+    act_id = rr_acts$act_id
+  ) |>
+    dplyr::left_join(member_lookup, by = "measure_name") |>
+    dplyr::left_join(act_lookup, by = "act_id") |>
+    dplyr::mutate(
+      jw = stringdist::stringdist(member_lc, act_name_lc, method = "jw"),
+      any_term_match = purrr::map2_lgl(
+        member_sq, as.character(act_id),
+        function(ms, aid) {
+          terms <- rr_terms[[aid]]
+          if (length(terms) == 0L) return(FALSE)
+          any(vapply(terms, function(t) {
+            stringr::str_detect(ms, stringr::fixed(t))
+          }, logical(1L)))
+        }
+      )
+    ) |>
+    dplyr::select(measure_name, act_id, jw, any_term_match)
+
+  pool_year <- measure_pool |>
+    dplyr::filter(!is.na(year)) |>
+    dplyr::group_by(measure_name) |>
+    dplyr::summarize(doc_year_mode = .mode_int(year), .groups = "drop")
+
+  cluster_member_rows <- clusters |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(c(group_keys, "cluster_id",
+                                                  "measure_name")))) |>
+    dplyr::left_join(pool_year, by = "measure_name")
+
+  cluster_year_tbl <- cluster_member_rows |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(c(group_keys, "cluster_id")))) |>
+    dplyr::summarize(
+      cluster_year = .derive_cluster_year(measure_name, doc_year_mode),
+      .groups = "drop"
+    )
+
+  cluster_member_rows |>
+    dplyr::select(dplyr::all_of(c(group_keys, "cluster_id", "measure_name"))) |>
+    dplyr::inner_join(member_grid, by = "measure_name",
+                       relationship = "many-to-many") |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(c(group_keys, "cluster_id",
+                                                   "act_id")))) |>
+    dplyr::summarize(
+      jw_min_distance = suppressWarnings(min(jw, na.rm = TRUE)),
+      keyword_hit     = any(any_term_match, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      jw_min_distance = dplyr::if_else(is.finite(jw_min_distance),
+                                         jw_min_distance, NA_real_)
+    ) |>
+    dplyr::left_join(cluster_year_tbl,
+                      by = c(group_keys, "cluster_id")) |>
+    dplyr::left_join(
+      rr_acts |> dplyr::select(act_id, act_name, year_signed),
+      by = "act_id"
+    ) |>
+    dplyr::mutate(
+      year_diff          = as.integer(abs(cluster_year - year_signed)),
+      name_match_keyword = keyword_hit,
+      name_match_jw      = !is.na(jw_min_distance) &
+                            jw_min_distance <= jw_threshold,
+      year_match         = !is.na(year_diff) & year_diff <= year_window,
+      match_keyword      = name_match_keyword & year_match,
+      match_jw           = name_match_jw      & year_match
+    ) |>
+    dplyr::filter(name_match_keyword | name_match_jw) |>
+    dplyr::select(dplyr::all_of(group_keys), cluster_id, act_id, act_name,
+                  year_signed, cluster_year, year_diff, jw_min_distance,
+                  name_match_keyword, name_match_jw, year_match,
+                  match_keyword, match_jw)
+}
+
+
+#' Aggregate precomputed RR matches into per-variant headline metrics
+#'
+#' Pure-aggregate sibling of `evaluate_clusters_vs_rr_grid()`. Takes a
+#' precomputed matches tibble from `match_clusters_to_rr_acts()` plus the
+#' originating clusters tibble (used only to count total clusters per
+#' variant, denominator for spurious rate). Use this entry point when the
+#' `c0_*_rr_matches` target is already built so the matching work is not
+#' redone.
+#'
+#' @param matches Tibble from `match_clusters_to_rr_acts()`.
+#' @param clusters Same `clusters` tibble passed to `match_clusters_to_rr_acts()`.
+#' @param rr_acts Output of `build_us_rr_acts()`.
+#' @param group_keys,n_boot,seed See `evaluate_clusters_vs_rr_grid()`.
+#' @return Same long tibble shape as `evaluate_clusters_vs_rr_grid()`.
+#' @export
+evaluate_rr_matches_grid <- function(matches, clusters, rr_acts,
+                                       group_keys = "variant_id",
+                                       n_boot = 1000L,
+                                       seed = 20260529L) {
+
+  cluster_counts <- clusters |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(c(group_keys, "cluster_id")))) |>
+    dplyr::count(dplyr::across(dplyr::all_of(group_keys)),
+                  name = "n_clusters")
+
+  n_rr <- nrow(rr_acts)
+  rr_act_ids <- rr_acts$act_id
+
+  metrics_for_subset <- function(matches_v, n_clusters_v,
+                                   pass_col, name_col, act_subset_ids) {
+    sub <- matches_v[matches_v$act_id %in% act_subset_ids, , drop = FALSE]
+    pass_sub <- sub[sub[[pass_col]], , drop = FALSE]
+    name_sub <- sub[sub[[name_col]], , drop = FALSE]
+
+    acts_matched <- dplyr::n_distinct(pass_sub$act_id)
+    clusters_matched <- dplyr::n_distinct(pass_sub$cluster_id)
+
+    coverage_v <- if (length(act_subset_ids) == 0L) NA_real_
+                  else sum(act_subset_ids %in% pass_sub$act_id) /
+                        length(act_subset_ids)
+
+    spurious_v <- if (n_clusters_v > 0L)
+      (n_clusters_v - clusters_matched) / n_clusters_v else NA_real_
+
+    frag_v <- if (acts_matched > 0L) {
+      cl_per_act <- pass_sub |>
+        dplyr::distinct(act_id, cluster_id) |>
+        dplyr::count(act_id) |>
+        dplyr::pull(n)
+      mean(cl_per_act)
+    } else NA_real_
+
+    year_align_v <- if (nrow(name_sub) > 0L)
+      mean(name_sub$year_match, na.rm = TRUE) else NA_real_
+
+    c(coverage = coverage_v, spurious_rate = spurious_v,
+      fragmentation_index = frag_v, year_alignment = year_align_v)
+  }
+
+  one_variant_one_gate <- function(matches_v, n_clusters_v, gate) {
+    pass_col <- if (gate == "keyword") "match_keyword" else "match_jw"
+    name_col <- if (gate == "keyword") "name_match_keyword" else "name_match_jw"
+
+    point <- metrics_for_subset(matches_v, n_clusters_v,
+                                  pass_col, name_col, rr_act_ids)
+
+    boot <- withr::with_seed(seed, {
+      replicate(n_boot, {
+        idx <- sample.int(n_rr, n_rr, replace = TRUE)
+        metrics_for_subset(matches_v, n_clusters_v,
+                             pass_col, name_col, rr_act_ids[idx])
+      })
+    })
+
+    ci <- apply(boot, 1L, function(v) {
+      v <- v[is.finite(v)]
+      if (length(v) == 0L) return(c(NA_real_, NA_real_))
+      stats::quantile(v, probs = c(0.025, 0.975), names = FALSE)
+    })
+
+    pass_global <- matches_v[matches_v[[pass_col]], , drop = FALSE]
+
+    tibble::tibble(
+      gate               = gate,
+      metric             = names(point),
+      value              = unname(point),
+      ci_lo              = ci[1L, ],
+      ci_hi              = ci[2L, ],
+      n_clusters         = n_clusters_v,
+      n_clusters_matched = dplyr::n_distinct(pass_global$cluster_id),
+      n_rr_acts_matched  = dplyr::n_distinct(pass_global$act_id),
+      n_rr_acts          = n_rr
+    )
+  }
+
+  variant_keys <- cluster_counts |>
+    dplyr::select(dplyr::all_of(group_keys))
+
+  out_list <- purrr::map(seq_len(nrow(variant_keys)), function(i) {
+    key_row <- variant_keys[i, , drop = FALSE]
+    n_v <- cluster_counts |>
+      dplyr::semi_join(key_row, by = group_keys) |>
+      dplyr::pull(n_clusters)
+    m_v <- matches |>
+      dplyr::semi_join(key_row, by = group_keys)
+    rows <- dplyr::bind_rows(
+      one_variant_one_gate(m_v, n_v, "keyword"),
+      one_variant_one_gate(m_v, n_v, "jw")
+    )
+    key_repeated <- key_row[rep(1L, nrow(rows)), , drop = FALSE]
+    rownames(key_repeated) <- NULL
+    dplyr::bind_cols(key_repeated, rows)
+  })
+
+  dplyr::bind_rows(out_list) |>
+    dplyr::relocate(dplyr::all_of(group_keys))
+}
+
+
+#' Match clusters to R&R acts and evaluate, one-shot
+#'
+#' Convenience wrapper that chains `match_clusters_to_rr_acts()` and
+#' `evaluate_rr_matches_grid()`. Useful for ad-hoc calls; the pipeline
+#' prefers the split form (separate `c0_*_rr_matches` and `c0_*_rr_metrics`
+#' targets) so the bootstrap CI doesn't re-run the matching.
+#'
+#' @param clusters Long tibble from `run_*_clusters_grid()`.
+#' @param measure_pool Tibble from `build_c0_measure_pool()`.
+#' @param rr_acts Output of `build_us_rr_acts()`.
+#' @param group_keys,jw_threshold,year_window,n_boot,seed See the underlying
+#'   functions.
+#' @return Same long tibble shape as `evaluate_rr_matches_grid()`.
+#' @export
+evaluate_clusters_vs_rr_grid <- function(clusters, measure_pool, rr_acts,
+                                           group_keys = "variant_id",
+                                           jw_threshold = 0.30,
+                                           year_window = 2L,
+                                           n_boot = 1000L,
+                                           seed = 20260529L) {
+  matches <- match_clusters_to_rr_acts(
+    clusters, measure_pool, rr_acts,
+    group_keys = group_keys,
+    jw_threshold = jw_threshold,
+    year_window = year_window
+  )
+  evaluate_rr_matches_grid(matches, clusters, rr_acts,
+                             group_keys = group_keys,
+                             n_boot = n_boot, seed = seed)
+}
+
+
+#' Format the headline RR comparison ladder for the notebook
+#'
+#' Wide ladder analog of `format_method_ladder()`. Picks one name gate per
+#' call so the notebook can render keyword and JW side-by-side.
+#'
+#' @param metrics_long Output of `evaluate_clusters_vs_rr_grid()`.
+#' @param gate Either "keyword" or "jw".
+#' @param group_keys Character vector (default "variant_id").
+#' @return Wide tibble with cells formatted `"%.3f [lo, hi]"`.
+#' @export
+format_rr_method_ladder <- function(metrics_long,
+                                      gate = c("keyword", "jw"),
+                                      group_keys = "variant_id") {
+
+  gate <- match.arg(gate)
+
+  fmt <- function(v, lo, hi) {
+    dplyr::if_else(
+      is.na(v), "—",
+      sprintf("%.3f [%.3f, %.3f]", v, lo, hi)
+    )
+  }
+
+  metrics_long |>
+    dplyr::filter(.data$gate == .env$gate,
+                  metric %in% c("coverage", "spurious_rate",
+                                "fragmentation_index", "year_alignment")) |>
+    dplyr::mutate(cell = fmt(value, ci_lo, ci_hi)) |>
+    dplyr::select(dplyr::all_of(group_keys), metric, cell,
+                  n_clusters, n_clusters_matched, n_rr_acts_matched) |>
+    tidyr::pivot_wider(names_from = metric, values_from = cell) |>
+    dplyr::rename(
+      Coverage           = coverage,
+      Spurious           = spurious_rate,
+      Fragmentation      = fragmentation_index,
+      `Year alignment`   = year_alignment,
+      `n clusters`       = n_clusters,
+      `Clusters matched` = n_clusters_matched,
+      `RR acts matched`  = n_rr_acts_matched
+    ) |>
+    dplyr::select(dplyr::all_of(group_keys),
+                  Coverage, Spurious, Fragmentation, `Year alignment`,
+                  `n clusters`, `Clusters matched`, `RR acts matched`)
+}
+
+
+# ---------------------------------------------------------------------------
+# Private helpers for RR-aligned evaluation
+# ---------------------------------------------------------------------------
+
+.mode_int <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0L) return(NA_integer_)
+  tab <- table(x)
+  as.integer(names(tab)[which.max(tab)])
+}
+
+.derive_cluster_year <- function(members, doc_year_mode) {
+  name_years <- extract_year_from_string(members)
+  if (any(!is.na(name_years))) {
+    return(as.integer(round(stats::median(name_years, na.rm = TRUE))))
+  }
+  .mode_int(doc_year_mode)
+}
+
+
 # %||% is from rlang via tidyverse but we may not have it loaded directly.
 `%||%` <- function(a, b) if (is.null(a)) b else a

@@ -1206,6 +1206,75 @@ list(
     packages = "tidyverse"
   ),
 
+  # =========================================================================
+  # C0 Phase A — RR-aligned evaluation framework
+  # =========================================================================
+  # Scores each Methods 1–3 clustering against R&R's 49-act list in
+  # us_shocks.csv (independent of any pipeline output). Match gates: keyword
+  # containment via generate_subcomponents() OR JW-min ≤ 0.30, AND year
+  # within ±2 of the act's signing year. Replaces pairwise P/R/F1 + ARI as
+  # the headline eval; the c0_*_metrics targets above stay wired for the
+  # §"Why we pivoted away from pairwise P/R" trace subsection in the
+  # notebook. See R/c0_aggregator.R for function-level docs and
+  # `memory/c0_gold_pool_ceiling.md` for the rationale.
+
+  tar_target(
+    c0_us_rr_acts,
+    build_us_rr_acts(us_shocks),
+    packages = c("tidyverse", "lubridate")
+  ),
+
+  tar_target(
+    c0_jw_rr_matches,
+    match_clusters_to_rr_acts(c0_jw_clusters, c0_us_measure_pool,
+                              c0_us_rr_acts),
+    packages = c("tidyverse", "stringdist")
+  ),
+
+  tar_target(
+    c0_jw_rr_metrics,
+    evaluate_rr_matches_grid(c0_jw_rr_matches, c0_jw_clusters,
+                             c0_us_rr_acts,
+                             n_boot = 1000L, seed = 20260529L),
+    packages = c("tidyverse", "withr")
+  ),
+
+  tar_target(
+    c0_hdbscan_rr_matches,
+    match_clusters_to_rr_acts(c0_hdbscan_clusters, c0_us_measure_pool,
+                              c0_us_rr_acts),
+    packages = c("tidyverse", "stringdist")
+  ),
+
+  tar_target(
+    c0_hdbscan_rr_metrics,
+    evaluate_rr_matches_grid(c0_hdbscan_rr_matches, c0_hdbscan_clusters,
+                             c0_us_rr_acts,
+                             n_boot = 1000L, seed = 20260529L),
+    packages = c("tidyverse", "withr")
+  ),
+
+  # UMAP branches map over c0_umap_grid the same way as the existing
+  # c0_hdbscan_umap_clusters / c0_hdbscan_umap_metrics targets do.
+  tar_target(
+    c0_hdbscan_umap_rr_matches,
+    match_clusters_to_rr_acts(c0_hdbscan_umap_clusters, c0_us_measure_pool,
+                              c0_us_rr_acts),
+    pattern   = map(c0_hdbscan_umap_clusters),
+    packages  = c("tidyverse", "stringdist"),
+    resources = tar_resources(crew = tar_resources_crew(controller = "c0_umap"))
+  ),
+
+  tar_target(
+    c0_hdbscan_umap_rr_metrics,
+    evaluate_rr_matches_grid(c0_hdbscan_umap_rr_matches,
+                             c0_hdbscan_umap_clusters, c0_us_rr_acts,
+                             n_boot = 1000L, seed = 20260529L),
+    pattern   = map(c0_hdbscan_umap_rr_matches, c0_hdbscan_umap_clusters),
+    packages  = c("tidyverse", "withr"),
+    resources = tar_resources(crew = tar_resources_crew(controller = "c0_umap"))
+  ),
+
   tar_quarto(
     c0_aggregator,
     path = here("notebooks/c0_aggregator.qmd"),
