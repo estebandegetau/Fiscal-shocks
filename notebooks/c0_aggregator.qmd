@@ -20,6 +20,7 @@ source(here("R/tt_theme.R"))
 source(here("R/c0_aggregator.R"))
 
 tar_load(c(
+  c1_s2_results,
   c0_us_measure_pool,
   c0_eval_gold_pairs,
   c0_jw_clusters,
@@ -34,7 +35,11 @@ tar_load(c(
   c0_f16_quantization_probe,
   c0_f16_quantization_probe_tier1,
   c0_fp32_reference_probe,
-  c0_fp32_reference_probe_tier1
+  c0_fp32_reference_probe_tier1,
+  c0_hdbscan_umap_probe,
+  c0_hdbscan_umap_probe_tier1,
+  c0_hdbscan_umap_probe_fp32,
+  c0_hdbscan_umap_probe_tier1_fp32
 ))
 
 # Methods 2 + 3 (HDBSCAN, unblocked + year-blocked) are wired below.
@@ -197,6 +202,259 @@ variance_per_act |>
 ```
 
 The headline: even with R&R's well-known and well-named acts, the median act surfaces under multiple forms; the tail is heavy. A C0 that returns one cluster per surface form (i.e., no merging) is useless; a C0 that merges everything is also useless. The methods below try to land somewhere useful.
+
+### Within-document name variance: 1980 cross-section
+
+@fig-funnel-1980 sizes the data reduction happening upstream of the heatmaps below. Stage 1 counts every chunk C1 reviewed in each 1980 document (the input to FISCAL_MEASURE classification), split into the "relevant" chunks where C1 emitted at least one measure and the irrelevant chunks where it did not. Stage 2 keeps only the relevant subset — the same blue block from stage 1 redrawn on its own to make the funnel mouth visible. Stage 3 unfolds the relevant chunks into individual measure occurrences (one row per chunk × `measure_rank` pair), arranged by rank with the rank-1 layer marked in red. The shape of the funnel is the headline: Budget and Treasury chunks emit ≈ 5-10 measures each, so the rank-1 red band is a small slice of stage 3 — and that red slice is the pool the JW and embedding heatmaps below operate on. Rank ≥ 2 layers (grey) are out of scope for the heatmaps but are not noise; they record secondary measures C1 surfaced in the same chunk.
+
+```{r}
+#| label: fig-funnel-1980
+#| fig-cap: "Per-document funnel from C1 input to the rank-1 layer the heatmaps below operate on. Stage 1: chunks C1 reviewed, split into relevant (FISCAL_MEASURE emitted) and irrelevant. Stage 2: the relevant subset alone. Stage 3: all FISCAL_MEASURE occurrences (one per chunk × `measure_rank` pair) stacked by rank, with rank-1 marked in red. Stages 1-2 are counted in chunks; stage 3 in occurrences (so a single relevant chunk producing five measures contributes 1 to stage 2 and 5 to stage 3). The y-axis is free per facet to keep ERP-1980's small counts legible alongside Treasury's larger ones."
+#| fig-width: 9
+#| fig-height: 7
+#| warning: false
+
+us_1980_docs <- c0_us_measure_pool |>
+  dplyr::filter(year == 1980L) |>
+  dplyr::distinct(doc_id) |>
+  dplyr::mutate(series = sub("-[0-9]+$", "", doc_id)) |>
+  dplyr::arrange(factor(series, levels = c("ERP", "BUDGET", "AR_TREASURY"))) |>
+  dplyr::pull(doc_id)
+
+build_funnel_df <- function(c1_s2_results, target_docs) {
+  base <- c1_s2_results |>
+    dplyr::filter(doc_id %in% target_docs)
+
+  chunk_status <- base |>
+    dplyr::group_by(doc_id, chunk_id) |>
+    dplyr::summarize(has_fm = any(pred_label == "FISCAL_MEASURE"),
+                     .groups = "drop")
+
+  s1 <- chunk_status |>
+    dplyr::count(doc_id, has_fm, name = "n") |>
+    dplyr::transmute(doc_id, stage = "1. Chunks\nreviewed",
+                     segment = ifelse(has_fm, "Relevant chunk",
+                                              "Irrelevant chunk"), n)
+
+  s2 <- chunk_status |>
+    dplyr::filter(has_fm) |>
+    dplyr::count(doc_id, name = "n") |>
+    dplyr::transmute(doc_id, stage = "2. Relevant\nchunks",
+                     segment = "Relevant chunk", n)
+
+  s3 <- base |>
+    dplyr::filter(pred_label == "FISCAL_MEASURE", !is.na(measure_name)) |>
+    dplyr::mutate(rank_group = dplyr::case_when(
+      measure_rank == 1L ~ "Rank 1",
+      measure_rank == 2L ~ "Rank 2",
+      measure_rank == 3L ~ "Rank 3",
+      TRUE               ~ "Rank 4+"
+    )) |>
+    dplyr::count(doc_id, rank_group, name = "n") |>
+    dplyr::transmute(doc_id, stage = "3. Surfaced\nname occurrences",
+                     segment = rank_group, n)
+
+  dplyr::bind_rows(s1, s2, s3) |>
+    dplyr::mutate(
+      stage = factor(stage, levels = c("1. Chunks\nreviewed",
+                                       "2. Relevant\nchunks",
+                                       "3. Surfaced\nname occurrences")),
+      doc_id = factor(doc_id, levels = target_docs),
+      segment = factor(segment, levels = c("Rank 1", "Rank 2", "Rank 3",
+                                           "Rank 4+", "Relevant chunk",
+                                           "Irrelevant chunk"))
+    )
+}
+
+funnel_df <- build_funnel_df(c1_s2_results, us_1980_docs)
+
+funnel_palette <- c(
+  "Rank 1"           = "#b2182b",
+  "Rank 2"           = "#737373",
+  "Rank 3"           = "#969696",
+  "Rank 4+"          = "#bdbdbd",
+  "Relevant chunk"   = "#4477AA",
+  "Irrelevant chunk" = "#cccccc"
+)
+
+ggplot(funnel_df, aes(x = stage, y = n, fill = segment)) +
+  geom_col(width = 0.6, position = position_stack(reverse = TRUE)) +
+  geom_text(aes(label = n),
+            position = position_stack(vjust = 0.5, reverse = TRUE),
+            colour = "white", size = 3, fontface = "bold") +
+  scale_fill_manual(values = funnel_palette, name = NULL,
+                    breaks = c("Relevant chunk", "Irrelevant chunk",
+                               "Rank 1", "Rank 2", "Rank 3", "Rank 4+")) +
+  facet_wrap(~ doc_id, scales = "free_y", ncol = 1) +
+  labs(x = NULL, y = "Count") +
+  theme_minimal(base_size = 10) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor    = element_blank(),
+        legend.position     = "right",
+        strip.text          = element_text(face = "bold"))
+```
+
+@fig-jw-within-doc-1980 zooms into the rank-1 layer of @fig-funnel-1980: it shows the pairwise Jaro-Winkler distance matrix among those rank-1 C1 measure names within each document (mirroring the Methods 2 + 3 pool used in @fig-emb-within-doc-1980, so the two heatmaps carry the same acts). The heatmap pool is the within-doc surface forms intersected with the corpus-wide rank-1 pool (`rownames(c0_us_embeddings)`) — slightly larger than stage 3's red layer because it includes a few names that are at rank ≥ 2 in *this* document but were rank-1 in some other document, while excluding rank-1 occurrences whose surface form is shared with another (so the same name shown once). Cells in the bottom band (JW < 0.15) would merge under single-linkage at the production threshold. Cells in the middle band (0.15-0.30) are near-misses — same measure with verbose-vs-bare phrasing, swapped word order, or abbreviation expansion. Cells in the top band (≥ 0.30) are genuinely distinct measures. Read each heatmap together with its numbered measure list (printed to its right). Off-diagonal cells just above the 0.15 line that link semantically-identical names are the failure cases that drive over-fragmentation; cells far above 0.30 linking surface forms that *are* the same act are the gap JW cannot close on its own.
+
+```{r}
+#| label: fig-jw-within-doc-1980
+#| fig-cap: "Pairwise Jaro-Winkler distance among rank-1 C1 measure names within each 1980 US document, one panel per series. Red cells (JW < 0.15) would merge under single-linkage at threshold 0.15; orange cells (0.15-0.30) are near-misses that did not merge but plausibly should have; blue cells (≥ 0.30) are distinct measures. Only the upper triangle is shown; the diagonal is JW = 0 by construction. The pool is each document's distinct C1 surface forms intersected with the rank-1 corpus pool (`rownames(c0_us_embeddings)`); non-rank-1 surface forms are omitted, matching @fig-emb-within-doc-1980."
+#| fig-subcap:
+#|   - "Economic Report of the President"
+#|   - "Budget"
+#|   - "Treasury Annual Report"
+#| layout-ncol: 1
+#| fig-width: 12
+#| fig-height: 9
+#| warning: false
+
+jw_band_fill_doc <- ggplot2::scale_fill_stepsn(
+  colours = c("#b2182b", "#f4a582", "#92c5de", "#2166ac"),
+  breaks  = c(0.15, 0.30, 0.45),
+  limits  = c(0, 0.6),
+  oob     = scales::squish,
+  name    = "JW"
+)
+
+make_jw_doc_panel <- function(this_doc_id) {
+  measures_all <- c0_us_measure_pool |>
+    dplyr::filter(doc_id == this_doc_id) |>
+    dplyr::distinct(measure_name) |>
+    dplyr::pull(measure_name)
+  measures <- intersect(measures_all, rownames(c0_us_embeddings))
+  n <- length(measures)
+  n_dropped <- length(measures_all) - n
+  if (n < 2L) return(NULL)
+
+  dm <- stringdist::stringdistmatrix(measures, measures, method = "jw")
+  df <- tidyr::expand_grid(i = seq_len(n), j = seq_len(n)) |>
+    dplyr::mutate(jw = dm[cbind(i, j)]) |>
+    dplyr::filter(j >= i)
+
+  text_size <- if (n <= 10L) 3 else if (n <= 20L) 2.4 else 1.9
+
+  heat <- ggplot(df, aes(j, i, fill = jw)) +
+    geom_tile(colour = "white", linewidth = 0.3) +
+    geom_text(aes(label = sprintf("%.2f", jw)),
+              colour = ifelse(df$jw < 0.30, "white", "black"),
+              size = text_size) +
+    jw_band_fill_doc +
+    scale_x_continuous(breaks = seq_len(n), position = "top",
+                       expand = c(0, 0)) +
+    scale_y_reverse(breaks = seq_len(n), expand = c(0, 0)) +
+    coord_fixed() +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 9) +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(face = "bold"))
+
+  legend_df <- tibble::tibble(
+    y = rev(seq_len(n)),
+    label = sprintf("%d. %s", seq_len(n),
+                    stringr::str_trunc(measures, 90))
+  )
+  legend <- ggplot(legend_df, aes(x = 0, y = y, label = label)) +
+    geom_text(hjust = 0, size = 2.7, family = "mono") +
+    scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0.5, n + 0.5), expand = c(0, 0)) +
+    theme_void()
+
+  title <- sprintf("%s — %d rank-1 C1 measure names (%d non-rank-1 omitted)",
+                   this_doc_id, n, n_dropped)
+  heat + legend +
+    patchwork::plot_layout(widths = c(1, 1.4)) +
+    patchwork::plot_annotation(title = title)
+}
+
+for (this_doc in us_1980_docs) {
+  p <- make_jw_doc_panel(this_doc)
+  if (!is.null(p)) print(p)
+}
+```
+
+@fig-jw-within-doc-1980 visualised what JW sees within each of the three 1980 US documents. @fig-emb-within-doc-1980 is the same structure on the same documents and the same measure-name pool, but with pairwise *embedding* distance in place of JW. Distances are Euclidean on the L2-normalised E5 vectors `c0_us_embeddings`; because the embeddings are unit-norm, Euclidean distance is a monotonic transform of cosine distance ($d_{\text{euc}} = \sqrt{2 \cdot d_{\text{cos}}}$), so the figure mirrors what Methods 2 + 3 actually cluster on.
+
+The colour bands are tighter than the JW figure's because E5 packs everything into a narrow band of the unit sphere: corpus-wide pairwise Euclidean distances sit at median 0.45 with IQR 0.42-0.48. Bands at 0.40 / 0.45 / 0.50 therefore approximate "below corpus IQR" / "within IQR" / "above IQR" / "far above IQR" — a relative-rather-than-absolute reading, in keeping with the verdict text above.
+
+```{r}
+#| label: fig-emb-within-doc-1980
+#| fig-cap: "Pairwise Euclidean distance among L2-normalised E5 embeddings of distinct C1 measure names within each 1980 US document, one panel per series. Bands at 0.40 / 0.45 / 0.50 correspond to corpus-wide Q25 / median / Q75. Only the upper triangle is shown; the diagonal is 0 by construction. Measure names without an embedding (i.e., never appeared at rank 1 in the corpus) are omitted."
+#| fig-subcap:
+#|   - "Economic Report of the President"
+#|   - "Budget"
+#|   - "Treasury Annual Report"
+#| layout-ncol: 1
+#| fig-width: 12
+#| fig-height: 9
+#| warning: false
+
+emb_band_fill_doc <- ggplot2::scale_fill_stepsn(
+  colours = c("#b2182b", "#f4a582", "#92c5de", "#2166ac"),
+  breaks  = c(0.40, 0.45, 0.50),
+  limits  = c(0, 0.6),
+  oob     = scales::squish,
+  name    = "Euclidean"
+)
+
+make_emb_doc_panel <- function(this_doc_id) {
+  measures_all <- c0_us_measure_pool |>
+    dplyr::filter(doc_id == this_doc_id) |>
+    dplyr::distinct(measure_name) |>
+    dplyr::pull(measure_name)
+  measures <- intersect(measures_all, rownames(c0_us_embeddings))
+  n <- length(measures)
+  n_dropped <- length(measures_all) - n
+  if (n < 2L) return(NULL)
+
+  M <- c0_us_embeddings[measures, , drop = FALSE]
+  dm <- as.matrix(stats::dist(M, method = "euclidean"))
+  df <- tidyr::expand_grid(i = seq_len(n), j = seq_len(n)) |>
+    dplyr::mutate(d = dm[cbind(i, j)]) |>
+    dplyr::filter(j >= i)
+
+  text_size <- if (n <= 10L) 3 else if (n <= 20L) 2.4 else 1.9
+
+  heat <- ggplot(df, aes(j, i, fill = d)) +
+    geom_tile(colour = "white", linewidth = 0.3) +
+    geom_text(aes(label = sprintf("%.2f", d)),
+              colour = ifelse(df$d < 0.45, "white", "black"),
+              size = text_size) +
+    emb_band_fill_doc +
+    scale_x_continuous(breaks = seq_len(n), position = "top",
+                       expand = c(0, 0)) +
+    scale_y_reverse(breaks = seq_len(n), expand = c(0, 0)) +
+    coord_fixed() +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 9) +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(face = "bold"))
+
+  legend_df <- tibble::tibble(
+    y = rev(seq_len(n)),
+    label = sprintf("%d. %s", seq_len(n),
+                    stringr::str_trunc(measures, 90))
+  )
+  legend <- ggplot(legend_df, aes(x = 0, y = y, label = label)) +
+    geom_text(hjust = 0, size = 2.7, family = "mono") +
+    scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0.5, n + 0.5), expand = c(0, 0)) +
+    theme_void()
+
+  title <- sprintf("%s — %d embedded C1 measure names (%d without embedding omitted)",
+                   this_doc_id, n, n_dropped)
+  heat + legend +
+    patchwork::plot_layout(widths = c(1, 1.4)) +
+    patchwork::plot_annotation(title = title)
+}
+
+for (this_doc in us_1980_docs) {
+  p <- make_emb_doc_panel(this_doc)
+  if (!is.null(p)) print(p)
+}
+```
+
+Reading @fig-emb-within-doc-1980 against @fig-jw-within-doc-1980, an immediate conclusion is that imposing the Rank-1 filter as in @fig-emb-within-doc-1980 does not imply losing important fiscal changes. Indeed, doing so, refines the surfaced names and are more in tune with the acts @romer identify. Importantly, there is little within-document-within act name variance and it could be recupperated both with JW distance and with embeddings.
+
 
 ## Eval set construction
 
@@ -605,6 +863,7 @@ if (!v_f16_t1$pass && v_fp32_t1$pass) {
 ```
 
 E5-family embeddings always live in a narrow band of the unit sphere, so absolute cosines aren't crisp — the probe targets the *relative* gap between within-act and between-act pairs, which is the property HDBSCAN cares about. Methods 2 and 3 below continue to read `c0_us_embeddings` (the F16 matrix); the FP32 numbers above are diagnostic only.
+
 
 ## Eval-set noise probe: surface-year vs doc-year mismatch
 
@@ -1040,82 +1299,50 @@ ggplot(umap_pr, aes(pairwise_recall, pairwise_precision,
 
 ```{r}
 #| label: fig-umap-separation-probe
-#| fig-cap: "Embedding-geometry probe repeated on the UMAP-reduced space. For each UMAP cell we compute, on the gold eval pool (Tier 1 only — strips Tier 2 label noise to match the F16/FP32 probe at @tbl-f16-probe), the median Euclidean distance among pairs sharing a gold act vs the median across pairs from different gold acts. `separation = between − within`; positive means the UMAP reduction preserves act-level structure. Each point is one UMAP cell; colour marks `n_components`. If separation rises materially above 0 across cells (the no-UMAP probe failed even after L2-normalisation), high-D distance concentration was the binding constraint and the no-UMAP verdict's third hypothesis is the live one."
-#| fig-width: 9
-#| fig-height: 5
+#| fig-cap: "Embedding-geometry probe in UMAP-reduced space — F16 vs FP32, the same model precisions contrasted in @tbl-f16-probe at no-UMAP. Columns facet the two probe metrics; rows facet embedding precision (F16 = local Ollama community port, FP32 = DeepInfra-hosted reference). The F16 panels (top row) reproduce the earlier UMAP read; the FP32 panels (bottom row) add the missing precision contrast in UMAP space. Each bar counts UMAP cells (out of 27) whose probe value falls in the bin; fill marks eval slice (Full pool = Tier 1 + 2 unambiguous, Tier 1 = verbatim-passage matches only). Dashed lines are the F16/FP32 floors carried over from @tbl-f16-probe: 0.40 for top-1 NN; 0 for separation (Euclidean — the 0.05 cosine floor at @tbl-f16-probe does not translate). Identical UMAP grid, seed (20260526), and probe logic across the four panels; the only thing that varies between F16 and FP32 rows is the input embedding matrix."
+#| fig-width: 10
+#| fig-height: 8
 
-eval_tier1_pool <- c0_eval_gold_pairs |>
-  dplyr::filter(tier == 1L, !ambiguous) |>
-  dplyr::distinct(measure_name, gold_act_name)
-
-within_between_separation <- function(reduced, eval_pool) {
-  eval_in <- eval_pool |>
-    dplyr::filter(measure_name %in% rownames(reduced))
-  acts_with_pairs <- eval_in |>
-    dplyr::count(gold_act_name) |>
-    dplyr::filter(n >= 2L) |>
-    dplyr::pull(gold_act_name)
-  eval_in <- eval_in |>
-    dplyr::filter(gold_act_name %in% acts_with_pairs)
-  if (nrow(eval_in) < 4L) return(tibble::tibble(
-    median_within = NA_real_, median_between = NA_real_,
-    separation = NA_real_, n_names = nrow(eval_in)))
-
-  names_vec <- eval_in$measure_name
-  acts_vec  <- eval_in$gold_act_name
-  d <- as.matrix(stats::dist(reduced[names_vec, , drop = FALSE],
-                             method = "euclidean"))
-  same_act <- outer(acts_vec, acts_vec, FUN = "==")
-  upper <- upper.tri(d)
-  within  <- d[upper & same_act]
-  between <- d[upper & !same_act]
-  mw <- stats::median(within,  na.rm = TRUE)
-  mb <- stats::median(between, na.rm = TRUE)
-  tibble::tibble(median_within = mw, median_between = mb,
-                 separation = mb - mw, n_names = nrow(eval_in))
-}
-
-umap_seed <- 20260526L
-sep_by_cell <- purrr::pmap_dfr(c0_umap_grid,
-  function(n_neighbors, n_components, min_dist) {
-    reduced <- umap_reduce_embeddings(
-      c0_us_embeddings,
-      n_neighbors  = n_neighbors,
-      n_components = n_components,
-      min_dist     = min_dist,
-      seed         = umap_seed
-    )
-    res <- within_between_separation(reduced, eval_tier1_pool)
-    dplyr::bind_cols(
-      tibble::tibble(n_neighbors  = as.integer(n_neighbors),
-                     n_components = as.integer(n_components),
-                     min_dist     = min_dist),
-      res
-    )
-  })
-
-ggplot(sep_by_cell,
-       aes(min_dist, separation,
-           colour = factor(n_components),
-           shape  = factor(n_neighbors))) +
-  geom_hline(yintercept = 0, linetype = "dotted", colour = "grey40") +
-  geom_point(size = 2.4, alpha = 0.85,
-             position = position_jitter(width = 0.005, height = 0,
-                                        seed = 20260526L)) +
-  scale_colour_brewer(palette = "Dark2") +
-  labs(x = "UMAP min_dist", y = "Separation (between − within, Euclidean)",
-       colour = "n_components", shape = "n_neighbors") +
+dplyr::bind_rows(
+  c0_hdbscan_umap_probe            |> dplyr::mutate(precision = "F16 (local Ollama)", slice = "Full pool (Tier 1 + 2, unambiguous)"),
+  c0_hdbscan_umap_probe_tier1      |> dplyr::mutate(precision = "F16 (local Ollama)", slice = "Tier 1 only"),
+  c0_hdbscan_umap_probe_fp32       |> dplyr::mutate(precision = "FP32 (DeepInfra)",   slice = "Full pool (Tier 1 + 2, unambiguous)"),
+  c0_hdbscan_umap_probe_tier1_fp32 |> dplyr::mutate(precision = "FP32 (DeepInfra)",   slice = "Tier 1 only")
+) |>
+  tidyr::pivot_longer(
+    cols      = c(top1_nn_same_act_rate, separation),
+    names_to  = "metric",
+    values_to = "value"
+  ) |>
+  dplyr::mutate(metric = dplyr::recode(metric,
+    top1_nn_same_act_rate = "Top-1 NN same-act rate",
+    separation            = "Separation (between − within, Euclidean)"
+  )) |>
+  ggplot(aes(value, fill = slice)) +
+  geom_histogram(position = "identity", alpha = 0.6, bins = 15) +
+  geom_vline(data = tibble::tibble(
+    metric = c("Top-1 NN same-act rate",
+               "Separation (between − within, Euclidean)"),
+    floor  = c(0.40, 0)
+  ), aes(xintercept = floor), linetype = "dashed", colour = "grey40") +
+  facet_grid(precision ~ metric, scales = "free_x") +
+  scale_fill_brewer(palette = "Set1") +
+  labs(x = NULL, y = "Count (UMAP cells)", fill = NULL) +
   theme_minimal(base_size = 10) +
   theme(legend.position = "top")
 ```
 
 ### Reading the UMAP results
 
-The UMAP variant set is large (27 cells), so the precision-friendly shortlist tables above are the primary read. The asymmetric-cost lens applies unchanged: among UMAP cells with low `over_merge_count`, pick the F1 winner; compare against the no-UMAP baseline diamond in @fig-hdb-umap-pr. Three patterns to look for:
+The headline reading of @fig-hdb-umap-pr is that **no UMAP variant strictly dominates the no-UMAP HDBSCAN baseline on the precision/recall front**. The UMAP cloud overlaps the no-UMAP diamond rather than sitting up-and-right of it; the "F1 winner" UMAP cell reaches a higher F1 only by over-merging hundreds of unrelated pairs (`over_merge_count` ≈ 950 at the highest-F1 cell vs. 107 at the baseline best), which is the same precision-for-recall trade as relaxing the JW threshold in §Method 1. The precision-friendly winner (`nn=30`, `nc=2`, `md=0`, `m=2`, year ±2) does shift the picture marginally: it cuts the singleton share from 38% (baseline `hdb_m2_yw2`) to 14%, lifts Tier 1 F1 from 0.131 to 0.180, and reconstructs 3 of 35 gold acts intact (vs. 2 at the baseline best). Two mechanisms explain why the cloud does not lift further.
 
-- **UMAP shifts the front up-and-right of the no-UMAP diamond.** If the cloud of UMAP variants in @fig-hdb-umap-pr sits at meaningfully higher precision AND comparable-or-higher recall, BERTopic-style dim-reduction is the load-bearing improvement and C0 should deploy with UMAP.
-- **UMAP recovers separation above the F16/FP32 probe floor.** Positive `separation` values in @fig-umap-separation-probe confirm high-D distance concentration was the binding constraint that the §"Embedding-geometry probe" verdict missed. Negative or near-zero values across all cells means dim-reduction is *not* the fix and the writeup needs to escalate to a different embedding family (the "model ceiling" branch of the existing verdict becomes the live interpretation).
-- **`n_components` is the load-bearing UMAP hyperparameter.** Theory says intermediate dim (5–10) should beat both extremes (2 = throws away too much, 30+ = retains the concentration problem). If the facets in @fig-hdb-umap-pr are flat in `n_components`, the UMAP improvement is robust to that choice. If they aren't, that's the parameter the synthesis section needs to fix at the winning value.
+First, **UMAP improves the aggregate geometry but not the neighbour identity HDBSCAN actually uses**. @fig-umap-separation-probe shows within-vs-between separation moves dramatically — F16 raw 0.005 → UMAP median 0.379, a ≈70× lift, with positive separation in 27/27 F16 cells and 26/27 FP32 cells. Top-1 NN same-act rate barely moves: F16 raw 0.261 → UMAP cells span [0.18, 0.31], and zero of 108 probe cells (54 F16 + 54 FP32 across both eval slices) clear the 0.40 floor. The F16 ↔ FP32 contrast on top-1 NN in @fig-umap-separation-probe is flat, which resolves the verdict left open by the no-UMAP F16/FP32 probe in §"Embedding-geometry probe": the bottleneck is not quantization, the embedding model itself does not produce a top-1-NN-recoverable representation of this pool. Across the 162 UMAP variants the metric correlations are decoupled — `cor(separation, pairwise_recall) = -0.07`, `cor(top-1 NN, pairwise_recall) = +0.09` — while `cor(mean HDBSCAN clusters per gold act, pairwise_recall) = -0.93`. The probe metric UMAP improved (median separation) is not the metric pairwise P/R or density-based HDBSCAN rely on; the metric they rely on (which other surface form is each surface form's literal nearest neighbour) is the one that did not move.
+
+Second, and dominant: **the gold same-act relation in `c0_eval_gold_pairs` is not a surface-form similarity relation in the first place**. `build_c0_eval_gold_pairs()` pairs every rank-1 measure C1 extracted in a chunk with every gold act that chunk was tier-tagged with, including chunks where C1's primary measure was a different act. So the members of "Tax Reform Act of 1969" include {`ERISA`, `Asset Depreciation Range (ADR) system`, `H.R. 10947`, `tax bill passed in December`}; even on the Tier 1 slice, "Deficit Reduction Act of 1984" has members {`Economic Recovery Tax Act`, `Job Training Partnership Act`, `tax proposals (...)`}. No string-embedding clusterer can or should merge those. 16 of 35 eligible Tier 1 acts have top-1 NN = 0 on F16 raw (20/35 under the UMAP precision-friendly winner), and `cor(share of acts reconstructed intact, F1) = +0.82` — pairwise F1 is essentially a one-variable story about how often a gold act survives HDBSCAN as a single cluster, and that variable is capped by gold-pool construction upstream of the embedding.
+
+Reading the two mechanisms together: the no-UMAP baseline and the UMAP cloud sit on roughly the same front because they share the same ceiling. UMAP shifts *which* acts get reconstructed — all-singleton fragmentation drops from 15 → 10 of 35 eligible acts, with the 5 that leave becoming 1 newly-intact and 4 newly multi-tight rather than tight+noise — but it cannot lift the act-recovery ceiling because the ceiling is set before the embedding sees anything. The earlier framing's third hypothesis (that `n_components` would be the load-bearing UMAP knob) is empirically wrong: no UMAP knob moves the front meaningfully because the front is not where UMAP's lever points.
+
+**Implications for Method 4.** The diagnosis predicts the hybrid LLM pairwise judge will break through *some* of the gap but not all of it. The ~22 of 35 acts whose UMAP-PF splits are "tight+noise" or "multi-tight" are mostly true surface variants (`ERTA ↔ Economic Recovery Tax Act of 1981 ↔ P.L. 97-34`) scattered by cosine-distance concentration in 1024-D; the judge will resolve those given the candidate pairs. Top-k embedding retrieval should surface those candidates even at F16, because the candidates live in the local neighbourhood (top-1 may miss but top-5/10 will catch). The ~10 of 35 "all-singleton" acts are gold-pool noise — distinct policy items co-occurring in a chunk — and the judge will (correctly) refuse to merge them. Deployed C0 against this gold pool should therefore reduce `under_merge_count` substantially while holding `over_merge_count` modestly, with the headline P/R/F1 plateauing at a level set by the gold definition rather than by clustering performance. When the Method 4 results land, the Synthesis read should disclose this: residual under-merges are not necessarily C0 errors, they are cases where the gold says "same act" because of chunk co-occurrence and the clusterer is correct to say "different surface forms".
 
 ## Method 4 — Hybrid (embedding nearest-neighbours + LLM pairwise judge)
 
