@@ -1068,6 +1068,114 @@ list(
     resources = tar_resources(crew = tar_resources_crew(controller = "c0_umap"))
   ),
 
+  # UMAP-space embedding-geometry probe (Euclidean analog of the F16/FP32
+  # cosine probes below). Cache the reductions once so the probe — and any
+  # future UMAP-space diagnostic — reuses them instead of re-running uwot.
+  # Same seed as `c0_hdbscan_umap_clusters` so the reduced space the probe
+  # measures is identical to the one HDBSCAN clusters in.
+  tar_target(
+    c0_umap_reduced_embeddings,
+    umap_reduce_embeddings(
+      c0_us_embeddings,
+      n_neighbors  = c0_umap_grid$n_neighbors,
+      n_components = c0_umap_grid$n_components,
+      min_dist     = c0_umap_grid$min_dist,
+      seed         = 20260526L
+    ),
+    pattern   = map(c0_umap_grid),
+    iteration = "list",
+    packages  = c("tidyverse", "uwot"),
+    format    = "qs",
+    resources = tar_resources(crew = tar_resources_crew(controller = "c0_umap"))
+  ),
+
+  # Full-pool probe (unambiguous Tier 1 + Tier 2). Each branch carries its
+  # UMAP cell coordinates so downstream plots can read hyperparams without
+  # re-parsing variant_ids.
+  tar_target(
+    c0_hdbscan_umap_probe,
+    tibble::tibble(
+      n_neighbors  = c0_umap_grid$n_neighbors,
+      n_components = c0_umap_grid$n_components,
+      min_dist     = c0_umap_grid$min_dist
+    ) |>
+      dplyr::bind_cols(
+        probe_umap_geometry(c0_umap_reduced_embeddings, c0_eval_gold_pairs)
+      ),
+    pattern  = map(c0_umap_reduced_embeddings, c0_umap_grid),
+    packages = c("tidyverse")
+  ),
+
+  # Tier 1 slice — caller pre-filters, mirroring
+  # `c0_f16_quantization_probe_tier1` below.
+  tar_target(
+    c0_hdbscan_umap_probe_tier1,
+    tibble::tibble(
+      n_neighbors  = c0_umap_grid$n_neighbors,
+      n_components = c0_umap_grid$n_components,
+      min_dist     = c0_umap_grid$min_dist
+    ) |>
+      dplyr::bind_cols(
+        probe_umap_geometry(
+          c0_umap_reduced_embeddings,
+          dplyr::filter(c0_eval_gold_pairs, tier == 1L)
+        )
+      ),
+    pattern  = map(c0_umap_reduced_embeddings, c0_umap_grid),
+    packages = c("tidyverse")
+  ),
+
+  # FP32 mirror of the UMAP-space probe block above. Same UMAP grid, same
+  # seed, same probe function — the only thing that differs from the F16
+  # chain is the input embedding matrix, so the F16↔FP32 row contrast in
+  # `fig-umap-separation-probe` is strictly about precision.
+  tar_target(
+    c0_umap_reduced_embeddings_fp32,
+    umap_reduce_embeddings(
+      c0_us_embeddings_fp32,
+      n_neighbors  = c0_umap_grid$n_neighbors,
+      n_components = c0_umap_grid$n_components,
+      min_dist     = c0_umap_grid$min_dist,
+      seed         = 20260526L
+    ),
+    pattern   = map(c0_umap_grid),
+    iteration = "list",
+    packages  = c("tidyverse", "uwot"),
+    format    = "qs",
+    resources = tar_resources(crew = tar_resources_crew(controller = "c0_umap"))
+  ),
+
+  tar_target(
+    c0_hdbscan_umap_probe_fp32,
+    tibble::tibble(
+      n_neighbors  = c0_umap_grid$n_neighbors,
+      n_components = c0_umap_grid$n_components,
+      min_dist     = c0_umap_grid$min_dist
+    ) |>
+      dplyr::bind_cols(
+        probe_umap_geometry(c0_umap_reduced_embeddings_fp32, c0_eval_gold_pairs)
+      ),
+    pattern  = map(c0_umap_reduced_embeddings_fp32, c0_umap_grid),
+    packages = c("tidyverse")
+  ),
+
+  tar_target(
+    c0_hdbscan_umap_probe_tier1_fp32,
+    tibble::tibble(
+      n_neighbors  = c0_umap_grid$n_neighbors,
+      n_components = c0_umap_grid$n_components,
+      min_dist     = c0_umap_grid$min_dist
+    ) |>
+      dplyr::bind_cols(
+        probe_umap_geometry(
+          c0_umap_reduced_embeddings_fp32,
+          dplyr::filter(c0_eval_gold_pairs, tier == 1L)
+        )
+      ),
+    pattern  = map(c0_umap_reduced_embeddings_fp32, c0_umap_grid),
+    packages = c("tidyverse")
+  ),
+
   tar_target(
     c0_f16_quantization_probe,
     probe_f16_quantization(c0_us_embeddings, c0_eval_gold_pairs),

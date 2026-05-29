@@ -1063,5 +1063,95 @@ probe_f16_quantization <- function(embeddings, eval_gold_pairs) {
 }
 
 
+#' Probe UMAP-reduced embedding geometry on the gold eval pool
+#'
+#' Euclidean analog of `probe_f16_quantization()`. UMAP output is not
+#' L2-normalised so cosine on it is not meaningful; Euclidean matches both
+#' the inline notebook helper this replaces and how HDBSCAN consumes the
+#' reduced space downstream via `cluster_reduced_embeddings_hdbscan()`.
+#' Sign convention is flipped relative to the cosine probe so
+#' "separation > 0" still means "act-level structure preserved".
+#'
+#' Metrics:
+#'   - top1_nn_same_act_rate: for each eval name in an act with >= 2
+#'     members, is its top-1 nearest neighbour (by Euclidean distance,
+#'     excluding itself) tagged with the same gold act?
+#'   - separation: median between-act pairwise distance MINUS median
+#'     within-act pairwise distance. Positive = acts more compact within
+#'     than between, i.e. structure preserved.
+#'
+#' Caller controls tier filtering (matching the existing
+#' `c0_f16_quantization_probe_tier1` pattern in `_targets.R`); this
+#' function filters `!ambiguous` internally to match
+#' `probe_f16_quantization()`.
+#'
+#' @param reduced Numeric matrix from `umap_reduce_embeddings()`. Rownames
+#'   must be measure_name strings.
+#' @param eval_gold_pairs Output of `build_c0_eval_gold_pairs()`,
+#'   optionally pre-filtered by tier.
+#' @return One-row tibble: top1_nn_same_act_rate,
+#'   median_within_act_distance, median_between_act_distance, separation,
+#'   n_eval_names, n_eval_acts.
+#' @export
+probe_umap_geometry <- function(reduced, eval_gold_pairs) {
+
+  unamb <- eval_gold_pairs |>
+    dplyr::filter(!ambiguous) |>
+    dplyr::distinct(measure_name, gold_act_name)
+
+  shared <- intersect(rownames(reduced), unamb$measure_name)
+  if (length(shared) < 2L) {
+    return(tibble::tibble(
+      top1_nn_same_act_rate       = NA_real_,
+      median_within_act_distance  = NA_real_,
+      median_between_act_distance = NA_real_,
+      separation                  = NA_real_,
+      n_eval_names                = length(shared),
+      n_eval_acts                 = 0L
+    ))
+  }
+
+  d <- as.matrix(stats::dist(reduced[shared, , drop = FALSE],
+                             method = "euclidean"))
+
+  label_lookup <- stats::setNames(unamb$gold_act_name, unamb$measure_name)
+  labels <- label_lookup[shared]
+
+  # Top-1 NN restricted to names in acts with >= 2 members so the metric is
+  # well-defined (a singleton act can never produce a same-act NN).
+  act_sizes <- table(labels)
+  evaluable <- labels %in% names(act_sizes)[act_sizes >= 2L]
+
+  diag(d) <- Inf
+  nn_idx <- apply(d, 1L, which.min)
+  nn_labels <- labels[nn_idx]
+  top1_rate <- if (any(evaluable)) {
+    mean(nn_labels[evaluable] == labels[evaluable])
+  } else NA_real_
+
+  # Restore diagonal for within/between accounting.
+  diag(d) <- 0
+  upper <- upper.tri(d)
+  pair_d <- d[upper]
+  pair_same_act <- outer(labels, labels, FUN = "==")[upper]
+
+  within  <- pair_d[pair_same_act]
+  between <- pair_d[!pair_same_act]
+
+  median_within  <- if (length(within)  > 0L) stats::median(within)  else NA_real_
+  median_between <- if (length(between) > 0L) stats::median(between) else NA_real_
+  separation     <- median_between - median_within
+
+  tibble::tibble(
+    top1_nn_same_act_rate       = top1_rate,
+    median_within_act_distance  = median_within,
+    median_between_act_distance = median_between,
+    separation                  = separation,
+    n_eval_names                = length(shared),
+    n_eval_acts                 = dplyr::n_distinct(labels)
+  )
+}
+
+
 # %||% is from rlang via tidyverse but we may not have it loaded directly.
 `%||%` <- function(a, b) if (is.null(a)) b else a
