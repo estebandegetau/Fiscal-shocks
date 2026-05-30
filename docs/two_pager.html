@@ -2,13 +2,19 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.8.27">
+<meta name="generator" content="quarto-1.9.37">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Esteban Degetau">
+<meta name="author" content="Agustín Samano">
+<meta name="keywords" content="Fiscal policy, AI for social science">
 
 <title>two_pager</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -51,15 +57,18 @@ div.csl-indent {
 <meta name="quarto:offset" content="../">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-06b787a0ed8c4f8090820bc5bd1fe0b9.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-eea6484ff4744853cd2c770488481bc3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -91,160 +100,226 @@ div.csl-indent {
 
 </head>
 
-<body class="nav-sidebar floating slimcontent quarto-light">
+<body class="quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
 
 <div id="quarto-search-results"></div>
-  <header id="quarto-header" class="headroom fixed-top quarto-banner">
-  <nav class="quarto-secondary-nav">
-    <div class="container-fluid d-flex">
-      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
-        <i class="bi bi-layout-text-sidebar-reverse"></i>
-      </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/proposal.html">Docs</a></li><li class="breadcrumb-item"><a href="../docs/two_pager.html">Motivation</a></li></ol></nav>
-        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
-        </a>
-      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
-        <i class="bi bi-search"></i>
-      </button>
-    </div>
-  </nav>
-</header>
 <!-- content -->
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
-    <div class="quarto-title column-body"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/proposal.html">Docs</a></li><li class="breadcrumb-item"><a href="../docs/two_pager.html">Motivation</a></li></ol></nav>
+    <div class="quarto-title column-body">
       
             <p class="subtitle lead">Concept Note</p>
                       </div>
   </div>
     
-  
+  <div class="quarto-title-meta-author">
+    <div class="quarto-title-meta-heading">Authors</div>
+    <div class="quarto-title-meta-heading">Affiliation</div>
+    
+      <div class="quarto-title-meta-contents">
+      <p class="author">Esteban Degetau <a href="mailto:estebandegetau@gmail.com" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+    </div>
+    <div class="quarto-title-meta-contents">
+          <p class="affiliation">
+              World Bank
+            </p>
+        </div>
+      <div class="quarto-title-meta-contents">
+      <p class="author">Agustín Samano <a href="mailto:asamanopenaloza@worldbank.org" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+    </div>
+    <div class="quarto-title-meta-contents">
+          <p class="affiliation">
+              World Bank
+            </p>
+        </div>
+    </div>
+
   <div class="quarto-title-meta">
 
-      
+        
     
       
     </div>
     
+
+  <div>
+    <div class="keywords">
+      <div class="block-title">Keywords</div>
+      <p>Fiscal policy, AI for social science</p>
+    </div>
+  </div>
   
   </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
-    <div class="pt-lg-2 mt-2 text-left sidebar-header">
-    <div class="sidebar-title mb-0 py-0">
-      <a href="../">Scaling Fiscal Shocks</a> 
-    </div>
-      </div>
-        <div class="mt-2 flex-shrink-0 align-items-center">
-        <div class="sidebar-search">
-        <div id="quarto-search" class="" title="Search"></div>
-        </div>
-        </div>
-    <div class="sidebar-menu-container"> 
-    <ul class="list-unstyled mt-1">
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../index.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scaling Narrative Fiscal Shock Identification with LLMs</span></a>
-  </div>
-</li>
-        <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
- <span class="menu-text">Docs</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../docs/proposal.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scaling Narrative Fiscal Shock Identification with LLMs</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../docs/two_pager.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Motivation</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-        <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
- <span class="menu-text">Notebooks</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/review_model_a.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Model A Evaluation: Act Detection</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/review_model_b.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Model B Evaluation: Motivation Classification</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/review_training_data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Training Data Quality Review</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/test_text_extraction.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">PDF Extraction Quality Test</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/verify_body.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Document Extraction Verification: <code>r params$country</code></span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-        <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
- <span class="menu-text">Reports</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reports/20260117.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Phase 0 Progress Report: Data Extraction and Validation</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reports/20260121-model-a.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Model A Progress Report: Automated Detection of Fiscal Policy Acts</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-    </ul>
-    </div>
-</nav>
-<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         
-    <div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="two_pager.pdf"><i class="bi bi-file-pdf"></i>Typst</a></li></ul></div><div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></div>
+    <div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></div>
 <!-- main -->
 <main class="content quarto-banner-title-block page-columns page-full" id="quarto-document-content">
+
 
 
 
@@ -259,31 +334,31 @@ div.csl-indent {
 <div class="no-row-height column-margin column-container"><div id="fn1"><p><sup>1</sup>&nbsp;See for example <span class="citation" data-cites="mertens2013">Mertens and Ravn (<a href="#ref-mertens2013" role="doc-biblioref">2013</a>)</span> and <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span></p></div></div><p>The United States is the only country where this has been done systematically, through the “narrative approach” pioneered by <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span>. Their method uses historical documents—budget speeches, economic reports, legislative records—to identify why taxes or spending changed, and to distinguish exogenous shocks from policy actions responding to the business cycle.</p>
 <p>Replicating this approach manually is costly. For low- and middle-income countries, it has simply never been feasible.</p>
 <p><strong>Recent advances in Large Language Models (LLMs)</strong> make this possible for the first time. These models can read long historical documents, interpret motivations, and extract structured information at scale—opening the door to producing robust fiscal shock series for developing countries.</p>
-<p>This project proposes to build a <strong>validated, scalable LLM pipeline</strong> for fiscal shock identification, starting with Malaysia and extending across Southeast Asia.</p>
+<p>This project proposes to build a <strong>validated LLM-assisted methodology</strong> for fiscal shock identification, starting with Malaysia and extending across Southeast Asia.</p>
 </section>
 <section id="novelty-and-innovation" class="level2" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="novelty-and-innovation"><span class="header-section-number">2</span> Novelty and Innovation</h2>
-<section id="a.-a-us-trained-llm-core" class="level3">
-<h3 class="anchored" data-anchor-id="a.-a-us-trained-llm-core">A. A US-Trained LLM Core</h3>
-<p>The project begins by training and benchmarking an LLM on the US narrative corpus with Romer &amp; Romer’s original tax-shock labels. This ensures:</p>
+<section id="a.-a-us-validated-codebook-system" class="level3">
+<h3 class="anchored" data-anchor-id="a.-a-us-validated-codebook-system">A. A US-Validated Codebook System</h3>
+<p>The project develops 4 domain-specific codebooks (C1-C4) validated on 44 US fiscal acts with Romer &amp; Romer’s original labels using the Halterman &amp; Keith (2025) validation framework. This ensures:</p>
 <ul>
 <li>we anchor the method in a gold-standard dataset,</li>
-<li>we quantify model accuracy against known results,</li>
-<li>we avoid region-specific overfitting and ensure robustness.</li>
+<li>we quantify codebook accuracy against known results via rigorous behavioral testing,</li>
+<li>we design country-agnostic definitions that transfer across countries.</li>
 </ul>
-<p>This step is essential for <strong>credibility</strong>: the model must reproduce known US results before we trust it elsewhere.</p>
+<p>This step is essential for <strong>credibility</strong>: codebooks must demonstrate strong performance on US data before cross-country deployment.</p>
 </section>
-<section id="b.-a-scalable-pipeline-for-emerging-markets" class="level3">
-<h3 class="anchored" data-anchor-id="b.-a-scalable-pipeline-for-emerging-markets">B. A Scalable Pipeline for Emerging Markets</h3>
-<p>We adapt the US-trained model to Malaysia, where English-language archives are extensive. The pipeline automatically:</p>
+<section id="b.-transfer-learning-with-expert-validation" class="level3">
+<h3 class="anchored" data-anchor-id="b.-transfer-learning-with-expert-validation">B. Transfer Learning with Expert Validation</h3>
+<p>We deploy the US-validated codebooks to Malaysia, where English-language archives are extensive. The pipeline:</p>
 <ol type="1">
-<li>extracts narrative episodes where fiscal policy is discussed,</li>
-<li>classifies motivations using Romer &amp; Romer’s categories,</li>
-<li>identifies actual tax or spending changes, their timing, and magnitude,</li>
-<li>flags potential political or cyclical influences, and</li>
-<li>integrates human expert review at critical points.</li>
+<li>identifies fiscal measures meeting the “significant mention” rule (Codebook C1),</li>
+<li>classifies motivations using Romer &amp; Romer’s categories (Codebook C2),</li>
+<li>extracts implementation timing using the midpoint rule (Codebook C3),</li>
+<li>extracts fiscal impact magnitude (Codebook C4), and</li>
+<li>integrates systematic expert validation following Halterman &amp; Keith error analysis methodology.</li>
 </ol>
-<p>Once validated on Malaysia, the pipeline extends to Indonesia, Thailand, the Philippines, and Vietnam, with built-in multilingual translation capability.</p>
+<p>Once methodology is validated on Malaysia (estimated 20-40 acts, 1980-2022), the pipeline extends to Indonesia, Thailand, the Philippines, and Vietnam, with built-in multilingual capability.</p>
 </section>
 </section>
 <section id="project-outputs-june-2026" class="level2" data-number="3">
@@ -291,8 +366,8 @@ div.csl-indent {
 <section id="a.-new-data-assets" class="level3">
 <h3 class="anchored" data-anchor-id="a.-new-data-assets">A. New Data Assets</h3>
 <ul>
-<li>Narrative fiscal episode datasets for 5 Southeast Asian economies.</li>
-<li>Shock-event datasets identifying exogenous tax and spending changes: timing, size, and motivation.</li>
+<li>Narrative fiscal episode datasets for 5 Southeast Asian economies (estimated 20-60 acts per country depending on political stability and archive quality).</li>
+<li>Expert-validated shock-event datasets identifying exogenous tax and spending changes: timing, size, and motivation.</li>
 <li>Harmonized multi-country panel suitable for macro and micro analysis.</li>
 </ul>
 </section>
@@ -308,28 +383,32 @@ div.csl-indent {
 <h3 class="anchored" data-anchor-id="c.-tooling-and-capacity">C. Tooling and Capacity</h3>
 <ul>
 <li>A fully documented, open-source pipeline (R-based).</li>
-<li>Country-specific LLM prompts, rules, and evaluation protocols.</li>
+<li>Country-agnostic LLM codebooks, rules, and evaluation protocols.</li>
 <li>A tested architecture that can be extended to Africa, South Asia, and Latin America.</li>
 </ul>
 </section>
 </section>
 <section id="implementation-plan" class="level2" data-number="4">
 <h2 data-number="4" class="anchored" data-anchor-id="implementation-plan"><span class="header-section-number">4</span> Implementation Plan</h2>
-<section id="phase-0-us-benchmark-jan-2026" class="level3 unnumbered">
-<h3 class="unnumbered anchored" data-anchor-id="phase-0-us-benchmark-jan-2026">Phase 0 – US Benchmark (Jan 2026)</h3>
-<p>Reconstruct the US narrative corpus used by <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span>; train LLMs to identify fiscal acts, classify motivations, and extract timing/magnitude of shocks. Validate by testing against known labels.</p>
+<section id="phase-0-codebook-development-jan-2026" class="level3 unnumbered">
+<h3 class="unnumbered anchored" data-anchor-id="phase-0-codebook-development-jan-2026">Phase 0 – Codebook Development (Jan 2026)</h3>
+<p>Develop and validate 4 codebooks (C1-C4) on 44 US fiscal acts using the Halterman &amp; Keith framework: codebook preparation, behavioral testing, zero-shot evaluation, and error analysis. Validate performance against Romer &amp; Romer ground truth.</p>
 </section>
-<section id="phase-1-malaysia-pilot-feb-2026" class="level3 unnumbered">
-<h3 class="unnumbered anchored" data-anchor-id="phase-1-malaysia-pilot-feb-2026">Phase 1 – Malaysia Pilot (Feb 2026)</h3>
-<p>Deploy the pipeline, adapt models to local documents, and complete the first full narrative and shock-event datasets.</p>
+<section id="phase-1-us-full-production-jan-feb-2026" class="level3 unnumbered">
+<h3 class="unnumbered anchored" data-anchor-id="phase-1-us-full-production-jan-feb-2026">Phase 1 – US Full Production (Jan-Feb 2026)</h3>
+<p>Run validated codebooks on the full US document corpus. Compare end-to-end results against Romer &amp; Romer’s published shock series to confirm production readiness.</p>
 </section>
-<section id="phase-2-southeast-asia-scaling-june-2026" class="level3 unnumbered">
-<h3 class="unnumbered anchored" data-anchor-id="phase-2-southeast-asia-scaling-june-2026">Phase 2 – Southeast Asia Scaling (June 2026)</h3>
+<section id="phase-2-malaysia-pilot-feb-mar-2026" class="level3 unnumbered">
+<h3 class="unnumbered anchored" data-anchor-id="phase-2-malaysia-pilot-feb-mar-2026">Phase 2 – Malaysia Pilot (Feb-Mar 2026)</h3>
+<p>Deploy US-validated codebooks to Malaysia documents (1980-2022), generating candidate fiscal shock dataset. Engage local expert to validate outputs and assess cross-country transfer performance. Refine codebook definitions based on expert feedback.</p>
+</section>
+<section id="phase-3-southeast-asia-scaling-june-2026" class="level3 unnumbered">
+<h3 class="unnumbered anchored" data-anchor-id="phase-3-southeast-asia-scaling-june-2026">Phase 3 – Southeast Asia Scaling (June 2026)</h3>
 <p>Extend to Indonesia, Thailand, the Philippines, and Vietnam, incorporating expert review and news-based cross-checks.</p>
 </section>
 </section>
-<section id="risk-managemen" class="level2" data-number="5">
-<h2 data-number="5" class="anchored" data-anchor-id="risk-managemen"><span class="header-section-number">5</span> Risk Managemen</h2>
+<section id="risk-management" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="risk-management"><span class="header-section-number">5</span> Risk Management</h2>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 37%">
@@ -343,16 +422,24 @@ div.csl-indent {
 </thead>
 <tbody>
 <tr class="odd">
+<td>Limited training data (44 US acts)</td>
+<td>Few-shot learning; expert validation loop; focus on methodology over scale.</td>
+</tr>
+<tr class="even">
 <td>Weak or uneven archives</td>
 <td>Combine parliamentary, budget, and press sources; clearly document gaps.</td>
 </tr>
+<tr class="odd">
+<td>Cross-country transfer failure</td>
+<td>Expert validation quantifies performance; error analysis informs refinement.</td>
+</tr>
 <tr class="even">
 <td>LLM misclassification</td>
-<td>US benchmarking + targeted human review; conservative thresholds for exogeneity.</td>
+<td>US benchmarking + systematic expert review; conservative thresholds for exogeneity.</td>
 </tr>
 <tr class="odd">
 <td>Translation quality for non-English sources</td>
-<td>Dedicated translation stage; multilingual adaptation; manual review of samples.</td>
+<td>Native multilingual LLMs (Claude/GPT-4); manual review of samples.</td>
 </tr>
 <tr class="even">
 <td>Political bias in source documents</td>
@@ -373,7 +460,7 @@ div.csl-indent {
 </section>
 <section id="conclusion" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="conclusion">Conclusion</h2>
-<p>This project brings together frontier methodology, practical policy relevance, and global scalability. The US-benchmarked LLM pipeline ensures methodological rigor; the Malaysia pilot provides a clear proof of concept; and the multi-country rollout fills a large and longstanding data gap.</p>
+<p>This project brings together frontier methodology, practical policy relevance, and realistic scalability. The US-benchmarked codebook system (C1-C4) demonstrates the Halterman &amp; Keith validation framework applied to economic history; the Malaysia pilot tests cross-country transfer with expert validation; and the multi-country rollout provides methodology replicable beyond Southeast Asia. The contribution is methodological: showing country-agnostic codebooks can assist experts in fiscal shock identification, reducing effort from months to weeks, even with limited training data.</p>
 <div style="page-break-after: always;"></div>
 </section>
 <section id="references" class="level2 unnumbered">
@@ -392,7 +479,7 @@ Dube, Arindrajit, Daniele Girardi, Òscar Jordà, and Alan M. Taylor. n.d. <em><
 Mertens, Karel, and Morten O. Ravn. 2013. <span>“<a href="https://doi.org/10.1257/aer.103.4.1212">The Dynamic Effects of Personal and Corporate Income Tax Changes in the United States</a>.”</span> <em>American Economic Review</em> 103 (4): 1212–47.
 </div>
 <div id="ref-romer2010" class="csl-entry" role="listitem">
-Romer, Christina D, and David H Romer. 2010. <span>“<a href="https://doi.org/10.1257/aer.100.3.763">The Macroeconomic Effects of Tax Changes: Estimates Based on a New Measure of Fiscal Shocks</a>.”</span> <em>American Economic Review</em> 100 (3): 763–801.
+Romer, Christina D., and David H. Romer. 2010. <span>“<a href="https://doi.org/10.1257/aer.100.3.763">The Macroeconomic Effects of Tax Changes: Estimates Based on a New Measure of Fiscal Shocks</a>.”</span> <em>American Economic Review</em> 100 (3): 763–801.
 </div>
 <div id="ref-romer" class="csl-entry" role="listitem">
 ———. n.d. <em><a href="https://eml.berkeley.edu/~dromer/papers/nadraft609.pdf">A Narrative Analysis of Postwar Tax Changes</a></em>.
@@ -400,6 +487,19 @@ Romer, Christina D, and David H Romer. 2010. <span>“<a href="https://doi.org/1
 </div></section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
     const icon = "";
     const anchorJS = new window.AnchorJS();
     anchorJS.options = {

@@ -11,8 +11,8 @@ and Interchange DTD v1.2 20190208//EN" "JATS-archivearticle1.dtd">
 
 
 <title-group>
-<article-title>Scaling Narrative Fiscal Shock Identification with
-LLMs</article-title>
+<article-title>Scaling the Narrative Identification of Fiscal Changes
+using LLMs</article-title>
 </title-group>
 
 <contrib-group>
@@ -61,6 +61,13 @@ LLMs</article-title>
 <history></history>
 
 
+<abstract>
+Abstract goes here.
+</abstract>
+<kwd-group kwd-group-type="author">
+<kwd>Fiscal policy</kwd>
+<kwd>AI for social science</kwd>
+</kwd-group>
 
 
 

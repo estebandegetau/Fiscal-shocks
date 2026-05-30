@@ -2,14 +2,20 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.8.27">
+<meta name="generator" content="quarto-1.9.37">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="dcterms.date" content="2026-01-22">
+<meta name="author" content="Esteban Degetau">
+<meta name="author" content="Agustín Samano">
+<meta name="dcterms.date" content="2026-05-30">
+<meta name="keywords" content="Fiscal policy, AI for social science">
 
 <title>Scaling Narrative Fiscal Shock Identification with LLMs</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -52,15 +58,18 @@ div.csl-indent {
 <meta name="quarto:offset" content="../">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-06b787a0ed8c4f8090820bc5bd1fe0b9.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-eea6484ff4744853cd2c770488481bc3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -92,166 +101,232 @@ div.csl-indent {
 
 </head>
 
-<body class="nav-sidebar floating quarto-light">
+<body class="quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
 
 <div id="quarto-search-results"></div>
-  <header id="quarto-header" class="headroom fixed-top quarto-banner">
-  <nav class="quarto-secondary-nav">
-    <div class="container-fluid d-flex">
-      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
-        <i class="bi bi-layout-text-sidebar-reverse"></i>
-      </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/proposal.html">Docs</a></li><li class="breadcrumb-item"><a href="../docs/proposal.html">Scaling Narrative Fiscal Shock Identification with LLMs</a></li></ol></nav>
-        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
-        </a>
-      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
-        <i class="bi bi-search"></i>
-      </button>
-    </div>
-  </nav>
-</header>
 <!-- content -->
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
-    <div class="quarto-title column-body"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/proposal.html">Docs</a></li><li class="breadcrumb-item"><a href="../docs/proposal.html">Scaling Narrative Fiscal Shock Identification with LLMs</a></li></ol></nav>
+    <div class="quarto-title column-body">
       <h1 class="title">Scaling Narrative Fiscal Shock Identification with LLMs</h1>
             <p class="subtitle lead">Concept Note</p>
                       </div>
   </div>
     
-  
+  <div class="quarto-title-meta-author">
+    <div class="quarto-title-meta-heading">Authors</div>
+    <div class="quarto-title-meta-heading">Affiliation</div>
+    
+      <div class="quarto-title-meta-contents">
+      <p class="author">Esteban Degetau <a href="mailto:estebandegetau@gmail.com" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+    </div>
+    <div class="quarto-title-meta-contents">
+          <p class="affiliation">
+              World Bank
+            </p>
+        </div>
+      <div class="quarto-title-meta-contents">
+      <p class="author">Agustín Samano <a href="mailto:asamanopenaloza@worldbank.org" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+    </div>
+    <div class="quarto-title-meta-contents">
+          <p class="affiliation">
+              World Bank
+            </p>
+        </div>
+    </div>
+
   <div class="quarto-title-meta">
 
-      
+        
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">January 22, 2026</p>
+        <p class="date">May 30, 2026</p>
       </div>
     </div>
     
       
     </div>
     
+
+  <div>
+    <div class="keywords">
+      <div class="block-title">Keywords</div>
+      <p>Fiscal policy, AI for social science</p>
+    </div>
+  </div>
   
   </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
-    <div class="pt-lg-2 mt-2 text-left sidebar-header">
-    <div class="sidebar-title mb-0 py-0">
-      <a href="../">Scaling Fiscal Shocks</a> 
-    </div>
-      </div>
-        <div class="mt-2 flex-shrink-0 align-items-center">
-        <div class="sidebar-search">
-        <div id="quarto-search" class="" title="Search"></div>
-        </div>
-        </div>
-    <div class="sidebar-menu-container"> 
-    <ul class="list-unstyled mt-1">
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../index.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scaling Narrative Fiscal Shock Identification with LLMs</span></a>
-  </div>
-</li>
-        <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
- <span class="menu-text">Docs</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../docs/proposal.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Scaling Narrative Fiscal Shock Identification with LLMs</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../docs/two_pager.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Motivation</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-        <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
- <span class="menu-text">Notebooks</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/review_model_a.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Model A Evaluation: Act Detection</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/review_model_b.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Model B Evaluation: Motivation Classification</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/review_training_data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Training Data Quality Review</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/test_text_extraction.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">PDF Extraction Quality Test</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../notebooks/verify_body.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Document Extraction Verification: <code>r params$country</code></span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-        <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
- <span class="menu-text">Reports</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reports/20260117.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Phase 0 Progress Report: Data Extraction and Validation</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reports/20260121-model-a.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Model A Progress Report: Automated Detection of Fiscal Policy Acts</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-    </ul>
-    </div>
-</nav>
-<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         
-    <div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="proposal.pdf"><i class="bi bi-file-pdf"></i>Typst</a></li></ul></div><div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></div>
+    <div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></div>
 <!-- main -->
 <main class="content quarto-banner-title-block" id="quarto-document-content">
+
 
 
 
@@ -272,13 +347,13 @@ div.csl-indent {
 <p>The rise of <strong>Large Language Models (LLMs)</strong> offers a practical pathway to extend the narrative approach systematically to developing countries. Governments now publish large volumes of digitized legislative documents, budget speeches, and parliamentary transcripts, often in multiple languages. Manually processing these sources is infeasible; LLMs can drastically reduce the bottleneck <strong>if</strong> they are trained and validated against high-quality human benchmarks first.</p>
 <p>This project proposes to:</p>
 <ol type="1">
-<li><strong>Train and benchmark an LLM-assisted classifier on the US</strong> using the Romer &amp; Romer tax shock dataset and underlying narrative sources as labels and text.</li>
-<li><strong>Adapt and validate this trained system to Malaysia</strong> as a pilot country.</li>
+<li><strong>Develop and validate a codebook-based LLM system on the US</strong> using the Romer &amp; Romer tax shock dataset and the Halterman &amp; Keith (2025) validation framework.</li>
+<li><strong>Adapt and validate this system to Malaysia</strong> as a pilot country.</li>
 <li><strong>Scale to Indonesia, Thailand, the Philippines, and Vietnam</strong>, combining LLMs, multilingual translation, and human validation.</li>
 </ol>
 <p>The outputs will be:</p>
 <ol type="1">
-<li>A <strong>US-based benchmark module</strong>: LLM classifiers and extraction routines that can reproduce US narrative tax shocks from raw documents.</li>
+<li>A <strong>US-based benchmark module</strong>: Four validated codebooks (C1-C4) that can reproduce US narrative tax shocks from raw documents.</li>
 <li>A <strong>narrative episode dataset</strong> for each SEA country based on executive, legislative, and press documents.</li>
 <li>A <strong>shock-event dataset</strong> representing actual changes in fiscal liabilities or expenditure paths, classified into the <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span> motivation categories.</li>
 <li>A set of <strong>macro and firm-level impulse responses</strong> to fiscal shocks using local projections and modern difference-in-differences methods (LP-DiD).</li>
@@ -289,16 +364,16 @@ div.csl-indent {
 <h2 data-number="2" class="anchored" data-anchor-id="research-questions"><span class="header-section-number">2</span> Research Questions</h2>
 <p>The project focuses on four core questions:</p>
 <ol type="1">
-<li><p><strong>US Benchmarking / LLM Training:</strong> Can an LLM trained on the <strong>US narrative corpus</strong> and Romer &amp; Romer’s tax-shock labels reliably:</p>
+<li><p><strong>US Benchmarking / Codebook Validation:</strong> Can LLM codebooks validated on the <strong>US narrative corpus</strong> and Romer &amp; Romer’s tax-shock labels reliably:</p>
 <ul>
-<li>detect fiscal acts,</li>
+<li>identify fiscal measures meeting the “significant mention” rule,</li>
 <li>classify their motivations, and</li>
 <li>recover the timing and size of tax shocks closely enough to reproduce known US fiscal multipliers?</li>
 </ul></li>
-<li><p><strong>Measurement in Emerging Markets:</strong> Conditional on a successful US benchmark, can we construct reliable narrative-based fiscal shock series for Southeast Asian economies using the same LLM architecture, multilingual translation, and human validation?</p></li>
+<li><p><strong>Measurement in Emerging Markets:</strong> Conditional on a successful US benchmark, can we construct reliable narrative-based fiscal shock series for Southeast Asian economies using the same country-agnostic codebooks, multilingual translation, and human validation?</p></li>
 <li><p><strong>Validation and Transportability:</strong></p>
 <ul>
-<li>How closely do LLM-based classifications align with (i) expert assessments and (ii) contemporaneous news coverage in each country?</li>
+<li>How closely do codebook-based classifications align with (i) expert assessments and (ii) contemporaneous news coverage in each country?</li>
 <li>Are the identified exogenous shocks orthogonal to short-run macro conditions?</li>
 <li>How much degradation (if any) occurs when moving from US to Malaysia and from Malaysia to other SEA contexts?</li>
 </ul></li>
@@ -312,9 +387,9 @@ div.csl-indent {
 <section id="proposed-approach" class="level2" data-number="3">
 <h2 data-number="3" class="anchored" data-anchor-id="proposed-approach"><span class="header-section-number">3</span> Proposed Approach</h2>
 <p>We structure the work in <strong>three phases</strong>, with a deliberate <strong>Phase 0 on the US</strong> to de-risk the entire pipeline.</p>
-<section id="phase-0-us-training-and-benchmarking-2025" class="level3">
-<h3 class="anchored" data-anchor-id="phase-0-us-training-and-benchmarking-2025">Phase 0: US Training and Benchmarking (2025)</h3>
-<p><strong>Objective:</strong> Use the US as a sandbox to train and stress-test the LLM pipeline before touching emerging market data.</p>
+<section id="phase-0-us-codebook-development-and-benchmarking-january-2026" class="level3">
+<h3 class="anchored" data-anchor-id="phase-0-us-codebook-development-and-benchmarking-january-2026">Phase 0: US Codebook Development and Benchmarking (January 2026)</h3>
+<p><strong>Objective:</strong> Use the US as a sandbox to develop and validate LLM codebooks using the Halterman &amp; Keith (2025) framework before touching emerging market data.</p>
 <section id="data" class="level4">
 <h4 class="anchored" data-anchor-id="data">Data</h4>
 <ul>
@@ -337,34 +412,37 @@ div.csl-indent {
 <li>Reconstruct the narrative corpus used in <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span>.</li>
 <li>Align each tax act in the Romer &amp; Romer dataset with the source passages used to classify its motivation and revenue effects.</li>
 </ul></li>
-<li><p><strong>LLM-based Act Detection (Model A)</strong></p>
+<li><p><strong>Codebook C1: Measure Identification</strong></p>
 <ul>
-<li>Train models to detect <strong>candidate fiscal acts</strong> and relevant passages in long documents (e.g., ERP chapters, budget speeches).</li>
-<li>Use Romer &amp; Romer’s list of 50 significant postwar tax actions as positive labels and randomly sampled irrelevant passages as negatives.</li>
+<li>Develop a machine-readable codebook to identify <strong>fiscal measures</strong> meeting the R&amp;R “significant mention” rule.</li>
+<li>Validate using H&amp;K behavioral tests: legal outputs (100%), memorization (100%), order sensitivity (&lt;5%).</li>
+<li>Target: Recall ≥90%, Precision ≥80% on 44 labeled US acts.</li>
 </ul></li>
-<li><p><strong>LLM-based Motivation Classification (Model B)</strong></p>
+<li><p><strong>Codebook C2: Motivation Classification</strong></p>
 <p>Using <strong>Romer &amp; Romer’s four-way motivation</strong>: spending-driven, countercyclical, deficit-driven, long-run/structural,</p>
 <ul>
-<li><p>Fine-tune or instruction-tune a modest-size LLM (suitable for local hardware) on:</p>
-<ul>
-<li>input: narrative passage(s) around the tax change,</li>
-<li>output: motivation label + structured explanation.</li>
+<li>Develop a codebook with explicit criteria and positive/negative examples following H&amp;K format.</li>
+<li>Embed <strong>best-practice rules for narrative work</strong> (real-time sources, explicit criteria, documentation) from Romer &amp; Romer’s 2023 Presidential Address.</li>
+<li>Target: Weighted F1 ≥70%, Exogenous Precision ≥85%.</li>
 </ul></li>
-<li><p>Embed <strong>best-practice rules for narrative work</strong> (real-time sources, explicit criteria, documentation) from Romer &amp; Romer’s 2023 Presidential Address on the narrative approach.</p></li>
-</ul></li>
-<li><p><strong>Information Extraction for Timing and Magnitude (Model C)</strong></p>
+<li><p><strong>Codebooks C3 and C4: Timing and Magnitude Extraction</strong></p>
 <ul>
-<li><p>Train models (or rule-based + LLM hybrid) to extract:</p>
-<ul>
-<li>quarter of change in liabilities,</li>
-<li>present-value quarter,</li>
-<li>revenue impact (baseline and present value).</li>
+<li><strong>C3 (Timing)</strong>: Extract implementation quarter(s) using R&amp;R midpoint rule. Target: Exact quarter ≥85%, ±1 quarter ≥95%.</li>
+<li><strong>C4 (Magnitude)</strong>: Extract fiscal impact in billions USD. Target: MAPE &lt;30%, Sign accuracy ≥95%.</li>
+<li>Compare extracted values with Romer &amp; Romer’s act-quarter series.</li>
 </ul></li>
-<li><p>Compare extracted values with Romer &amp; Romer’s act-quarter series.</p></li>
+<li><p><strong>H&amp;K Validation Pipeline</strong></p>
+<p>Each codebook passes through the Halterman &amp; Keith 5-stage framework:</p>
+<ul>
+<li><strong>S0</strong>: Codebook preparation (YAML definitions, examples)</li>
+<li><strong>S1</strong>: Behavioral tests (sanity checks)</li>
+<li><strong>S2</strong>: Zero-shot evaluation (LOOCV on 44 US acts)</li>
+<li><strong>S3</strong>: Error analysis (failure mode identification)</li>
+<li><strong>S4</strong>: Fine-tuning (last resort, avoided to preserve cross-country transferability)</li>
 </ul></li>
 <li><p><strong>US Back-Testing</strong></p>
 <ul>
-<li><p>Re-estimate US tax multipliers using only <strong>LLM-generated</strong> episodes and shocks:</p>
+<li><p>Re-estimate US tax multipliers using only <strong>codebook-generated</strong> episodes and shocks:</p>
 <ul>
 <li>aggregate, exogenous tax changes à la <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span>,</li>
 <li>dynamic effects via local projections.</li>
@@ -374,15 +452,15 @@ div.csl-indent {
 <li>sign and timing match the original estimates,</li>
 <li>magnitudes are within acceptable bands (e.g., ±20–30%).</li>
 </ul></li>
-<li><p>This gives a <strong>quantitative yardstick</strong> for “good enough” LLM performance.</p></li>
+<li><p>This gives a <strong>quantitative yardstick</strong> for “good enough” codebook performance.</p></li>
 </ul></li>
 </ol>
-<p>Deliverable of Phase 0: an <strong>audited, documented LLM toolkit</strong> that can (i) reconstruct the US series reasonably well and (ii) be ported to other countries with known limitations.</p>
+<p>Deliverable of Phase 0: <strong>Four validated codebooks (C1-C4)</strong> that can (i) reconstruct the US series reasonably well and (ii) be deployed to other countries without retraining.</p>
 </section>
 </section>
-<section id="phase-1-malaysia-pilot-2025" class="level3">
-<h3 class="anchored" data-anchor-id="phase-1-malaysia-pilot-2025">Phase 1: Malaysia Pilot (2025)</h3>
-<p>Malaysia is the optimal starting point due to extensive English-language archives and relatively stable political institutions.</p>
+<section id="phase-1-malaysia-pilot-february-2026" class="level3">
+<h3 class="anchored" data-anchor-id="phase-1-malaysia-pilot-february-2026">Phase 1: Malaysia Pilot (February 2026)</h3>
+<p>Malaysia is the optimal starting point due to extensive English-language archives and relatively stable political institutions (1980-2022, estimated 20-40 fiscal acts).</p>
 <section id="data-sources" class="level4">
 <h4 class="anchored" data-anchor-id="data-sources">Data Sources</h4>
 <ul>
@@ -403,59 +481,48 @@ div.csl-indent {
 <li><p><strong>Shock Events (Action)</strong> Subset of episodes that result in measurable changes to fiscal liabilities/expenditures (legislated or executive). Output: a shock-event dataset for econometric analysis (timing, size, tax base, motivation).</p></li>
 </ol>
 </section>
-<section id="llm-pipeline-human-in-the-loop" class="level3">
-<h3 class="anchored" data-anchor-id="llm-pipeline-human-in-the-loop">LLM Pipeline (Human-in-the-Loop)</h3>
-<p>We reuse the <strong>US-trained models</strong> as the backbone and adapt them to Malaysia.</p>
-<p><strong>Step 1 — Ingestion &amp; Parsing</strong> Automatic collection and segmentation of documents into candidate narrative episodes, using the Act Detection model trained in Phase 0 and adjusted to Malaysian document formats.</p>
+<section id="codebook-pipeline-human-in-the-loop" class="level3">
+<h3 class="anchored" data-anchor-id="codebook-pipeline-human-in-the-loop">Codebook Pipeline (Human-in-the-Loop)</h3>
+<p>We deploy the <strong>US-validated codebooks</strong> and adapt them to Malaysia as needed.</p>
+<p><strong>Step 1 — Ingestion &amp; Parsing</strong> Automatic collection and segmentation of documents into candidate narrative episodes, using Codebook C1 (Measure Identification) adjusted to Malaysian document formats.</p>
 <p><strong>Step 2 — Translation</strong> LLM-based translation for non-English texts into English, with:</p>
 <ul>
 <li>consistent terminology for fiscal concepts,</li>
 <li>retention of uncertainty / qualifications in the original text.</li>
 </ul>
-<p><strong>Step 3 — Motivation Classification (US-initialized)</strong></p>
-<p>Each episode is classified into Romer &amp; Romer’s four motivation categories, using the US-trained classifier as a prior:</p>
+<p><strong>Step 3 — Motivation Classification (Codebook C2)</strong></p>
+<p>Each identified measure is classified into Romer &amp; Romer’s four motivation categories using the US-validated C2 codebook:</p>
 <ul>
 <li>Spending-driven</li>
 <li>Countercyclical</li>
 <li>Deficit-driven</li>
 <li>Long-run/structural</li>
 </ul>
-<p>The LLM produces:</p>
+<p>The codebook produces:</p>
 <ul>
 <li>a proposed label,</li>
 <li>a short justification using explicit criteria (e.g., “responding to current macro weakness” vs “paying for a new program”),</li>
 <li>a confidence score,</li>
 <li>an “inconsistency flag” comparing <strong>stated motives</strong> (in-text) to <strong>inferred motives</strong> (based on macro context).</li>
 </ul>
-<p><strong>Step 4 — Domain Adaptation &amp; Human Validation</strong></p>
+<p><strong>Step 4 — Expert Validation &amp; Codebook Adaptation</strong></p>
+<p>Following the H&amp;K S3 error analysis methodology:</p>
 <ul>
-<li><p>Draw stratified samples by:</p>
-<ul>
-<li>label,</li>
-<li>model confidence,</li>
-<li>time period,</li>
-<li>type of document.</li>
-</ul></li>
+<li><p>Draw stratified samples by label, confidence, time period, and document type.</p></li>
 <li><p>Local experts review and re-label:</p>
 <ul>
 <li>obvious misclassifications (e.g., misreading of local institutional language),</li>
 <li>ambiguous cases (e.g., mixed motivations).</li>
 </ul></li>
-<li><p>Use these corrections to:</p>
+<li><p>Use corrections to:</p>
 <ul>
-<li>update prompts and decision rules,</li>
-<li>optionally fine-tune the model on Malaysia-specific examples (few-shot adaptation).</li>
+<li>update codebook definitions (S0 revision),</li>
+<li>add Malaysia-specific examples to clarifications.</li>
 </ul></li>
 </ul>
-<p><strong>Step 5 — Shock Identification</strong></p>
+<p><strong>Step 5 — Timing and Magnitude Extraction (Codebooks C3 &amp; C4)</strong></p>
 <ul>
-<li><p>Cross-walk narrative episodes with:</p>
-<ul>
-<li>actual legislation,</li>
-<li>implementation regulations,</li>
-<li>budget tables.</li>
-</ul></li>
-<li><p>Code whether and when <strong>tax/spending liabilities</strong> actually change:</p>
+<li><p>Apply C3 (Timing) and C4 (Magnitude) codebooks to extract:</p>
 <ul>
 <li>change in liabilities (quarter, size, tax base),</li>
 <li>present value of announced changes,</li>
@@ -463,19 +530,20 @@ div.csl-indent {
 </ul></li>
 </ul>
 </section>
-<section id="phase-2-extension-to-indonesia-thailand-the-philippines-vietnam-20252026" class="level3">
-<h3 class="anchored" data-anchor-id="phase-2-extension-to-indonesia-thailand-the-philippines-vietnam-20252026">Phase 2: Extension to Indonesia, Thailand, the Philippines, Vietnam (2025–2026)</h3>
+<section id="phase-2-extension-to-indonesia-thailand-the-philippines-vietnam-june-2026" class="level3">
+<h3 class="anchored" data-anchor-id="phase-2-extension-to-indonesia-thailand-the-philippines-vietnam-june-2026">Phase 2: Extension to Indonesia, Thailand, the Philippines, Vietnam (June 2026)</h3>
 <ul>
-<li><p>Apply the same pipeline, with:</p>
+<li><p>Apply the same codebook pipeline, with:</p>
 <ul>
 <li>country-specific corpus discovery and scraping,</li>
 <li>language adaptation (translation and terminology),</li>
 <li>targeted human validation in each country.</li>
 </ul></li>
-<li><p>Leverage <strong>transfer learning</strong>:</p>
+<li><p>Leverage <strong>country-agnostic codebook design</strong>:</p>
 <ul>
-<li>US → Malaysia serves as the main calibration jump,</li>
+<li>US → Malaysia serves as the main validation of cross-country transfer,</li>
 <li>Malaysia → other SEA countries leverages experience with mixed English/local language environments and similar fiscal institutions.</li>
+<li>Codebook definitions (S0) may be revised based on expert feedback, but core methodology remains unchanged.</li>
 </ul></li>
 </ul>
 </section>
@@ -483,10 +551,16 @@ div.csl-indent {
 <section id="validation" class="level2" data-number="4">
 <h2 data-number="4" class="anchored" data-anchor-id="validation"><span class="header-section-number">4</span> Validation</h2>
 <p>The project embeds a rigorous, multi-method validation strategy, now explicitly in <strong>two layers</strong>: US and SEA.</p>
-<section id="us-benchmark-validation" class="level3">
-<h3 class="anchored" data-anchor-id="us-benchmark-validation">1. US Benchmark Validation</h3>
+<section id="us-benchmark-validation-hk-framework" class="level3">
+<h3 class="anchored" data-anchor-id="us-benchmark-validation-hk-framework">1. US Benchmark Validation (H&amp;K Framework)</h3>
 <ul>
-<li><p>Compare LLM-derived US shocks to Romer &amp; Romer’s original series:</p>
+<li><p>Apply Halterman &amp; Keith 5-stage validation to each codebook:</p>
+<ul>
+<li><strong>S1</strong>: Behavioral tests (legal outputs, memorization, order sensitivity)</li>
+<li><strong>S2</strong>: Zero-shot evaluation via LOOCV on 44 US acts</li>
+<li><strong>S3</strong>: Error analysis identifying systematic failure patterns</li>
+</ul></li>
+<li><p>Compare codebook-derived US shocks to Romer &amp; Romer’s original series:</p>
 <ul>
 <li>confusion matrix for motivation labels,</li>
 <li>distribution of timing errors (quarter misalignment),</li>
@@ -497,15 +571,16 @@ div.csl-indent {
 <li>local projections for GDP, investment, and unemployment,</li>
 <li>exogenous tax changes only.</li>
 </ul></li>
-<li><p>Require that impulse response functions are <strong>qualitatively identical</strong> and <strong>quantitatively close</strong> to original published estimates before deploying the model to SEA.</p></li>
+<li><p>Require that impulse response functions are <strong>qualitatively identical</strong> and <strong>quantitatively close</strong> to original published estimates before deploying codebooks to SEA.</p></li>
 </ul>
 </section>
-<section id="expert-review-in-sea" class="level3">
-<h3 class="anchored" data-anchor-id="expert-review-in-sea">2. Expert Review in SEA</h3>
+<section id="expert-review-in-sea-hk-s3-error-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="expert-review-in-sea-hk-s3-error-analysis">2. Expert Review in SEA (H&amp;K S3 Error Analysis)</h3>
 <ul>
 <li>Engage World Bank economists (including KL office) and local experts.</li>
 <li>Evaluate a stratified sample of episodes and shocks in each country.</li>
-<li>Document disagreements systematically to refine classification rules and prompts.</li>
+<li>Document disagreements systematically using H&amp;K error taxonomy to refine codebook definitions.</li>
+<li>Target: Expert agreement ≥80% on measure identification, ≥70% on motivation classification.</li>
 </ul>
 </section>
 <section id="news-based-cross-validation" class="level3">
@@ -526,7 +601,7 @@ div.csl-indent {
 <li>Test correlation of “exogenous” shocks with real-time macro indicators (GDP, unemployment, inflation).</li>
 <li>Exogenous shocks should show weak contemporaneous correlation with short-run macro conditions; if not, re-examine classification.</li>
 </ul>
-<p>This two-tier validation (US + SEA) turns the US into a <strong>truth-benchmark</strong> and SEA into the <strong>test of portability</strong>.</p>
+<p>This two-tier validation (US + SEA) turns the US into a <strong>truth-benchmark</strong> and SEA into the <strong>test of codebook portability</strong>.</p>
 </section>
 </section>
 <section id="empirical-analysis" class="level2" data-number="5">
@@ -566,32 +641,27 @@ div.csl-indent {
 </section>
 <section id="outputs-and-deliverables" class="level2" data-number="6">
 <h2 data-number="6" class="anchored" data-anchor-id="outputs-and-deliverables"><span class="header-section-number">6</span> Outputs and Deliverables</h2>
-<section id="by-mid-2025-us-benchmark" class="level3">
-<h3 class="anchored" data-anchor-id="by-mid-2025-us-benchmark">By mid-2025 (US Benchmark)</h3>
+<section id="by-january-2026-us-benchmark" class="level3">
+<h3 class="anchored" data-anchor-id="by-january-2026-us-benchmark">By January 2026 (US Benchmark)</h3>
 <ul>
 <li><p>Reconstructed US narrative corpus aligned with Romer &amp; Romer tax acts.</p></li>
-<li><p>Trained and documented LLM modules:</p>
+<li><p>Four validated codebooks (C1-C4) with H&amp;K documentation:</p>
 <ul>
-<li>act detection,</li>
-<li>motivation classification,</li>
-<li>timing and magnitude extraction.</li>
+<li>C1: Measure identification,</li>
+<li>C2: Motivation classification,</li>
+<li>C3: Timing extraction,</li>
+<li>C4: Magnitude extraction.</li>
 </ul></li>
-<li><p>Quantitative comparison of LLM-based vs original US tax multipliers.</p></li>
+<li><p>Quantitative comparison of codebook-based vs original US tax multipliers.</p></li>
 </ul>
 </section>
-<section id="by-december-2025-malaysia-pilot-completion" class="level3">
-<h3 class="anchored" data-anchor-id="by-december-2025-malaysia-pilot-completion">By December 2025 (Malaysia Pilot Completion)</h3>
+<section id="by-february-2026-malaysia-pilot-completion" class="level3">
+<h3 class="anchored" data-anchor-id="by-february-2026-malaysia-pilot-completion">By February 2026 (Malaysia Pilot Completion)</h3>
 <ul>
-<li>Fully operational R-based and LLM-assisted pipeline for Malaysia.</li>
+<li>Fully operational R-based and codebook-assisted pipeline for Malaysia.</li>
 <li>Narrative episode dataset (Malaysia).</li>
 <li>First version of the shock-event dataset (Malaysia).</li>
-</ul>
-</section>
-<section id="by-early-february-2026-pilot-validation" class="level3">
-<h3 class="anchored" data-anchor-id="by-early-february-2026-pilot-validation">By early February 2026 (Pilot Validation)</h3>
-<ul>
-<li>Expert- and news-based validation for a subset of Malaysian episodes and shocks.</li>
-<li>Technical documentation and reproducible code for the Malaysia pipeline.</li>
+<li>Expert validation report with agreement metrics and error analysis.</li>
 </ul>
 </section>
 <section id="by-june-2026-core-dataset-completion" class="level3">
@@ -599,7 +669,7 @@ div.csl-indent {
 <ul>
 <li>Narrative and shock-event datasets for: Malaysia, Indonesia, Thailand, the Philippines, Vietnam.</li>
 <li>Harmonized multi-country episode and shock datasets.</li>
-<li>Fully validated motivation classification framework and LLM toolkit.</li>
+<li>Fully validated codebook framework (C1-C4) with country-specific adaptations documented.</li>
 <li>Public dissemination-ready code and documentation (subject to licensing/permissions).</li>
 </ul>
 </section>
@@ -608,11 +678,11 @@ div.csl-indent {
 <ul>
 <li><p>Macro-level impact study of tax and spending shocks in SEA.</p></li>
 <li><p>Firm-level impact study using LP-DiD.</p></li>
-<li><p>Methodological paper on <strong>LLM-assisted narrative identification</strong>, emphasizing:</p>
+<li><p>Methodological paper on <strong>codebook-assisted narrative identification</strong>, emphasizing:</p>
 <ul>
-<li>US benchmark reproduction,</li>
-<li>cross-country transportability,</li>
-<li>human-in-the-loop design.</li>
+<li>H&amp;K validation framework applied to economic history,</li>
+<li>cross-country transferability of country-agnostic codebooks,</li>
+<li>human-in-the-loop design with expert validation.</li>
 </ul></li>
 <li><p>Data package for public release (subject to permissions).</p></li>
 </ul>
@@ -641,12 +711,12 @@ div.csl-indent {
 <td>Dedicated translation stage; manual checks; standardized prompts and glossaries.</td>
 </tr>
 <tr class="odd">
-<td>LLM misclassification</td>
-<td>US-based benchmarking; human-in-the-loop refinement; conservative thresholds for exogeneity.</td>
+<td>Codebook misclassification</td>
+<td>H&amp;K validation framework; human-in-the-loop refinement; conservative thresholds for exogeneity.</td>
 </tr>
 <tr class="even">
 <td>Domain shift US → SEA</td>
-<td>Explicit diagnostics on model confidence, label drift, and validation error; country-specific fine-tuning where needed.</td>
+<td>Country-agnostic codebook design; codebook definition revision (S0) based on expert feedback; avoid fine-tuning to preserve transferability.</td>
 </tr>
 <tr class="odd">
 <td>Political bias in narrative documents</td>
@@ -663,11 +733,11 @@ div.csl-indent {
 <h2 data-number="8" class="anchored" data-anchor-id="policy-relevance-and-value-added-to-the-world-bank"><span class="header-section-number">8</span> Policy Relevance and Value Added to the World Bank</h2>
 <ul>
 <li>Fills critical data gaps for fiscal-policy modeling in major middle-income economies.</li>
-<li>Provides <strong>scalable infrastructure</strong> for narrative shock identification, with a <strong>US-validated LLM core</strong> exportable to other regions (Latin America, South Asia, Africa).</li>
+<li>Provides <strong>scalable infrastructure</strong> for narrative shock identification, with <strong>US-validated codebooks</strong> exportable to other regions (Latin America, South Asia, Africa).</li>
 <li>Enhances understanding of <strong>how fiscal policy affects private investment and firm behavior</strong>, central to the Bank’s structural reform and growth agenda.</li>
 <li>Supports better macroeconomic forecasting and policy advice in client countries by plugging a key missing input: credible exogenous fiscal shocks.</li>
 </ul>
-<p>The project also showcases responsible, auditable use of LLMs for applied economic research—grounded in best-practice narrative methods —rather than opaque black-box automation.</p>
+<p>The project also showcases responsible, auditable use of LLMs for applied economic research—grounded in best-practice narrative methods (R&amp;R) and rigorous validation frameworks (H&amp;K)—rather than opaque black-box automation.</p>
 </section>
 <section id="references" class="level2 unnumbered">
 
@@ -681,11 +751,24 @@ div.csl-indent {
 Mertens, Karel, and Morten O. Ravn. 2013. <span>“<a href="https://doi.org/10.1257/aer.103.4.1212">The Dynamic Effects of Personal and Corporate Income Tax Changes in the United States</a>.”</span> <em>American Economic Review</em> 103 (4): 1212–47.
 </div>
 <div id="ref-romer2010" class="csl-entry" role="listitem">
-Romer, Christina D, and David H Romer. 2010. <span>“<a href="https://doi.org/10.1257/aer.100.3.763">The Macroeconomic Effects of Tax Changes: Estimates Based on a New Measure of Fiscal Shocks</a>.”</span> <em>American Economic Review</em> 100 (3): 763–801.
+Romer, Christina D., and David H. Romer. 2010. <span>“<a href="https://doi.org/10.1257/aer.100.3.763">The Macroeconomic Effects of Tax Changes: Estimates Based on a New Measure of Fiscal Shocks</a>.”</span> <em>American Economic Review</em> 100 (3): 763–801.
 </div>
 </div></section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
     const icon = "";
     const anchorJS = new window.AnchorJS();
     anchorJS.options = {

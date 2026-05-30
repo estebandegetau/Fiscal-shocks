@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Esteban Degetau">
+<meta name="author" content="Agustín Samano">
+<meta name="dcterms.date" content="2026-05-30">
+<meta name="keywords" content="Fiscal policy, AI for social science">
+
+<title>Working with Claude Code in This Project</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-eea6484ff4744853cd2c770488481bc3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Working with Claude Code in This Project</h1>
+            <p class="subtitle lead">An onboarding guide for human researchers</p>
+                      </div>
+  </div>
+    
+  <div class="quarto-title-meta-author">
+    <div class="quarto-title-meta-heading">Authors</div>
+    <div class="quarto-title-meta-heading">Affiliation</div>
+    
+      <div class="quarto-title-meta-contents">
+      <p class="author">Esteban Degetau <a href="mailto:estebandegetau@gmail.com" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+    </div>
+    <div class="quarto-title-meta-contents">
+          <p class="affiliation">
+              World Bank
+            </p>
+        </div>
+      <div class="quarto-title-meta-contents">
+      <p class="author">Agustín Samano <a href="mailto:asamanopenaloza@worldbank.org" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+    </div>
+    <div class="quarto-title-meta-contents">
+          <p class="affiliation">
+              World Bank
+            </p>
+        </div>
+    </div>
+
+  <div class="quarto-title-meta">
+
+        
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">May 30, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+
+  <div>
+    <div class="keywords">
+      <div class="block-title">Keywords</div>
+      <p>Fiscal policy, AI for social science</p>
+    </div>
+  </div>
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        
+    <div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+
+<section id="why-this-document-exists" class="level2">
+<h2 class="anchored" data-anchor-id="why-this-document-exists">Why this document exists</h2>
+<p>This project uses Claude Code extensively: for writing R functions, managing a reproducible pipeline, developing LLM codebooks, and maintaining documentation. Claude Code can do most of the tasks involved in empirical research. The harder question is what it <em>should</em> do versus what the human researcher must own.</p>
+<p>This document answers that question for this project. It starts with principles, then maps those principles onto concrete systems we’ve built.</p>
+</section>
+<section id="sec-principles" class="level2">
+<h2 class="anchored" data-anchor-id="sec-principles">Part 1: Principles</h2>
+<section id="the-chain-of-human-ownership" class="level3">
+<h3 class="anchored" data-anchor-id="the-chain-of-human-ownership">The chain of human ownership</h3>
+<p>Four responsibilities belong to the human researcher. They form a chain: each one depends on the ones before it.</p>
+<p><strong>1. Meaning.</strong> The human both <em>receives</em> and <em>confers</em> meaning. Receiving: understanding why fiscal policy’s impact on growth, employment, and investment in emerging economies matters. Conferring: deciding that these numbers in the dataset <em>are</em> exogenous fiscal shocks that causally identify fiscal policy. An LLM can pattern-match against codebook definitions, but it does not <em>know</em> what exogeneity means for causal identification. It does not understand that getting this wrong invalidates the entire downstream analysis. Knowledge does not exist until <em>someone</em> claims it and can be held accountable for the claim.</p>
+<p><strong>2. Learning.</strong> The human must learn enough to own the work. This is not a moral imperative but a practical one. If you defer all intellectual engagement to the end, you face a misaligned incentive to share output you do not understand. The project infrastructure should be a commitment device that forces intellectual engagement at the right moments. Not everywhere, but at every point that is central to the contribution.</p>
+<p>A heuristic for deciding where to engage deeply: <strong>how central is the method to the research contribution?</strong> PDF extraction is instrumental; you can delegate it fully and verify outputs against your mental model of what well-extracted text looks like. But codebook design is the intellectual contribution of this project. You must understand in detail how and why the codebooks work, and when they might not. Delegate the instrumental. Own the core.</p>
+<p><strong>3. Credibility.</strong> The depth of your involvement determines the depth at which you can credibly defend your work. When a referee asks “why did you use a detection framing instead of topic classification for C1?”, you need to have <em>lived through</em> iteration 9’s catastrophic 29.1% recall, understood the dominant-topic heuristic diagnosis, and made the decision to reframe. You choose where to go deep and where to delegate, but you own the consequences of that choice.</p>
+<p><strong>4. Decision ownership.</strong> Claude can analyze, propose, challenge, and trace implications. But the commit (“we will do this, not that”) belongs to the human. Decisions are auditable in ways that judgment is not. The iteration log records every decision with a date, context, and human rationale. Someone can examine whether the decision was well-reasoned. The person who made the decision faces the consequences: if removing the enacted filter causes problems downstream, that is your problem to solve. Claude proposed it, you approved it, your name is on the paper.</p>
+</section>
+<section id="the-core-heuristic" class="level3">
+<h3 class="anchored" data-anchor-id="the-core-heuristic">The core heuristic</h3>
+<p><strong>AI owns tasks where errors are recoverable. Humans own tasks where errors compound silently.</strong></p>
+<p>Code has tests. Metrics can be recomputed. YAML can be re-validated. If Claude gets these wrong, you find out quickly and fix it cheaply.</p>
+<p>A bad research design does not throw an error. A wrong interpretation gets baked into the next iteration’s decision field and shapes all future work. A cost incurrence cannot be un-spent. The infrastructure we have built forces human involvement precisely at these high-consequence points.</p>
+</section>
+<section id="what-honest-research-with-ai-looks-like" class="level3">
+<h3 class="anchored" data-anchor-id="what-honest-research-with-ai-looks-like">What honest research with AI looks like</h3>
+<p>The heuristics we have built are mechanisms for honesty:</p>
+<ul>
+<li>The <strong>iteration log</strong> records failures, not just successes. Eleven iterations, eight of which failed.</li>
+<li>The <strong>delta log</strong> forces you to acknowledge when implementation contradicts your plan, rather than quietly drifting.</li>
+<li><strong>Strategy sync</strong> makes you justify decisions under adversarial questioning, not just rationalize them after the fact.</li>
+<li><strong>One change at a time</strong> prevents hiding behind a bundle of changes where you cannot tell what worked.</li>
+<li>The <strong>pre-flight checklist</strong> prevents running experiments on uncommitted code where you cannot reproduce the result.</li>
+</ul>
+<p>These are not efficiency tools. They are integrity infrastructure. They make it harder to do sloppy research, even accidentally.</p>
+</section>
+</section>
+<section id="sec-architecture" class="level2">
+<h2 class="anchored" data-anchor-id="sec-architecture">Part 2: Architecture</h2>
+<section id="the-strategy-document-as-constitution" class="level3">
+<h3 class="anchored" data-anchor-id="the-strategy-document-as-constitution">The strategy document as constitution</h3>
+<p><code>docs/strategy.md</code> is the single source of truth for research methodology. Every agent, skill, and review process references it. It specifies the four codebooks (C1–C4), the five-stage validation pipeline (S0–S3), success criteria, and implementation sequencing.</p>
+<p>The strategy document lives in a <strong>three-tier documentation system</strong> that enforces the separation between human specification and machine context:</p>
+<ul>
+<li><p><strong>Tier 1 (auto-update):</strong> <code>CLAUDE.md</code> files. These are execution context for Claude Code. Claude updates them directly when implementation changes make them stale. They track current status, file inventories, and target definitions.</p></li>
+<li><p><strong>Tier 2 (never auto-edit):</strong> <code>docs/strategy.md</code>, <code>docs/proposal.qmd</code>, <code>docs/two_pager.qmd</code>. These represent deliberate research design decisions by the human. Claude never edits them directly. Instead, bottom-up discoveries are logged as entries in <code>docs/deltas.md</code>, where they accumulate until the human reconciles them via <code>/strategy-sync</code>.</p></li>
+<li><p><strong>Tier 3 (ignore):</strong> Stable reference documents, generated artifacts, and infrastructure docs that rarely need updates.</p></li>
+</ul>
+<p><strong>Why this matters:</strong> The human owns the research design. The AI owns the execution context. Changes flow upward through the delta log, never through autonomous edits to the strategy.</p>
+</section>
+<section id="the-agent-system" class="level3">
+<h3 class="anchored" data-anchor-id="the-agent-system">The agent system</h3>
+<p>The project uses 10 specialized Claude Code agents in <code>.claude/agents/</code>, organized by function and deliberately constrained:</p>
+<p><strong>Read-only agents</strong> (cannot modify files):</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 35%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Agent</th>
+<th>Model</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>code-reviewer</code></td>
+<td>Haiku</td>
+<td>R code quality check</td>
+</tr>
+<tr class="even">
+<td><code>fiscal-policy-specialist</code></td>
+<td>Sonnet</td>
+<td>Romer &amp; Romer domain expert</td>
+</tr>
+<tr class="odd">
+<td><code>llm-eval-specialist</code></td>
+<td>Sonnet</td>
+<td>Halterman &amp; Keith evaluation expert</td>
+</tr>
+<tr class="even">
+<td><code>strategy-reviewer</code></td>
+<td>Sonnet</td>
+<td>Verify implementation matches strategy.md</td>
+</tr>
+<tr class="odd">
+<td><code>notebook-reviewer</code></td>
+<td>Sonnet</td>
+<td>Verify notebooks evaluate what they should</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Write-capable agents</strong> (can create and modify files):</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 35%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Agent</th>
+<th>Model</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>codebook-developer</code></td>
+<td>Sonnet</td>
+<td>Draft YAML codebooks, iterate on definitions</td>
+</tr>
+<tr class="even">
+<td><code>r-coder</code></td>
+<td>Sonnet</td>
+<td>Write R functions for the pipeline</td>
+</tr>
+<tr class="odd">
+<td><code>pipeline-manager</code></td>
+<td>Sonnet</td>
+<td>Manage targets pipeline definitions</td>
+</tr>
+<tr class="even">
+<td><code>doc-writer</code></td>
+<td>Sonnet</td>
+<td>Write Quarto documents</td>
+</tr>
+<tr class="odd">
+<td><code>document-extractor</code></td>
+<td>Haiku</td>
+<td>PDF text extraction</td>
+</tr>
+</tbody>
+</table>
+<p>Key design patterns:</p>
+<ul>
+<li><strong>Capability restriction matches role.</strong> A reviewer that can also edit files is a developer pretending to review. Read-only agents are explicitly limited to <code>Read, Grep, Glob</code>.</li>
+<li><strong>Model tiering.</strong> Haiku for cheap, narrow tasks (code review, PDF extraction). Sonnet for complex tasks requiring deeper reasoning.</li>
+<li><strong>Consultation pattern.</strong> The <code>strategy-reviewer</code> consults <code>fiscal-policy-specialist</code> and <code>llm-eval-specialist</code> rather than trying to be an expert in everything. Specialists advise; the reviewer synthesizes.</li>
+</ul>
+</section>
+<section id="the-skill-system" class="level3">
+<h3 class="anchored" data-anchor-id="the-skill-system">The skill system</h3>
+<p>Skills are procedures codified as prompts, invoked via slash commands. They are not about giving Claude new capabilities. They enforce a repeatable workflow and prevent the AI from skipping steps.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 27%">
+<col style="width: 51%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Skill</th>
+<th>Trigger</th>
+<th>What it enforces</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>/pre-flight</code></td>
+<td>Before <code>tar_make()</code></td>
+<td>7-check validation: git clean, target exists, dependencies current, codebook valid, API key set, cost estimate</td>
+</tr>
+<tr class="even">
+<td><code>/review-iteration</code></td>
+<td>After pipeline run</td>
+<td>Structured read-only diagnosis. Ends with “Do NOT propose code changes.”</td>
+</tr>
+<tr class="odd">
+<td><code>/log-iteration</code></td>
+<td>After discussing results</td>
+<td>Auto-gathers metadata (version, git hash, date), asks human for interpretation and decision, appends YAML entry</td>
+</tr>
+<tr class="even">
+<td><code>/doc-sync</code></td>
+<td>After significant changes</td>
+<td>Updates Tier 1 docs, logs deltas for Tier 2 docs. Nudges at 3+ unresolved deltas</td>
+</tr>
+<tr class="odd">
+<td><code>/strategy-sync</code></td>
+<td>At stage gates or 3+ deltas</td>
+<td>Adversarial reconciliation: Claude challenges, human justifies, rationale recorded</td>
+</tr>
+<tr class="even">
+<td><code>/progress-report</code></td>
+<td>For external communication</td>
+<td>Generates dated .qmd with auto-gathered state and terminology translation</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="the-pipeline" class="level3">
+<h3 class="anchored" data-anchor-id="the-pipeline">The pipeline</h3>
+<p>The project uses <code>{targets}</code> for reproducible data processing. Two rules are absolute:</p>
+<ol type="1">
+<li><p><strong>All data generation goes through the pipeline.</strong> No standalone scripts that create data files. No <code>saveRDS()</code> or <code>write_csv()</code> outside targets. This ensures reproducibility, caching, and lineage.</p></li>
+<li><p><strong>No autonomous API calls.</strong> Claude never runs <code>tar_make()</code> on API-calling targets without explicit human approval. Read-only operations (<code>tar_read()</code>, <code>tar_outdated()</code>, <code>tar_visnetwork()</code>) are always safe.</p></li>
+</ol>
+<p>The pipeline tracks codebook YAML files as <code>format = "file"</code> targets, so editing a codebook automatically invalidates all downstream results.</p>
+</section>
+</section>
+<section id="sec-iteration" class="level2">
+<h2 class="anchored" data-anchor-id="sec-iteration">Part 3: The Iteration Cycle</h2>
+<section id="the-daily-workflow" class="level3">
+<h3 class="anchored" data-anchor-id="the-daily-workflow">The daily workflow</h3>
+<p>The core loop for codebook development:</p>
+<pre><code>1. Edit codebook YAML (one component at a time)
+2. /pre-flight          → verify everything is ready
+3. tar_make(&lt;target&gt;)   → human authorizes the run
+4. /review-iteration    → structured diagnosis (read-only)
+5. Discuss results      → human interprets, decides next step
+6. /log-iteration       → record what happened and why
+7. Repeat or advance to next stage</code></pre>
+<p>Each step has a clear owner. Steps 1, 3, 5, and 7 are human decisions. Steps 2, 4, and 6 are Claude-assisted procedures that enforce rigor without taking control.</p>
+</section>
+<section id="the-documentation-lifecycle" class="level3">
+<h3 class="anchored" data-anchor-id="the-documentation-lifecycle">The documentation lifecycle</h3>
+<p>Implementation discoveries feed back into the research design through a structured cycle:</p>
+<pre><code>strategy.md (human intent)
+    ↓ implementation work
+docs/deltas.md (bottom-up discoveries via /doc-sync)
+    ↓ accumulation trigger (3+ entries or stage gate)
+/strategy-sync (adversarial reconciliation)
+    ↓ disposition: incorporate / acknowledge / defer
+strategy.md (updated) + audit trail (rationale recorded)</code></pre>
+<p>The strategy document stays alive rather than becoming a fossil from week one.</p>
+</section>
+<section id="exploration-vs.-production-runs" class="level3">
+<h3 class="anchored" data-anchor-id="exploration-vs.-production-runs">Exploration vs.&nbsp;production runs</h3>
+<p>Not all pipeline runs are equal. This project distinguishes:</p>
+<ul>
+<li><strong>Exploration runs</strong> use cheap models (Qwen, Llama via OpenRouter) to test infrastructure, debug pipeline mechanics, and estimate costs. Results are not reportable.</li>
+<li><strong>Production runs</strong> use the validated model (Claude Haiku) for formal evaluation. Results feed the iteration log and inform codebook decisions.</li>
+</ul>
+<p>The iteration log explicitly marks each run’s model and provider. A comment in <code>_targets.R</code> states: “Non-Anthropic providers are for cost/feasibility exploration only. Mixing providers invalidates stage comparability.”</p>
+</section>
+<section id="the-10-workflow-conventions" class="level3">
+<h3 class="anchored" data-anchor-id="the-10-workflow-conventions">The 10 workflow conventions</h3>
+<p>These rules prevent recurring friction patterns identified during codebook development. Each exists because we learned the hard way.</p>
+<ol type="1">
+<li><p><strong>Plan-first mode.</strong> When asked to diagnose or investigate, present findings and wait. Do not implement changes unless explicitly told to. <em>Why: prevents Claude from “fixing” things before the human understands the problem.</em></p></li>
+<li><p><strong>Root cause first.</strong> Identify the root cause before proposing a fix. Do not patch symptoms. <em>Why: iteration 3 taught us that a test failure was caused by bad codebook examples, not a test implementation bug. Fixing the test would have hidden the real problem.</em></p></li>
+<li><p><strong>Model ID validation.</strong> Verify model IDs against known valid values before writing them. <em>Why: stale model IDs cause silent pipeline failures that waste debugging time.</em></p></li>
+<li><p><strong>Prefer existing files.</strong> Search with Glob/Grep before creating new files. <em>Why: duplicate implementations create maintenance burden and inconsistency.</em></p></li>
+<li><p><strong>No autonomous API calls.</strong> Never run <code>tar_make()</code> on API-calling targets without explicit human approval. <em>Why: API calls cost money and change pipeline state. The human must authorize both.</em></p></li>
+<li><p><strong>Commit before pipeline runs.</strong> Ensure no uncommitted changes to codebook YAML or R functions before running. <em>Why: the iteration log stores git hashes. Uncommitted changes break reproducibility.</em></p></li>
+<li><p><strong>One change at a time.</strong> Change one codebook component per iteration. <em>Why: makes the iteration log interpretable and supports ablation-style reasoning. If you change three things and recall improves, you do not know which change helped.</em></p></li>
+<li><p><strong>Pipeline data validation.</strong> After <code>tar_make()</code> completes, verify result shape with <code>tar_read(&lt;target&gt;) |&gt; str()</code>. <em>Why: catches silent data issues before they propagate downstream.</em></p></li>
+<li><p><strong>Quarto render safety.</strong> Render specific files, never the full project. <em>Why: prevents accidentally re-rendering expensive notebooks or breaking unrelated documents.</em></p></li>
+<li><p><strong>Strategy reconciliation.</strong> After stage gate crossings or when 3+ unresolved deltas accumulate, run <code>/strategy-sync</code>. <em>Why: implementation drift is inevitable. This forces periodic reconciliation where Claude challenges your reasoning and you justify decisions on the record.</em></p></li>
+</ol>
+</section>
+<section id="multi-agent-workflow-patterns" class="level3">
+<h3 class="anchored" data-anchor-id="multi-agent-workflow-patterns">Multi-agent workflow patterns</h3>
+<p>Three reusable patterns for parallel agent coordination:</p>
+<ul>
+<li><p><strong>Pattern 1: Codebook review.</strong> Two specialist agents (<code>fiscal-policy-specialist</code> + <code>llm-eval-specialist</code>) review a proposed codebook change in parallel. The main session synthesizes their feedback for the user.</p></li>
+<li><p><strong>Pattern 2: Pre-pipeline validation.</strong> <code>pipeline-manager</code> + <code>strategy-reviewer</code> verify target readiness in parallel before the user runs <code>tar_make()</code>.</p></li>
+<li><p><strong>Pattern 3: Post-stage documentation.</strong> <code>doc-writer</code> + <code>notebook-reviewer</code> update and verify a notebook in parallel after a stage gate is crossed.</p></li>
+</ul>
+</section>
+</section>
+<section id="sec-reference" class="level2">
+<h2 class="anchored" data-anchor-id="sec-reference">Part 4: Reference</h2>
+<section id="key-file-locations" class="level3">
+<h3 class="anchored" data-anchor-id="key-file-locations">Key file locations</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>docs/strategy.md</code></td>
+<td>Authoritative methodology (Tier 2)</td>
+</tr>
+<tr class="even">
+<td><code>docs/deltas.md</code></td>
+<td>Bottom-up implementation discoveries</td>
+</tr>
+<tr class="odd">
+<td><code>CLAUDE.md</code></td>
+<td>Project instructions for Claude Code (Tier 1)</td>
+</tr>
+<tr class="even">
+<td><code>_targets.R</code></td>
+<td>Pipeline definition</td>
+</tr>
+<tr class="odd">
+<td><code>prompts/c1_measure_id.yml</code></td>
+<td>C1 codebook (active)</td>
+</tr>
+<tr class="even">
+<td><code>prompts/iterations/c1.yml</code></td>
+<td>C1 iteration log</td>
+</tr>
+<tr class="odd">
+<td><code>.claude/agents/</code></td>
+<td>Agent configurations</td>
+</tr>
+<tr class="even">
+<td><code>.claude/skills/</code></td>
+<td>Skill definitions</td>
+</tr>
+<tr class="odd">
+<td><code>R/</code></td>
+<td>Pipeline functions</td>
+</tr>
+<tr class="even">
+<td><code>notebooks/</code></td>
+<td>Analysis and verification notebooks</td>
+</tr>
+<tr class="odd">
+<td><code>reports/</code></td>
+<td>Dated progress reports</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="common-commands" class="level3">
+<h3 class="anchored" data-anchor-id="common-commands">Common commands</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Pipeline operations (safe, read-only)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">tar_read</span>(target_name)        <span class="co"># Read a target's output</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">tar_outdated</span>()               <span class="co"># Check what needs updating</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">tar_visnetwork</span>()             <span class="co"># Visualize dependency graph</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Pipeline execution (requires human authorization)</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="fu">tar_make</span>(target_name)        <span class="co"># Run a specific target</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Quarto (render specific files only)</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>quarto render notebooks<span class="sc">/</span>c1_measure_id.qmd</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="skill-quick-reference" class="level3">
+<h3 class="anchored" data-anchor-id="skill-quick-reference">Skill quick reference</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 40%">
+<col style="width: 59%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Command</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>/pre-flight</code></td>
+<td>Before any <code>tar_make()</code> on API-calling targets</td>
+</tr>
+<tr class="even">
+<td><code>/review-iteration</code></td>
+<td>After a pipeline stage completes, before deciding what to change</td>
+</tr>
+<tr class="odd">
+<td><code>/log-iteration</code></td>
+<td>After discussing results, to record the iteration</td>
+</tr>
+<tr class="even">
+<td><code>/doc-sync</code></td>
+<td>After significant implementation work</td>
+</tr>
+<tr class="odd">
+<td><code>/strategy-sync</code></td>
+<td>At stage gates or when 3+ deltas accumulate</td>
+</tr>
+<tr class="even">
+<td><code>/progress-report</code></td>
+<td>When preparing updates for external stakeholders</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="the-iteration-log-schema" class="level3">
+<h3 class="anchored" data-anchor-id="the-iteration-log-schema">The iteration log schema</h3>
+<p>Each entry in <code>prompts/iterations/&lt;codebook&gt;.yml</code> records:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">iteration</span><span class="kw">:</span><span class="at"> </span><span class="dv">11</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">codebook_version</span><span class="kw">:</span><span class="at"> </span><span class="st">"0.3.0"</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">date</span><span class="kw">:</span><span class="at"> </span><span class="st">"2026-03-03"</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">git_commit</span><span class="kw">:</span><span class="at"> </span><span class="st">"62495fb"</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">model</span><span class="kw">:</span><span class="at"> </span><span class="st">"claude-haiku-4-5-20251001"</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">provider</span><span class="kw">:</span><span class="at"> </span><span class="st">"anthropic"</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">stage</span><span class="kw">:</span><span class="at"> </span><span class="st">"s2"</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="fu">  changes</span><span class="kw">: </span><span class="ch">&gt;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    What changed in the codebook since last iteration.</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">results</span><span class="kw">:</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">overall_pass</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">metrics</span><span class="kw">:</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">metric</span><span class="kw">:</span><span class="at"> </span><span class="st">"combined_recall"</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">value</span><span class="kw">:</span><span class="at"> </span><span class="fl">0.8113</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">target</span><span class="kw">:</span><span class="at"> </span><span class="fl">0.9000</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">pass</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="fu">  interpretation</span><span class="kw">: </span><span class="ch">&gt;</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    What these results mean. Written by the human.</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a><span class="fu">  decision</span><span class="kw">: </span><span class="ch">&gt;</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    What to do next. Decided by the human.</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Every past codebook version is recoverable: <code>git show &lt;hash&gt;:prompts/c1_measure_id.yml</code>.</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/estebandegetau\.github\.io\/Fiscal-shocks\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
