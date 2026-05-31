@@ -29,7 +29,7 @@ website:
   sidebar: 
     style: "floating"
     search: true
-    title: "Scaling Fiscal Shocks"
+    title: "Scaling Narrative Identification"
     contents:
       - index.qmd
       - section: "Data Foundation"

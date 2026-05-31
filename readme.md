@@ -1,4 +1,4 @@
-# Fiscal Shocks: Scaling Narrative Fiscal Shock Identification with LLMs
+# Fiscal Shocks: Scaling the Narrative Identification of Fiscal Changes using LLMs
 
 Research data pipeline for identifying fiscal shocks (tax and spending policy changes) from historical US government documents (1946-present) using text extraction and LLM-based analysis.
 
