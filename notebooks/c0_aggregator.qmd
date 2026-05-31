@@ -87,7 +87,7 @@ The gap between rows 2 and 3 quantifies how much of the surface-form pool comes 
 
 ```{r}
 #| label: tbl-pool-summary
-#| tbl-cap: "Measure-name pool from c1_s2_results"
+#| tbl-cap: "**Measure-name pool**. Pool summary from c1_s2_results."
 
 tibble::tibble(
   Metric = c("Total FISCAL_MEASURE rows",
@@ -112,7 +112,7 @@ Surface-form variance per gold act — the magnitude of the canonicalization pro
 
 ```{r}
 #| label: fig-variance-per-act
-#| fig-cap: "Distinct C1 rank-1 surface forms per gold act (top 25 most fragmented)"
+#| fig-cap: "**Surface-form variance per act**. Distinct C1 rank-1 surface forms per gold act (top 25 most fragmented)."
 #| fig-width: 9
 #| fig-height: 6
 
@@ -137,7 +137,7 @@ variance_per_act |>
 
 ```{r}
 #| label: tbl-surface-forms-per-act
-#| tbl-cap: "Top 5 C1 surface forms per gold act (any rank). Group headers list the total number of distinct surface forms for the act; acts with fewer than five forms show all of them."
+#| tbl-cap: "**Surface-form detail per act**. Top 5 C1 surface forms per gold act (any rank). Group headers list the total number of distinct surface forms for the act; acts with fewer than five forms show all of them."
 
 chunk_to_gold <- c0_eval_gold_pairs |>
   dplyr::distinct(chunk_id, gold_act_name)
@@ -194,7 +194,7 @@ display_df |>
 
 ```{r}
 #| label: tbl-variance-summary
-#| tbl-cap: "Distribution of surface-form fragmentation across the 39 gold acts"
+#| tbl-cap: "**Fragmentation distribution**. Distribution of surface-form fragmentation across the 39 gold acts."
 
 variance_per_act |>
   dplyr::summarize(
@@ -217,7 +217,7 @@ The headline: even with R&R's well-known and well-named acts, the median act sur
 
 ```{r}
 #| label: fig-funnel-1980
-#| fig-cap: "Per-document funnel from C1 input to the rank-1 layer the heatmaps below operate on. Stage 1: chunks C1 reviewed, split into relevant (FISCAL_MEASURE emitted) and irrelevant. Stage 2: the relevant subset alone. Stage 3: all FISCAL_MEASURE occurrences (one per chunk × `measure_rank` pair) stacked by rank, with rank-1 marked in red. Stages 1-2 are counted in chunks; stage 3 in occurrences (so a single relevant chunk producing five measures contributes 1 to stage 2 and 5 to stage 3). The y-axis is free per facet to keep ERP-1980's small counts legible alongside Treasury's larger ones."
+#| fig-cap: "**Per-document funnel**. From C1 input to the rank-1 layer the heatmaps below operate on. Stage 1: chunks C1 reviewed, split into relevant (FISCAL_MEASURE emitted) and irrelevant. Stage 2: the relevant subset alone. Stage 3: all FISCAL_MEASURE occurrences (one per chunk × `measure_rank` pair) stacked by rank, with rank-1 marked in red. Stages 1-2 are counted in chunks; stage 3 in occurrences (so a single relevant chunk producing five measures contributes 1 to stage 2 and 5 to stage 3). The y-axis is free per facet to keep ERP-1980's small counts legible alongside Treasury's larger ones."
 #| fig-width: 9
 #| fig-height: 7
 #| warning: false
@@ -306,7 +306,7 @@ ggplot(funnel_df, aes(x = stage, y = n, fill = segment)) +
 
 ```{r}
 #| label: fig-jw-within-doc-1980
-#| fig-cap: "Pairwise Jaro-Winkler distance among rank-1 C1 measure names within each 1980 US document, one panel per series. Red cells (JW < 0.15) would merge under single-linkage at threshold 0.15; orange cells (0.15-0.30) are near-misses that did not merge but plausibly should have; blue cells (≥ 0.30) are distinct measures. Only the upper triangle is shown; the diagonal is JW = 0 by construction. The pool is each document's distinct C1 surface forms intersected with the rank-1 corpus pool (`rownames(c0_us_embeddings)`); non-rank-1 surface forms are omitted, matching @fig-emb-within-doc-1980."
+#| fig-cap: "**Within-document JW distance**. Pairwise Jaro-Winkler distance among rank-1 C1 measure names within each 1980 US document, one panel per series. Red cells (JW < 0.15) would merge under single-linkage at threshold 0.15; orange cells (0.15-0.30) are near-misses that did not merge but plausibly should have; blue cells (≥ 0.30) are distinct measures. Only the upper triangle is shown; the diagonal is JW = 0 by construction. The pool is each document's distinct C1 surface forms intersected with the rank-1 corpus pool (`rownames(c0_us_embeddings)`); non-rank-1 surface forms are omitted, matching @fig-emb-within-doc-1980."
 #| fig-subcap:
 #|   - "Economic Report of the President"
 #|   - "Budget"
@@ -386,7 +386,7 @@ The colour bands are tighter than the JW figure's because E5 packs everything in
 
 ```{r}
 #| label: fig-emb-within-doc-1980
-#| fig-cap: "Pairwise Euclidean distance among L2-normalised E5 embeddings of distinct C1 measure names within each 1980 US document, one panel per series. Bands at 0.40 / 0.45 / 0.50 correspond to corpus-wide Q25 / median / Q75. Only the upper triangle is shown; the diagonal is 0 by construction. Measure names without an embedding (i.e., never appeared at rank 1 in the corpus) are omitted."
+#| fig-cap: "**Within-document embedding distance**. Pairwise Euclidean distance among L2-normalised E5 embeddings of distinct C1 measure names within each 1980 US document, one panel per series. Bands at 0.40 / 0.45 / 0.50 correspond to corpus-wide Q25 / median / Q75. Only the upper triangle is shown; the diagonal is 0 by construction. Measure names without an embedding (i.e., never appeared at rank 1 in the corpus) are omitted."
 #| fig-subcap:
 #|   - "Economic Report of the President"
 #|   - "Budget"
@@ -480,7 +480,7 @@ Two consequences carry into every downstream metric. (i) The rank-1 filter disca
 
 ```{r}
 #| label: tbl-gold-construction
-#| tbl-cap: "Eval-set composition. Rows count `(measure_name, gold_act_name, chunk_id)` tuples; distinct surface forms count unique `measure_name` strings — the population the clusterer canonicalizes. The two indented rows partition the Tier 1 + Tier 2 pool by whether each surface form maps to one (unambiguous) or more (ambiguous) gold acts. Percentages are shares of the Tier 1 + Tier 2 totals."
+#| tbl-cap: "**Eval-set composition**. Rows count `(measure_name, gold_act_name, chunk_id)` tuples; distinct surface forms count unique `measure_name` strings — the population the clusterer canonicalizes. The two indented rows partition the Tier 1 + Tier 2 pool by whether each surface form maps to one (unambiguous) or more (ambiguous) gold acts. Percentages are shares of the Tier 1 + Tier 2 totals."
 
 t1_slice    <- c0_eval_gold_pairs |> dplyr::filter(tier == 1L)
 unamb_slice <- c0_eval_gold_pairs |> dplyr::filter(!ambiguous)
@@ -547,7 +547,7 @@ The pivot. Method comparison now scores against R&R's authoritative 49-act list 
 
 ```{r}
 #| label: tbl-rr-act-head
-#| tbl-cap: "First five rows of the RR canonical-act list (`c0_us_rr_acts`), sorted by year_signed."
+#| tbl-cap: "**RR canonical-act list**. First five rows of `c0_us_rr_acts`, sorted by year_signed."
 tar_load(c0_us_rr_acts)
 c0_us_rr_acts |>
   utils::head(5) |>
@@ -605,7 +605,7 @@ The four metrics are bootstrapped over **two different sampling units**, because
 
 ```{r}
 #| label: tbl-rr-worked-example
-#| tbl-cap: "Worked example: matching two hypothetical clusters against `Economic Recovery Tax Act of 1981` under the keyword and JW gates."
+#| tbl-cap: "**Worked example**. Matching two hypothetical clusters against `Economic Recovery Tax Act of 1981` under the keyword and JW gates."
 erta_act <- "Economic Recovery Tax Act of 1981"
 erta_subs <- generate_subcomponents(erta_act)
 member_a  <- "Economic Recovery Tax Act of 1981"
@@ -639,7 +639,7 @@ Before reading the threshold sweep, @fig-jw-within-act shows what JW is being as
 
 ```{r}
 #| label: fig-jw-within-act
-#| fig-cap: "Within-gold-act pairwise JW distances. Vertical dashes mark the swept thresholds. Acts with a single surface form contribute no pairs and are omitted."
+#| fig-cap: "**Within-act JW distances**. Vertical dashes mark the swept thresholds. Acts with a single surface form contribute no pairs and are omitted."
 #| fig-width: 10
 #| fig-height: 8
 
@@ -691,7 +691,7 @@ p_a + p_b + patchwork::plot_layout(ncol = 2)
 
 ```{r}
 #| label: fig-jw-name-to-gold
-#| fig-cap: "Surface-name → gold-label JW distance. Same panels, threshold lines, and visual style as @fig-jw-within-act; each point is one (measure_name, gold_act_name) pair."
+#| fig-cap: "**Surface-name → gold-label JW distance**. Same panels, threshold lines, and visual style as @fig-jw-within-act; each point is one (measure_name, gold_act_name) pair."
 #| fig-width: 10
 #| fig-height: 8
 
@@ -778,14 +778,14 @@ render_jw_rr_ladder <- function(ladder) {
 
 ```{r}
 #| label: tbl-jw-rr-metrics
-#| tbl-cap: "JW single-linkage, keyword gate. Cells: point estimate [95% bootstrap CI]. Rows: 5 thresholds × {Unblocked, Year ±2}. The keyword gate is name-rewriting-immune: a method gets credit only if a cluster member contains an RR-act subcomponent (from `generate_subcomponents()`)."
+#| tbl-cap: "**JW single-linkage, keyword gate**. Cells: point estimate [95% bootstrap CI]. Rows: 5 thresholds × {Unblocked, Year ±2}. The keyword gate is name-rewriting-immune: a method gets credit only if a cluster member contains an RR-act subcomponent (from `generate_subcomponents()`)."
 
 render_jw_rr_ladder(shape_jw_rr_ladder("keyword"))
 ```
 
 ```{r}
 #| label: tbl-jw-rr-metrics-jw
-#| tbl-cap: "JW single-linkage, JW-min ≤ 0.30 gate. Same variants and column definitions as @tbl-jw-rr-metrics. Continuous distance; accepts near-canonical variants the keyword gate misses. The Coverage gap from @tbl-jw-rr-metrics is the relaxation bonus."
+#| tbl-cap: "**JW single-linkage, JW-min ≤ 0.30 gate**. Same variants and column definitions as @tbl-jw-rr-metrics. Continuous distance; accepts near-canonical variants the keyword gate misses. The Coverage gap from @tbl-jw-rr-metrics is the relaxation bonus."
 
 render_jw_rr_ladder(shape_jw_rr_ladder("jw"))
 ```
@@ -794,7 +794,7 @@ render_jw_rr_ladder(shape_jw_rr_ladder("jw"))
 
 ```{r}
 #| label: fig-jw-rr-sweep
-#| fig-cap: "JW single-linkage headline metrics vs threshold. Columns: name gate (keyword vs JW-min ≤ 0.30). Rows: the four headline metrics, with ↑ (greater is better) / ↓ (lower is better) in the strip label. Colour: unblocked vs year-±2 blocking. Bands are 95% bootstrap CIs (spurious rate cluster-resampled, the other three act-resampled; see §Bootstrap CI). Y-axes are free per metric row."
+#| fig-cap: "**JW headline metrics vs threshold**. Columns: name gate (keyword vs JW-min ≤ 0.30). Rows: the four headline metrics, with ↑ (greater is better) / ↓ (lower is better) in the strip label. Colour: unblocked vs year-±2 blocking. Bands are 95% bootstrap CIs (spurious rate cluster-resampled, the other three act-resampled; see §Bootstrap CI). Y-axes are free per metric row."
 #| fig-width: 9
 #| fig-height: 9
 #| warning: false
@@ -859,7 +859,7 @@ The probes run on a 2×2 grid: **precision** (F16 local vs FP32 reference via De
 
 ```{r}
 #| label: tbl-f16-probe
-#| tbl-cap: "Embedding-geometry probe on a 2×2 (precision × eval slice) grid. Top-1 NN same-act rate is the share of eval names whose nearest-neighbour by cosine shares a gold act (restricted to acts with ≥2 members so the metric is well-defined). Separation = median within-act cosine − median between-act cosine; positive means the embedding preserves the act-level structure. F16 rows come from the local Ollama port (`jeffh/intfloat-multilingual-e5-large-instruct:f16`); FP32 rows from DeepInfra-hosted `intfloat/multilingual-e5-large-instruct`. Same instruction prefix on both."
+#| tbl-cap: "**Embedding-geometry probe**. A 2×2 (precision × eval slice) grid. Top-1 NN same-act rate is the share of eval names whose nearest-neighbour by cosine shares a gold act (restricted to acts with ≥2 members so the metric is well-defined). Separation = median within-act cosine − median between-act cosine; positive means the embedding preserves the act-level structure. F16 rows come from the local Ollama port (`jeffh/intfloat-multilingual-e5-large-instruct:f16`); FP32 rows from DeepInfra-hosted `intfloat/multilingual-e5-large-instruct`. Same instruction prefix on both."
 
 dplyr::bind_rows(
   dplyr::mutate(c0_f16_quantization_probe,       Precision = "F16 (local Ollama)",  `Eval slice` = "Full pool (Tier 1 + 2)"),
@@ -931,7 +931,7 @@ An alternative explanation for a soft F16 verdict — and a noise source the wit
 
 ```{r}
 #| label: fig-eval-noise-temporal
-#| fig-cap: "Temporal mismatch in eval pairs. Each point is one (measure_name, gold_act_name, chunk_id) tuple whose surface form contains a 4-digit year. x = doc publication year − year referenced in the surface form (large positive ⇒ retrospective reference); y = JW distance from surface form to gold label. Tuples whose surface form has no extractable year are omitted."
+#| fig-cap: "**Temporal mismatch in eval pairs**. Each point is one (measure_name, gold_act_name, chunk_id) tuple whose surface form contains a 4-digit year. x = doc publication year − year referenced in the surface form (large positive ⇒ retrospective reference); y = JW distance from surface form to gold label. Tuples whose surface form has no extractable year are omitted."
 #| fig-width: 8
 #| fig-height: 5
 year_pattern <- "\\b(19|20)\\d{2}\\b"
@@ -983,7 +983,7 @@ ggplot(noise_diag, aes(year_diff, jw_distance, colour = tier_label)) +
 
 ```{r}
 #| label: fig-eval-noise-temporal-cosine
-#| fig-cap: "Same panel as @fig-eval-noise-temporal but with cosine distance (E5-multilingual F16 embeddings, L2-normalised) on y. Pairs are dropped when either the surface form or the gold label is absent from its respective embedding matrix."
+#| fig-cap: "**Eval-pair temporal mismatch (cosine)**. Same panel as @fig-eval-noise-temporal but with cosine distance (E5-multilingual F16 embeddings, L2-normalised) on y. Pairs are dropped when either the surface form or the gold label is absent from its respective embedding matrix."
 #| fig-width: 8
 #| fig-height: 5
 
@@ -1017,7 +1017,7 @@ Finally, @fig-jw-vs-cosine puts the two distance measures head-to-head on the fu
 
 ```{r}
 #| label: fig-jw-vs-cosine
-#| fig-cap: "JW distance vs cosine distance for every distinct (measure_name, gold_act_name) pair in the eval pool. Colour marks the cleanest tier in which the pair appears (Tier 1 if at least one chunk pairs the surface form with the gold act via verbatim match). Pairs whose surface form or gold label is missing from its embedding matrix are dropped. Annotated correlations include the full pool; the dashed line is an unweighted linear fit."
+#| fig-cap: "**JW vs cosine distance**. For every distinct (measure_name, gold_act_name) pair in the eval pool. Colour marks the cleanest tier in which the pair appears (Tier 1 if at least one chunk pairs the surface form with the gold act via verbatim match). Pairs whose surface form or gold label is missing from its embedding matrix are dropped. Annotated correlations include the full pool; the dashed line is an unweighted linear fit."
 #| fig-width: 8
 #| fig-height: 5
 
@@ -1089,21 +1089,21 @@ render_hdb_rr_ladder <- function(ladder) {
 
 ```{r}
 #| label: tbl-hdb-rr-metrics
-#| tbl-cap: "HDBSCAN unblocked, keyword gate. Cells: point estimate [95% bootstrap CI]. Rows: 3 `min_cluster_size` settings. Compare to @tbl-jw-rr-metrics — if embeddings buy us what JW couldn't, coverage should hold and spurious should drop."
+#| tbl-cap: "**HDBSCAN unblocked, keyword gate**. Cells: point estimate [95% bootstrap CI]. Rows: 3 `min_cluster_size` settings. Compare to @tbl-jw-rr-metrics — if embeddings buy us what JW couldn't, coverage should hold and spurious should drop."
 
 render_hdb_rr_ladder(shape_hdb_rr_ladder("keyword", "unblocked"))
 ```
 
 ```{r}
 #| label: tbl-hdb-rr-metrics-jw
-#| tbl-cap: "HDBSCAN unblocked, JW-min ≤ 0.30 gate. Same variants as @tbl-hdb-rr-metrics. The keyword-vs-JW gap diagnoses recovery-by-aggregation vs. recovery-by-canonical-form."
+#| tbl-cap: "**HDBSCAN unblocked, JW-min ≤ 0.30 gate**. Same variants as @tbl-hdb-rr-metrics. The keyword-vs-JW gap diagnoses recovery-by-aggregation vs. recovery-by-canonical-form."
 
 render_hdb_rr_ladder(shape_hdb_rr_ladder("jw", "unblocked"))
 ```
 
 ```{r}
 #| label: fig-umap-clusters
-#| fig-cap: "UMAP projection of E5 embeddings. Left: coloured by predicted HDBSCAN cluster (best unblocked variant by Tier 1 F1); singleton/noise names in grey. Right: coloured by gold act for names in the unambiguous eval pool; names outside the eval pool in grey. Same 2D coordinates in both panels."
+#| fig-cap: "**UMAP projection of E5 embeddings**. Left: coloured by predicted HDBSCAN cluster (best unblocked variant by Tier 1 F1); singleton/noise names in grey. Right: coloured by gold act for names in the unambiguous eval pool; names outside the eval pool in grey. Same 2D coordinates in both panels."
 #| fig-width: 10
 #| fig-height: 5
 
@@ -1173,14 +1173,14 @@ Method 3 reruns the same HDBSCAN sweep with the year-window mask from §Method 1
 
 ```{r}
 #| label: tbl-hdb-yw2-rr-metrics
-#| tbl-cap: "HDBSCAN year-blocked (±2 at clustering), keyword gate. Same column definitions as @tbl-hdb-rr-metrics."
+#| tbl-cap: "**HDBSCAN year-blocked, keyword gate**. Year-blocked (±2 at clustering). Same column definitions as @tbl-hdb-rr-metrics."
 
 render_hdb_rr_ladder(shape_hdb_rr_ladder("keyword", "yw2"))
 ```
 
 ```{r}
 #| label: tbl-hdb-yw2-rr-metrics-jw
-#| tbl-cap: "HDBSCAN year-blocked (±2 at clustering), JW-min ≤ 0.30 gate."
+#| tbl-cap: "**HDBSCAN year-blocked, JW-min ≤ 0.30 gate**. Year-blocked (±2 at clustering)."
 
 render_hdb_rr_ladder(shape_hdb_rr_ladder("jw", "yw2"))
 ```
@@ -1268,21 +1268,21 @@ assemble_umap_rr_shortlist <- function(gate_name) {
 
 ```{r}
 #| label: tbl-hdb-umap-rr-best
-#| tbl-cap: "Best UMAP cell per (min_cluster_size × year-blocking) sub-cell, keyword gate. Within each sub-cell we sort by spurious_rate ascending then coverage descending and report the winner. Cells: point estimate [95% bootstrap CI]. Compare each row to the corresponding no-UMAP row in @tbl-hdb-rr-metrics / @tbl-hdb-yw2-rr-metrics — if UMAP wins, the cells should sit at lower spurious with comparable-or-higher coverage."
+#| tbl-cap: "**Best UMAP cell per sub-cell, keyword gate**. Best UMAP cell per (min_cluster_size × year-blocking) sub-cell. Within each sub-cell we sort by spurious_rate ascending then coverage descending and report the winner. Cells: point estimate [95% bootstrap CI]. Compare each row to the corresponding no-UMAP row in @tbl-hdb-rr-metrics / @tbl-hdb-yw2-rr-metrics — if UMAP wins, the cells should sit at lower spurious with comparable-or-higher coverage."
 
 assemble_umap_rr_shortlist("keyword") |> tt() |> tt_theme_report()
 ```
 
 ```{r}
 #| label: tbl-hdb-umap-rr-best-jw
-#| tbl-cap: "Same shortlist rule on the JW-min ≤ 0.30 gate. The keyword-vs-JW gap is the recovery-by-near-canonical bonus."
+#| tbl-cap: "**Best UMAP cell per sub-cell, JW gate**. Same shortlist rule on the JW-min ≤ 0.30 gate. The keyword-vs-JW gap is the recovery-by-near-canonical bonus."
 
 assemble_umap_rr_shortlist("jw") |> tt() |> tt_theme_report()
 ```
 
 ```{r}
 #| label: fig-umap-separation-probe
-#| fig-cap: "Embedding-geometry probe in UMAP-reduced space — F16 vs FP32, the same model precisions contrasted in @tbl-f16-probe at no-UMAP. Columns facet the two probe metrics; rows facet embedding precision (F16 = local Ollama community port, FP32 = DeepInfra-hosted reference). The F16 panels (top row) reproduce the earlier UMAP read; the FP32 panels (bottom row) add the missing precision contrast in UMAP space. Each bar counts UMAP cells (out of 27) whose probe value falls in the bin; fill marks eval slice (Full pool = Tier 1 + 2 unambiguous, Tier 1 = verbatim-passage matches only). Dashed lines are the F16/FP32 floors carried over from @tbl-f16-probe: 0.40 for top-1 NN; 0 for separation (Euclidean — the 0.05 cosine floor at @tbl-f16-probe does not translate). Identical UMAP grid, seed (20260526), and probe logic across the four panels; the only thing that varies between F16 and FP32 rows is the input embedding matrix."
+#| fig-cap: "**Embedding-geometry probe in UMAP space**. F16 vs FP32, the same model precisions contrasted in @tbl-f16-probe at no-UMAP. Columns facet the two probe metrics; rows facet embedding precision (F16 = local Ollama community port, FP32 = DeepInfra-hosted reference). The F16 panels (top row) reproduce the earlier UMAP read; the FP32 panels (bottom row) add the missing precision contrast in UMAP space. Each bar counts UMAP cells (out of 27) whose probe value falls in the bin; fill marks eval slice (Full pool = Tier 1 + 2 unambiguous, Tier 1 = verbatim-passage matches only). Dashed lines are the F16/FP32 floors carried over from @tbl-f16-probe: 0.40 for top-1 NN; 0 for separation (Euclidean — the 0.05 cosine floor at @tbl-f16-probe does not translate). Identical UMAP grid, seed (20260526), and probe logic across the four panels; the only thing that varies between F16 and FP32 rows is the input embedding matrix."
 #| fig-width: 10
 #| fig-height: 8
 
@@ -1384,14 +1384,14 @@ build_method_comparison <- function(gate_name) {
 
 ```{r}
 #| label: tbl-ladder
-#| tbl-cap: "Method comparison — best variant per method under the asymmetric-cost rule (lowest spurious_rate, then highest coverage), keyword gate. Methods 4 + 5 are Phase B-pending."
+#| tbl-cap: "**Method comparison, keyword gate**. Best variant per method under the asymmetric-cost rule (lowest spurious_rate, then highest coverage). Methods 4 + 5 are Phase B-pending."
 
 build_method_comparison("keyword") |> tt() |> tt_theme_report()
 ```
 
 ```{r}
 #| label: tbl-ladder-jw
-#| tbl-cap: "Same picker, JW-min ≤ 0.30 gate. Methods that re-emit RR-canonical names (Method 5 will, Methods 1-3 don't) gain coverage here that they don't gain under @tbl-ladder."
+#| tbl-cap: "**Method comparison, JW gate**. Same picker, JW-min ≤ 0.30 gate. Methods that re-emit RR-canonical names (Method 5 will, Methods 1-3 don't) gain coverage here that they don't gain under @tbl-ladder."
 
 build_method_comparison("jw") |> tt() |> tt_theme_report()
 ```
@@ -1408,7 +1408,7 @@ Once Phase B is built, the best variant from each method is applied to the Malay
 
 ```{r}
 #| label: tbl-cost
-#| tbl-cap: "Per-method cost. Methods 1–3 are zero-cost (pure-R or local Ollama). Methods 4–5 will populate from `logs/api_calls.csv` once wired."
+#| tbl-cap: "**Per-method cost**. Methods 1–3 are zero-cost (pure-R or local Ollama). Methods 4–5 will populate from `logs/api_calls.csv` once wired."
 
 tibble::tibble(
   Method = c("Method 1: JW single-linkage",
@@ -1480,7 +1480,7 @@ finalize_rr_shortlist <- function(shortlist) {
 
 ```{r}
 #| label: tbl-jw-pick
-#| tbl-cap: "JW shortlist under the asymmetric-cost rule (sort: spurious asc, coverage desc), keyword gate. The top row is the most precision-friendly JW variant; the Coverage column says whether that precision came at an unacceptable recall hit."
+#| tbl-cap: "**JW shortlist, keyword gate**. Under the asymmetric-cost rule (sort: spurious asc, coverage desc). The top row is the most precision-friendly JW variant; the Coverage column says whether that precision came at an unacceptable recall hit."
 
 build_rr_shortlist(c0_jw_rr_metrics, "keyword") |>
   finalize_rr_shortlist() |>
@@ -1489,7 +1489,7 @@ build_rr_shortlist(c0_jw_rr_metrics, "keyword") |>
 
 ```{r}
 #| label: tbl-jw-pick-jw
-#| tbl-cap: "Same JW shortlist on the JW gate. Coverage typically lifts on the relaxed gate because surface variants share lexical content; the keyword-vs-JW coverage gap is the recovery-by-near-canonical bonus."
+#| tbl-cap: "**JW shortlist, JW gate**. Same JW shortlist on the JW gate. Coverage typically lifts on the relaxed gate because surface variants share lexical content; the keyword-vs-JW coverage gap is the recovery-by-near-canonical bonus."
 
 build_rr_shortlist(c0_jw_rr_metrics, "jw") |>
   finalize_rr_shortlist() |>
@@ -1502,7 +1502,7 @@ This shortlist is sorted by spurious rate ascending — the column the C0 user s
 
 ```{r}
 #| label: tbl-hdb-pick
-#| tbl-cap: "HDBSCAN shortlist (no-UMAP and UMAP-reduced combined) under the asymmetric-cost rule, keyword gate. `Method` marks which family each row comes from."
+#| tbl-cap: "**HDBSCAN shortlist, keyword gate**. No-UMAP and UMAP-reduced combined, under the asymmetric-cost rule. `Method` marks which family each row comes from."
 
 dplyr::bind_rows(
   build_rr_shortlist(c0_hdbscan_rr_metrics, "keyword", top_n = 6L) |>
@@ -1519,7 +1519,7 @@ dplyr::bind_rows(
 
 ```{r}
 #| label: tbl-hdb-pick-jw
-#| tbl-cap: "Same HDBSCAN shortlist on the JW gate."
+#| tbl-cap: "**HDBSCAN shortlist, JW gate**. Same HDBSCAN shortlist on the JW gate."
 
 dplyr::bind_rows(
   build_rr_shortlist(c0_hdbscan_rr_metrics, "jw", top_n = 6L) |>
