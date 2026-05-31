@@ -1369,8 +1369,10 @@ evaluate_rr_matches_grid <- function(matches, clusters, rr_acts,
                                        n_boot = 1000L,
                                        seed = 20260529L) {
 
-  cluster_counts <- clusters |>
-    dplyr::distinct(dplyr::across(dplyr::all_of(c(group_keys, "cluster_id")))) |>
+  all_clusters <- clusters |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(c(group_keys, "cluster_id"))))
+
+  cluster_counts <- all_clusters |>
     dplyr::count(dplyr::across(dplyr::all_of(group_keys)),
                   name = "n_clusters")
 
@@ -1408,13 +1410,19 @@ evaluate_rr_matches_grid <- function(matches, clusters, rr_acts,
       fragmentation_index = frag_v, year_alignment = year_align_v)
   }
 
-  one_variant_one_gate <- function(matches_v, n_clusters_v, gate) {
+  one_variant_one_gate <- function(matches_v, n_clusters_v, clusters_v, gate) {
     pass_col <- if (gate == "keyword") "match_keyword" else "match_jw"
     name_col <- if (gate == "keyword") "name_match_keyword" else "name_match_jw"
 
     point <- metrics_for_subset(matches_v, n_clusters_v,
                                   pass_col, name_col, rr_act_ids)
 
+    # Dual sampling unit. Coverage / fragmentation / year_alignment are
+    # act-indexed, so their CIs come from resampling the 49 RR acts. Spurious
+    # rate is a proportion over the emitted *clusters* (denominator n_clusters
+    # is independent of the act set), so resampling acts biases it strictly
+    # upward and the CI fails to envelop the point. Its CI therefore comes from
+    # a separate cluster-level bootstrap below (seed + 1L for a distinct stream).
     boot <- withr::with_seed(seed, {
       replicate(n_boot, {
         idx <- sample.int(n_rr, n_rr, replace = TRUE)
@@ -1428,6 +1436,24 @@ evaluate_rr_matches_grid <- function(matches, clusters, rr_acts,
       if (length(v) == 0L) return(c(NA_real_, NA_real_))
       stats::quantile(v, probs = c(0.025, 0.975), names = FALSE)
     })
+
+    # Cluster bootstrap for spurious rate: flag each cluster matched/unmatched
+    # against the full 49-act reference, then resample clusters with replacement.
+    matched_ids  <- unique(matches_v$cluster_id[matches_v[[pass_col]]])
+    matched_flag <- clusters_v %in% matched_ids
+    sp_ci <- if (length(clusters_v) == 0L) c(NA_real_, NA_real_) else {
+      sp_boot <- withr::with_seed(seed + 1L, {
+        replicate(n_boot, {
+          idxc <- sample.int(length(clusters_v), length(clusters_v),
+                             replace = TRUE)
+          mean(!matched_flag[idxc])
+        })
+      })
+      stats::quantile(sp_boot, probs = c(0.025, 0.975), names = FALSE)
+    }
+    spur_col <- which(names(point) == "spurious_rate")
+    ci[1L, spur_col] <- sp_ci[1L]
+    ci[2L, spur_col] <- sp_ci[2L]
 
     pass_global <- matches_v[matches_v[[pass_col]], , drop = FALSE]
 
@@ -1454,9 +1480,12 @@ evaluate_rr_matches_grid <- function(matches, clusters, rr_acts,
       dplyr::pull(n_clusters)
     m_v <- matches |>
       dplyr::semi_join(key_row, by = group_keys)
+    clusters_v <- all_clusters |>
+      dplyr::semi_join(key_row, by = group_keys) |>
+      dplyr::pull(cluster_id)
     rows <- dplyr::bind_rows(
-      one_variant_one_gate(m_v, n_v, "keyword"),
-      one_variant_one_gate(m_v, n_v, "jw")
+      one_variant_one_gate(m_v, n_v, clusters_v, "keyword"),
+      one_variant_one_gate(m_v, n_v, clusters_v, "jw")
     )
     key_repeated <- key_row[rep(1L, nrow(rows)), , drop = FALSE]
     rownames(key_repeated) <- NULL

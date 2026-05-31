@@ -71,7 +71,7 @@ This notebook compares five methods on a label-anchored evaluation set (US C1 ou
 
 **Gold partition caveat.** The new framework scores against R&R's act list as if it were ground truth. If R&R's partition splits something a domain expert would have merged (or vice versa), the metric labels inherit that. The chunk-tier leakage caveat that applied to the old pairwise eval no longer applies (the RR-aligned framework bypasses chunk-tier tagging entirely), but the act-list correctness assumption is the same.
 
-**What "win" means.** High coverage with low spurious rate, low fragmentation index, and high year alignment (most name-matched clusters also satisfy a ±2-year window around the act's signing year). Metrics reported under two complementary name gates side by side — keyword containment (precision-friendly, immune to name-rewriting) and JW-min ≤ 0.30 (continuous, sensitive to abbreviations). The gap between the two surfaces methods that emit RR-style canonical names without doing more aggregation work. Bootstrap 95% CIs from resampling the 49 RR acts; n_boot = 1000 in the pipeline.
+**What "win" means.** High coverage with low spurious rate, low fragmentation index, and high year alignment (most name-matched clusters also satisfy a ±2-year window around the act's signing year). Metrics reported under two complementary name gates side by side — keyword containment (precision-friendly, immune to name-rewriting) and JW-min ≤ 0.30 (continuous, sensitive to abbreviations). The gap between the two surfaces methods that emit RR-style canonical names without doing more aggregation work. Bootstrap 95% CIs with n_boot = 1000 in the pipeline; the act-indexed metrics resample the 49 RR acts, while spurious rate resamples the emitted clusters (its natural sampling unit) — see §"Bootstrap CI".
 
 ## Descriptive baseline
 
@@ -574,18 +574,30 @@ Joint match gate per name gate: name match AND year match. A cluster that name-m
 
 ### Headline metrics
 
-Under each name gate, four numbers per variant:
+Under each name gate, four numbers per variant. The arrow in each header gives the direction of improvement — **↑ greater is better**, **↓ lower is better**:
 
-- **Coverage** = |{RR acts with ≥1 matching cluster}| / 49. Recall-flavoured.
-- **Spurious rate** = |{clusters with no RR-act match}| / n_clusters. Precision-flavoured; this is the metric the asymmetric-cost framing weights most.
-- **Fragmentation index** = mean over matched RR acts of (# distinct clusters claiming that act). ≥ 1 by construction. Equals 1 when each matched act has exactly one cluster; grows when methods fragment acts.
-- **Year alignment** = of name-matched pairs (name gate only, ignoring the year gate), share where the year gate also passes. Tests whether name and year signals agree — low values under the JW gate indicate the JW threshold is producing cross-decade false positives.
+- **Coverage** (↑ greater is better) = |{RR acts with ≥1 matching cluster}| / 49. Recall-flavoured: a higher value means more of R&R's 49 acts were recovered by some cluster.
+- **Spurious rate** (↓ lower is better) = |{clusters with no RR-act match}| / n_clusters. Precision-flavoured; this is the metric the asymmetric-cost framing weights most. A lower value means fewer junk clusters that match nothing in R&R's list.
+- **Fragmentation index** (↓ lower is better) = mean over matched RR acts of (# distinct clusters claiming that act). ≥ 1 by construction. Equals 1 (the ideal) when each matched act has exactly one cluster; grows when methods scatter one act across several clusters.
+- **Year alignment** (↑ greater is better) = of name-matched pairs (name gate only, ignoring the year gate), share where the year gate also passes. Tests whether name and year signals agree — low values under the JW gate indicate the JW threshold is producing cross-decade false positives.
 
 Coverage and spurious rate are the headline pair. Fragmentation is the precision-flavoured tiebreak between methods at similar coverage. Year alignment is mostly diagnostic.
 
+The shortlist tables in §Synthesis (e.g. @tbl-jw-pick, @tbl-hdb-pick) carry three additional count columns that anchor these rates in absolute numbers; all three are descriptive context for the rates above, not gates with a preferred direction:
+
+- **n clusters** = total clusters the variant emitted on the corpus pool. Read it as the denominator behind the spurious rate and as a coarse aggregation-effort signal: a value near the surface-form pool size means the method barely merged anything (near-singletons), while a much smaller value means aggressive merging. Not "greater/lower is better" on its own — it's only meaningful read against coverage and spurious rate (few clusters with high coverage is good; few clusters with low coverage means over-merging).
+- **Clusters matched** = |{clusters matching ≥1 RR act under the joint gate}| = n clusters × (1 − spurious rate). The count of "useful" clusters; the spurious rate is its complement expressed as a share.
+- **RR acts matched** = |{of the 49 RR acts hit by ≥1 cluster}| = coverage × 49. The numerator behind coverage, in act counts rather than a share.
+
+Comparing **Clusters matched** against **RR acts matched** reads off fragmentation directly: when the two are equal each matched act has exactly one cluster (fragmentation = 1); when Clusters matched exceeds RR acts matched, the surplus clusters are the fragmentation.
+
 ### Bootstrap CI
 
-Resample the 49 RR acts with replacement, recompute the four metrics, take the 0.025 and 0.975 percentiles. `n_boot = 1000` in the pipeline (the smoke test uses 100 for speed). The bootstrap perturbs *which* acts the method is held accountable for, which is the noise the CI should capture (acts vary in difficulty for any given clusterer). It does *not* perturb the cluster set — clusters are deterministic outputs of each method × hyperparameter cell.
+The four metrics are bootstrapped over **two different sampling units**, because they are proportions over different populations. `n_boot = 1000` in the pipeline (the smoke test uses 100 for speed); both bootstraps take the 0.025 and 0.975 percentiles.
+
+**Coverage, fragmentation, and year alignment — resample the 49 RR acts.** These are act-indexed, so resampling acts with replacement perturbs *which* acts the method is held accountable for — the noise the CI should capture (acts vary in difficulty for any given clusterer). This bootstrap does *not* perturb the cluster set; clusters are deterministic outputs of each method × hyperparameter cell.
+
+**Spurious rate — resample the clusters.** Spurious rate is a proportion over the method's *emitted clusters* (the denominator is `n_clusters`, which does not depend on the act set), so the act resample is the wrong sampling unit for it: dropping acts from the reference can only reclassify matched clusters as spurious, never the reverse, biasing the metric strictly upward and producing a CI that sits *entirely above* the point estimate. We therefore CI spurious rate with a separate cluster-level bootstrap: flag each cluster matched/unmatched against the full 49-act reference, then resample clusters with replacement. As an ordinary proportion bootstrap this centers the CI on the point. The interpretation shifts accordingly — the spurious CI answers "if the method had emitted a slightly different set of clusters" rather than "if R&R's act list were a different draw." Point estimates are identical to a single-pass computation under either reading; only the spurious CI columns reflect the cluster resample.
 
 ### Worked example
 
@@ -719,7 +731,7 @@ p_b <- plot_to_gold(tier12_to_gold, "B. Tier 1 + Tier 2")
 p_a + p_b + patchwork::plot_layout(ncol = 2)
 ```
 
-The within-act figures pin down what JW can mechanically do; the ladders below quantify the consequences on the RR-aligned eval the §Framing committed to. Each row is one variant (threshold × year-blocking); each cell carries a 95% bootstrap CI from resampling the 49 RR acts. Column definitions are the headline four metrics defined in §"Evaluation against RR's act list":
+The within-act figures pin down what JW can mechanically do; the ladders below quantify the consequences on the RR-aligned eval the §Framing committed to. Each row is one variant (threshold × year-blocking); each cell carries a 95% bootstrap CI (act-indexed metrics resample the 49 RR acts, spurious rate resamples the clusters — see §"Bootstrap CI"). Column definitions are the headline four metrics defined in §"Evaluation against RR's act list":
 
 - **Coverage** — share of 49 RR acts hit by ≥1 cluster under the joint name + year ±2 gate.
 - **Spurious** — share of clusters that match no RR act under the joint gate. The precision-flavoured column the asymmetric-cost framing weights most.
@@ -776,6 +788,51 @@ render_jw_rr_ladder(shape_jw_rr_ladder("keyword"))
 #| tbl-cap: "JW single-linkage, JW-min ≤ 0.30 gate. Same variants and column definitions as @tbl-jw-rr-metrics. Continuous distance; accepts near-canonical variants the keyword gate misses. The Coverage gap from @tbl-jw-rr-metrics is the relaxation bonus."
 
 render_jw_rr_ladder(shape_jw_rr_ladder("jw"))
+```
+
+@fig-jw-rr-sweep plots the two ladder tables as threshold sweeps so the trade-offs read at a glance. Each panel column is a name gate (keyword vs JW-min ≤ 0.30), each row is one headline metric (with its greater/lower-is-better direction in the strip label), and the two lines per panel are the unblocked vs year-±2 variants. Bands are the 95% bootstrap CIs (see §"Bootstrap CI"; spurious rate is cluster-resampled, the other three act-resampled). Read the coverage row against the spurious-rate row at each threshold: the asymmetric-cost framing wants the threshold that keeps spurious low without collapsing coverage.
+
+```{r}
+#| label: fig-jw-rr-sweep
+#| fig-cap: "JW single-linkage headline metrics vs threshold. Columns: name gate (keyword vs JW-min ≤ 0.30). Rows: the four headline metrics, with ↑ (greater is better) / ↓ (lower is better) in the strip label. Colour: unblocked vs year-±2 blocking. Bands are 95% bootstrap CIs (spurious rate cluster-resampled, the other three act-resampled; see §Bootstrap CI). Y-axes are free per metric row."
+#| fig-width: 9
+#| fig-height: 9
+#| warning: false
+
+jw_rr_sweep_df <- c0_jw_rr_metrics |>
+  dplyr::filter(metric %in% c("coverage", "spurious_rate",
+                              "fragmentation_index", "year_alignment")) |>
+  dplyr::mutate(
+    threshold = as.numeric(
+      stringr::str_extract(variant_id, "(?<=t)\\d\\.\\d{2}")),
+    Blocking = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                              "Year ±2", "Unblocked"),
+    gate = factor(gate, levels = c("keyword", "jw"),
+                  labels = c("Keyword gate", "JW-min ≤ 0.30 gate")),
+    metric = factor(metric,
+      levels = c("coverage", "spurious_rate",
+                 "fragmentation_index", "year_alignment"),
+      labels = c("Coverage ↑", "Spurious rate ↓",
+                 "Fragmentation ↓", "Year alignment ↑"))
+  )
+
+ggplot(jw_rr_sweep_df,
+       aes(threshold, value, colour = Blocking, fill = Blocking)) +
+  geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), alpha = 0.15,
+              colour = NA) +
+  geom_line(linewidth = 0.6) +
+  geom_point(size = 1.6) +
+  facet_grid(metric ~ gate, scales = "free_y", switch = "y") +
+  scale_colour_manual(values = c("Unblocked" = "#CC6677",
+                                 "Year ±2"   = "#4477AA")) +
+  scale_fill_manual(values = c("Unblocked" = "#CC6677",
+                               "Year ±2"   = "#4477AA")) +
+  scale_x_continuous(breaks = c(0.10, 0.15, 0.20, 0.25, 0.30)) +
+  labs(x = "JW threshold", y = NULL, colour = NULL, fill = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top",
+        strip.placement = "outside",
+        panel.grid.minor = element_blank())
 ```
 
 ### Reading the JW results
