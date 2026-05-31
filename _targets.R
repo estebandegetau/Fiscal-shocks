@@ -402,6 +402,15 @@ list(
     packages = "qs2"
   ),
 
+  # Graduated figure example for the Quarto style guide (Figure & Table
+  # Lifecycle). Returns a bare ggplot object; caption/label owned by the
+  # consuming chunk in the notebook or index.qmd.
+  tar_target(
+    fig_c0_variance_per_act,
+    plot_variance_per_act(c0_eval_gold_pairs),
+    packages = c("dplyr", "forcats", "stringr", "ggplot2")
+  ),
+
   # C2b primary: filter evidence to discusses_motivation == TRUE chunks
   tar_target(
     c2_s2_results,
