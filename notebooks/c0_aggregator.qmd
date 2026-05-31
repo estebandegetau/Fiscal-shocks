@@ -835,19 +835,83 @@ ggplot(jw_rr_sweep_df,
         panel.grid.minor = element_blank())
 ```
 
+@fig-jw-rr-counts shows the raw counts behind those rates on the same axes: the cluster budget the method emits (`n clusters`), how many of those carry an RR match (`Clusters matched`), and how many of the 49 RR acts get covered (`RR acts matched`). These are the numerator and denominator pieces the headline rates are built from, so the figure makes the mechanism legible: the spurious rate is high because `n clusters` runs into the thousands while `Clusters matched` stays in the dozens. `n clusters` is identical across the two gate columns by construction (it depends on the clustering, not the matching gate); only the lower two rows respond to the gate.
+
+```{r}
+#| label: fig-jw-rr-counts
+#| fig-cap: "**JW match counts vs threshold**. Same layout as @fig-jw-rr-sweep but plotting raw counts rather than rates. Columns: name gate. Rows: total clusters emitted, clusters carrying an RR match, and RR acts covered (out of 49). Colour: unblocked vs year-±2 blocking. Y-axes are free per row; `n clusters` is gate-invariant so its two columns are identical. Counts are exact (no bootstrap CI)."
+#| fig-width: 9
+#| fig-height: 7
+#| warning: false
+
+jw_rr_counts_df <- c0_jw_rr_metrics |>
+  dplyr::distinct(variant_id, gate, n_clusters,
+                  n_clusters_matched, n_rr_acts_matched) |>
+  tidyr::pivot_longer(
+    cols = c(n_clusters, n_clusters_matched, n_rr_acts_matched),
+    names_to = "outcome", values_to = "count") |>
+  dplyr::mutate(
+    threshold = as.numeric(
+      stringr::str_extract(variant_id, "(?<=t)\\d\\.\\d{2}")),
+    Blocking = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                              "Year ±2", "Unblocked"),
+    gate = factor(gate, levels = c("keyword", "jw"),
+                  labels = c("Keyword gate", "JW-min ≤ 0.30 gate")),
+    outcome = factor(outcome,
+      levels = c("n_clusters", "n_clusters_matched", "n_rr_acts_matched"),
+      labels = c("n clusters", "Clusters matched", "RR acts matched"))
+  )
+
+ggplot(jw_rr_counts_df,
+       aes(threshold, count, colour = Blocking)) +
+  geom_line(linewidth = 0.6) +
+  geom_point(size = 1.6) +
+  facet_grid(outcome ~ gate, scales = "free_y", switch = "y") +
+  scale_colour_manual(values = c("Unblocked" = "#CC6677",
+                                 "Year ±2"   = "#4477AA")) +
+  scale_x_continuous(breaks = c(0.10, 0.15, 0.20, 0.25, 0.30)) +
+  labs(x = "JW threshold", y = NULL, colour = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top",
+        strip.placement = "outside",
+        panel.grid.minor = element_blank())
+```
+
+### Reading the match counts
+
+Three mechanics make the count rows legible, and each corrects an intuition the rates alone invite.
+
+First, **year-±2 blocking lifts `n clusters` at every threshold because it forbids merges, not because it drops names.** Blocking is a clustering-side constraint: only name pairs within ±2 years are eligible to merge (`run_jw_clusters` masks the rest). No name leaves the pool, so the count cannot fall. Pairs that JW distance alone would have fused but that sit more than two years apart stay separate, so consolidation drops and the cluster count rises. The natural guess that "filtering should shrink the output" has the sign backwards: same elements, fewer permitted merges, more clusters. Note also that blocking's lift on the lower two rows (`Clusters matched`, `RR acts matched`) is a *different* effect from its lift on `n clusters`: the extra clusters come from forbidden merges, but the extra matches come from clusters staying year-coherent enough to clear the year gate.
+
+Second, **the coverage collapse at high thresholds is a year-gate failure, not names going missing.** A cluster name-matches on *any* of its member surface forms (minimum JW distance, any keyword hit across members), so a blob that swallows two acts' names still name-matches both. What it cannot preserve is a single representative year: the cluster year is the median of its members' years, and single-linkage chaining at a loose threshold smears that median across a wide span. Acts whose true year drifts more than two years from the blob's median then fail the year gate and drop out of `RR acts matched`. The decisive evidence is in the figure itself: at t = 0.30 the unblocked variant covers 8 acts while year-±2 blocking covers 31. Blocking touches only the year-eligibility of merges, so a 4× swing can only be the year gate at work. (Even the blocked variant slips from 46 to 31 at t = 0.30, because ±2 *pairwise* eligibility still lets a single-linkage chain span more than two years end to end.)
+
+Third, **`Clusters matched` falls with the threshold for two compounding reasons, only one of which is overmerging.** By construction `Clusters matched = n clusters × (1 − spurious rate)`, and both factors shrink as the threshold loosens: the cluster budget collapses (≈1,640 down to ≈180 in the unblocked JW gate) and the match rate falls (about 13% down to under 2%). The overmerge-and-year-smear story explains the rate term; the shrinking cluster budget, the larger arithmetic factor, explains the count term. Reading the whole fall as overmerging would miss that most of it is simply far fewer clusters left to match.
+
+### Interpreting the threshold sweep
+
+Read across the four rows, the conservative end (JW threshold 0.10) is weakly best on three of the four metrics and worst on the fourth. Coverage, spurious rate, and year alignment all favour the low threshold; fragmentation favours the high one. That single crossing is the whole trade-off, and it is consistent with fragmentation being a consolidation (over-segmentation) metric that rewards aggressive merging while the other three reward keeping clusters fine-grained. Note that the recall-flavoured metric here is *coverage* (did we recover all 49 acts), not fragmentation.
+
+But "0.10 dominates" overstates what the sweep shows, and three qualifications matter:
+
+- **The dominance is mostly inside the noise.** Under year-±2 blocking, coverage is flat at 0.939 from t = 0.10 through 0.25 (JW gate), so 0.10 is tied, not ahead; unblocked, the coverage CIs are wide (act-resampled, n = 49) and overlap heavily across 0.10–0.20. Year alignment is the same story, and its real driver is the *gate*, not the threshold: the JW gate sits near 0.18 at every threshold while the keyword gate runs 0.7–0.9 at low thresholds (crashing toward 0.1–0.35 as the threshold loosens). The only metric on which 0.10 is cleanly best is the spurious rate, whose tight cluster-resampled CIs barely overlap.
+
+- **The spurious "win" is least-bad, not good, and partly structural.** The spurious rate is 0.86–0.99 everywhere; even the best cell leaves ~86% of clusters matching no RR act. That floor is largely a target-size mismatch: the pool holds 1,976 distinct measure names but R&R's exogenous list is only 49 acts, so most clusters are legitimately non-RR measures. Optimising a metric that is structurally pinned near 1 reads more like choosing the least-bad column than recovering precision.
+
+- **The fragmentation improvement is confounded with collapsing coverage.** Fragmentation is averaged only over *matched* acts. At t = 0.30 it reaches 1.00, but only 8 of 49 acts match there, so the denominator has shrunk to the few easy cases. The apparent consolidation gain is partly coverage collapsing onto its cleanest survivors, not merging getting better.
+
+The interpretation to confront is that **t = 0.10 is close to the identity transform**. It collapses only about 17% of the pool's 1,976 distinct names into the 1,638 clusters it emits, so "conservative threshold wins" comes dangerously close to "do almost no aggregation and you cover the most acts." Read skeptically, the sweep is not evidence that JW recovers truth best when conservative; it is evidence that the JW step is barely earning its keep, with the raw measure pool already covering ~46/49 acts and every merge only costing coverage.
+
+Whether the conservative choice is genuinely right therefore depends on the asymmetric cost we adopted: over-merging (collapsing two distinct RR acts into one cluster) is the costly, unrecoverable error, while under-merging (fragmentation) is cheap and recoverable downstream. Under that cost model, accepting high fragmentation at t = 0.10 to protect coverage is defensible, but only because fragmentation has been explicitly priced as cheap. The conclusion is conditional on that pricing, not unconditional. Year-±2 blocking reinforces it: by flattening the coverage curve it makes the threshold choice nearly irrelevant for coverage, leaving 0.10's edge resting on the spurious column alone.
+
 ### Reading the JW results
 
-Three patterns from the RR-aligned ladder, focused on the asymmetric-cost shortlist (low spurious, then high coverage):
+One reading the threshold and count subsections above do not cover is the **keyword-vs-JW gate gap** as a diagnostic. The JW-min ≤ 0.30 gate accepts more surface forms than the keyword gate, so it always covers more RR acts: by roughly 27–29 percentage points unblocked (t = 0.10–0.25, falling to 6 pp at t = 0.30) and 10–18 points under year-±2 blocking (in raw acts, 3–16 of 49). That gap measures how much of JW's coverage is *recovery-by-near-canonical-match* — typographic variants and short abbreviations within JW distance 0.30 — rather than *recovery-by-aggregation*. Because JW single-linkage never mints a canonical name (it just keeps whatever surface forms it sees), the bonus here is almost entirely near-duplicate recovery, not renaming.
 
-First, JW's spurious rate is structurally high. At the precision-friendly operating point (t = 0.10, year ±2), the keyword gate hits 41 of 49 RR acts but only ~70 of 1707 clusters carry a match — the remaining ~1640 are near-singletons that aggregate nothing. JW under-aggregates rather than over-aggregates, exactly as @fig-jw-within-act predicted geometrically. Tightening the threshold lowers cluster counts (and so the spurious rate) but loses coverage. Loosening to t = 0.30 collapses everything: 180 clusters total, 1 matching cluster, 5 RR acts covered. There is no operating point on the JW front that combines low spurious with high coverage.
-
-Second, the keyword-vs-JW gap is informative but bounded. The JW gate adds ~5–15 points of coverage on top of the keyword gate at any given threshold, because JW catches lexical near-canonicals (typographic variants, abbreviations of short distance) that don't contain the full subcomponent string. JW single-linkage as a method does not emit RR-style canonical names — it just keeps whatever surface forms it sees — so the relaxation bonus here is mostly recovery of near-duplicates, not recovery-by-renaming. The gap will be much larger under stateful methods (Method 5) that produce a canonical per cluster.
-
-Third, year-blocking continues to help on every variant. Spurious rates drop a few points and fragmentation usually improves; coverage holds steady or slightly improves. The temporal prior remains structural across the eval pivot.
+This is the comparison the benchmark exists to enable. A stateful method that emits one canonical name per cluster (Method 5) should open this gate gap much wider, because its coverage will come from genuine renaming rather than lexical luck. The JW ladder is the floor that gain is measured against.
 
 ### Bottom line for Method 1
 
-JW single-linkage cannot canonicalise this measure pool on its own. The geometric ceiling from @fig-jw-within-act is binding: most of the surface-form pairs that ought to merge sit beyond JW distance 0.30, geometrically out of reach for JW at any threshold considered. The RR-aligned ladder confirms it: at every variant the spurious rate stays above 50%, fragmentation is typically 1.5–3, and even the best variant misses ~8 of 49 RR acts under the keyword gate. The gap between *ERTA* and *Economic Recovery Tax Act of 1981* is semantic, not lexical, and JW has no machinery to bridge it.
+JW single-linkage cannot canonicalise this measure pool on its own. The geometric ceiling from @fig-jw-within-act is binding: most of the surface-form pairs that ought to merge sit beyond JW distance 0.30, geometrically out of reach for JW at any threshold considered. The RR-aligned ladder confirms it: at every variant the spurious rate stays above 86%, fragmentation ranges from 1.0 to 7.5 (1.5–3 under the keyword gate, but 4.8–7.5 under the JW gate at conservative thresholds), and even the best variant misses ~8 of 49 RR acts under the keyword gate. The gap between *ERTA* and *Economic Recovery Tax Act of 1981* is semantic, not lexical, and JW has no machinery to bridge it.
 
 What JW remains useful for is the role its mechanics actually support: a precision-friendly **blocker** — a cheap pre-filter that catches near-duplicate surface forms (spacing, punctuation, abbreviation expansion) at near-zero false-positive cost. Method 4's hybrid pipeline below uses exactly this property: JW (or a cheap analog) prunes the pair space, and a semantic verifier handles the merges that surface similarity cannot. The load-bearing canonicalisation work, though, has to come from a method that understands meaning — Methods 2–5 are the candidate replacements.
 
