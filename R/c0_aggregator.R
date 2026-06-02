@@ -1597,3 +1597,244 @@ format_rr_method_ladder <- function(metrics_long,
 
 # %||% is from rlang via tidyverse but we may not have it loaded directly.
 `%||%` <- function(a, b) if (is.null(a)) b else a
+
+
+# ---------------------------------------------------------------------------
+# Method 5: LLM canonical clustering
+#
+# An unsupervised clustering method. The model is shown the distinct rank-1
+# surface forms (with a representative year) and returns `surface_id ->
+# cluster_id` only (ids, not strings). All canonical-name / reshape work is
+# deterministic R here, so M5 emits the same cluster-table contract as the JW
+# and HDBSCAN methods and reuses match_clusters_to_rr_acts() +
+# evaluate_rr_matches_grid() unchanged. The model never sees gold labels.
+# ---------------------------------------------------------------------------
+
+#' Prepare the M5 input pool (distinct rank-1 names + representative year)
+#'
+#' @param measure_pool Output of `build_c0_measure_pool()`.
+#' @return Tibble: surface_id (1..N), measure_name, rep_year (modal doc-year
+#'   per name), n_occurrences. One row per distinct rank-1 measure_name.
+#' @export
+prepare_m5_input <- function(measure_pool) {
+  r1 <- measure_pool |>
+    dplyr::filter(measure_rank == 1L,
+                  !is.na(measure_name), nchar(measure_name) > 0L)
+
+  rep_year <- r1 |>
+    dplyr::group_by(measure_name) |>
+    dplyr::summarize(rep_year = .mode_int(year), .groups = "drop")
+
+  occ <- r1 |>
+    dplyr::distinct(measure_name, n_occurrences)
+
+  rep_year |>
+    dplyr::left_join(occ, by = "measure_name") |>
+    dplyr::arrange(measure_name) |>
+    dplyr::mutate(surface_id = dplyr::row_number()) |>
+    dplyr::select(surface_id, measure_name, rep_year, n_occurrences)
+}
+
+
+#' Build the user message: numbered surface forms + output contract
+#'
+#' Output-format scaffolding lives here (the codebook `instruction` carries
+#' only clustering semantics). Rows are passed in whatever order the caller
+#' chose (the shuffle seed), so the ids — not row positions — are the anchor.
+#'
+#' @param m5_input Tibble from `prepare_m5_input()` (possibly row-shuffled).
+#' @return Length-1 character user message.
+#' @export
+build_m5_user_message <- function(m5_input) {
+  yr <- ifelse(is.na(m5_input$rep_year), "year unknown",
+               as.character(m5_input$rep_year))
+  lines <- sprintf("%d. %s (%s)", m5_input$surface_id, m5_input$measure_name, yr)
+  paste0(
+    "Fiscal-measure surface forms, formatted `id. name (year)`:\n\n",
+    paste(lines, collapse = "\n"),
+    "\n\nAssign every id above to a cluster. Return ONLY a JSON array whose ",
+    "elements are {\"id\": <number>, \"cluster\": <label>}, where <label> is ",
+    "any short string and ids referring to the same underlying fiscal measure ",
+    "share a cluster label. Include every id exactly once."
+  )
+}
+
+
+# Find the list of {id, cluster} records inside a parsed JSON response,
+# tolerating either a bare array or a single-key wrapper object.
+.coerce_m5_records <- function(parsed) {
+  is_record <- function(e) {
+    is.list(e) && !is.null(e[["id"]]) && !is.null(e[["cluster"]])
+  }
+  if (length(parsed) > 0L && all(vapply(parsed, is_record, logical(1L)))) {
+    return(parsed)
+  }
+  for (el in parsed) {
+    if (is.list(el) && length(el) > 0L &&
+        all(vapply(el, is_record, logical(1L)))) {
+      return(el)
+    }
+  }
+  NULL
+}
+
+
+# Run one seed: shuffle, call, parse, validate partition, reshape to the
+# standard cluster-table contract. Returns list(clusters=, integrity=).
+.run_m5_one_seed <- function(m5_input, seed, model, instruction, max_tokens,
+                             temperature, provider, base_url, api_key) {
+  variant_id <- sprintf("m5_haiku_namesyear_s%d", seed)
+  expected   <- m5_input$surface_id
+
+  ord       <- withr::with_seed(seed, sample.int(nrow(m5_input)))
+  user_msg  <- build_m5_user_message(m5_input[ord, , drop = FALSE])
+
+  resp <- call_llm_api(
+    messages    = list(list(role = "user", content = user_msg)),
+    model       = model,
+    max_tokens  = max_tokens,
+    temperature = temperature,
+    system      = instruction,
+    provider    = provider,
+    base_url    = base_url,
+    api_key     = api_key
+  )
+  stop_reason <- resp$stop_reason %||% NA_character_
+  text        <- tryCatch(resp$content[[1]]$text, error = function(e) "")
+  parsed      <- parse_json_response(text)
+  records     <- if (!is.null(parsed$error)) NULL else .coerce_m5_records(parsed)
+
+  empty_integrity <- function(parse_ok) {
+    tibble::tibble(variant_id = variant_id, seed = seed,
+                   n_expected = length(expected), n_returned = 0L,
+                   n_missing = length(expected), n_extra = 0L,
+                   parse_ok = parse_ok, stop_reason = stop_reason)
+  }
+  if (is.null(records)) {
+    warning(sprintf("M5 seed %d: could not parse a {id, cluster} array", seed))
+    return(list(clusters = .empty_m5_clusters(), integrity = empty_integrity(FALSE)))
+  }
+
+  assign_df <- purrr::map_dfr(records, function(e) {
+    tibble::tibble(surface_id  = suppressWarnings(as.integer(e[["id"]])),
+                   raw_cluster = as.character(e[["cluster"]]))
+  }) |>
+    dplyr::filter(!is.na(surface_id)) |>
+    dplyr::distinct(surface_id, .keep_all = TRUE)
+
+  n_returned  <- nrow(assign_df)
+  n_extra     <- sum(!assign_df$surface_id %in% expected)
+  assign_df   <- assign_df |> dplyr::filter(surface_id %in% expected)
+  missing_ids <- setdiff(expected, assign_df$surface_id)
+
+  filled <- dplyr::bind_rows(
+    assign_df,
+    tibble::tibble(surface_id  = missing_ids,
+                   raw_cluster = paste0("__singleton_", missing_ids))
+  ) |>
+    dplyr::mutate(cluster_id = as.integer(factor(raw_cluster))) |>
+    dplyr::left_join(m5_input, by = "surface_id")
+
+  canon <- filled |>
+    dplyr::arrange(dplyr::desc(n_occurrences),
+                   dplyr::desc(nchar(measure_name)), measure_name) |>
+    dplyr::group_by(cluster_id) |>
+    dplyr::summarize(canonical_name = dplyr::first(measure_name),
+                     n_members = dplyr::n(), .groups = "drop")
+
+  clusters <- filled |>
+    dplyr::left_join(canon, by = "cluster_id") |>
+    dplyr::transmute(variant_id = variant_id,
+                     measure_name, cluster_id, canonical_name, n_members)
+
+  integrity <- tibble::tibble(
+    variant_id = variant_id, seed = seed, n_expected = length(expected),
+    n_returned = n_returned, n_missing = length(missing_ids), n_extra = n_extra,
+    parse_ok = TRUE, stop_reason = stop_reason)
+
+  list(clusters = clusters, integrity = integrity)
+}
+
+.empty_m5_clusters <- function() {
+  tibble::tibble(variant_id = character(0), measure_name = character(0),
+                 cluster_id = integer(0), canonical_name = character(0),
+                 n_members = integer(0))
+}
+
+
+#' Run M5 LLM clustering across shuffle seeds
+#'
+#' One single-shot Haiku call per seed (input row order shuffled by the seed),
+#' returning the standard cluster-table contract bound across seeds — each seed
+#' is its own `variant_id` so the RR evaluator scores them independently. Per-
+#' seed partition-integrity diagnostics are attached as the "integrity"
+#' attribute of the returned tibble.
+#'
+#' @param measure_pool Output of `build_c0_measure_pool()`.
+#' @param model,instruction,max_tokens,temperature,provider,base_url,api_key
+#'   Passed to `call_llm_api()`. `instruction` is the codebook system prompt.
+#' @param seeds Integer vector of shuffle seeds (default 1:5).
+#' @return Tibble: variant_id, measure_name, cluster_id, canonical_name,
+#'   n_members; with attribute "integrity" (one row per seed).
+#' @export
+run_m5_llm_clusters <- function(measure_pool, model, instruction,
+                                max_tokens = 4096, temperature = 0,
+                                provider = "anthropic", base_url = NULL,
+                                api_key = NULL, seeds = 1:5) {
+  m5_input <- prepare_m5_input(measure_pool)
+
+  results <- purrr::map(seeds, function(s) {
+    .run_m5_one_seed(m5_input, s, model, instruction, max_tokens,
+                     temperature, provider, base_url, api_key)
+  })
+
+  clusters  <- purrr::map_dfr(results, "clusters")
+  integrity <- purrr::map_dfr(results, "integrity")
+  attr(clusters, "integrity") <- integrity
+  clusters
+}
+
+
+# Adjusted Rand index between two aligned integer label vectors.
+.adjusted_rand <- function(a, b) {
+  tab <- table(a, b)
+  n   <- length(a)
+  index    <- sum(choose(tab, 2))
+  sum_a    <- sum(choose(rowSums(tab), 2))
+  sum_b    <- sum(choose(colSums(tab), 2))
+  expected <- sum_a * sum_b / choose(n, 2)
+  max_idx  <- (sum_a + sum_b) / 2
+  if (max_idx == expected) return(1)
+  (index - expected) / (max_idx - expected)
+}
+
+
+#' Order-sensitivity of M5: pairwise partition agreement across seeds
+#'
+#' The "S1-ish" order-invariance probe. Compares the per-seed partitions of the
+#' shared name pool via adjusted Rand index over all seed pairs.
+#'
+#' @param m5_clusters Output of `run_m5_llm_clusters()` (multiple variant_ids).
+#' @return One-row tibble: n_variants, n_pairs, mean_ari, min_ari, max_ari.
+#' @export
+compute_m5_order_agreement <- function(m5_clusters) {
+  variants <- sort(unique(m5_clusters$variant_id))
+  if (length(variants) < 2L) {
+    return(tibble::tibble(n_variants = length(variants), n_pairs = 0L,
+                          mean_ari = NA_real_, min_ari = NA_real_,
+                          max_ari = NA_real_))
+  }
+  wide <- m5_clusters |>
+    dplyr::distinct(variant_id, measure_name, cluster_id) |>
+    tidyr::pivot_wider(names_from = variant_id, values_from = cluster_id)
+
+  pairs <- utils::combn(variants, 2L)
+  aris  <- apply(pairs, 2L, function(p) {
+    sub <- wide |>
+      dplyr::select(measure_name, dplyr::all_of(p)) |>
+      tidyr::drop_na()
+    .adjusted_rand(sub[[p[1]]], sub[[p[2]]])
+  })
+  tibble::tibble(n_variants = length(variants), n_pairs = ncol(pairs),
+                 mean_ari = mean(aris), min_ari = min(aris), max_ari = max(aris))
+}

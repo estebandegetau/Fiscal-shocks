@@ -1284,6 +1284,51 @@ list(
     resources = tar_resources(crew = tar_resources_crew(controller = "c0_umap"))
   ),
 
+  # Method 5: LLM canonical clustering. Bespoke prompt (NOT an H&K
+  # classification codebook); emits the same cluster-table contract as JW /
+  # HDBSCAN so it reuses match_clusters_to_rr_acts + evaluate_rr_matches_grid.
+  # c0_m5_clusters is the only API-calling C0 target (Haiku, single-shot,
+  # 5 shuffle seeds for the order-sensitivity probe).
+  tar_target(
+    c0_m5_prompt_file,
+    here::here("prompts", "c0_canonicalize.yml"),
+    format = "file",
+    packages = "here"
+  ),
+  tar_target(
+    c0_m5_prompt,
+    yaml::read_yaml(c0_m5_prompt_file),
+    packages = "yaml"
+  ),
+  tar_target(
+    c0_m5_clusters,
+    run_m5_llm_clusters(
+      c0_us_measure_pool,
+      model       = "claude-haiku-4-5-20251001",
+      instruction = c0_m5_prompt$instruction,
+      max_tokens  = 4096,
+      provider    = "anthropic",
+      base_url    = "https://api.anthropic.com/v1",
+      api_key     = Sys.getenv("ANTHROPIC_API_KEY"),
+      seeds       = 1:5
+    ),
+    packages   = c("tidyverse", "httr2", "jsonlite", "withr"),
+    deployment = "main"
+  ),
+  tar_target(
+    c0_m5_rr_matches,
+    match_clusters_to_rr_acts(c0_m5_clusters, c0_us_measure_pool,
+                              c0_us_rr_acts),
+    packages = c("tidyverse", "stringdist")
+  ),
+  tar_target(
+    c0_m5_rr_metrics,
+    evaluate_rr_matches_grid(c0_m5_rr_matches, c0_m5_clusters,
+                             c0_us_rr_acts,
+                             n_boot = 1000L, seed = 20260529L),
+    packages = c("tidyverse", "withr")
+  ),
+
   tar_quarto(
     c0_aggregator,
     path = here("notebooks/c0_aggregator.qmd"),

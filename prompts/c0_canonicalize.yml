@@ -1,0 +1,24 @@
+# C0 Act Aggregator — Method 5 (LLM canonical clustering)
+#
+# Bespoke prompt artifact (NOT an H&K classification codebook). The model is
+# shown a numbered list of fiscal-measure surface forms with a representative
+# year and groups the ids that refer to the same underlying act. It returns a
+# grouping of ids only — no names, no canonical labels, no ground-truth list.
+# Output-format scaffolding is supplied by the R caller, not here; `instruction`
+# carries only the semantics of what to group and on what basis.
+#
+# Country-transferable: no US-specific institutions. Echoes Romer & Romer's
+# RR2 language (legislated/executive action changing tax or spending
+# liabilities; more than incidental reference).
+
+name: c0_canonicalize
+version: 0.1.0
+
+instruction: >-
+  Group the numbered surface-form names by the underlying fiscal measure they
+  refer to. A fiscal measure is a legislated or executive action that changes
+  tax or spending liabilities and receives more than incidental reference in
+  government documents. Different surface forms of the same measure — full
+  formal names, abbreviations, descriptive labels, and public-law or decree
+  numbers — belong to the same group; use the year only to separate same-name
+  references that belong to distinct historical acts.
