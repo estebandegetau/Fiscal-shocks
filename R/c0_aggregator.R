@@ -1652,10 +1652,13 @@ build_m5_user_message <- function(m5_input) {
   paste0(
     "Fiscal-measure surface forms, formatted `id. name (year)`:\n\n",
     paste(lines, collapse = "\n"),
-    "\n\nAssign every id above to a cluster. Return ONLY a JSON array whose ",
-    "elements are {\"id\": <number>, \"cluster\": <label>}, where <label> is ",
-    "any short string and ids referring to the same underlying fiscal measure ",
-    "share a cluster label. Include every id exactly once."
+    "\n\nReturn ONLY a JSON array. Each element is {\"id\": <number>, ",
+    "\"cluster\": <integer>}. Assign the SAME cluster integer to ids that ",
+    "refer to the same underlying fiscal measure, and different integers to ",
+    "different measures. Most measures appear under several ids, so there ",
+    "should be far fewer distinct cluster integers than ids. Do not output ",
+    "names, years, or any field other than id and cluster. Include every id ",
+    "exactly once."
   )
 }
 
@@ -1778,7 +1781,7 @@ build_m5_user_message <- function(m5_input) {
 #'   n_members; with attribute "integrity" (one row per seed).
 #' @export
 run_m5_llm_clusters <- function(measure_pool, model, instruction,
-                                max_tokens = 4096, temperature = 0,
+                                max_tokens = 8192, temperature = 0,
                                 provider = "anthropic", base_url = NULL,
                                 api_key = NULL, seeds = 1:5) {
   m5_input <- prepare_m5_input(measure_pool)

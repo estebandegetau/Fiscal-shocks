@@ -1306,7 +1306,7 @@ list(
       c0_us_measure_pool,
       model       = "claude-haiku-4-5-20251001",
       instruction = c0_m5_prompt$instruction,
-      max_tokens  = 4096,
+      max_tokens  = 8192,
       provider    = "anthropic",
       base_url    = "https://api.anthropic.com/v1",
       api_key     = Sys.getenv("ANTHROPIC_API_KEY"),
