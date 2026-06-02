@@ -1,0 +1,125 @@
+# Iteration log for C0 (Act Aggregator)
+# Each entry records a pipeline run: what changed, what happened, what to do next.
+# Retrieve any past codebook version: git show <git_commit>:prompts/c0_canonicalize.yml
+#
+# Note: C0 does not use the H&K S1-S3 stages. The headline eval (stage
+# "method5_rr_eval") matches each method's clusters against the 49 Romer & Romer
+# reference acts (c0_us_rr_acts) under two name-match gates (keyword = strict
+# term+year; jw = lenient Jaro-Winkler). The agreed FIRST GATE is RR-mapped
+# recovery (n_rr_acts_matched, target ~= the recoverable ceiling); the SECOND
+# GATE is year alignment. Total cluster count is a diagnostic, NOT a gate: the
+# C1 pool spans many more distinct measures than R&R's curated ~40.
+
+iterations:
+  - iteration: 1
+    codebook_version: "0.1.0"
+    date: "2026-06-02"
+    git_commit: "3d23e4b"
+    model: "claude-haiku-4-5-20251001"
+    stage: "method5_rr_eval"
+    method: "M5 (LLM canonical clustering)"
+    changes: >
+      First runnable M5 iteration. Barebones add (commit 765ed2a):
+      prompts/c0_canonicalize.yml v0.1.0 (minimal, country-transferable
+      instruction echoing R&R RR2 language; no gold labels, no canonical
+      naming), plus prepare_m5_input / build_m5_user_message /
+      run_m5_llm_clusters / compute_m5_order_agreement in R/c0_aggregator.R,
+      and the c0_m5_* targets (Haiku, single-shot, seeds 1:5, deployment=main).
+      Model returns surface_id -> integer cluster_id; canonical naming and the
+      reshape to the standard cluster-table contract are deterministic R, so M5
+      reuses match_clusters_to_rr_acts() + evaluate_rr_matches_grid() unchanged.
+      Pilot fixes (commit 3d23e4b, the run logged here): scaffold now demands a
+      compact integer cluster key and explicitly pushes synonymous-id merging
+      (Haiku had emitted long per-id descriptive strings, no merging + token
+      blowout); max_tokens 4096 -> 8192 (pretty-printed JSON ~14 tok/record, so
+      294 records truncated at 4096). Clean run: 294/294 ids returned, 0
+      missing/extra, end_turn.
+    eval:
+      framework: "RR-mapped (clusters vs 49 R&R reference acts)"
+      recoverable_ceiling: 40
+      n_rr_acts_total: 49
+      ceiling_note: >
+        Surface-form matchability ceiling under the keyword gate is 40/49.
+        The 9 unrecoverable acts are upstream C1 pool gaps: 7 Social-Security-
+        family acts (1947, 1950, 1956, 1958, 1971, 1972, 1973 -- formal
+        "Amendments of YYYY" names absent or year outside +/-2 window; only
+        descriptive variants present), Expiration of Excess Profits Tax (1954),
+        and TEFRA (1982). These are not M5 clustering failures.
+    results:
+      first_gate:
+        - metric: "rr_acts_recovered_keyword"
+          value: 37
+          of_recoverable: 40
+          pct_of_recoverable: 0.9250
+          seeds_stable: true
+      second_gate:
+        - metric: "year_alignment_keyword"
+          value: 0.9770
+          range_lo: 0.9750
+          range_hi: 0.9778
+      diagnostics:
+        - metric: "fragmentation_index_keyword"
+          value: 1.1600
+          note: "5 RR acts split across >1 cluster, contributing 6 extra clusters"
+        - metric: "spurious_rate_keyword"
+          value: 0.7950
+        - metric: "n_clusters_total"
+          value_lo: 202
+          value_hi: 209
+          note: "Not a gate; C1 pool (294 surface forms) spans far more than ~40 measures"
+        - metric: "order_agreement_ari"
+          value: 0.7620
+          range_lo: 0.6750
+          range_hi: 0.8470
+          note: >
+            Moderate cross-seed clustering stability. Does NOT propagate to
+            headline metrics: coverage SD=0, spurious-rate SD~=0.005 across the
+            5 shuffle seeds, so reorderings reshuffle only RR-irrelevant
+            boundaries.
+        - metric: "jw_gate_coverage"
+          value: 0.9184
+          note: >
+            jw gate recovers more acts but year_alignment collapses to 0.185 --
+            fuzzy name matches land on wrong years. Keyword is the trustworthy
+            gate; true recovery sits between the two.
+      comparison_best_umap:
+        variant: "hdb_umap_nn5_nc5_md0.010_m2_yw2"
+        rr_acts_recovered_keyword: 37
+        year_alignment_keyword: 0.9556
+        fragmentation_index_keyword: 1.1100
+        n_clusters_total: 120
+    interpretation: >
+      Barebones iteration-1 Haiku single-shot matches the fully-tuned UMAP grid
+      on the first gate (RR-act recovery 37/40 recoverable; ceiling is 40 of 49,
+      the other 9 being upstream C1 gaps dominated by Social-Security-family
+      descriptive-vs-formal naming) and beats it on the second gate (year
+      alignment 0.977 vs UMAP 0.956). Fragmentation tail isolated to one
+      mechanism: 4 of the 6 extra clusters come from H.R. bill-number-prefixed
+      surface forms failing to merge with the bare act name (e.g. "Revenue Act
+      of 1971" vs "H.R. 10947, the Revenue Act of 1971"; "Excise Tax Reduction
+      Act of 1965" split despite both clusters containing the full name AND
+      H.R. 8371; PL 89-800 split 3 ways across a PL-number, a bill-number, and a
+      descriptive label). The instruction lists public-law/decree numbers as
+      interchangeable but never names legislative bill numbers (H.R./S.), and
+      the model does not generalize the rule. The 5th "split" (Taxpayer Relief
+      Act 1997 + Balanced Budget Act 1997) is an RR ground-truth lumping
+      artifact, not an M5 error -- M5 correctly separated them. That BBA97
+      cluster, however, wrongly absorbed the Balanced Budget and Emergency
+      Deficit Control Act of 1985 (Gramm-Rudman-Hollings): a false-merge across
+      years that the current fragmentation/coverage metrics do not catch. Order
+      stability is moderate (ARI 0.76) but does not move headline metrics.
+      Decision recorded after /review-iteration deep dive.
+    decision: >
+      Iterate. (1) Bill-number fix: add an instruction clarification that
+      legislative bill numbers (H.R./S.), public-law/decree numbers, and the
+      formal act name are interchangeable identifiers of the same measure -- a
+      differing identifier prefix must not block a merge when the act name
+      matches. Expected effect: n_clusters_matched 43 -> ~39, fragmentation
+      index 1.16 -> ~1.05 (below UMAP's 1.11), recovery held at 37; likely also
+      trims the non-RR tail since the H.R.-prefix pattern recurs pool-wide.
+      (2) Over-merge diagnostic: add a within-cluster year-spread metric to
+      catch false merges across distinct acts (e.g. Gramm-Rudman-Hollings 1985
+      absorbed into BBA 1997), a failure mode invisible to the current
+      RR-mapped gates. Both before any Phase 2 deployment of C0.
+      Per workflow convention, one change at a time on the codebook: apply the
+      bill-number clarification first, re-run, then add the diagnostic target.
