@@ -47,11 +47,14 @@ tar_load(c(
   c0_hdbscan_rr_matches,
   c0_hdbscan_rr_metrics,
   c0_hdbscan_umap_rr_matches,
-  c0_hdbscan_umap_rr_metrics
+  c0_hdbscan_umap_rr_metrics,
+  c0_m5_clusters,
+  c0_m5_rr_metrics
 ))
 
-# Methods 2 + 3 (HDBSCAN, unblocked + year-blocked) are wired below.
-# Methods 4 + 5 (hybrid LLM judge, stateful builder) remain Phase B-pending.
+# Methods 1-3 (JW, HDBSCAN unblocked + year-blocked) and Method 5 (LLM
+# canonical clustering) are wired against the RR-aligned eval. Method 4
+# (hybrid embedding NN + LLM pairwise judge) remains Phase B-pending.
 phase_b_pending <- FALSE
 ```
 
@@ -1251,6 +1254,100 @@ render_hdb_rr_ladder(shape_hdb_rr_ladder("jw", "yw2"))
 
 Compare each row to its unblocked counterpart in @tbl-hdb-rr-metrics / @tbl-hdb-rr-metrics-jw. If year-blocking lowers spurious rate at the same min_cluster_size with comparable coverage, the temporal prior remains structural across the eval pivot and is worth carrying into Methods 4–5 when they land.
 
+### Hyperparameter sweep (Methods 2 + 3)
+
+The four no-UMAP tables above are six variants — `min_cluster_size ∈ {2, 3, 5}` crossed with `{unblocked, year ±2}`. @fig-hdb-rr-headline and @fig-hdb-rr-counts plot that sweep in the same idiom as @fig-jw-rr-sweep / @fig-jw-rr-counts so Methods 2 + 3 read on the same axes as Method 1: each panel column is a name gate (keyword vs JW-min ≤ 0.30), each row is an outcome, the x-axis is the only swept hyperparameter (`min_cluster_size`), and colour is year-blocking. The HDBSCAN counterpart of the UMAP grid's four-knob scan (@fig-umap-rr-headline) is degenerate here — one knob, three points.
+
+```{r}
+#| label: prep-hdb-rr-sweep
+
+# Methods 2 + 3 (no-UMAP HDBSCAN) sweep plotters. One swept hyperparameter
+# (min_cluster_size); blocking is the colour, gate is the panel column.
+# Mirrors the Method 1 @fig-jw-rr-sweep / @fig-jw-rr-counts idiom exactly.
+hdb_rr_blocking_pal <- c("Unblocked" = "#CC6677", "Year ±2" = "#4477AA")
+
+plot_hdb_rr_headline <- function() {
+  c0_hdbscan_rr_metrics |>
+    dplyr::filter(metric %in% c("coverage", "spurious_rate",
+                                "fragmentation_index", "year_alignment")) |>
+    dplyr::mutate(
+      min_cluster_size = as.integer(
+        stringr::str_extract(variant_id, "(?<=_m)\\d+(?=_)")),
+      Blocking = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                                "Year ±2", "Unblocked"),
+      gate = factor(gate, levels = c("keyword", "jw"),
+                    labels = c("Keyword gate", "JW-min ≤ 0.30 gate")),
+      metric = factor(metric,
+        levels = c("coverage", "spurious_rate",
+                   "fragmentation_index", "year_alignment"),
+        labels = c("Coverage ↑", "Spurious rate ↓",
+                   "Fragmentation ↓", "Year alignment ↑"))
+    ) |>
+    ggplot(aes(min_cluster_size, value, colour = Blocking, fill = Blocking)) +
+    geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), alpha = 0.15, colour = NA) +
+    geom_line(linewidth = 0.6) +
+    geom_point(size = 1.8) +
+    facet_grid(metric ~ gate, scales = "free_y", switch = "y") +
+    scale_colour_manual(values = hdb_rr_blocking_pal) +
+    scale_fill_manual(values = hdb_rr_blocking_pal) +
+    scale_x_continuous(breaks = c(2, 3, 5)) +
+    labs(x = "min_cluster_size", y = NULL, colour = NULL, fill = NULL) +
+    theme_minimal(base_size = 10) +
+    theme(legend.position = "top", strip.placement = "outside",
+          panel.grid.minor = element_blank())
+}
+
+plot_hdb_rr_counts <- function() {
+  c0_hdbscan_rr_metrics |>
+    dplyr::distinct(variant_id, gate, n_clusters,
+                    n_clusters_matched, n_rr_acts_matched) |>
+    tidyr::pivot_longer(
+      cols = c(n_clusters, n_clusters_matched, n_rr_acts_matched),
+      names_to = "outcome", values_to = "count") |>
+    dplyr::mutate(
+      min_cluster_size = as.integer(
+        stringr::str_extract(variant_id, "(?<=_m)\\d+(?=_)")),
+      Blocking = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                                "Year ±2", "Unblocked"),
+      gate = factor(gate, levels = c("keyword", "jw"),
+                    labels = c("Keyword gate", "JW-min ≤ 0.30 gate")),
+      outcome = factor(outcome,
+        levels = c("n_clusters", "n_clusters_matched", "n_rr_acts_matched"),
+        labels = c("n clusters", "Clusters matched", "RR acts matched"))
+    ) |>
+    ggplot(aes(min_cluster_size, count, colour = Blocking)) +
+    geom_line(linewidth = 0.6) +
+    geom_point(size = 1.8) +
+    facet_grid(outcome ~ gate, scales = "free_y", switch = "y") +
+    scale_colour_manual(values = hdb_rr_blocking_pal) +
+    scale_x_continuous(breaks = c(2, 3, 5)) +
+    labs(x = "min_cluster_size", y = NULL, colour = NULL) +
+    theme_minimal(base_size = 10) +
+    theme(legend.position = "top", strip.placement = "outside",
+          panel.grid.minor = element_blank())
+}
+```
+
+```{r}
+#| label: fig-hdb-rr-headline
+#| fig-cap: "**HDBSCAN headline metrics vs min_cluster_size**. Methods 2 + 3 (no UMAP). Columns: name gate (keyword vs JW-min ≤ 0.30). Rows: the four headline metrics, with ↑ / ↓ in the strip label. x: the swept `min_cluster_size`. Colour: unblocked vs year-±2 blocking. Bands are 95% bootstrap CIs (spurious rate cluster-resampled, the other three act-resampled; see §Bootstrap CI). Y-axes free per metric row."
+#| fig-width: 9
+#| fig-height: 9
+#| warning: false
+
+plot_hdb_rr_headline()
+```
+
+```{r}
+#| label: fig-hdb-rr-counts
+#| fig-cap: "**HDBSCAN match counts vs min_cluster_size**. Same layout as @fig-hdb-rr-headline but plotting raw counts. Columns: name gate. Rows: total clusters emitted, clusters carrying an RR match, RR acts covered (out of 49). `n clusters` is gate-invariant so its two columns are identical; only the lower two rows respond to the gate. Counts are exact (no bootstrap CI)."
+#| fig-width: 9
+#| fig-height: 7
+#| warning: false
+
+plot_hdb_rr_counts()
+```
+
 ## Methods 2 + 3 with UMAP dimensionality reduction
 
 The F16 and FP32 embedding-geometry probes above both failed the `separation ≥ 0.05` and `top-1 NN same-act rate ≥ 0.40` floors on the gold pool. The verdict text considered two interpretations — F16 quantization noise, and the embedding-model ceiling — but did not weigh a third: **high-dimensional distance concentration**. `intfloat/multilingual-e5-large-instruct` returns 1024-dimensional vectors, and the unblocked HDBSCAN above operates on the full-dimensional cosine distance matrix. Density-based clustering is known to degrade above k≈50 dim through hubness and farthest-to-nearest ratio compression; the standard fix in the BERTopic / Top2Vec neighbourhood is to interpose UMAP between the embedding and the clusterer, collapsing the ambient dim to ~5–10 and (optionally) packing within-cluster points tightly via `min_dist = 0`. This section ports that recipe into Methods 2 + 3 and reads the with-vs-without delta against the no-UMAP baseline above.
@@ -1379,6 +1476,113 @@ dplyr::bind_rows(
   theme(legend.position = "top")
 ```
 
+### Hyperparameter marginal scan (UMAP grid)
+
+The 162-variant UMAP grid sweeps four knobs at once — three UMAP hyperparameters (`n_neighbors`, `n_components`, `min_dist`) crossed with `min_cluster_size`, all under `{unblocked, year ±2}`. @fig-umap-rr-headline and @fig-umap-rr-counts scan that grid one knob at a time: each column is a hyperparameter, the x-axis steps through its three swept values, and every point is one of the variants holding that value while the other three knobs vary. Because three knobs vary at every x-position, each column is a **marginal** view — the spread of points at a given x is the variation induced by the other three knobs, and the crossbar is the median over them. Rows are outcomes (as in Method 1), colour is year-blocking, and the two gates split across sub-panels. A knob that mattered would tilt its column's medians; a flat column means the front does not move along that knob — the empirical read developed in §"Reading the UMAP results" below.
+
+```{r}
+#| label: prep-umap-rr-scan
+
+# UMAP marginal-scan plotter. Pivots the four swept knobs into one long column
+# so facet_grid(outcome ~ knob, scales = "free") gives a one-knob-at-a-time
+# marginal view; at each x-value the other three knobs vary, shown as jittered
+# points with a median crossbar. kind = "headline" reads the four rate metrics;
+# kind = "counts" reads the three cluster counts.
+plot_umap_rr_scan <- function(gate_name, kind = c("headline", "counts")) {
+  kind <- match.arg(kind)
+  base <- c0_hdbscan_umap_rr_metrics |>
+    dplyr::filter(gate == gate_name) |>
+    parse_umap_variant()
+
+  if (kind == "headline") {
+    dat <- base |>
+      dplyr::filter(metric %in% c("coverage", "spurious_rate",
+                                  "fragmentation_index", "year_alignment")) |>
+      dplyr::transmute(
+        variant_id, blocking, y = value,
+        facet_row = factor(metric,
+          levels = c("coverage", "spurious_rate",
+                     "fragmentation_index", "year_alignment"),
+          labels = c("Coverage ↑", "Spurious rate ↓",
+                     "Fragmentation ↓", "Year alignment ↑")),
+        n_neighbors = umap_n_neighbors, n_components = umap_n_components,
+        min_dist = umap_min_dist, min_cluster_size)
+  } else {
+    dat <- base |>
+      dplyr::distinct(variant_id, blocking,
+                      n_clusters, n_clusters_matched, n_rr_acts_matched,
+                      umap_n_neighbors, umap_n_components,
+                      umap_min_dist, min_cluster_size) |>
+      tidyr::pivot_longer(
+        cols = c(n_clusters, n_clusters_matched, n_rr_acts_matched),
+        names_to = "facet_row", values_to = "y") |>
+      dplyr::transmute(
+        variant_id, blocking, y,
+        facet_row = factor(facet_row,
+          levels = c("n_clusters", "n_clusters_matched", "n_rr_acts_matched"),
+          labels = c("n clusters", "Clusters matched", "RR acts matched")),
+        n_neighbors = umap_n_neighbors, n_components = umap_n_components,
+        min_dist = umap_min_dist, min_cluster_size)
+  }
+
+  long <- dat |>
+    tidyr::pivot_longer(
+      cols = c(n_neighbors, n_components, min_dist, min_cluster_size),
+      names_to = "hyperparameter", values_to = "hp_value") |>
+    dplyr::mutate(
+      Blocking = dplyr::if_else(blocking == "year ±2", "Year ±2", "Unblocked"),
+      hyperparameter = factor(hyperparameter,
+        levels = c("n_neighbors", "n_components", "min_dist", "min_cluster_size")),
+      hp_level = factor(hp_value, levels = sort(unique(hp_value))))
+
+  ggplot(long, aes(hp_level, y, colour = Blocking)) +
+    geom_point(position = position_jitterdodge(jitter.width = 0.18,
+                                               dodge.width = 0.7),
+               alpha = 0.22, size = 0.6) +
+    stat_summary(aes(group = Blocking), fun = median,
+                 fun.min = median, fun.max = median, geom = "crossbar",
+                 position = position_dodge(width = 0.7),
+                 width = 0.55, linewidth = 0.4) +
+    facet_grid(facet_row ~ hyperparameter, scales = "free", switch = "y") +
+    scale_colour_manual(values = hdb_rr_blocking_pal) +
+    labs(x = NULL, y = NULL, colour = NULL) +
+    theme_minimal(base_size = 10) +
+    theme(legend.position = "top", strip.placement = "outside",
+          panel.grid.minor = element_blank(),
+          axis.text.x = element_text(size = 7))
+}
+```
+
+```{r}
+#| label: fig-umap-rr-headline
+#| fig-cap: "**UMAP headline metrics — marginal scan**. Columns: the four swept knobs (`n_neighbors`, `n_components`, `min_dist`, `min_cluster_size`). Rows: the four headline metrics, ↑ / ↓ in the strip label. x steps through each knob's three values; each point is one of the 162 variants at that value (the other three knobs vary), with a median crossbar per (value × blocking). Colour: blocking. Gates split across sub-panels. A flat column = that knob does not move the metric. Y-axes free per metric row; x free per knob column."
+#| fig-subcap:
+#|   - "Keyword gate"
+#|   - "JW-min ≤ 0.30 gate"
+#| layout-ncol: 1
+#| fig-width: 10
+#| fig-height: 8
+#| warning: false
+
+plot_umap_rr_scan("keyword", "headline")
+plot_umap_rr_scan("jw", "headline")
+```
+
+```{r}
+#| label: fig-umap-rr-counts
+#| fig-cap: "**UMAP match counts — marginal scan**. Same layout as @fig-umap-rr-headline but plotting raw counts. Rows: total clusters emitted, clusters carrying an RR match, RR acts covered (out of 49). `n clusters` is gate-invariant so its row repeats across the two sub-panels. Points are exact counts (no bootstrap CI); the crossbar is the median over the marginalized knobs."
+#| fig-subcap:
+#|   - "Keyword gate"
+#|   - "JW-min ≤ 0.30 gate"
+#| layout-ncol: 1
+#| fig-width: 10
+#| fig-height: 6
+#| warning: false
+
+plot_umap_rr_scan("keyword", "counts")
+plot_umap_rr_scan("jw", "counts")
+```
+
 ### Reading the UMAP results
 
 The headline reading is empirical: across the 162 UMAP variants in `c0_hdbscan_umap_rr_metrics`, **no UMAP variant strictly dominates the no-UMAP HDBSCAN baseline on the coverage/spurious front under either gate**. The shortlist tables above pick the best UMAP cell per (min_cluster_size × year-blocking) sub-cell by the asymmetric-cost rule (lowest spurious, then highest coverage); the picks land at comparable spurious rates and comparable coverage to the corresponding no-UMAP rows in @tbl-hdb-rr-metrics and @tbl-hdb-yw2-rr-metrics. UMAP-PF (the precision-friendly UMAP winner overall) does cut the singleton share in the cluster-count distribution from 38% (no-UMAP baseline `hdb_m2_yw2`) to 14%, but most of the singletons it removes are noise points that wouldn't have matched any RR act anyway. Two independent diagnostics explain why the front doesn't move.
@@ -1395,13 +1599,224 @@ Second, **the upstream gold-pool ceiling documented in §"Why we pivoted away fr
 The hybrid pipeline (embedding top-k → Haiku YES/NO verifier → union-find) lands once Phase B is built. Expected to dominate the cost/quality frontier: cheap blocker + targeted LLM verification only on the candidate pairs that survive embedding similarity.
 :::
 
-## Method 5 — Stateful LLM canonical-list build
+## Method 5 — LLM canonical clustering
 
-::: {.callout-warning title="Phase B pending"}
-The stateful walker (Haiku reads each doc's measure names, matches to existing canonicals or proposes new ones) lands once Phase B is built. Will include a multi-seed shuffle probe for order sensitivity.
-:::
+Method 5 is the semantic bridge Methods 1–3 cannot build on their own (§"What this means for Method 1"). It is an **unsupervised** clustering method: Haiku is shown the full pool of distinct rank-1 surface forms — each with a representative year — and returns, for every name, a cluster key (`surface_id → cluster_id`). It never sees R&R's act list; the gold labels enter only in evaluation, through the same `match_clusters_to_rr_acts()` + `evaluate_rr_matches_grid()` gates Methods 1–3 are scored under. The model emits a grouping of **ids**, never strings, so there is nothing to fuzzy-match on the output side and the members the gates score are the original C1 surface forms — M5 is graded apples-to-apples with the lexical and embedding methods, with no free credit for re-emitting canonical names. The bespoke clustering instruction lives in [c0_canonicalize.yml](../prompts/c0_canonicalize.yml); canonical-name selection and the reshape to the standard cluster table are deterministic R in [R/c0_aggregator.R](../R/c0_aggregator.R) (`run_m5_llm_clusters()`).
+
+Iteration 1 is the barebones cell of the design: **Haiku, single-shot, names + representative year, five fixed-seed input shuffles**. The five seeds are the order-sensitivity probe (the M5 analog of C1/C2's Test IV order-invariance test): each seed reorders the input list, becomes its own `variant_id`, and is scored independently, so seed-to-seed metric spread and partition agreement quantify how much the answer rides on input order.
+
+### Context-window headroom
+
+Before spending any tokens, @fig-m5-token-budget confirms the single-shot call clears both the context window and our output budget. The id-only output schema keeps the response compact — the model echoes one short `{id, cluster}` record per name rather than the full surface string — so even though it returns one record per surface form, the projected output stays well under `max_tokens`. Output is estimated at ~14 tokens per record (the JSON structure costs roughly twice the chars/4 heuristic, a correction the iteration-1 pilot surfaced when a 4,096-token budget truncated the response).
+
+```{r}
+#| label: fig-m5-token-budget
+#| fig-cap: "**M5 token budget**. Approximate tokens for the system instruction, the surface-form input list (chars/4), and the projected `id→cluster` output (~14 tokens per pretty-printed JSON record), against our `max_tokens` output budget (8,192) and the Haiku/Sonnet 200K context window (both dashed). Log x-axis. Input sits at ~2% of the window; output sits below the configured budget — single-shot is feasible at iteration 1's pool size."
+#| fig-width: 9
+#| fig-height: 3
+
+m5_input_nb <- prepare_m5_input(c0_us_measure_pool)
+instr_nb    <- yaml::read_yaml(here("prompts/c0_canonicalize.yml"))$instruction
+user_msg_nb <- build_m5_user_message(m5_input_nb)
+N_nb        <- nrow(m5_input_nb)
+tok         <- function(s) ceiling(nchar(s) / 4)
+
+budget_df <- tibble::tibble(
+  component = factor(
+    c("Instruction (system)", "Surface-form list (input)",
+      "Projected output (id → cluster)"),
+    levels = c("Projected output (id → cluster)",
+               "Surface-form list (input)", "Instruction (system)")),
+  kind   = c("Input", "Input", "Output"),
+  tokens = c(tok(instr_nb), tok(user_msg_nb), N_nb * 14L)
+)
+
+ggplot(budget_df, aes(tokens, component, fill = kind)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = scales::comma(tokens)), hjust = -0.2, size = 3) +
+  geom_vline(xintercept = 8192, linetype = "dashed", colour = "#CC6677") +
+  geom_vline(xintercept = 2e5, linetype = "dashed", colour = "#332288") +
+  annotate("text", x = 8192, y = 3.5, label = "max_tokens 8,192",
+           colour = "#CC6677", size = 2.8, angle = 90, vjust = -0.4, hjust = 1) +
+  annotate("text", x = 2e5, y = 3.5, label = "200K context",
+           colour = "#332288", size = 2.8, angle = 90, vjust = -0.4, hjust = 1) +
+  scale_x_log10(labels = scales::comma,
+                expand = expansion(mult = c(0.02, 0.18))) +
+  scale_fill_manual(values = c(Input = "#4477AA", Output = "#117733")) +
+  labs(x = "Tokens (log scale)", y = NULL, fill = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top", panel.grid.minor = element_blank())
+```
+
+### Partition integrity
+
+@tbl-m5-integrity is the first reliability gate: did the model return a clean partition of all `r N_nb` input ids on each seed? Missing ids are filled as singleton clusters (recoverable, under-merge), extra/hallucinated ids are dropped. Non-zero `Missing` or `Extra` columns, or a non-`end_turn` stop reason, flag output that the model truncated or drifted on.
+
+```{r}
+#| label: tbl-m5-integrity
+#| tbl-cap: "**M5 partition integrity, per seed**. `Missing → singleton` ids were not returned and are filled as singletons; `Extra (dropped)` ids were returned but not in the input. A clean run shows 0 / 0 and `end_turn`."
+
+attr(c0_m5_clusters, "integrity") |>
+  dplyr::transmute(
+    Seed = seed,
+    `Names expected`     = n_expected,
+    `Returned`           = n_returned,
+    `Missing → singleton` = n_missing,
+    `Extra (dropped)`    = n_extra,
+    Parsed               = parse_ok,
+    `Stop reason`        = stop_reason
+  ) |>
+  tt() |> tt_theme_report()
+```
+
+### Order sensitivity
+
+@tbl-m5-order reports the adjusted Rand index between every pair of the five seed partitions. ARI = 1 means input order has no effect on the clustering; lower values mean early-listed names anchor clusters the later order would have drawn differently. This is the headline robustness number for a single-shot LLM clusterer.
+
+```{r}
+#| label: tbl-m5-order
+#| tbl-cap: "**M5 order sensitivity**. Pairwise adjusted Rand index across the five shuffle-seed partitions of the shared name pool. 1.0 = order-invariant."
+
+compute_m5_order_agreement(c0_m5_clusters) |>
+  dplyr::transmute(
+    `Seed variants`  = n_variants,
+    `Seed pairs`     = n_pairs,
+    `Mean ARI`       = sprintf("%.3f", mean_ari),
+    `Min ARI`        = sprintf("%.3f", min_ari),
+    `Max ARI`        = sprintf("%.3f", max_ari)
+  ) |>
+  tt() |> tt_theme_report()
+```
+
+### RR-aligned metrics
+
+The same two-gate ladder used for Methods 1–3, one row per seed. Coverage / spurious / fragmentation / year-alignment carry 95% bootstrap CIs (act-resample for the act-indexed metrics, cluster-resample for spurious). The keyword gate is M5's honest headline (immune to canonical re-emission); the JW gate is shown for parity with the other methods' tables. Read the seed-to-seed spread as the order-sensitivity envelope on each metric.
+
+```{r}
+#| label: tbl-m5-rr-keyword
+#| tbl-cap: "**Method 5, keyword gate**. One row per shuffle seed. Coverage ↑, Spurious ↓, Fragmentation ↓, Year alignment ↑."
+
+format_rr_method_ladder(c0_m5_rr_metrics, gate = "keyword") |>
+  tt() |> tt_theme_report()
+```
+
+```{r}
+#| label: tbl-m5-rr-jw
+#| tbl-cap: "**Method 5, JW gate**. Same rows, JW-min ≤ 0.30 name gate."
+
+format_rr_method_ladder(c0_m5_rr_metrics, gate = "jw") |>
+  tt() |> tt_theme_report()
+```
 
 ## Method comparison ladder
+
+### Performance frontier
+
+The ladder tables below collapse each method to a single "best" variant (lowest spurious, then highest coverage). @fig-method-frontier shows the full picture that pick is drawn from: every one of the 183 implemented variants as a point in coverage–spurious space, per gate, with the pooled efficient frontier (the non-dominated envelope — maximum coverage achievable at each spurious level) drawn over them. This is the honest "how well can the methods perform" answer for objective (i): a frontier, not a point.
+
+Two structural facts read straight off it. Within JW and within no-UMAP HDBSCAN there is **no** coverage–spurious tradeoff — one variant dominates all others of its method on both axes, so each contributes a single frontier point; the only genuine tradeoff *curve* is the UMAP grid. And the three methods occupy different regions: JW reaches the highest coverage (≈0.84) but only at spurious ≥0.95; HDBSCAN + UMAP owns the low-spurious end (down to ≈0.60) at comparable coverage. The deployment pick in @tbl-ladder is just the lowest-spurious *corner* of this frontier — a different cost ratio (false merges per missed act) would pick a different corner.
+
+```{r}
+#| label: prep-method-frontier
+
+# Pool all 183 implemented variants (JW + HDBSCAN + HDBSCAN/UMAP + LLM M5) into one
+# coverage-vs-spurious table per gate, for the cross-method performance
+# frontier (objective i). Read-only over the already-loaded RR metrics targets.
+method_frontier_palette <- c(
+  "JW (Method 1)"         = "#332288",
+  "HDBSCAN (Methods 2+3)" = "#CC6677",
+  "HDBSCAN + UMAP"        = "#44AA99",
+  "LLM (Method 5)"        = "#882255")
+
+collect_rr_wide <- function() {
+  one <- function(df, lbl) {
+    df |>
+      dplyr::filter(metric %in% c("coverage", "spurious_rate")) |>
+      dplyr::select(variant_id, gate, metric, value,
+                    n_clusters, n_clusters_matched, n_rr_acts_matched) |>
+      tidyr::pivot_wider(names_from = metric, values_from = value) |>
+      dplyr::mutate(
+        Method = lbl,
+        Blocking = dplyr::if_else(stringr::str_detect(variant_id, "yw2"),
+                                  "Year ±2", "Unblocked"))
+  }
+  dplyr::bind_rows(
+    one(c0_jw_rr_metrics,           "JW (Method 1)"),
+    one(c0_hdbscan_rr_metrics,      "HDBSCAN (Methods 2+3)"),
+    one(c0_hdbscan_umap_rr_metrics, "HDBSCAN + UMAP"),
+    one(c0_m5_rr_metrics,           "LLM (Method 5)")
+  ) |>
+    dplyr::mutate(
+      Method = factor(Method, levels = names(method_frontier_palette)),
+      gate = factor(gate, levels = c("keyword", "jw"),
+                    labels = c("Keyword gate", "JW-min ≤ 0.30 gate")))
+}
+
+# Non-dominated set: minimise spurious_rate, maximise coverage. Sorted by
+# ascending spurious, a point joins the frontier iff its coverage exceeds the
+# best coverage seen at any lower-or-equal spurious.
+pareto_front <- function(df) {
+  d <- df |> dplyr::arrange(spurious_rate, dplyr::desc(coverage))
+  keep <- logical(nrow(d)); best <- -Inf
+  for (i in seq_len(nrow(d))) {
+    if (d$coverage[i] > best) { keep[i] <- TRUE; best <- d$coverage[i] }
+  }
+  d[keep, , drop = FALSE]
+}
+
+method_rr_wide <- collect_rr_wide()
+method_rr_front <- method_rr_wide |>
+  dplyr::group_by(gate) |>
+  dplyr::group_modify(~ pareto_front(.x)) |>
+  dplyr::ungroup()
+```
+
+```{r}
+#| label: fig-method-frontier
+#| fig-cap: "**Coverage–spurious performance frontier**. All 183 implemented variants (10 JW + 6 HDBSCAN + 162 HDBSCAN/UMAP + 5 LLM M5 seeds) in coverage (↑ better) × spurious-rate (← better) space, per name gate. Colour: method; shape: year-blocking. The grey line is the pooled efficient frontier (non-dominated envelope across all methods); enlarged points sit on it. JW and no-UMAP HDBSCAN each contribute a single frontier point (one variant dominates the rest of its method); the UMAP grid supplies the tradeoff curve at low spurious; the five M5 seeds show the LLM's order-sensitivity scatter. Point estimates only (CIs omitted for legibility; see the ladder tables)."
+#| fig-width: 9
+#| fig-height: 4.6
+#| warning: false
+
+ggplot(method_rr_wide, aes(spurious_rate, coverage)) +
+  geom_point(aes(colour = Method, shape = Blocking),
+             alpha = 0.35, size = 1.5) +
+  geom_line(data = method_rr_front, colour = "grey25", linewidth = 0.6) +
+  geom_point(data = method_rr_front, aes(colour = Method, shape = Blocking),
+             size = 2.8) +
+  facet_wrap(~gate, nrow = 1) +
+  scale_colour_manual(values = method_frontier_palette) +
+  scale_shape_manual(values = c("Unblocked" = 16, "Year ±2" = 17)) +
+  labs(x = "Spurious rate (lower is better)",
+       y = "Coverage (higher is better)", colour = NULL, shape = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top", panel.grid.minor = element_blank())
+```
+
+@fig-method-counts decomposes the same variants into the raw count geometry behind the rates: x is how many emitted clusters carry an RR match, y is how many of the 49 RR acts are covered, and point area is the total cluster budget (`n clusters`) — the denominator that drives the spurious rate. The dashed line is y = x (one matched cluster per covered act, no fragmentation among matches); points to its right are fragmented (several clusters matching the same act). JW sits far right with the largest points — it covers many acts but emits a vast cluster budget and fragments heavily; HDBSCAN + UMAP clusters near the line with small budgets, the count-space signature of its low spurious rate.
+
+```{r}
+#| label: fig-method-counts
+#| fig-cap: "**Match-count geometry**. Same 183 variants, per gate. x: clusters carrying an RR match. y: RR acts covered (of 49). Point area: total clusters emitted (`n clusters`, the spurious-rate denominator). Colour: method; shape: year-blocking. Dashed line is y = x (no fragmentation among matched clusters); points to its right fragment one act across several clusters. Large points far right (JW) = big budget + heavy fragmentation; small points near the line (UMAP) = lean budget."
+#| fig-width: 9.5
+#| fig-height: 4.6
+#| warning: false
+
+ggplot(method_rr_wide,
+       aes(n_clusters_matched, n_rr_acts_matched, colour = Method)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed",
+              colour = "grey60") +
+  geom_point(aes(size = n_clusters, shape = Blocking), alpha = 0.5) +
+  facet_wrap(~gate, nrow = 1) +
+  scale_colour_manual(values = method_frontier_palette) +
+  scale_shape_manual(values = c("Unblocked" = 16, "Year ±2" = 17)) +
+  scale_size_area(max_size = 9, breaks = c(50, 200, 500, 1000, 1700)) +
+  labs(x = "Clusters carrying an RR match",
+       y = "RR acts covered (of 49)",
+       size = "n clusters", colour = NULL, shape = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "right", panel.grid.minor = element_blank())
+```
 
 ```{r}
 #| label: prep-method-comparison
@@ -1427,6 +1842,7 @@ build_method_comparison <- function(gate_name) {
   best_jw       <- pick_best_by_rr(c0_jw_rr_metrics, gate_name)
   best_hdb      <- pick_best_by_rr(c0_hdbscan_rr_metrics, gate_name)
   best_hdb_umap <- pick_best_by_rr(c0_hdbscan_umap_rr_metrics, gate_name)
+  best_m5       <- pick_best_by_rr(c0_m5_rr_metrics, gate_name)
 
   jw_row <- format_rr_method_ladder(c0_jw_rr_metrics, gate = gate_name) |>
     dplyr::filter(variant_id == best_jw) |>
@@ -1439,8 +1855,11 @@ build_method_comparison <- function(gate_name) {
                                           gate = gate_name) |>
     dplyr::filter(variant_id == best_hdb_umap) |>
     dplyr::mutate(Method = "HDBSCAN + UMAP (best variant)")
+  m5_row <- format_rr_method_ladder(c0_m5_rr_metrics, gate = gate_name) |>
+    dplyr::filter(variant_id == best_m5) |>
+    dplyr::mutate(Method = "LLM Method 5 (best seed)")
 
-  dplyr::bind_rows(jw_row, hdb_row, hdb_umap_row) |>
+  dplyr::bind_rows(jw_row, hdb_row, hdb_umap_row, m5_row) |>
     dplyr::rename(Variant = variant_id) |>
     dplyr::relocate(Method, Variant)
 }
@@ -1455,12 +1874,12 @@ build_method_comparison("keyword") |> tt() |> tt_theme_report()
 
 ```{r}
 #| label: tbl-ladder-jw
-#| tbl-cap: "**Method comparison, JW gate**. Same picker, JW-min ≤ 0.30 gate. Methods that re-emit RR-canonical names (Method 5 will, Methods 1-3 don't) gain coverage here that they don't gain under @tbl-ladder."
+#| tbl-cap: "**Method comparison, JW gate**. Same picker, JW-min ≤ 0.30 gate. The keyword-vs-JW gap diagnoses recovery-by-near-canonical-match; M5's members are the original C1 surface forms (it never emits new strings), so it gets no extra JW credit Methods 1-3 don't."
 
 build_method_comparison("jw") |> tt() |> tt_theme_report()
 ```
 
-Three rows now — JW, no-UMAP HDBSCAN, and UMAP+HDBSCAN — picked by the asymmetric-cost rule within each method. Reading across the rows: if UMAP+HDBSCAN dominates the no-UMAP row on coverage with comparable-or-lower spurious, BERTopic-style dim-reduction is the load-bearing improvement. If JW wins on spurious but trails on coverage (the expected pattern given the within-act JW geometry), JW remains a precision-friendly blocker candidate for Method 4 rather than a deployable method on its own. Methods 4 + 5 will extend this table once they land.
+Four rows now — JW, no-UMAP HDBSCAN, UMAP+HDBSCAN, and LLM (Method 5, best seed) — picked by the asymmetric-cost rule within each method. Reading across the rows: if UMAP+HDBSCAN dominates the no-UMAP row on coverage with comparable-or-lower spurious, BERTopic-style dim-reduction is the load-bearing improvement. If JW wins on spurious but trails on coverage (the expected pattern given the within-act JW geometry), JW remains a precision-friendly blocker candidate for Method 4 rather than a deployable method on its own. Method 5 is the test of whether an LLM's semantic grouping clears the coverage/spurious frontier the lexical and embedding methods are stuck behind; its row here is the best of five shuffle seeds, so read it together with the seed spread in @tbl-m5-rr-keyword (the best-seed pick is optimistic). Method 4 will extend this table once it lands.
 
 ## Out-of-distribution: Malaysia EN/BM
 
@@ -1472,32 +1891,34 @@ Once Phase B is built, the best variant from each method is applied to the Malay
 
 ```{r}
 #| label: tbl-cost
-#| tbl-cap: "**Per-method cost**. Methods 1–3 are zero-cost (pure-R or local Ollama). Methods 4–5 will populate from `logs/api_calls.csv` once wired."
+#| tbl-cap: "**Per-method cost**. Methods 1–3 are zero-cost (pure-R or local Ollama). Method 5 is one Haiku single-shot call per shuffle seed (5 seeds); token columns are the chars/4 estimate × 5, dollar costs are upper bounds pending `logs/api_calls.csv`. Method 4 still pending."
 
 tibble::tibble(
   Method = c("Method 1: JW single-linkage",
              "Method 2: E5-multilingual + HDBSCAN",
-             "Method 3: E5-multilingual + HDBSCAN (year-blocked)"),
-  `Tokens (input)`          = c("0", "≈4K", "≈4K"),
-  `Tokens (output)`         = c("0", "0", "0"),
-  `Pilot cost (USD)`        = c("0.00", "0.00", "0.00"),
-  `Projected SEA cost (USD)`= c("0.00", "0.00", "0.00"),
+             "Method 3: E5-multilingual + HDBSCAN (year-blocked)",
+             "Method 5: Haiku single-shot LLM clustering"),
+  `Tokens (input)`          = c("0", "≈4K", "≈4K", "≈25K (5 × ≈5K)"),
+  `Tokens (output)`         = c("0", "0", "0", "≈20K (5 × ≈4K)"),
+  `Pilot cost (USD)`        = c("0.00", "0.00", "0.00", "\\<0.10"),
+  `Projected SEA cost (USD)`= c("0.00", "0.00", "0.00", "\\<0.50"),
   Notes = c("Pure-R, no API calls",
             "Local Ollama (jeffh/intfloat-multilingual-e5-large-instruct:f16); embeddings cached in `c0_us_embeddings`",
-            "Reuses Method 2 embeddings; year-blocking applied at the distance-matrix step")
+            "Reuses Method 2 embeddings; year-blocking applied at the distance-matrix step",
+            "id-only output keeps tokens small; 5 seeds for the order-sensitivity probe. Exact cost in `logs/api_calls.csv`")
 ) |> tt() |> tt_theme_report()
 ```
 
-::: {.callout-warning title="Methods 4 + 5 still pending"}
-Phase B cost diagnostics for Method 4 (Haiku pairwise-judge) and Method 5 (Haiku stateful-builder) will populate from `logs/api_calls.csv` filtered by method tag once those targets run.
+::: {.callout-warning title="Method 4 still pending"}
+Phase B cost diagnostics for Method 4 (Haiku pairwise-judge) will populate from `logs/api_calls.csv` once that target runs.
 :::
 
 ## Synthesis
 
-::: {.callout-note title="Methods 4 + 5 still pending"}
-A final method + parameter recommendation waits for all five methods to be evaluated. Methods 1–3 (JW, HDBSCAN unblocked, HDBSCAN year-blocked) are now wired against the RR-aligned eval; Methods 4 (hybrid LLM judge) and 5 (stateful canonical builder) remain to land.
+::: {.callout-note title="Method 4 still pending"}
+A final method + parameter recommendation waits for Method 4 to be evaluated. Methods 1–3 (JW, HDBSCAN unblocked, HDBSCAN year-blocked) and Method 5 (LLM canonical clustering) are now wired against the RR-aligned eval; Method 4 (hybrid embedding-NN + LLM pairwise judge) remains to land.
 
-Until then, the shortlist below applies the precision-friendly rule from §Framing to each finished method in isolation: among variants with the lowest spurious rate, pick the one with the highest coverage. Compare the JW pick against the HDBSCAN pick to see whether the semantic bridge embeddings provide outweighs whatever lexical-only precision JW retains.
+Until then, the shortlist below applies the precision-friendly rule from §Framing to each finished method in isolation: among variants with the lowest spurious rate, pick the one with the highest coverage. The load-bearing comparison is now Method 5's best seed against the JW and HDBSCAN picks — whether the LLM's semantic grouping clears the coverage/spurious frontier the lexical and embedding methods are stuck behind.
 :::
 
 ```{r}
