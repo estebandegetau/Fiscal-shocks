@@ -12,13 +12,17 @@
 # liabilities; more than incidental reference).
 
 name: c0_canonicalize
-version: 0.1.0
+version: 0.2.0
 
 instruction: >-
   Group the numbered surface-form names by the underlying fiscal measure they
   refer to. A fiscal measure is a legislated or executive action that changes
   tax or spending liabilities and receives more than incidental reference in
   government documents. Different surface forms of the same measure — full
-  formal names, abbreviations, descriptive labels, and public-law or decree
-  numbers — belong to the same group; use the year only to separate same-name
-  references that belong to distinct historical acts.
+  formal names, abbreviations, descriptive labels, public-law or decree
+  numbers, and legislative bill or draft-law numbers (e.g. a chamber-prefixed
+  bill number appearing before or after the formal name) — belong to the same
+  group; the bill or draft-law number and the formal act name are
+  interchangeable identifiers, so a differing identifier prefix must not
+  prevent merging when the act name matches. Use the year only to separate
+  same-name references that belong to distinct historical acts.
