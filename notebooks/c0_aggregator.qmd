@@ -19,6 +19,7 @@ tar_config_set(store = here("_targets"))
 source(here("R/tt_theme.R"))
 source(here("R/identify_chunk_tiers.R"))  # generate_subcomponents, squish_for_matching
 source(here("R/c0_aggregator.R"))
+theme_set(theme_minimal())
 
 tar_load(c(
   c1_s2_results,
@@ -49,6 +50,7 @@ tar_load(c(
   c0_hdbscan_umap_rr_matches,
   c0_hdbscan_umap_rr_metrics,
   c0_m5_clusters,
+  c0_m5_rr_matches,
   c0_m5_rr_metrics
 ))
 
@@ -1707,6 +1709,198 @@ format_rr_method_ladder(c0_m5_rr_metrics, gate = "keyword") |>
 format_rr_method_ladder(c0_m5_rr_metrics, gate = "jw") |>
   tt() |> tt_theme_report()
 ```
+
+### Frequency as an unsupervised RR signal
+
+In deployment there is no ground truth, so we need a corpus-internal property that ranks which clusters merit expert review. The hypothesis: R&R acts are *significant* legislated fiscal changes, and significance tracks how often an act is discussed, so RR-matched clusters should sit higher in the per-cluster frequency distribution than the spurious tail. The two diagnostics below test that separability on the US corpus (where RR labels exist) for a single seed (`s1`); coverage is seed-stable so the seed choice does not move the marks. This is a qualitative separability look, not a fitted threshold — what transfers to Malaysia is the *signal*, not a cutoff.
+
+```{r}
+#| label: prep-m5-freq-diag
+# One row per M5 cluster (seed s1): corpus frequency (distinct chunks),
+# RR-match status under each gate, and name distance to the nearest RR act.
+# Read-only over already-loaded targets. The match table holds only clusters
+# that passed at least one gate, so min_jw is recomputed from canonical names
+# to cover every cluster (incl. the unmatched ~80%).
+m5_seed <- "m5_haiku_namesyear_s1"
+m5_match_palette <- c(
+    "unmatched"           = "#cccccc",
+    "jw only"             = "#4477AA",
+    "keyword only"        = "#CC6677",
+    "both (keyword + JW)" = "#882255"
+)
+
+m5_clusters_s1 <- c0_m5_clusters |> dplyr::filter(variant_id == m5_seed)
+
+m5_freq <- m5_clusters_s1 |>
+    dplyr::select(cluster_id, measure_name) |>
+    dplyr::left_join(dplyr::distinct(c0_us_measure_pool, measure_name, chunk_id),
+        by = "measure_name"
+    ) |>
+    dplyr::group_by(cluster_id) |>
+    dplyr::summarise(n_chunks = dplyr::n_distinct(chunk_id), .groups = "drop")
+
+m5_gate <- c0_m5_rr_matches |>
+    dplyr::filter(variant_id == m5_seed) |>
+    dplyr::group_by(cluster_id) |>
+    dplyr::summarise(
+        matched_keyword = any(match_keyword),
+        matched_jw = any(match_jw), .groups = "drop"
+    )
+
+m5_cluster_diag <- m5_clusters_s1 |>
+    dplyr::distinct(cluster_id, canonical_name) |>
+    dplyr::mutate(min_jw = apply(
+        stringdist::stringdistmatrix(canonical_name, c0_us_rr_acts$act_name,
+            method = "jw"
+        ), 1, min
+    )) |>
+    dplyr::left_join(m5_freq, by = "cluster_id") |>
+    dplyr::left_join(m5_gate, by = "cluster_id") |>
+    dplyr::mutate(
+        matched_keyword = dplyr::coalesce(matched_keyword, FALSE),
+        matched_jw = dplyr::coalesce(matched_jw, FALSE),
+        match_cat = factor(
+            dplyr::case_when(
+                matched_keyword & matched_jw ~ "both (keyword + JW)",
+                matched_keyword ~ "keyword only",
+                matched_jw ~ "jw only",
+                TRUE ~ "unmatched"
+            ),
+            levels = names(m5_match_palette)
+        )
+    )
+```
+
+```{r}
+#| label: fig-m5-freq-hist
+#| fig-cap: "**M5 cluster frequency by RR match**. Distinct US chunks referencing each M5 cluster (seed s1, log x), stacked by Romer–Romer match gate; the rug marks individual RR-matched clusters. Unmatched clusters pile at one to two chunks while RR-matched clusters dominate the high-frequency tail."
+#| fig-width: 9
+#| fig-height: 4.5
+m5_cluster_diag |>
+    ggplot(aes(n_chunks, fill = match_cat)) +
+    geom_histogram(bins = 22, colour = "white", linewidth = 0.1) +
+    geom_rug(
+        data = ~ dplyr::filter(.x, matched_keyword | matched_jw),
+        sides = "b", colour = "#882255", alpha = 0.5,
+        inherit.aes = FALSE, mapping = aes(x = n_chunks)
+    ) +
+    scale_x_log10() +
+    scale_fill_manual(values = m5_match_palette) +
+    labs(
+        x = "Distinct chunks referencing cluster (log scale)",
+        y = "Clusters", fill = NULL
+    ) +
+    theme_minimal(base_size = 10) +
+    theme(legend.position = "top", panel.grid.minor = element_blank())
+```
+
+
+```{r}
+#| label: fig-frequency-ecdf
+#| fig-cap: | 
+#|  **Canonicalized act-names by frequency of appearence in US corpus**.
+#|  Matched and unmatched by the keyword gate.
+
+
+m5_cluster_diag |>
+  mutate(
+    matched_keyword = factor(
+      matched_keyword,
+      levels = c(T, F),
+      labels = c("Matched", "Unmatched")
+    )
+  ) |>
+  ggplot(
+    aes(
+      n_chunks,
+      color = matched_keyword
+    )
+  ) +
+  stat_ecdf() +
+  scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+  scale_x_continuous(breaks = seq(0, 30, 5)) +
+  labs(
+    x = "Chunks associated",
+    color = "Keyword gate"
+  )
+```
+
+
+@fig-frequency-ecdf shows that up to 85% of unmatched act-names---acts that were surfaced by C0 but are not found in @romer 's set of fiscal shocks---are only found in at most two chunks inside the whole C1 test sample. At the same time, fewer than 10% of the matched acts are found in 2 or fewer chunks. This is to say that, if we chose to chop the "tree" of acts surfaced by C0 by their occourance in the chunks, we would only lose 10% of matched acts and only keep 15% of the unmatched acts.
+
+
+```{r}
+#| label: fig-frequency-trade-off
+#| fig-cap: |
+#|  **Trade-off of frequency based identification.**
+#|  Cumulative errors (as un/matched by keyword gate) across frequency thresholds.
+#|  Canonicalized act names are arranged by their frequency in chunks
+
+m5_data <- m5_cluster_diag |>
+  arrange(desc(n_chunks), desc(cluster_id)) |>
+  mutate(
+    per_acts = 1,
+    cum_acts = cumsum(per_acts),
+    per = n_chunks / sum(n_chunks),
+    cum_per = cumsum(per),
+    cum_false_positive = cumsum(per_acts * (1 - matched_keyword)),
+
+    
+  ) |>
+  arrange(n_chunks, cluster_id) |>
+  mutate(
+    cum_false_negative = cumsum(matched_keyword * per_acts)
+  ) |>
+  arrange(desc(n_chunks)) 
+
+m5_data |>
+  pivot_longer(c(starts_with("cum_false_"),  "cum_acts")) |>
+  mutate(
+    name = factor(
+      name,
+      levels = c("cum_false_positive", "cum_false_negative", "cum_acts"),
+      labels = c("False Positive", "False Negative", "Total acts chosen")
+    )
+  ) |>
+  ggplot(aes(cum_per, value, color = name)) +
+  geom_line() +
+ scale_y_continuous(
+  # labels = scales::percent,
+  breaks = seq(0, 100, 10)
+  ) +
+ coord_cartesian(ylim = c(0, 50), xlim = c(0.05, 1)) +
+ scale_x_continuous(labels = scales::percent, breaks = seq(0, 100, 10) / 100) +
+ # geom_vline(xintercept = 0.8, linetype = "dashed") +
+  labs(
+    x = "Chunk frequency threshold",
+    y = "# Surfaced acts",
+    color = ""
+  )
+
+```
+
+@fig-frequency-trade-off shows the trade-off curves in terms of false positive and false negative canonicalized act names. Keeping the 70% most frequently used canonical act names will produce 10 false negatives and 6 false positives. 
+
+
+```{r}
+#| label: fig-m5-freq-jw
+#| fig-cap: "**M5 frequency vs name distance**. Each M5 cluster (seed s1): corpus frequency (log x) against the smallest Jaro–Winkler distance from its canonical name to any of the 49 R&R act names. The dashed line is the 0.30 JW name gate; the keyword gate (term + year) shows by colour, not a line. Distance is name-only and year-agnostic, so a low-distance point can still be year-wrong — hence the trustworthy keyword gate is encoded separately. RR-matched clusters form an L: low name distance and high frequency."
+#| fig-width: 9
+#| fig-height: 5.5
+
+m5_cluster_diag |>
+  ggplot(aes(n_chunks, min_jw, colour = match_cat)) +
+  geom_hline(yintercept = 0.30, linetype = "dashed", colour = "grey50") +
+  geom_point(alpha = 0.7, size = 1.8) +
+  scale_x_log10() +
+  scale_colour_manual(values = m5_match_palette) +
+  labs(x = "Distinct chunks referencing cluster (log scale)",
+       y = "Min JW distance to any RR act name", colour = NULL) +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "top", panel.grid.minor = element_blank())
+```
+
+Both diagnostics support the hypothesis. The unmatched mass concentrates at one to two chunks, RR-matched clusters carry the high-frequency tail, and in the scatter the RR-matched clusters fall to low name distance and high frequency while the spurious tail sits at single-chunk frequency and large name distance. Frequency alone will not isolate RR-grade acts — RR clusters do appear in the single-chunk bin and some spurious clusters reach moderate frequency — but as a triage ranking for expert review it clearly demotes the spurious tail. Quantifying the separation (an AUC or precision–recall on frequency) and a persistence axis (distinct years and documents) are the natural next steps.
 
 ## Method comparison ladder
 
