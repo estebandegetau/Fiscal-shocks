@@ -123,3 +123,122 @@ iterations:
       RR-mapped gates. Both before any Phase 2 deployment of C0.
       Per workflow convention, one change at a time on the codebook: apply the
       bill-number clarification first, re-run, then add the diagnostic target.
+
+  - iteration: 2
+    codebook_version: "0.2.0"
+    date: "2026-06-03"
+    git_commit: "8c3b4a5"
+    model: "claude-haiku-4-5-20251001"
+    stage: "method5_rr_eval"
+    method: "M5 (LLM canonical clustering)"
+    changes: >
+      Bill-number identifier-equivalence clarification (decision item 1 from
+      iteration 1; commit 8c3b4a5). Single codebook change, one-change-at-a-time:
+      prompts/c0_canonicalize.yml 0.1.0 -> 0.2.0. The `instruction` now names
+      legislative bill / draft-law numbers (chamber-prefixed, before or after the
+      formal name) alongside public-law/decree numbers as interchangeable
+      identifiers of the same measure, with an explicit "a differing identifier
+      prefix must not prevent merging when the act name matches" rule. No R
+      function, target, or model-config changes; seeds 1:5 Haiku single-shot,
+      deployment=main, unchanged. Decision item 2 (within-cluster year-spread
+      over-merge diagnostic) deliberately NOT applied this iteration per
+      one-change-at-a-time; carried forward.
+    eval:
+      framework: "RR-mapped (clusters vs 49 R&R reference acts)"
+      recoverable_ceiling: 40
+      n_rr_acts_total: 49
+      ceiling_note: >
+        Unchanged from iteration 1: surface-form matchability ceiling under the
+        keyword gate is 40/49; the 9 unrecoverable acts are upstream C1 pool gaps
+        (7 Social-Security-family, Excess Profits Tax expiration 1954, TEFRA
+        1982), not M5 clustering failures.
+    results:
+      first_gate:
+        - metric: "rr_acts_recovered_keyword"
+          value: 37
+          of_recoverable: 40
+          pct_of_recoverable: 0.9250
+          seeds_stable: true
+          note: "Held at 37 across all 5 seeds (coverage 0.7551 = 37/49, SD 0)."
+      second_gate:
+        - metric: "year_alignment_keyword"
+          value: 0.9778
+          range_lo: 0.9756
+          range_hi: 0.9778
+      diagnostics:
+        - metric: "fragmentation_index_keyword"
+          value: 1.1400
+          range_lo: 1.0811
+          range_hi: 1.1892
+          note: >
+            Mean across 5 seeds ~1.14 vs v0.1.0's 1.16 -- unchanged within noise;
+            the targeted ~1.05 was NOT reached. The fix had no measurable effect
+            on the gate.
+        - metric: "spurious_rate_keyword"
+          value: 0.7920
+          range_lo: 0.7854
+          range_hi: 0.8010
+        - metric: "n_clusters_matched_keyword"
+          value_lo: 40
+          value_hi: 44
+          note: "Targeted ~39 not reached; v0.1.0 baseline ~43."
+        - metric: "n_clusters_total"
+          value_lo: 201
+          value_hi: 209
+          note: "Not a gate; unchanged from v0.1.0 (202-209)."
+        - metric: "jw_gate_coverage"
+          value: 0.9184
+          note: >
+            jw gate recovers 45/49 but year_alignment collapses (fuzzy names land
+            on wrong years); keyword remains the trustworthy gate, true recovery
+            sits between the two. Unchanged from v0.1.0.
+      fix_target_audit:
+        note: >
+          All three RR acts the bill-number clarification was written for remain
+          split in v0.2.0 (seed s1), and the break is always the LEADING
+          bill-number prefix form:
+        cases:
+          - act: "Revenue Act of 1971"
+            clusters: "47 ('Revenue Act of 1971') vs 155 ('H.R. 10947, the Revenue Act of 1971')"
+            note: "Formal name identical; only the 'H.R. 10947, the' prefix differs. The exact case the v0.2.0 sentence describes verbatim -- still not merged."
+          - act: "Excise Tax Reduction Act of 1965"
+            clusters: "135 (absorbed suffix form '...(H.R. 8371)') vs 164 ('H.R. 8371, the Excise Tax Reduction Act of 1965')"
+            note: "Trailing '(H.R. 8371)' merged; leading 'H.R. 8371, the ...' did not."
+          - act: "Tax Adjustment Act of 1966"
+            clusters: "66 (absorbed ', Public Law 89-368') vs 157 ('H.R. 12752, the Tax Adjustment Act of 1966')"
+            note: "PL-number suffix merged; leading H.R.-prefix split off. New split surfaced this iteration."
+          - act: "Public Law 89-800"
+            clusters: "22 (PL number) / 86 (descriptive) / 160 (H.R. 17607 + descriptive)"
+            note: "Hard case: surface forms share no literal act-name string, so the 'merge when the act name matches' hook never triggers. Still 3-way."
+        pattern: >
+          Haiku reliably merges TRAILING identifiers ('(H.R. 8371)',
+          ', Public Law 89-368') but consistently treats a LEADING
+          'H.R. NNNN, the <Name>' prefix as a distinct measure, despite the
+          v0.2.0 instruction explicitly covering prefixes. One non-bill-number
+          split also present (Revenue Act of 1948 'Revenue Act of 1948' vs
+          'Tax Revenue Act of 1948', a name-variant). Taxpayer Relief / BBA 1997
+          showing as 2 clusters is the known RR ground-truth lumping artifact
+          (M5 correctly separates them), not an error.
+    interpretation: >
+      The model did not follow the added rule on bill-number prefixes/codes. The
+      bill-number clarification was net-neutral on every headline metric (RR
+      recovery held at 37/40-recoverable, fragmentation ~1.14 vs 1.16 within
+      noise, year alignment and spurious rate flat) and, on direct audit, failed
+      on the exact three acts it was written for -- most clearly "Revenue Act of
+      1971" vs "H.R. 10947, the Revenue Act of 1971", where the formal name is
+      identical and only the leading prefix differs. This reads as an
+      instruction-adherence / Haiku-capability limit rather than a phrasing gap:
+      the rule is stated in plain language and the model anchors on the leading
+      bill-number token anyway. Probably a synthetic, country-agnostic worked
+      example (showing "BILL-NUM, the NAME" == "NAME") would enhance adherence
+      better than more declarative prose, since Haiku follows demonstrated
+      examples better than rules elsewhere in the project. Headline impact of the
+      fragmentation tail on the first gate remains nil.
+    decision: >
+      Report findings; do not iterate the codebook further right now. Leave the
+      synthetic country-agnostic worked example as a documented possible path
+      forward (and, if the LLM-only framing can flex, a deterministic R prefix-
+      strip or a Sonnet capability probe as alternatives) but do not pursue them
+      this pass. Carry forward the unbuilt over-merge year-spread diagnostic
+      (iteration 1 decision item 2). Pivot to EN/BM (English / Bahasa Melayu)
+      tests next.
