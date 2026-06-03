@@ -142,6 +142,31 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - **S3:** Test V (exclusion criteria consistency), Test VI (generic labels), Test VII (swapped labels), and ablation study (H&K Table 4 component-type ablation).
 - **Status:** Reads from pipeline targets (`c1_s1_results`, `c1_s2_results`, `c1_s2_eval`, `c1_s3_results`). Notebook structure is complete; results depend on pipeline execution.
 
+### `c0_aggregator.qmd` -- C0 Act Aggregator Method Comparison
+
+**Purpose:** Compares strategies for collapsing C1 `measure_name` strings into act-level canonical clusters. Not an H&K S0-S3 codebook eval — methods are scored by RR-mapped recovery against the 49 Romer & Romer reference acts (keyword + Jaro-Winkler name gates, plus year alignment), with a Malaysia EN/BM paired stress test.
+
+**Key content:**
+
+- **Methods:** M1 Jaro-Winkler single-linkage; M2/M3 HDBSCAN (unblocked + year-blocked); M4 hybrid embedding-NN + LLM pairwise judge (Phase B pending); M5 LLM canonical clustering (`prompts/c0_canonicalize.yml`, Haiku).
+- **Embedding probes:** f16 vs fp32 quantization, UMAP grid reduction, tier-1-restricted variants.
+- **RR-mapped eval:** First gate = RR-act recovery (ceiling 40/49; the 9 unrecoverable are upstream C1 pool gaps); second gate = year alignment; fragmentation and spurious-rate diagnostics.
+- **Status:** Reads `c0_*` pipeline targets. M5 is the leading method (v0.2.0, iter 2); see `prompts/iterations/c0.yml`.
+- **Decision:** Empirical input for designing the C0 codebook. M5 single-shot matches the tuned UMAP grid on RR recovery and beats it on year alignment; bill-number prefix merges remain the open failure mode.
+
+### `malay_consistency.qmd` -- Malaysia EN/BM Cross-Language Consistency Test
+
+**Purpose:** Test whether the C1 → C2a → C2b pipeline produces equivalent fiscal reasoning regardless of input language, on parallel Economic Report EN+BM pairs (2014-2020 + 2022). A **consistency test, not a validity test** (no Malaysia labels; EN treated as reference because the codebooks crossed S3 gates on EN-only US data). Necessary-but-not-sufficient gate for extending deployment to the **BM-only-document slice (38 of 99 ready docs)**; not a substitute for Phase 2 expert agreement on EN-side outputs.
+
+**Key content:**
+
+- **Self-contained sub-pipeline:** slices `country_chunks` to ERs with parallel EN+BM coverage, runs its own C1 → C2a → C2b chain, clusters near-duplicate `measure_name` strings within each doc (JW ≤ 0.15), has **Sonnet** propose EN ↔ BM cluster matches for **human curation**, then compares C2b labels/signs on curated matched pairs. Sonnet matches (different family); Haiku runs C1/C2a/C2b (deployment model).
+- **Level 1 (act counts + drift):** per-year distinct-cluster counts by language with signed drift; within-doc JW-distance heatmaps and a threshold-sensitivity sweep distinguish clustering artifacts (2015/2016 collapse as threshold relaxes) from real extraction asymmetry (2017/2018/2020 — foreign-comparator contamination, low BM recall).
+- **Level 2 (matching):** 27 of 28 LLM-proposed pairs accepted (96.4% match rate); zero human-added matches — itself a finding, since BM fragments what EN aggregates so no clean 1-to-1 manual match exists.
+- **Level 3 (classification agreement):** label agreement 63%, sign 74% on matched pairs (≈70.8%/70.8% after dropping 3 foreign-comparator curation artifacts) — just touching the Phase 2 C2 ≥70% floor but with a CI too wide to resolve readiness alone.
+- **Known bug:** `both_high_confidence` sorts as a no-op due to an `identical()`-on-vector bug at [malay_consistency.R:752](R/malay_consistency.R#L752); confidence asymmetry not yet readable.
+- **Decision:** Diagnosis over headline rates. Within-doc JW clustering is the upstream bottleneck (motivates the C0 act aggregator); C2b is robust to degraded inputs; Phase-2 BM-only readiness unresolved until clustering is fixed. Speaks only to modern professionally-translated MoF ERs (2014+) — NOT older ER BM, Budget Speech BM, or crisis-booklet BM.
+
 ## Archived Notebooks
 
 Located in `notebooks/unused/` unless noted otherwise. These are from earlier exploratory phases and are no longer active:
@@ -164,6 +189,8 @@ Located in `notebooks/unused/` unless noted otherwise. These are from earlier ex
 5. `verify_chunk_tiers.qmd` -- Verify the implemented tier system
 6. `verify_api_inputs.qmd` -- Pre-flight validation before S2 zero-shot evaluation
 7. `c1_measure_id.qmd` -- See the C1 evaluation framework (template for C2-C4)
+8. `c0_aggregator.qmd` -- See the C0 act-aggregator method comparison (RR-mapped eval; not H&K S0-S3)
+9. `malay_consistency.qmd` -- See the Malaysia EN/BM cross-language consistency test (Phase 2 BM-only readiness diagnostic)
 
 ## Conventions
 
