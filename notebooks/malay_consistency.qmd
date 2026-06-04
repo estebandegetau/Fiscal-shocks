@@ -14,6 +14,7 @@ pacman::p_load(targets, tidyverse, tinytable, here, stringr)
 here::i_am("notebooks/malay_consistency.qmd")
 tar_config_set(store = here("_targets"))
 source(here("R/tt_theme.R"))
+source(here("R/malay_consistency.R"))
 
 tar_load(c(
   malay_er_pair_years,
