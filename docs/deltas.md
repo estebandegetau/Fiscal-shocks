@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-06-03: Malaysia EN/BM consistency test reworked around C0 — JW clusterer + Sonnet matcher retired
+
+**Type:** implementation-change
+**Affects:** `docs/phase_1/malaysia_strategy.md` (Phase 2 BM-only readiness diagnostic description); `docs/strategy.md` (C0's role in the deployed C1→C0→C2 pipeline)
+**Detail:** `notebooks/malay_consistency.qmd` + `R/malay_consistency.R` + the `malay_er_*` targets were reworked to test the full **C1 → C0 → C2** pipeline (commit pending). (1) **C0 replaces the within-doc Jaro-Winkler clusterer** (`cluster_measure_names_within_doc` removed); C0 (M5 LLM canonical clustering) now runs at three scopes — per-document (granular), per-language (deployment-realistic, feeds C2 + timeline), joint EN+BM (cross-language merge probe). (2) **The Sonnet matcher + human-curation machinery is removed** (`propose_en_bm_match_candidates`, candidate/curated CSVs, `load_curated_matches_or_stub`, paired `aggregate_act_evidence_for_c2b`): it injected an unverified LLM judgment into the headline (prior iteration: 3/10 disagreements were foreign-comparator matching artifacts). (3) **Cross-language comparison is now distributional + visual:** tallies (act counts, exo/endo, motivation-label marginals, act-name-year multisets) plus two timeline figures placing each side's acts by timing/direction/exogeneity; the dropped matcher's verification role is replaced by an eyeball audit of joint-scope mixed clusters. New targets: `malay_er_measure_pool`, `malay_er_c0_{perdoc,perlang,joint}`, `malay_er_c0_acts`, rewritten `malay_er_c2b_inputs`/`malay_er_c2b`/`malay_er_consistency_metrics`. The orphaned `data/manual/malaysia/er_consistency_*.csv` files are no longer written by any target.
+**Suggested edit:** Update the Phase 2 BM-only readiness diagnostic description to reflect the three-scope C0 + distributional/timeline design (was: JW within-doc clustering + Sonnet-matched paired C2b agreement). Confirm this is the intended consistency-test architecture going forward.
+
 ## 2026-06-03: C0 Act Aggregator development underway — diverges from documented Step-7 / S0-S3 plan
 
 **Type:** status-change

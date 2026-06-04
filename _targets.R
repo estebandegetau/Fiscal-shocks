@@ -66,10 +66,6 @@ tar_source()
 max_year <- 2022
 min_year <- 1946
 
-# Malaysia EN/BM consistency test — Jaro-Winkler distance cutoff for
-# clustering near-duplicate measure names within each document.
-malay_er_cluster_threshold <- 0.15
-
 # LLM configuration is hardcoded per target (not shared globals) so that
 # changing one codebook/stage's model never invalidates another's cache.
 # C1 targets: Haiku (validated). C2a: Haiku (extraction). C2b: Haiku (classification, v0.5.0 test).
@@ -807,55 +803,72 @@ list(
     deployment = "main"
   ),
 
+  # C0 act aggregator (M5 LLM canonical clustering) replaces the old
+  # within-doc Jaro-Winkler clusterer. Three scopes: per-doc and joint are
+  # C0-only diagnostics; per-language is the deployment-realistic inventory
+  # that feeds C2 and the headline timeline. Reuses the c0_m5_prompt target
+  # (prompts/c0_canonicalize.yml). All three are API-calling (Haiku).
   tar_target(
-    malay_er_clusters,
-    cluster_measure_names_within_doc(malay_er_c2a,
-                                     threshold = malay_er_cluster_threshold),
-    packages = c("tidyverse", "stringdist")
+    malay_er_measure_pool,
+    build_malay_er_measure_pool(malay_er_c1_measures),
+    packages = c("tidyverse", "stringr")
   ),
 
   tar_target(
-    malay_er_candidates,
-    propose_en_bm_match_candidates(
-      malay_er_clusters,
-      malay_er_c2a,
-      model = "claude-sonnet-4-20250514"
+    malay_er_c0_perdoc,
+    run_malay_er_c0(
+      malay_er_measure_pool, scope = "per_doc",
+      model = "claude-haiku-4-5-20251001",
+      instruction = c0_m5_prompt$instruction,
+      max_tokens = 8192,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
-    packages = c("tidyverse", "httr2", "jsonlite"),
+    packages = c("tidyverse", "httr2", "jsonlite", "withr"),
     deployment = "main"
   ),
 
   tar_target(
-    malay_er_candidates_file,
-    write_malay_er_candidates_csv(
-      malay_er_candidates,
-      here::here("data", "manual", "malaysia", "er_consistency_candidates.csv")
+    malay_er_c0_perlang,
+    run_malay_er_c0(
+      malay_er_measure_pool, scope = "per_language",
+      model = "claude-haiku-4-5-20251001",
+      instruction = c0_m5_prompt$instruction,
+      max_tokens = 8192,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
-    format = "file",
-    packages = c("here", "readr")
+    packages = c("tidyverse", "httr2", "jsonlite", "withr"),
+    deployment = "main"
   ),
 
   tar_target(
-    malay_er_curated_matches_file,
-    ensure_curated_matches_file(
-      here::here("data", "manual", "malaysia", "er_consistency_matches_curated.csv"),
-      malay_er_candidates_file
+    malay_er_c0_joint,
+    run_malay_er_c0(
+      malay_er_measure_pool, scope = "joint",
+      model = "claude-haiku-4-5-20251001",
+      instruction = c0_m5_prompt$instruction,
+      max_tokens = 8192,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
-    format = "file",
-    packages = c("here", "readr", "tibble")
+    packages = c("tidyverse", "httr2", "jsonlite", "withr"),
+    deployment = "main"
   ),
 
   tar_target(
-    malay_er_curated_matches,
-    load_curated_matches_or_stub(malay_er_curated_matches_file),
-    packages = c("readr", "tibble")
+    malay_er_c0_acts,
+    reshape_c0_clusters_to_chunks(malay_er_c0_perlang, malay_er_measure_pool),
+    packages = "tidyverse"
   ),
 
   tar_target(
     malay_er_c2b_inputs,
-    aggregate_act_evidence_for_c2b(malay_er_curated_matches,
-                                   malay_er_clusters, malay_er_c2a),
-    packages = "tidyverse"
+    aggregate_c0_acts_for_c2b(malay_er_c0_acts, malay_er_c2a),
+    packages = c("tidyverse", "stringr")
   ),
 
   tar_target(
@@ -874,12 +887,11 @@ list(
 
   tar_target(
     malay_er_consistency_metrics,
-    compute_malay_er_consistency_metrics(
-      malay_er_c1, malay_er_c2b,
-      malay_er_curated_matches, malay_er_candidates, malay_er_clusters,
-      n_boot = 1000L, seed = 20260514L
+    compute_malay_er_consistency_tallies(
+      malay_er_c0_perdoc, malay_er_c0_perlang, malay_er_c0_joint,
+      malay_er_c2b, malay_er_measure_pool
     ),
-    packages = "tidyverse"
+    packages = c("tidyverse", "stringr")
   ),
 
   tar_quarto(

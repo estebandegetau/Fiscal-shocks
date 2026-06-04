@@ -1,14 +1,26 @@
 # Malaysia EN/BM cross-language consistency test.
 #
 # Self-contained sub-pipeline: slices country_chunks to ER documents that have
-# parallel EN+BM versions, runs its own C1 -> C2a -> C2b chain on the slice,
-# clusters near-duplicate measure names within each doc, has an LLM (Sonnet)
-# propose EN<->BM cluster matches for human curation, then compares C2b labels
-# on the curated matched pairs.
+# parallel EN+BM versions, runs its own C1 -> C0 -> C2 chain on the slice, and
+# compares the FULL pipeline outputs across languages with data/statistical
+# evidence only (no auxiliary-API matching).
 #
-# Exploratory framing: agreement rates with bootstrap 95% CIs, no PASS/FAIL.
+# C0 (the act aggregator, M5 LLM canonical clustering) replaces the old
+# within-document Jaro-Winkler clusterer. It runs at three scopes:
+#   - per_doc      : aggregate within each language x year document (granular)
+#   - per_language : pool all EN docs / all BM docs (deployment-realistic; this
+#                    is the scope that feeds C2 and the headline timeline)
+#   - joint        : pool EN+BM together (probes cross-language aggregation)
+#
+# The Sonnet matcher + human-curation machinery is removed: it injected an
+# unverified LLM judgment into the headline. Cross-language comparison is now
+# distributional (tallies of act counts, exo/endo, label marginals, act-name
+# year multisets) plus two timeline figures placing each side's acts by timing,
+# direction, and exogeneity.
+#
 # Reuses run_c1_deployment(), filter_c1_measures(), run_c2a_deployment(),
-# run_c2b_classification(), call_llm_api(), parse_json_response().
+# run_c2b_classification(), build_c0_measure_pool(), run_m5_llm_clusters(),
+# extract_year_from_string().
 
 
 if (!exists("%||%")) `%||%` <- function(a, b) if (!is.null(a)) a else b
@@ -89,474 +101,238 @@ slice_malay_er_chunks <- function(country_chunks, pair_years) {
 }
 
 
-#' Cluster near-duplicate measure_name values within each document
+# Integer mode (first modal value on ties). Used for the act-level
+# representative document year.
+.malay_mode_int <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0L) return(NA_integer_)
+  tab <- table(x)
+  as.integer(names(tab)[which.max(tab)])
+}
+
+
+# ---------------------------------------------------------------------------
+# C0 act aggregation (M5 LLM canonical clustering) at three scopes
+# ---------------------------------------------------------------------------
+
+#' Build the Malaysia C0 measure pool from filtered C1 measures
 #'
-#' Single-linkage hierarchical clustering on Jaro-Winkler string distance,
-#' cut at `threshold`. Returns one row per (doc_id, member) so the same
-#' chunk_id can appear in only one cluster within a doc. Canonical name =
-#' longest member by character length (alphabetic tiebreak — deterministic).
+#' Malaysia analog of `build_c0_measure_pool()`. `malay_er_c1_measures` already
+#' carries measure_name / measure_rank (== 1L) / year / doc_id / chunk_id /
+#' doc_language; we add the constant `pred_label` the pool builder filters on,
+#' reuse the pool logic, and carry `doc_language` through (the pool builder
+#' drops it, so we re-derive it from doc_id).
+#'
+#' @param c1_measures Tibble from `filter_c1_measures()`.
+#' @return Tibble: measure_name, year, doc_id, chunk_id, measure_rank,
+#'   n_occurrences, doc_language.
+#' @export
+build_malay_er_measure_pool <- function(c1_measures) {
+  prepared <- c1_measures |>
+    dplyr::mutate(pred_label = "FISCAL_MEASURE")
+
+  # `filter_c1_measures()` already restricts to the rank-1 measure; older
+  # cached C1 output (pre-v0.7.0 flat schema) lacks the `measure_rank` column,
+  # so default it here for robustness across schema vintages.
+  if (!"measure_rank" %in% names(prepared)) {
+    prepared <- dplyr::mutate(prepared, measure_rank = 1L)
+  }
+
+  build_c0_measure_pool(prepared) |>
+    dplyr::mutate(doc_language = derive_doc_language(doc_id))
+}
+
+
+# Map a measure-pool row to its scope-partition key.
+.malay_scope_group <- function(measure_pool, scope) {
+  switch(scope,
+    per_doc      = measure_pool$doc_id,
+    per_language = measure_pool$doc_language,
+    joint        = rep("joint", nrow(measure_pool)),
+    stop("Unknown scope: ", scope)
+  )
+}
+
+
+#' Run C0 (M5 LLM canonical clustering) at a given scope
+#'
+#' Partitions the measure pool by the scope key and runs `run_m5_llm_clusters()`
+#' once per partition with a single deterministic seed (multi-seed order
+#' sensitivity is characterised separately in `c0_aggregator.qmd`). Cluster ids
+#' are unique only within a `scope_group`; downstream joins are within group.
 #'
 #' Empty-input safe.
 #'
-#' @param c2a_evidence Tibble from `run_c2a_deployment()` with at least
-#'   `chunk_id, doc_id, year, measure_name, c2a_valid`
-#' @param threshold Numeric Jaro-Winkler distance cutoff (default 0.15)
-#' @return Tibble `(doc_id, year, doc_language, cluster_id, canonical_name,
-#'   measure_name, chunk_id, n_evidence_items)`
+#' @param measure_pool Tibble from `build_malay_er_measure_pool()`.
+#' @param scope One of "per_doc", "per_language", "joint".
+#' @param model,instruction,max_tokens,provider,base_url,api_key Passed to
+#'   `run_m5_llm_clusters()`. `instruction` is the c0_canonicalize system prompt.
+#' @param seed Integer shuffle seed (single deterministic clustering).
+#' @return Tibble: scope, scope_group, variant_id, measure_name, cluster_id,
+#'   canonical_name, n_members.
 #' @export
-cluster_measure_names_within_doc <- function(c2a_evidence, threshold = 0.15) {
+run_malay_er_c0 <- function(measure_pool,
+                            scope = c("per_doc", "per_language", "joint"),
+                            model = "claude-haiku-4-5-20251001",
+                            instruction,
+                            max_tokens = 8192L,
+                            provider = "anthropic",
+                            base_url = NULL,
+                            api_key = NULL,
+                            seed = 1L) {
+  scope <- match.arg(scope)
 
   empty <- tibble::tibble(
-    doc_id = character(0), year = integer(0), doc_language = character(0),
+    scope = character(0), scope_group = character(0),
+    variant_id = character(0), measure_name = character(0),
     cluster_id = integer(0), canonical_name = character(0),
-    measure_name = character(0), chunk_id = integer(0),
-    n_evidence_items = integer(0)
+    n_members = integer(0)
   )
+  if (nrow(measure_pool) == 0L) return(empty)
 
-  if (nrow(c2a_evidence) == 0L) return(empty)
+  pool <- measure_pool |>
+    dplyr::mutate(.scope_group = .malay_scope_group(measure_pool, scope))
 
-  enriched <- c2a_evidence |>
-    dplyr::filter(c2a_valid, !is.na(measure_name)) |>
-    dplyr::mutate(
-      doc_language = derive_doc_language(doc_id),
-      n_evidence_items = purrr::map_int(evidence, length)
+  groups <- split(pool, pool$.scope_group)
+
+  purrr::imap_dfr(groups, function(sub, gname) {
+    sub <- dplyr::select(sub, -dplyr::any_of(".scope_group"))
+    cl <- run_m5_llm_clusters(
+      sub,
+      model = model, instruction = instruction,
+      max_tokens = max_tokens, provider = provider,
+      base_url = base_url, api_key = api_key, seeds = seed
     )
-
-  if (nrow(enriched) == 0L) return(empty)
-
-  cluster_one_doc <- function(rows) {
-    measures <- unique(rows$measure_name)
-    if (length(measures) == 1L) {
-      assignment <- tibble::tibble(measure_name = measures, cluster_id = 1L)
-    } else {
-      dmat <- stringdist::stringdistmatrix(measures, measures, method = "jw")
-      d <- stats::as.dist(dmat)
-      hc <- stats::hclust(d, method = "single")
-      cl <- stats::cutree(hc, h = threshold)
-      assignment <- tibble::tibble(measure_name = measures,
-                                   cluster_id = as.integer(cl))
-    }
-
-    canonical <- assignment |>
-      dplyr::mutate(nchar = nchar(measure_name)) |>
-      dplyr::arrange(dplyr::desc(nchar), measure_name) |>
-      dplyr::group_by(cluster_id) |>
-      dplyr::summarize(canonical_name = dplyr::first(measure_name), .groups = "drop")
-
-    rows |>
-      dplyr::left_join(assignment, by = "measure_name") |>
-      dplyr::left_join(canonical, by = "cluster_id") |>
-      dplyr::select(year, doc_language, cluster_id, canonical_name,
-                    measure_name, chunk_id, n_evidence_items)
-  }
-
-  enriched |>
-    dplyr::group_by(doc_id) |>
-    dplyr::group_modify(~ cluster_one_doc(.x)) |>
-    dplyr::ungroup() |>
-    dplyr::select(doc_id, year, doc_language, cluster_id, canonical_name,
-                  measure_name, chunk_id, n_evidence_items)
+    if (nrow(cl) == 0L) return(tibble::tibble())
+    cl |>
+      dplyr::mutate(scope = scope, scope_group = gname, .before = 1)
+  })
 }
 
 
-# ---------------------------------------------------------------------------
-# LLM-proposed candidate matches (Sonnet)
-# ---------------------------------------------------------------------------
-
-# System prompt for the matcher. Held as a constant so target hashing tracks
-# any future edits.
-.malay_matcher_system_prompt <- paste(
-  "You are matching fiscal measures across English and Bahasa Malaysia",
-  "versions of the same Malaysian Economic Report. Both lists describe the",
-  "same source document's fiscal measures, one extracted from the English",
-  "text and one from the Bahasa text. Identify which EN-side cluster",
-  "corresponds to which BM-side cluster.",
-  "",
-  "Rules:",
-  "- Each EN cluster may match at most one BM cluster, and vice versa.",
-  "- It is acceptable for clusters to be unmatched on either side; do not",
-  "  force a match if the evidence does not support one.",
-  "- Confidence: 'high' = clearly the same measure; 'medium' = probably the",
-  "  same; 'low' = uncertain.",
-  "- Output JSON only, no prose, no markdown fences.",
-  "",
-  "Output schema:",
-  "{\"matches\": [",
-  "  {\"en_cluster_id\": int|null, \"bm_cluster_id\": int|null,",
-  "   \"confidence\": \"high\"|\"medium\"|\"low\", \"rationale\": \"string\"}",
-  "]}",
-  "Use null on exactly one side for unmatched clusters; never null on both.",
-  sep = "\n"
-)
-
-
-# Build the per-year user message: serialise EN and BM cluster summaries as
-# compact JSON for the model to reason over.
-.format_matcher_user_message <- function(year, en_summary, bm_summary) {
-  payload <- list(
-    year = year,
-    en_clusters = en_summary,
-    bm_clusters = bm_summary
+#' Expand C0 cluster assignments back to chunk-level rows
+#'
+#' `run_m5_llm_clusters()` returns one row per (measure_name, cluster) with no
+#' document / chunk / year. Join back to the measure pool on
+#' (scope_group, measure_name) to recover doc_id / chunk_id / year /
+#' doc_language, yielding the chunk-level cluster table downstream needs.
+#'
+#' Empty-input safe.
+#'
+#' @param c0_clusters Tibble from `run_malay_er_c0()` (single scope).
+#' @param measure_pool Tibble from `build_malay_er_measure_pool()`.
+#' @return Tibble: scope, scope_group, doc_language, year, doc_id, chunk_id,
+#'   cluster_id, canonical_name, measure_name, n_members.
+#' @export
+reshape_c0_clusters_to_chunks <- function(c0_clusters, measure_pool) {
+  empty <- tibble::tibble(
+    scope = character(0), scope_group = character(0),
+    doc_language = character(0), year = integer(0), doc_id = character(0),
+    chunk_id = integer(0), cluster_id = integer(0),
+    canonical_name = character(0), measure_name = character(0),
+    n_members = integer(0)
   )
-  jsonlite::toJSON(payload, auto_unbox = TRUE, pretty = TRUE)
+  if (nrow(c0_clusters) == 0L) return(empty)
+
+  scope <- unique(c0_clusters$scope)
+  stopifnot(length(scope) == 1L)
+
+  pool <- measure_pool |>
+    dplyr::mutate(scope_group = .malay_scope_group(measure_pool, scope))
+
+  c0_clusters |>
+    dplyr::distinct(scope, scope_group, measure_name, cluster_id,
+                    canonical_name, n_members) |>
+    dplyr::inner_join(pool, by = c("scope_group", "measure_name"),
+                      relationship = "many-to-many") |>
+    dplyr::transmute(scope, scope_group, doc_language, year, doc_id, chunk_id,
+                     cluster_id, canonical_name, measure_name, n_members)
 }
 
 
-# One-year cluster summary builder (canonical name + up to two evidence
-# excerpts per cluster, truncated for prompt-budget hygiene).
-.summarise_clusters_for_year <- function(year_evidence, year_clusters) {
-  excerpt_for <- function(chunk_id) {
-    rec <- year_evidence |> dplyr::filter(chunk_id == .env$chunk_id)
-    if (nrow(rec) == 0L) return(NULL)
-    items <- rec$evidence[[1]]
-    if (length(items) == 0L) return(NULL)
-    purrr::map_chr(items, ~ stringr::str_trunc(.x$quote %||% "", 240))
-  }
+# ---------------------------------------------------------------------------
+# C2b inputs: every C0 act per language (no pairing)
+# ---------------------------------------------------------------------------
 
-  year_clusters |>
-    dplyr::group_by(cluster_id, canonical_name) |>
+#' Build C2b act inputs from C0 clusters (all acts, un-paired)
+#'
+#' Generalised replacement for the curated-pairs aggregator. One row per
+#' (cluster x member chunk) per language, joining C2a evidence list-columns by
+#' (chunk_id, doc_id). Each act is given a single act-level year (regex year
+#' from the canonical name when present, else the modal contributing document
+#' year) so `run_c2b_classification()`'s (act_name, year) grouping keeps an act
+#' together even when it spans documents. Carries act_name_year and
+#' doc_year_modal as act-level constants for the timeline.
+#'
+#' Empty-input safe.
+#'
+#' @param c0_clusters_chunks Tibble from `reshape_c0_clusters_to_chunks()`.
+#' @param c2a_evidence Tibble from `run_c2a_deployment()`.
+#' @return Tibble: side, act_name, year, act_name_year, doc_year_modal,
+#'   doc_language, canonical_name, cluster_id, chunk_id, doc_id, measure_name,
+#'   evidence, enacted_signals, timing_signals, c2a_valid.
+#' @export
+aggregate_c0_acts_for_c2b <- function(c0_clusters_chunks, c2a_evidence) {
+  empty <- tibble::tibble(
+    side = character(0), act_name = character(0), year = integer(0),
+    act_name_year = integer(0), doc_year_modal = integer(0),
+    doc_language = character(0), canonical_name = character(0),
+    cluster_id = integer(0), chunk_id = integer(0), doc_id = character(0),
+    measure_name = character(0),
+    evidence = list(), enacted_signals = list(), timing_signals = list(),
+    c2a_valid = logical(0)
+  )
+  if (nrow(c0_clusters_chunks) == 0L) return(empty)
+
+  ev <- c2a_evidence |>
+    dplyr::select(chunk_id, doc_id, evidence, enacted_signals,
+                  timing_signals, c2a_valid)
+
+  joined <- c0_clusters_chunks |>
+    dplyr::inner_join(ev, by = c("chunk_id", "doc_id"))
+
+  if (nrow(joined) == 0L) return(empty)
+
+  act_year <- joined |>
+    dplyr::group_by(doc_language, cluster_id) |>
     dplyr::summarize(
-      member_chunk_ids = list(unique(chunk_id)),
+      canonical_name = dplyr::first(canonical_name),
+      act_name_year  = extract_year_from_string(dplyr::first(canonical_name)),
+      doc_year_modal = .malay_mode_int(year),
       .groups = "drop"
     ) |>
-    purrr::pmap(function(cluster_id, canonical_name, member_chunk_ids) {
-      excerpts <- purrr::map(member_chunk_ids, excerpt_for) |>
-        purrr::compact() |>
-        unlist() |>
-        unique()
-      list(
-        cluster_id = as.integer(cluster_id),
-        canonical_name = canonical_name,
-        evidence_excerpts = head(excerpts, 3L)
-      )
-    })
-}
+    dplyr::mutate(act_year = dplyr::coalesce(act_name_year, doc_year_modal))
 
-
-#' Propose EN<->BM cluster matches per year using Sonnet
-#'
-#' For each year present in `clusters`, calls Sonnet once with the year's EN
-#' and BM cluster summaries (canonical name + up to 3 evidence excerpts each)
-#' and asks for proposed matches with confidence labels. Returns a long tibble
-#' suitable for CSV export + human review.
-#'
-#' Empty-input safe; rate-limited via call_llm_api().
-#'
-#' @param clusters Tibble from `cluster_measure_names_within_doc()`
-#' @param c2a_evidence Tibble from `run_c2a_deployment()` (needed for the
-#'   evidence excerpts attached to each cluster summary)
-#' @param model Character Sonnet model ID (default Sonnet 4)
-#' @param max_tokens Integer max output tokens (default 4096)
-#' @param max_retries Integer per-year retry limit on validation failure
-#' @return Tibble: year, en_cluster_id, en_canonical_name, bm_cluster_id,
-#'   bm_canonical_name, confidence, rationale, match_status
-#' @export
-propose_en_bm_match_candidates <- function(clusters,
-                                           c2a_evidence,
-                                           model = "claude-sonnet-4-20250514",
-                                           max_tokens = 4096L,
-                                           max_retries = 1L) {
-
-  empty <- tibble::tibble(
-    year = integer(0),
-    en_cluster_id = integer(0), en_canonical_name = character(0),
-    bm_cluster_id = integer(0), bm_canonical_name = character(0),
-    confidence = character(0), rationale = character(0),
-    match_status = character(0)
-  )
-
-  if (nrow(clusters) == 0L) return(empty)
-
-  # run_c2a_deployment() does not emit a doc_language column; derive from
-  # the -BM suffix on doc_id so the per-language filters below have something
-  # to match on. Same pattern as aggregate_act_evidence_for_c2b().
-  ev <- c2a_evidence |>
-    dplyr::mutate(doc_language = derive_doc_language(doc_id))
-
-  years <- sort(unique(clusters$year))
-
-  results <- purrr::map_dfr(years, function(yr) {
-    yr_clusters <- clusters |> dplyr::filter(year == yr)
-    yr_evidence <- ev |> dplyr::filter(year == yr)
-
-    en_clusters <- yr_clusters |> dplyr::filter(doc_language == "en")
-    bm_clusters <- yr_clusters |> dplyr::filter(doc_language == "bm")
-
-    if (nrow(en_clusters) == 0L || nrow(bm_clusters) == 0L) {
-      warning(sprintf(
-        "Year %d: one side has no clusters (en=%d, bm=%d); skipping matcher call",
-        yr, nrow(en_clusters), nrow(bm_clusters)
-      ))
-      return(tibble::tibble())
-    }
-
-    en_summary <- .summarise_clusters_for_year(
-      yr_evidence |> dplyr::filter(doc_language == "en"), en_clusters
-    )
-    bm_summary <- .summarise_clusters_for_year(
-      yr_evidence |> dplyr::filter(doc_language == "bm"), bm_clusters
-    )
-
-    user_msg <- .format_matcher_user_message(yr, en_summary, bm_summary)
-
-    parsed <- NULL
-    for (attempt in seq_len(1L + max_retries)) {
-      # Inter-retry backoff: skip on first attempt; otherwise sleep 2^attempt
-      # seconds before retrying. Mirrors the backoff inside call_claude_api()
-      # and prevents tight retry loops from compounding rate-limit pressure.
-      if (attempt > 1L) Sys.sleep(min(60, 2^attempt))
-
-      result <- tryCatch({
-        raw <- call_llm_api(
-          messages = list(list(role = "user", content = user_msg)),
-          model = model,
-          max_tokens = max_tokens,
-          temperature = 0,
-          system = .malay_matcher_system_prompt,
-          provider = "anthropic"
-        )
-        txt <- raw$content[[1]]$text
-        p <- parse_json_response(txt)
-        if (is.null(p$matches) || !is.list(p$matches)) {
-          list(ok = FALSE, parsed = p, reason = "missing matches field")
-        } else {
-          list(ok = TRUE, parsed = p, reason = NA_character_)
-        }
-      }, error = function(e) list(ok = FALSE, parsed = NULL, reason = e$message))
-
-      if (result$ok) { parsed <- result$parsed; break }
-    }
-
-    if (is.null(parsed)) {
-      warning(sprintf("Matcher failed for year %d after %d attempts: %s",
-                      yr, 1L + max_retries, result$reason %||% "unknown"))
-      return(tibble::tibble())
-    }
-
-    en_lookup <- en_clusters |>
-      dplyr::distinct(cluster_id, canonical_name) |>
-      dplyr::rename(en_cluster_id = cluster_id,
-                    en_canonical_name = canonical_name)
-    bm_lookup <- bm_clusters |>
-      dplyr::distinct(cluster_id, canonical_name) |>
-      dplyr::rename(bm_cluster_id = cluster_id,
-                    bm_canonical_name = canonical_name)
-
-    purrr::map_dfr(parsed$matches, function(m) {
-      en_id <- if (is.null(m$en_cluster_id)) NA_integer_ else as.integer(m$en_cluster_id)
-      bm_id <- if (is.null(m$bm_cluster_id)) NA_integer_ else as.integer(m$bm_cluster_id)
-      status <- dplyr::case_when(
-        !is.na(en_id) & !is.na(bm_id) ~ "proposed",
-        !is.na(en_id) & is.na(bm_id)  ~ "en_unmatched",
-        is.na(en_id)  & !is.na(bm_id) ~ "bm_unmatched",
-        TRUE                          ~ "invalid"
-      )
-      tibble::tibble(
-        year = yr,
-        en_cluster_id = en_id,
-        en_canonical_name = if (!is.na(en_id)) {
-          en_lookup$en_canonical_name[match(en_id, en_lookup$en_cluster_id)]
-        } else NA_character_,
-        bm_cluster_id = bm_id,
-        bm_canonical_name = if (!is.na(bm_id)) {
-          bm_lookup$bm_canonical_name[match(bm_id, bm_lookup$bm_cluster_id)]
-        } else NA_character_,
-        confidence = m$confidence %||% NA_character_,
-        rationale = m$rationale %||% NA_character_,
-        match_status = status
-      )
-    })
-  })
-
-  results
-}
-
-
-#' Write the candidates tibble to CSV for human review
-#'
-#' Trivial; exists so the target carries a `format = "file"` dependency on
-#' the on-disk artefact.
-#'
-#' @param candidates Tibble from `propose_en_bm_match_candidates()`
-#' @param path Character target path (will be created if directory missing)
-#' @return Character path
-#' @export
-write_malay_er_candidates_csv <- function(candidates, path) {
-  dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
-  readr::write_csv(candidates, path, na = "")
-  path
-}
-
-
-#' Ensure the curated matches CSV exists, initialising an empty stub if absent
-#'
-#' On first pipeline run the curated CSV does not yet exist on disk.
-#' `format = "file"` requires the path to be present, so this helper writes a
-#' header-only stub (zero data rows) when the file is missing. Existing
-#' curated files are never overwritten — human edits are preserved across
-#' pipeline runs.
-#'
-#' `candidates_path` is unused inside the function; it is threaded through so
-#' that targets registers a dependency edge from the curated-file target to
-#' the candidates-file target, ensuring the stub is only initialised after
-#' Sonnet has produced candidates worth curating.
-#'
-#' @param curated_path Character path to the curated CSV
-#' @param candidates_path Character path to the candidates CSV (dependency only)
-#' @return Character `curated_path`
-#' @export
-ensure_curated_matches_file <- function(curated_path, candidates_path) {
-  if (!file.exists(curated_path)) {
-    dir.create(dirname(curated_path), showWarnings = FALSE, recursive = TRUE)
-    stub <- tibble::tibble(
-      year = integer(0),
-      en_cluster_id = integer(0),
-      bm_cluster_id = integer(0),
-      match_status = character(0),
-      notes = character(0)
-    )
-    readr::write_csv(stub, curated_path, na = "")
-  }
-  curated_path
-}
-
-
-#' Load human-curated matches or return empty stub
-#'
-#' Returns an empty tibble (with the curated-schema columns) when the curated
-#' CSV has no rows tagged `match_status = "curated"`. This is the graceful-skip
-#' mechanism that lets Levels 1-2 of the notebook render without forcing
-#' curation to be done before Level 3. Both the header-only stub initialised
-#' by `ensure_curated_matches_file()` and a verbatim copy of the candidates
-#' CSV (where all rows carry `match_status = "proposed"`) resolve to the empty
-#' stub via the `match_status == "curated"` filter.
-#'
-#' Curated schema (what the human edits to): year, en_cluster_id,
-#' bm_cluster_id, match_status, notes. `match_status` should be set to
-#' "curated" on rows the human kept as true matches; anything else is
-#' ignored downstream.
-#'
-#' @param curated_path Character path to the curated CSV (file-target value)
-#' @return Tibble of curated matches (zero rows if not yet curated)
-#' @export
-load_curated_matches_or_stub <- function(curated_path) {
-
-  empty <- tibble::tibble(
-    year = integer(0),
-    en_cluster_id = integer(0),
-    bm_cluster_id = integer(0),
-    match_status = character(0),
-    notes = character(0)
-  )
-
-  # Defensive: ensure_curated_matches_file() should have created the stub,
-  # but keep this guard so the loader is safe to call standalone.
-  if (!file.exists(curated_path)) return(empty)
-
-  curated <- readr::read_csv(curated_path, show_col_types = FALSE)
-
-  required <- c("year", "en_cluster_id", "bm_cluster_id", "match_status")
-  missing <- setdiff(required, names(curated))
-  if (length(missing) > 0L) {
-    stop("Curated matches CSV missing required columns: ",
-         paste(missing, collapse = ", "))
-  }
-
-  if (nrow(curated) == 0L) return(empty)
-
-  curated |>
-    dplyr::filter(match_status == "curated",
-                  !is.na(en_cluster_id), !is.na(bm_cluster_id)) |>
-    dplyr::mutate(
-      year = as.integer(year),
-      en_cluster_id = as.integer(en_cluster_id),
-      bm_cluster_id = as.integer(bm_cluster_id),
-      notes = if ("notes" %in% names(curated)) as.character(notes) else NA_character_
+  joined |>
+    dplyr::left_join(
+      dplyr::select(act_year, doc_language, cluster_id,
+                    act_name_year, doc_year_modal, act_year),
+      by = c("doc_language", "cluster_id")
     ) |>
-    dplyr::select(year, en_cluster_id, bm_cluster_id, match_status, notes)
+    dplyr::mutate(
+      side = toupper(doc_language),
+      act_name = sprintf("%s [%s c%d]", canonical_name, doc_language, cluster_id),
+      year = act_year
+    ) |>
+    dplyr::select(side, act_name, year, act_name_year, doc_year_modal,
+                  doc_language, canonical_name, cluster_id, chunk_id, doc_id,
+                  measure_name, evidence, enacted_signals, timing_signals,
+                  c2a_valid)
 }
 
 
-#' Aggregate per-side chunk-level evidence for C2b classification
-#'
-#' For each curated match, emits one row per (cluster x member chunk) for
-#' each side (EN and BM independently) with a synthetic `act_name` that
-#' encodes language and year. This mirrors the chunk-level layout that
-#' `run_c2b_classification()` expects.
-#'
-#' Empty-input safe.
-#'
-#' @param curated_matches Tibble from `load_curated_matches_or_stub()`
-#' @param clusters Tibble from `cluster_measure_names_within_doc()`
-#' @param c2a_evidence Tibble from `run_c2a_deployment()` — needed for the
-#'   evidence list-columns (clusters has only chunk IDs)
-#' @return Tibble: pair_id (int), side ("EN"|"BM"), act_name, year, chunk_id,
-#'   doc_id, doc_language, measure_name, evidence, enacted_signals,
-#'   timing_signals, c2a_valid
-#' @export
-aggregate_act_evidence_for_c2b <- function(curated_matches, clusters,
-                                           c2a_evidence) {
-
-  empty <- tibble::tibble(
-    pair_id = integer(0), side = character(0),
-    act_name = character(0), year = integer(0),
-    chunk_id = integer(0), doc_id = character(0),
-    doc_language = character(0), measure_name = character(0),
-    evidence = list(), enacted_signals = list(),
-    timing_signals = list(), c2a_valid = logical(0)
-  )
-
-  if (nrow(curated_matches) == 0L) return(empty)
-
-  ev <- c2a_evidence |>
-    dplyr::mutate(doc_language = derive_doc_language(doc_id))
-
-  pairs <- curated_matches |>
-    dplyr::mutate(pair_id = dplyr::row_number())
-
-  build_side <- function(side_label, lang, cluster_col) {
-    pairs |>
-      dplyr::select(pair_id, year, cluster_id = !!cluster_col) |>
-      dplyr::inner_join(
-        clusters |> dplyr::filter(doc_language == lang) |>
-          dplyr::select(year, cluster_id, canonical_name, chunk_id, doc_id,
-                        measure_name, doc_language),
-        by = c("year", "cluster_id")
-      ) |>
-      dplyr::inner_join(
-        ev |> dplyr::select(chunk_id, doc_id, evidence, enacted_signals,
-                            timing_signals, c2a_valid),
-        by = c("chunk_id", "doc_id")
-      ) |>
-      dplyr::mutate(
-        side = side_label,
-        act_name = sprintf("%s [%s %d]", canonical_name, doc_language, year)
-      ) |>
-      dplyr::select(pair_id, side, act_name, year, chunk_id, doc_id,
-                    doc_language, measure_name, evidence, enacted_signals,
-                    timing_signals, c2a_valid)
-  }
-
-  dplyr::bind_rows(
-    build_side("EN", "en", "en_cluster_id"),
-    build_side("BM", "bm", "bm_cluster_id")
-  )
-}
-
-
-#' Run C2b on the aggregated act inputs (EN and BM sides each scored)
+#' Run C2b on the per-language C0 act inputs (every act scored)
 #'
 #' Thin wrapper around `run_c2b_classification()`. Builds the stub `test_set`
-#' that the dev-side function expects for joining ground-truth columns
-#' (here all NA — Malaysia has no labels). Empty-input safe.
+#' (all ground-truth NA — Malaysia has no labels) and threads act-level metadata
+#' (side, language, canonical name, the two timing-year sources) back onto the
+#' per-act results. Empty-input safe.
 #'
-#' @param act_inputs Tibble from `aggregate_act_evidence_for_c2b()`
-#' @param c2b_codebook Validated C2b codebook object
-#' @param model Character model ID (default deployment Haiku)
-#' @param max_tokens_c2b Integer
-#' @param api_key Optional API key
-#' @return Tibble from `run_c2b_classification()` plus side / pair_id columns
-#'   threaded back from the act_name encoding
+#' @param act_inputs Tibble from `aggregate_c0_acts_for_c2b()`.
+#' @param c2b_codebook Validated C2b codebook object.
+#' @param model,max_tokens_c2b,provider,base_url,api_key Passed through.
+#' @return `run_c2b_classification()` output plus side, doc_language,
+#'   canonical_name, act_name_year, doc_year_modal columns.
 #' @export
 run_malay_er_c2b <- function(act_inputs,
                              c2b_codebook,
@@ -572,7 +348,9 @@ run_malay_er_c2b <- function(act_inputs,
       pred_label = character(0), pred_exogenous = logical(0),
       pred_sign = character(0), confidence = character(0),
       reasoning = character(0), c2b_raw_response = character(0),
-      side = character(0), pair_id = integer(0)
+      side = character(0), doc_language = character(0),
+      canonical_name = character(0),
+      act_name_year = integer(0), doc_year_modal = integer(0)
     ))
   }
 
@@ -596,189 +374,190 @@ run_malay_er_c2b <- function(act_inputs,
     api_key = api_key
   )
 
-  side_map <- act_inputs |>
-    dplyr::distinct(act_name, side, pair_id)
+  act_meta <- act_inputs |>
+    dplyr::distinct(act_name, side, doc_language, canonical_name,
+                    act_name_year, doc_year_modal)
 
   c2b_results |>
-    dplyr::left_join(side_map, by = "act_name")
+    dplyr::left_join(act_meta, by = "act_name")
 }
 
 
-# Percentile bootstrap CI for a binary 0/1 vector. Returns (lo, hi) on the
-# rate scale. Handles n == 0 by returning (NA, NA). Sandboxes RNG via
-# withr::with_seed so the global random stream is unaffected.
-.bootstrap_rate_ci <- function(x, n_boot = 1000L, seed = 1L, ci = 0.95) {
-  x <- as.numeric(x)
-  if (length(x) == 0L) return(c(lo = NA_real_, hi = NA_real_))
-  reps <- withr::with_seed(
-    seed,
-    replicate(n_boot, mean(sample(x, length(x), replace = TRUE)))
-  )
-  alpha <- (1 - ci) / 2
-  c(lo = unname(stats::quantile(reps, alpha)),
-    hi = unname(stats::quantile(reps, 1 - alpha)))
-}
+# ---------------------------------------------------------------------------
+# Distributional consistency tallies + timeline inventory
+# ---------------------------------------------------------------------------
 
-
-#' Compute the three-level consistency metrics with bootstrap CIs
+#' Compute the distributional consistency tallies across the three C0 scopes
 #'
-#' Returns a list of tibbles: `level1` per-year cluster counts and signed
-#' drift; `level2` overall match rate (curated / proposed) with CI; `level3`
-#' label and sign agreement rates with CIs plus a confusion matrix; and
-#' `per_pair` one row per matched pair with side-by-side labels / signs.
+#' No paired matching, no bootstrap CIs — pure tallies plus the timeline
+#' inventory. Returns a list of tibbles:
+#'   - per_doc      : per (doc, language) C1-measure count, C0-act count, and
+#'                    compression ratio (granular aggregation symmetry).
+#'   - per_language : EN-vs-BM act count, exo / endo counts, motivation-label
+#'                    marginal distribution, and act-name-year multiset.
+#'   - joint        : cross-language merge rate (mixed / EN-only / BM-only
+#'                    clusters) — the probe of whether C0 bridges languages.
+#'   - inventory    : one row per (language, act) with both timing-year sources,
+#'                    motivation label, sign, exogeneity, confidence — the
+#'                    source for `plot_malay_act_timeline()`.
 #'
-#' Empty-input safe at each level: if curation is pending, level2/level3 are
-#' empty tibbles and the notebook will surface "curation pending" banners.
-#'
-#' @param c1_results Tibble from `run_c1_deployment()` on the slice
-#' @param c2b_results Tibble from `run_malay_er_c2b()`
-#' @param curated_matches Tibble from `load_curated_matches_or_stub()`
-#' @param candidates Tibble from `propose_en_bm_match_candidates()` (used to
-#'   compute match rate vs proposed and human-override count)
-#' @param clusters Tibble from `cluster_measure_names_within_doc()`
-#' @param n_boot Integer bootstrap replicates (default 1000)
-#' @param seed Integer RNG seed
-#' @return List(level1, level2, level3, per_pair)
+#' @param c0_perdoc,c0_perlang,c0_joint Tibbles from `run_malay_er_c0()`.
+#' @param c2b Tibble from `run_malay_er_c2b()`.
+#' @param measure_pool Tibble from `build_malay_er_measure_pool()` (joint scope
+#'   needs it to attach a language to each measure_name).
+#' @return List(per_doc, per_language, joint, inventory).
 #' @export
-compute_malay_er_consistency_metrics <- function(c1_results,
-                                                 c2b_results,
-                                                 curated_matches,
-                                                 candidates,
-                                                 clusters,
-                                                 n_boot = 1000L,
-                                                 seed = 20260514L) {
+compute_malay_er_consistency_tallies <- function(c0_perdoc, c0_perlang, c0_joint,
+                                                 c2b, measure_pool) {
 
-  # ----- Level 1: cluster counts per year, per language -----
-  level1_empty <- tibble::tibble(
-    year = integer(0),
-    n_clusters_en = integer(0), n_clusters_bm = integer(0),
-    signed_drift = integer(0), drift_pct = double(0)
-  )
-
-  level1 <- if (nrow(clusters) == 0L) {
-    level1_empty
+  # ----- per_doc: acts/doc + compression ratio -----
+  per_doc <- if (nrow(c0_perdoc) == 0L) {
+    tibble::tibble(year = integer(0), doc_language = character(0),
+                   n_measures = integer(0), n_acts = integer(0),
+                   compression = double(0))
   } else {
-    wide <- clusters |>
-      dplyr::distinct(year, doc_language, cluster_id) |>
-      dplyr::count(year, doc_language, name = "n_clusters") |>
-      tidyr::pivot_wider(names_from = doc_language, values_from = n_clusters,
-                         names_prefix = "n_clusters_", values_fill = 0L)
-    # Ensure both language columns exist even when one side is missing
-    for (col in c("n_clusters_en", "n_clusters_bm")) {
-      if (!col %in% names(wide)) wide[[col]] <- 0L
-    }
-    wide |>
-      dplyr::mutate(
-        signed_drift = n_clusters_bm - n_clusters_en,
-        drift_pct = ifelse(pmax(n_clusters_en, n_clusters_bm) > 0,
-                           signed_drift / pmax(n_clusters_en, n_clusters_bm),
-                           NA_real_)
+    c0_perdoc |>
+      dplyr::mutate(doc_language = derive_doc_language(scope_group),
+                    year = as.integer(stringr::str_extract(scope_group, "\\d{4}"))) |>
+      dplyr::group_by(year, doc_language) |>
+      dplyr::summarize(
+        n_measures = dplyr::n_distinct(measure_name),
+        n_acts     = dplyr::n_distinct(cluster_id),
+        .groups = "drop"
       ) |>
-      dplyr::arrange(year)
+      dplyr::mutate(compression = n_measures / pmax(n_acts, 1L)) |>
+      dplyr::arrange(year, doc_language)
   }
 
-  # ----- Level 2: match rate and override diagnostics -----
-  proposed_pairs <- candidates |>
-    dplyr::filter(match_status == "proposed") |>
-    nrow()
-
-  curated_pairs <- nrow(curated_matches)
-
-  level2 <- if (curated_pairs == 0L && proposed_pairs == 0L) {
+  # ----- per_language: act inventory marginals (from C2b inventory) -----
+  inventory <- if (nrow(c2b) == 0L) {
     tibble::tibble(
-      n_proposed = 0L, n_curated = 0L,
-      match_rate = NA_real_, ci_lo = NA_real_, ci_hi = NA_real_,
-      n_human_overrides = NA_integer_
+      side = character(0), doc_language = character(0),
+      canonical_name = character(0), act_name = character(0),
+      act_name_year = integer(0), doc_year_modal = integer(0),
+      pred_label = character(0), pred_sign = character(0),
+      pred_exogenous = logical(0), confidence = character(0)
     )
   } else {
-    overrides <- if (curated_pairs == 0L) NA_integer_ else {
-      candidates |>
-        dplyr::filter(match_status == "proposed") |>
-        dplyr::anti_join(
-          curated_matches |> dplyr::select(year, en_cluster_id, bm_cluster_id),
-          by = c("year", "en_cluster_id", "bm_cluster_id")
-        ) |>
-        nrow()
-    }
-    rate <- if (proposed_pairs > 0L) curated_pairs / proposed_pairs else NA_real_
-    binary <- c(rep(1L, curated_pairs),
-                rep(0L, max(0L, proposed_pairs - curated_pairs)))
-    ci <- .bootstrap_rate_ci(binary, n_boot = n_boot, seed = seed)
+    c2b |>
+      dplyr::transmute(
+        side, doc_language, canonical_name, act_name,
+        act_name_year, doc_year_modal,
+        pred_label, pred_sign, pred_exogenous, confidence
+      )
+  }
+
+  per_language <- if (nrow(inventory) == 0L) {
+    list(
+      counts = tibble::tibble(side = character(0), n_acts = integer(0),
+                              n_exogenous = integer(0), n_endogenous = integer(0)),
+      labels = tibble::tibble(side = character(0), pred_label = character(0),
+                              n = integer(0)),
+      act_years = tibble::tibble(side = character(0), act_name_year = integer(0),
+                                 n = integer(0))
+    )
+  } else {
+    counts <- inventory |>
+      dplyr::group_by(side) |>
+      dplyr::summarize(
+        n_acts       = dplyr::n(),
+        n_exogenous  = sum(pred_exogenous %in% TRUE),
+        n_endogenous = sum(pred_exogenous %in% FALSE),
+        .groups = "drop"
+      )
+    labels <- inventory |>
+      dplyr::count(side, pred_label, name = "n")
+    act_years <- inventory |>
+      dplyr::filter(!is.na(act_name_year)) |>
+      dplyr::count(side, act_name_year, name = "n")
+    list(counts = counts, labels = labels, act_years = act_years)
+  }
+
+  # ----- joint: cross-language merge rate -----
+  joint <- if (nrow(c0_joint) == 0L) {
+    tibble::tibble(n_clusters = 0L, n_mixed = 0L,
+                   n_en_only = 0L, n_bm_only = 0L, merge_rate = NA_real_)
+  } else {
+    measure_lang <- measure_pool |>
+      dplyr::distinct(measure_name, doc_language)
+    joint_lang <- c0_joint |>
+      dplyr::distinct(cluster_id, measure_name) |>
+      dplyr::left_join(measure_lang, by = "measure_name",
+                       relationship = "many-to-many")
+    per_cluster <- joint_lang |>
+      dplyr::group_by(cluster_id) |>
+      dplyr::summarize(
+        has_en = any(doc_language == "en"),
+        has_bm = any(doc_language == "bm"),
+        .groups = "drop"
+      )
+    n_clusters <- nrow(per_cluster)
+    n_mixed <- sum(per_cluster$has_en & per_cluster$has_bm)
     tibble::tibble(
-      n_proposed = proposed_pairs,
-      n_curated = curated_pairs,
-      match_rate = rate,
-      ci_lo = ci[["lo"]], ci_hi = ci[["hi"]],
-      n_human_overrides = overrides
+      n_clusters = n_clusters,
+      n_mixed    = n_mixed,
+      n_en_only  = sum(per_cluster$has_en & !per_cluster$has_bm),
+      n_bm_only  = sum(!per_cluster$has_en & per_cluster$has_bm),
+      merge_rate = if (n_clusters > 0L) n_mixed / n_clusters else NA_real_
     )
   }
 
-  # ----- Level 3: per-pair classification agreement -----
-  per_pair_empty <- tibble::tibble(
-    pair_id = integer(0), year = integer(0),
-    en_act_name = character(0), bm_act_name = character(0),
-    en_label = character(0), bm_label = character(0),
-    en_sign = character(0), bm_sign = character(0),
-    en_confidence = character(0), bm_confidence = character(0),
-    label_agree = logical(0), sign_agree = logical(0),
-    both_high_confidence = logical(0)
-  )
+  list(per_doc = per_doc, per_language = per_language,
+       joint = joint, inventory = inventory)
+}
 
-  if (nrow(c2b_results) == 0L) {
-    level3_empty <- tibble::tibble(
-      n_pairs = 0L,
-      label_agreement = NA_real_, label_ci_lo = NA_real_, label_ci_hi = NA_real_,
-      sign_agreement  = NA_real_, sign_ci_lo  = NA_real_, sign_ci_hi  = NA_real_
-    )
-    return(list(level1 = level1, level2 = level2,
-                level3 = level3_empty, per_pair = per_pair_empty,
-                confusion = tibble::tibble()))
+
+#' Timeline of EN- and BM-side acts by timing, direction, and exogeneity
+#'
+#' One point per act, placed on the year axis by the chosen timing source.
+#' Faceted by language (rows EN/BM) so the reader visually compares the two
+#' full-pipeline runs. Colour = motivation label; shape = sign; exogenous acts
+#' are drawn solid, endogenous hollow.
+#'
+#' @param inventory The `inventory` tibble from
+#'   `compute_malay_er_consistency_tallies()`.
+#' @param timing One of "act_name" (regex year from the act name) or "doc_year"
+#'   (modal source-document year).
+#' @return A ggplot object (NULL if no acts have a year on the chosen axis).
+#' @export
+plot_malay_act_timeline <- function(inventory, timing = c("act_name", "doc_year")) {
+  timing <- match.arg(timing)
+  if (nrow(inventory) == 0L) return(NULL)
+
+  year_col <- if (timing == "act_name") "act_name_year" else "doc_year_modal"
+  axis_lab <- if (timing == "act_name") {
+    "Year (extracted from act name)"
+  } else {
+    "Year (source document)"
   }
 
-  en_rows <- c2b_results |> dplyr::filter(side == "EN") |>
-    dplyr::select(pair_id, year, en_act_name = act_name,
-                  en_label = pred_label, en_sign = pred_sign,
-                  en_confidence = confidence)
-  bm_rows <- c2b_results |> dplyr::filter(side == "BM") |>
-    dplyr::select(pair_id, bm_act_name = act_name,
-                  bm_label = pred_label, bm_sign = pred_sign,
-                  bm_confidence = confidence)
+  df <- inventory |>
+    dplyr::mutate(.year = .data[[year_col]],
+                  side = factor(toupper(side), levels = c("EN", "BM"))) |>
+    dplyr::filter(!is.na(.year))
+  if (nrow(df) == 0L) return(NULL)
 
-  per_pair <- en_rows |>
-    dplyr::inner_join(bm_rows, by = "pair_id") |>
-    dplyr::mutate(
-      label_agree = !is.na(en_label) & !is.na(bm_label) & en_label == bm_label,
-      sign_agree  = !is.na(en_sign)  & !is.na(bm_sign)  & en_sign  == bm_sign,
-      both_high_confidence = identical(en_confidence, "high") &
-                             identical(bm_confidence, "high")
-    )
-
-  if (nrow(per_pair) == 0L) {
-    return(list(level1 = level1, level2 = level2,
-                level3 = tibble::tibble(n_pairs = 0L),
-                per_pair = per_pair_empty,
-                confusion = tibble::tibble()))
-  }
-
-  label_ci <- .bootstrap_rate_ci(per_pair$label_agree,
-                                 n_boot = n_boot, seed = seed)
-  sign_ci  <- .bootstrap_rate_ci(per_pair$sign_agree,
-                                 n_boot = n_boot, seed = seed + 1L)
-
-  level3 <- tibble::tibble(
-    n_pairs = nrow(per_pair),
-    label_agreement = mean(per_pair$label_agree),
-    label_ci_lo = label_ci[["lo"]], label_ci_hi = label_ci[["hi"]],
-    sign_agreement = mean(per_pair$sign_agree),
-    sign_ci_lo = sign_ci[["lo"]], sign_ci_hi = sign_ci[["hi"]]
-  )
-
-  confusion <- per_pair |>
-    dplyr::count(en_label, bm_label, name = "n") |>
-    tidyr::complete(en_label = unique(en_rows$en_label),
-                    bm_label = unique(bm_rows$bm_label),
-                    fill = list(n = 0L))
-
-  list(level1 = level1, level2 = level2, level3 = level3,
-       per_pair = per_pair, confusion = confusion)
+  ggplot2::ggplot(df, ggplot2::aes(x = .year, y = canonical_name)) +
+    ggplot2::geom_point(
+      ggplot2::aes(fill = pred_label, shape = pred_sign,
+                   alpha = pred_exogenous),
+      colour = "grey30", size = 3
+    ) +
+    ggplot2::scale_shape_manual(
+      values = c(`+` = 24, `-` = 25, `0` = 21),
+      name = "Sign", na.value = 23
+    ) +
+    ggplot2::scale_alpha_manual(
+      values = c(`TRUE` = 1, `FALSE` = 0.35),
+      breaks = c(TRUE, FALSE),
+      labels = c("exogenous", "endogenous"),
+      name = "Exogeneity", na.value = 0.35
+    ) +
+    ggplot2::facet_wrap(~ side, ncol = 1, scales = "free_y") +
+    ggplot2::labs(x = axis_lab, y = NULL, fill = "Motivation") +
+    ggplot2::guides(
+      fill = ggplot2::guide_legend(override.aes = list(shape = 21, alpha = 1))
+    ) +
+    ggplot2::theme_minimal(base_family = "Libertinus Serif", base_size = 10) +
+    ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
 }
