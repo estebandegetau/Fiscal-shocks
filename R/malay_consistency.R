@@ -561,3 +561,89 @@ plot_malay_act_timeline <- function(inventory, timing = c("act_name", "doc_year"
     ggplot2::theme_minimal(base_family = "Libertinus Serif", base_size = 10) +
     ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
 }
+
+
+# ---------------------------------------------------------------------------
+# C1-step drift diagnostics: why the Table-1 drift concentrates by year
+# ---------------------------------------------------------------------------
+
+# Shared EN/BM language palette for the C1 diagnostic bar plots.
+.malay_lang_palette <- c(EN = "#2c7fb8", BM = "#d95f0e")
+
+
+#' Per-year C1 fiscal-measure density by language
+#'
+#' Bar plot of the raw count of motivated fiscal measures C1 surfaces per year,
+#' split by language, *before* the rank-1 deployment filter. Measure-dense years
+#' (e.g. the 2014 GST-announcement Budget) carry several times the typical load.
+#' Density is what the rank-1 cut discards most, and most asymmetrically across
+#' the two parallel documents, so this plot explains why the Table-1 drift
+#' concentrates in particular years. Empty-safe.
+#'
+#' @param c1_raw Tibble from the `malay_er_c1` target (long-form, pre-filter).
+#' @return A ggplot object, or NULL if no motivated measures are present.
+#' @export
+plot_malay_c1_density <- function(c1_raw) {
+  if (nrow(c1_raw) == 0L) return(NULL)
+
+  df <- c1_raw |>
+    dplyr::filter(pred_label == "FISCAL_MEASURE", discusses_motivation %in% TRUE) |>
+    dplyr::mutate(side = toupper(derive_doc_language(doc_id))) |>
+    dplyr::distinct(year, side, chunk_id, measure_name) |>
+    dplyr::count(year, side, name = "raw_measures")
+  if (nrow(df) == 0L) return(NULL)
+
+  ggplot2::ggplot(df, ggplot2::aes(x = factor(year), y = raw_measures, fill = side)) +
+    ggplot2::geom_col(position = ggplot2::position_dodge2(preserve = "single"),
+                      width = 0.7) +
+    ggplot2::scale_fill_manual(values = .malay_lang_palette, name = "Language") +
+    ggplot2::labs(x = "Economic Report year",
+                  y = "Motivated fiscal measures\n(before rank-1 filter)") +
+    ggplot2::theme_minimal(base_family = "Libertinus Serif", base_size = 10) +
+    ggplot2::theme(panel.grid.major.x = ggplot2::element_blank())
+}
+
+
+#' Per-year chunk-level fiscal-classification rate by language
+#'
+#' Bar plot of the share of each language-year's chunks whose most-prominent
+#' (rank-1) measure is a motivated fiscal measure. With near-identical chunk
+#' counts across the parallel EN/BM documents, the EN/BM gap is the per-chunk
+#' asymmetry the Table-1 drift reflects; it is widest in the measure-dense years
+#' where chunk boundaries diverge most. Empty-safe.
+#'
+#' @param c1_raw Tibble from the `malay_er_c1` target (long-form, pre-filter).
+#' @param chunks Tibble from the `malay_er_chunks` target.
+#' @return A ggplot object, or NULL if either input is empty.
+#' @export
+plot_malay_c1_fiscal_rate <- function(c1_raw, chunks) {
+  if (nrow(c1_raw) == 0L || nrow(chunks) == 0L) return(NULL)
+
+  tot <- chunks |>
+    dplyr::mutate(side = toupper(derive_doc_language(doc_id))) |>
+    dplyr::distinct(year, side, doc_id, chunk_id) |>
+    dplyr::count(year, side, name = "n_chunks")
+
+  fc <- c1_raw |>
+    dplyr::filter(pred_label == "FISCAL_MEASURE", discusses_motivation %in% TRUE,
+                  measure_rank == 1L) |>
+    dplyr::mutate(side = toupper(derive_doc_language(doc_id))) |>
+    dplyr::distinct(year, side, chunk_id) |>
+    dplyr::count(year, side, name = "fiscal_chunks")
+
+  df <- tot |>
+    dplyr::left_join(fc, by = c("year", "side")) |>
+    dplyr::mutate(fiscal_chunks = dplyr::coalesce(fiscal_chunks, 0L),
+                  fiscal_rate = fiscal_chunks / pmax(n_chunks, 1L))
+  if (nrow(df) == 0L) return(NULL)
+
+  ggplot2::ggplot(df, ggplot2::aes(x = factor(year), y = fiscal_rate, fill = side)) +
+    ggplot2::geom_col(position = ggplot2::position_dodge2(preserve = "single"),
+                      width = 0.7) +
+    ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    ggplot2::scale_fill_manual(values = .malay_lang_palette, name = "Language") +
+    ggplot2::labs(x = "Economic Report year",
+                  y = "Chunks with a motivated\nrank-1 fiscal measure") +
+    ggplot2::theme_minimal(base_family = "Libertinus Serif", base_size = 10) +
+    ggplot2::theme(panel.grid.major.x = ggplot2::element_blank())
+}
