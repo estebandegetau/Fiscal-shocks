@@ -347,6 +347,8 @@ tar_target(
 )
 ```
 
+**Branch heavy API-calling targets per document.** Pipeline steps that make per-chunk or per-measure LLM API calls (C1 / C2a / C0 deployment) should be dynamically branched per `doc_id` — a `tarchetypes::tar_group_by(doc_id)` source feeding `pattern = map(...)` steps with default vector iteration, so `tar_read()` still returns a combined tibble and pooled downstream steps recombine via the aggregated value. This keeps incremental corpus changes cheap: adding or editing one document re-runs only that document's branches, not the whole step. Reference implementation: the Malaysia consistency `malay_er_*` chain (2026-06-05). Caveat: dynamic branch identity is positional — appended documents are fully cheap, but a mid-sequence insertion shifts and re-runs the branches after it (use static `tar_map` keyed by `doc_id` if full insertion-robustness is required).
+
 **File targets:**
 - Use `tar_target(format = "file")` for external files
 - Always return file path as character
