@@ -9,10 +9,6 @@ format:
     execute:
       echo: true
   typst:
-    grid:
-      margin-width: 2in
-      body-width: 4in
-      gutter-width: 0.25in
     execute:
       echo: false
 
@@ -23,3 +19,5 @@ execute:
 
 date: today
 date-format: long
+reference-location: margin
+cap-location: margin
