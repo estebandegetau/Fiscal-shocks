@@ -762,12 +762,23 @@ list(
     packages = c("readr", "dplyr")
   ),
 
-  tar_target(
+  # Grouped one branch per `doc_id` so the per-document API chain below
+  # (C1 -> C2a -> C0 per-doc) branches dynamically: changing the corpus
+  # re-runs only the changed document's branches, not the whole slice.
+  # `tar_read(malay_er_chunks)` still returns the full tibble (plus a harmless
+  # `tar_group` column). NB: dynamic branch identity is positional -- appending
+  # a newer pair year is cheap, but backfilling a mid-sequence document shifts
+  # downstream branches from the insertion point onward.
+  tarchetypes::tar_group_by(
     malay_er_chunks,
     slice_malay_er_chunks(country_chunks, malay_er_pair_years),
+    doc_id,
     packages = c("tidyverse", "stringr")
   ),
 
+  # Branched per document. Default vector iteration aggregates the per-doc
+  # branches into one combined tibble for non-branching consumers (the notebook
+  # plots, the pooled C0 steps).
   tar_target(
     malay_er_c1,
     run_c1_deployment(
@@ -779,6 +790,7 @@ list(
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
+    pattern = map(malay_er_chunks),
     packages = c("tidyverse", "httr2", "jsonlite", "progress"),
     deployment = "main"
   ),
@@ -786,6 +798,7 @@ list(
   tar_target(
     malay_er_c1_measures,
     filter_c1_measures(malay_er_c1, malay_er_chunks),
+    pattern = map(malay_er_c1, malay_er_chunks),
     packages = "tidyverse"
   ),
 
@@ -799,6 +812,7 @@ list(
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
+    pattern = map(malay_er_c1_measures),
     packages = c("tidyverse", "httr2", "jsonlite"),
     deployment = "main"
   ),
@@ -808,12 +822,17 @@ list(
   # C0-only diagnostics; per-language is the deployment-realistic inventory
   # that feeds C2 and the headline timeline. Reuses the c0_m5_prompt target
   # (prompts/c0_canonicalize.yml). All three are API-calling (Haiku).
+  # Branched per document: each branch builds that document's measure pool; the
+  # vector-aggregated value is the full pool the pooled C0 scopes below consume.
   tar_target(
     malay_er_measure_pool,
     build_malay_er_measure_pool(malay_er_c1_measures),
+    pattern = map(malay_er_c1_measures),
     packages = c("tidyverse", "stringr")
   ),
 
+  # Per-doc scope branches naturally: each branch is one document's pool, which
+  # `run_malay_er_c0(scope = "per_doc")` partitions into a single group.
   tar_target(
     malay_er_c0_perdoc,
     run_malay_er_c0(
@@ -825,6 +844,7 @@ list(
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")
     ),
+    pattern = map(malay_er_measure_pool),
     packages = c("tidyverse", "httr2", "jsonlite", "withr"),
     deployment = "main"
   ),
