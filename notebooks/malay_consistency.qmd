@@ -3,6 +3,8 @@ title: "Malaysia EN/BM Cross-Language Consistency Test"
 subtitle: "Full C1 → C0 → C2 pipeline on parallel Economic Report EN+BM pairs, 2014–2025"
 date: today
 date-format: long
+execute: 
+  cache: true
 ---
 
 ```{r}
@@ -36,19 +38,23 @@ c0_pending  <- nrow(malay_er_c0_perlang) == 0L
 
 ## Framing
 
-The C1 → C0 → C2 codebook pipeline was validated on US English documents. Malaysia has 38 BM-only documents in its ready corpus (primarily older Budget Speeches and Economic Reports). Before trusting LLM outputs on those, we need evidence that the pipeline produces equivalent fiscal reasoning regardless of input language.
 
-This is a **consistency test, not a validity test**. We have no labels for Malaysia. EN outputs are treated as the reference because the codebooks crossed S3 gates on EN-only US data. Passing this test is necessary-but-not-sufficient for extending deployment to the **BM-only-document slice (38 of 99 ready documents)**; it does not gate the broader Malaysia deployment, and it is **not a substitute for expert agreement on the EN-side outputs** (Phase 2's success criteria: ≥80% on C1, ≥70% on C2 against expert review).
+In this section, we seek to answer the question: Can our pipeline produce equivalent results with two equivalent inputs that are in two different languages? And more specifically, will including fiscal documents in other languages (Malay) yield results that are comparable to the ones we obtained in English during the development phase?
 
-The test runs the **full pipeline independently on each language** and compares the outputs with **data/statistical evidence only**. It slices `country_chunks` to Economic Reports with parallel EN+BM coverage, runs its own C1 → C2a chain, then aggregates measure names into acts with the **C0 act aggregator** (M5 LLM canonical clustering, `prompts/c0_canonicalize.yml`, Haiku) at three scopes:
+The C1 → C0 → C2 codebook pipeline was validated on US English documents. Malaysia has 38 BM-only documents in its ready corpus (primarily older Budget Speeches and Economic Reports). Before trusting LLM outputs on those, we need evidence that the pipeline produces **equivalent fiscal reasoning regardless of input language**.
+
+This is a consistency test, not a validity test. We have no labels for Malaysia. EN outputs are treated as the reference because the codebooks crossed S3 gates on EN-only US data. Passing this test is necessary-but-not-sufficient for extending deployment to the **BM-only-document slice (38 of 99 ready documents)**; it does not gate the broader Malaysia deployment, and it is **not a substitute for expert agreement on the EN-side outputs** (Phase 2's success criteria: ≥80% on C1, ≥70% on C2 against expert review).
+
+The test runs the **full pipeline independently on each language** and compares the outputs within each step of the process. It slices `country_chunks` to Economic Reports with parallel EN+BM coverage, runs its own C1 → C2a chain, then aggregates measure names into acts with the **C0 act aggregator** (M5 LLM canonical clustering, `prompts/c0_canonicalize.yml`, Haiku) at three scopes:
+
+[Because these notebooks will be the building blocks for the final paper, we want to write them for external audiences. So, in general, we do not want to mention code elements or files.]{.aside}
 
 - **per-document** — aggregate within each language × year document (granular aggregation capability/limits);
 - **per-language** — pool all EN documents / all BM documents (deployment-realistic; this scope feeds C2 and the headline timeline);
 - **joint EN+BM** — pool both languages together (probes whether C0 can co-cluster the EN and BM surface forms of the same act).
 
-There is **no auxiliary-API matching step**. The previous iteration used a Sonnet matcher to propose EN ↔ BM cluster pairs, but that injected an unverified LLM judgment into the headline (foreign comparators were matched to each other). We removed it: comparison is now distributional (tallies of act counts, exogenous/endogenous splits, motivation-label marginals, act-name-year multisets) plus **two timeline figures** that place each side's acts by timing, direction, and exogeneity, leaving paired interpretation to the reader.
 
-::: {.callout-warning}
+::: {.column-margin}
 This test only speaks to **modern, professionally-translated MoF prose** (Economic Reports 2014–2025; see the 2023 edition caveat under C1-step comparability). It does NOT speak to pre-2009 Budget Speech BM, older Economic Report BM (pre-2014), or crisis-booklet BM. Those are different vintages and registers; deployment to them requires separate evidence.
 :::
 
@@ -66,9 +72,13 @@ cat(sprintf("**Pair years:** %s\n\n",
             paste(malay_er_pair_years, collapse = ", ")))
 ```
 
+
+[We should include a Scope subsection that shows a figure with the number of pages and chunks in each document-year-language to let the reader understand the extend to which we're comparing the same document. This will obviate the need for a "pair years/scope" line as above.]{.aside}
+
+
 ## C1-step comparability
 
-Before aggregation, does C1 surface a comparable set of raw fiscal measures on each side? This is the step where real extraction asymmetries live (independent of how acts are later aggregated). The table counts the distinct `measure_name` strings C1 produced per document, by language.
+Before aggregation, does C1 surface a comparable set of raw fiscal measures on each side? This is the step where real extraction asymmetries live (independent of how acts are later aggregated). @tbl-c1-comparability counts the distinct `measure_name` strings C1 produced per document, by language.
 
 ```{r}
 #| label: tbl-c1-comparability
@@ -92,15 +102,18 @@ c1m_wide |>
   tt_theme_report()
 ```
 
+
+[@tbl-c1-comparability should be a plot.]{.aside}
+
 Two C1-level residuals carry over from the prior iteration's analysis and are **not** aggregation artifacts: (i) some EN/BM years contain **foreign-comparator** measures (Japan, India, Australia stimulus packages; Philippines TRAIN Act) that should be filtered upstream by country-of-enactment tagging in C1; and (ii) **2018 BM** extracted suspiciously few measures from a full Economic Report, a recall asymmetry to investigate at C1, not C0. These belong to the C1 step and bound how comparable any downstream aggregation can be.
 
-::: {.callout-warning title="2023 is an edition-mismatched pair"}
+::: {.callout-warning .column-margin}
 The 2023 EN and BM documents are **different editions of the 2023 budget cycle**, not parallel translations. The BM side is the Oct-2022 full *Tinjauan Ekonomi 2023*; the EN side is the Feb-2023 re-tabled-budget *Updates on Economic and Fiscal Outlook and Revenue Estimates 2023* — a condensed Outlook plus a bundled Federal Government Revenue Estimates / Treasury Memorandum block that has no BM counterpart here (or in any 2014–2022 EN file). Expect **EN-heavy C1 measure counts for 2023**; the drift on that row reflects document-edition asymmetry, not a language/reasoning inconsistency. See the 2026-06-05 provenance note in `data/manual/malaysia/README.md`.
 :::
 
 ### Why the drift varies by year
 
-The Table-1 drift is not uniform across years; it concentrates in 2014 (the GST-announcement Budget). Two structural features of each year's Economic Report drive it, and both peak in 2014.
+@tbl-c1-comparability drift is not uniform across years; it concentrates in 2014 (the GST-announcement Budget). Two structural features of each year's Economic Report drive it, and both peak in 2014.
 
 First, **measure density**. The `malay_er_c1_measures` count is a post-filter count: the deployment filter (`filter_c1_measures()`) keeps only the most-prominent (rank-1) motivated measure per chunk. Before that cut, C1 surfaces several measures per chunk, and 2014 carries roughly two to three times the motivated-fiscal-measure load of a typical year. The denser the report, the more measures the rank-1 cut discards, and the more room chunk-boundary differences between the parallel EN and BM documents have to change *which* measure survives on each side.
 
@@ -134,7 +147,7 @@ C0 collapses C1 measure names into act-level clusters. The three scopes test dif
 
 ### Per-document: granular aggregation symmetry
 
-Per document, the count of distinct C1 measures, the count of C0 acts, and the compression ratio (measures → acts). A symmetric aggregator should compress comparably on both sides; the previous JW clusterer fragmented BM more than EN.
+Per document, the count of distinct C1 measures, the count of C0 acts, and the compression ratio (surfaced act names → distinct acts). A symmetric aggregator should compress comparably on both sides; the previous JW clusterer fragmented BM more than EN.
 
 ```{r}
 #| label: tbl-c0-perdoc
@@ -156,6 +169,8 @@ if (c0_pending || nrow(m$per_doc) == 0L) {
     tt_theme_report()
 }
 ```
+
+[@tbl-c0-perdoc shuld also be a plot. In general, we prefer showing plots than tables.]{.aside}
 
 ### Per-language: act inventory marginals
 
@@ -195,6 +210,8 @@ if (inv_pending) {
     tt_theme_report()
 }
 ```
+
+[@tbl-c0-perlang-labels should show neat motivation labels.]{.aside}
 
 ### Joint EN+BM: cross-language merge rate
 
@@ -249,6 +266,8 @@ if (inv_pending || nrow(m$per_language$act_years) == 0L) {
 }
 ```
 
+[@tbl-act-years should also be a plot.]{.aside}
+
 ### Timeline by act-name year
 
 ```{r}
@@ -262,6 +281,8 @@ p1 <- plot_malay_act_timeline(inv, timing = "act_name")
 if (is.null(p1)) cat("No acts carry a name-embedded year yet.\n") else print(p1)
 ```
 
+
+
 ### Timeline by source-document year
 
 ```{r}
@@ -274,6 +295,9 @@ if (is.null(p1)) cat("No acts carry a name-embedded year yet.\n") else print(p1)
 p2 <- plot_malay_act_timeline(inv, timing = "doc_year")
 if (is.null(p2)) cat("Inventory not yet built.\n") else print(p2)
 ```
+
+
+[@fig-timeline-actname and @fig-timeline are quite inteligible. Instead of showing the act name, only count the number of acts in each year-language-motivation-sign cell. ]
 
 ## Interpretation
 
