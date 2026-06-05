@@ -9,6 +9,13 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-06-05: Malaysia consistency C1 chain branched per-document — cheap incremental corpus updates
+
+**Type:** implementation-change
+**Affects:** `docs/phase_1/malaysia_strategy.md` (Phase 2 BM-only readiness — operational cost model of incremental corpus updates); `notebooks/malay_consistency.qmd` closing claim that adding a future EN+BM pair "requires only dropping the two PDFs in and flipping the manifest row"
+**Detail:** The `malay_er_*` sub-pipeline was refactored (commit 8009a13) so the expensive per-document API steps branch dynamically per `doc_id`: `malay_er_chunks` is now a `tar_group_by(doc_id)` source, and `malay_er_c1`, `malay_er_c1_measures`, `malay_er_c2a`, `malay_er_measure_pool`, `malay_er_c0_perdoc` carry `pattern = map(...)` (default vector iteration, so combined values to the notebook + pooled C0 scopes are unchanged; no R-function or notebook edits needed). Verified post-rebuild: 24 independently-hashed branches per step, `errored=0`, list-columns aggregated cleanly, notebook renders. Effect: changing or adding one document now re-runs only that document's C1/C2a/C0-per-doc branches plus the cheap pooled tail (`c0_perlang`/`joint`/`c2b`), not the whole C1 step — the motivating failure was that adding previously-missing documents forced a full C1 re-run. Caveat: dynamic branch identity is positional, so appended newer pair years are fully cheap but backfilled mid-sequence documents shift and re-run downstream branches (static `tar_map` keyed by `doc_id` would have been insertion-robust; dynamic chosen to match the existing `pattern = map` idiom).
+**Suggested edit:** None required (infrastructure, no methodology/criteria impact). Optionally note in the Phase 2/3 scaling discussion that incremental corpus growth is now cheap per-document, supporting the "drop PDFs + flip manifest" operational claim.
+
 ## 2026-06-03: Malaysia EN/BM consistency test reworked around C0 — JW clusterer + Sonnet matcher retired
 
 **Type:** implementation-change
