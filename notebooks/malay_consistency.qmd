@@ -1,6 +1,6 @@
 ---
 title: "Malaysia EN/BM Cross-Language Consistency Test"
-subtitle: "Full C1 → C0 → C2 pipeline on parallel Economic Report pairs, 2014-2020 + 2022"
+subtitle: "Full C1 → C0 → C2 pipeline on parallel Economic Report EN+BM pairs, 2014–2025"
 date: today
 date-format: long
 ---
@@ -19,6 +19,7 @@ source(here("R/malay_consistency.R"))
 tar_load(c(
   malay_er_pair_years,
   malay_er_chunks,
+  malay_er_c1,
   malay_er_c1_measures,
   malay_er_measure_pool,
   malay_er_c0_perdoc,
@@ -48,7 +49,7 @@ The test runs the **full pipeline independently on each language** and compares 
 There is **no auxiliary-API matching step**. The previous iteration used a Sonnet matcher to propose EN ↔ BM cluster pairs, but that injected an unverified LLM judgment into the headline (foreign comparators were matched to each other). We removed it: comparison is now distributional (tallies of act counts, exogenous/endogenous splits, motivation-label marginals, act-name-year multisets) plus **two timeline figures** that place each side's acts by timing, direction, and exogeneity, leaving paired interpretation to the reader.
 
 ::: {.callout-warning}
-This test only speaks to **modern, professionally-translated MoF prose** (Economic Reports 2014-2020, 2022). It does NOT speak to pre-2009 Budget Speech BM, older Economic Report BM (pre-2014), or crisis-booklet BM. Those are different vintages and registers; deployment to them requires separate evidence.
+This test only speaks to **modern, professionally-translated MoF prose** (Economic Reports 2014–2025; see the 2023 edition caveat under C1-step comparability). It does NOT speak to pre-2009 Budget Speech BM, older Economic Report BM (pre-2014), or crisis-booklet BM. Those are different vintages and registers; deployment to them requires separate evidence.
 :::
 
 ```{r}
@@ -91,7 +92,41 @@ c1m_wide |>
   tt_theme_report()
 ```
 
-Two C1-level residuals carry over from the prior iteration's analysis and are **not** aggregation artifacts: (i) some EN/BM years contain **foreign-comparator** measures (Japan, India, Australia stimulus packages; Philippines TRAIN Act) that should be filtered upstream by country-of-enactment tagging in C1; and (ii) **2018 BM** extracted suspiciously few measures from a full Economic Report — a recall asymmetry to investigate at C1, not C0. These belong to the C1 step and bound how comparable any downstream aggregation can be.
+Two C1-level residuals carry over from the prior iteration's analysis and are **not** aggregation artifacts: (i) some EN/BM years contain **foreign-comparator** measures (Japan, India, Australia stimulus packages; Philippines TRAIN Act) that should be filtered upstream by country-of-enactment tagging in C1; and (ii) **2018 BM** extracted suspiciously few measures from a full Economic Report, a recall asymmetry to investigate at C1, not C0. These belong to the C1 step and bound how comparable any downstream aggregation can be.
+
+::: {.callout-warning title="2023 is an edition-mismatched pair"}
+The 2023 EN and BM documents are **different editions of the 2023 budget cycle**, not parallel translations. The BM side is the Oct-2022 full *Tinjauan Ekonomi 2023*; the EN side is the Feb-2023 re-tabled-budget *Updates on Economic and Fiscal Outlook and Revenue Estimates 2023* — a condensed Outlook plus a bundled Federal Government Revenue Estimates / Treasury Memorandum block that has no BM counterpart here (or in any 2014–2022 EN file). Expect **EN-heavy C1 measure counts for 2023**; the drift on that row reflects document-edition asymmetry, not a language/reasoning inconsistency. See the 2026-06-05 provenance note in `data/manual/malaysia/README.md`.
+:::
+
+### Why the drift varies by year
+
+The Table-1 drift is not uniform across years; it concentrates in 2014 (the GST-announcement Budget). Two structural features of each year's Economic Report drive it, and both peak in 2014.
+
+First, **measure density**. The `malay_er_c1_measures` count is a post-filter count: the deployment filter (`filter_c1_measures()`) keeps only the most-prominent (rank-1) motivated measure per chunk. Before that cut, C1 surfaces several measures per chunk, and 2014 carries roughly two to three times the motivated-fiscal-measure load of a typical year. The denser the report, the more measures the rank-1 cut discards, and the more room chunk-boundary differences between the parallel EN and BM documents have to change *which* measure survives on each side.
+
+```{r}
+#| label: fig-c1-density
+#| fig-cap: "Motivated fiscal measures C1 surfaces per year by language, before the rank-1 deployment filter. 2014 carries the heaviest load of any pilot year, which is what the rank-1 cut discards most and most asymmetrically."
+#| fig-width: 8
+#| fig-height: 3.5
+#| warning: false
+
+pd <- plot_malay_c1_density(malay_er_c1)
+if (is.null(pd)) cat("No motivated measures available yet.\n") else print(pd)
+```
+
+Second, **chunk-level classification asymmetry**. With near-identical chunk counts across the two parallel documents, BM flags a higher share of its 2014 chunks as carrying a motivated rank-1 fiscal measure than EN does. Since each such chunk contributes exactly one measure to Table 1, this EN/BM gap *is* the drift, and it is widest in 2014.
+
+```{r}
+#| label: fig-c1-fiscal-rate
+#| fig-cap: "Share of each year's chunks whose most-prominent (rank-1) measure is a motivated fiscal measure, by language. The EN/BM gap, the per-chunk asymmetry the drift reflects, is widest in 2014."
+#| fig-width: 8
+#| fig-height: 3.5
+#| warning: false
+
+pr <- plot_malay_c1_fiscal_rate(malay_er_c1, malay_er_chunks)
+if (is.null(pr)) cat("No chunk data available yet.\n") else print(pr)
+```
 
 ## C0 aggregation diagnostics
 
@@ -259,4 +294,4 @@ This test, conditional on its results, speaks to a narrow population of BM docum
 - **Speaks to:** professional MoF translations of modern Economic Reports (2014+), commissioned alongside the EN versions and expected to be high-quality.
 - **Does NOT speak to:** older Economic Report BM (1995-2013, 19 documents — MoF Bahasa originals, not parallel translations), all Budget Speech BM (9 documents, 2000-2008 + 2012 + 2015 — no EN parallels, different register), or crisis-booklet BM (4 documents — branded marketing register).
 
-The 2024 and 2025 EN+BM ER pairs exist on disk but fall outside the current Malaysia pilot window (`pilot_year_max = 2022`). Extending the test to those years requires only an update to `build_country_configs()`; the consistency-test sub-pipeline auto-includes any new pair years from `MANIFEST.csv`.
+The pilot window (`pilot_year_max = 2025` in `build_country_configs()`) now spans the full parallel EN+BM Economic Report record (2014–2025). The consistency-test sub-pipeline auto-includes any pair year flagged `has_en & has_bm` in `MANIFEST.csv`, so adding a future pair requires only dropping the two PDFs into `economic_report/` and flipping the manifest row.
