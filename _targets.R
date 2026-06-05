@@ -28,13 +28,13 @@ pacman::p_load(
 crew_default <- crew::crew_controller_local(
   name         = "default",
   workers      = 1L,
-  seconds_idle = 30L
+  seconds_idle = 10
 )
 
 crew_c0_umap <- crew::crew_controller_local(
   name         = "c0_umap",
   workers      = 6L,
-  seconds_idle = 15L
+  seconds_idle = 10
 )
 
 # Set target options:
