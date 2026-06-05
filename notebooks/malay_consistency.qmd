@@ -45,9 +45,7 @@ The C1 → C0 → C2 codebook pipeline was validated on US English documents. Ma
 
 This is a consistency test, not a validity test. We have no labels for Malaysia. EN outputs are treated as the reference because the codebooks crossed S3 gates on EN-only US data. Passing this test is necessary-but-not-sufficient for extending deployment to the **BM-only-document slice (38 of 99 ready documents)**; it does not gate the broader Malaysia deployment, and it is **not a substitute for expert agreement on the EN-side outputs** (Phase 2's success criteria: ≥80% on C1, ≥70% on C2 against expert review).
 
-The test runs the **full pipeline independently on each language** and compares the outputs within each step of the process. It slices `country_chunks` to Economic Reports with parallel EN+BM coverage, runs its own C1 → C2a chain, then aggregates measure names into acts with the **C0 act aggregator** (M5 LLM canonical clustering, `prompts/c0_canonicalize.yml`, Haiku) at three scopes:
-
-[Because these notebooks will be the building blocks for the final paper, we want to write them for external audiences. So, in general, we do not want to mention code elements or files.]{.aside}
+The test runs the **full pipeline independently on each language** and compares the outputs within each step of the process. It restricts the corpus to Economic Reports with parallel EN+BM coverage, runs its own C1 → C2a chain, then aggregates measure names into acts with the **C0 act aggregator** at three scopes:
 
 - **per-document** — aggregate within each language × year document (granular aggregation capability/limits);
 - **per-language** — pool all EN documents / all BM documents (deployment-realistic; this scope feeds C2 and the headline timeline);
@@ -58,52 +56,36 @@ The test runs the **full pipeline independently on each language** and compares 
 This test only speaks to **modern, professionally-translated MoF prose** (Economic Reports 2014–2025; see the 2023 edition caveat under C1-step comparability). It does NOT speak to pre-2009 Budget Speech BM, older Economic Report BM (pre-2014), or crisis-booklet BM. Those are different vintages and registers; deployment to them requires separate evidence.
 :::
 
+### Scope
+
+@fig-scope shows the extent to which the two language sides cover the same document: the page count and chunk count of each Economic Report year, by language. Comparable bars within a year mean we are comparing parallel documents; a large gap flags an edition or coverage asymmetry (most visibly in 2023, discussed below).
+
 ```{r}
-#| label: scope-summary
-#| results: 'asis'
+#| label: fig-scope
+#| fig-cap: "Pages and chunks per Economic Report year, by language. Comparable EN/BM bars within a year indicate parallel coverage."
+#| fig-width: 8
+#| fig-height: 5
+#| warning: false
 
-cat(sprintf(
-  "**Scope:** %d pair years × 2 languages = %d documents; %d total chunks.\n\n",
-  length(malay_er_pair_years),
-  2L * length(malay_er_pair_years),
-  nrow(malay_er_chunks)
-))
-cat(sprintf("**Pair years:** %s\n\n",
-            paste(malay_er_pair_years, collapse = ", ")))
+ps <- plot_malay_scope(malay_er_chunks)
+if (is.null(ps)) cat("No chunk data available yet.\n") else print(ps)
 ```
-
-
-[We should include a Scope subsection that shows a figure with the number of pages and chunks in each document-year-language to let the reader understand the extend to which we're comparing the same document. This will obviate the need for a "pair years/scope" line as above.]{.aside}
 
 
 ## C1-step comparability
 
-Before aggregation, does C1 surface a comparable set of raw fiscal measures on each side? This is the step where real extraction asymmetries live (independent of how acts are later aggregated). @tbl-c1-comparability counts the distinct `measure_name` strings C1 produced per document, by language.
+Before aggregation, does C1 surface a comparable set of raw fiscal measures on each side? This is the step where real extraction asymmetries live (independent of how acts are later aggregated). @fig-c1-comparability counts the distinct fiscal measures C1 produced per document, by language.
 
 ```{r}
-#| label: tbl-c1-comparability
-#| tbl-cap: "Distinct C1 measure names per year, by language (pre-aggregation)"
+#| label: fig-c1-comparability
+#| fig-cap: "Distinct C1 fiscal-measure names per year, by language (pre-aggregation). A large within-year EN/BM gap is an extraction asymmetry that bounds any downstream aggregation."
+#| fig-width: 8
+#| fig-height: 3.5
+#| warning: false
 
-c1m_wide <- malay_er_c1_measures |>
-  mutate(doc_language = if_else(str_detect(doc_id, "-BM$"), "bm", "en")) |>
-  distinct(year, doc_language, measure_name) |>
-  count(year, doc_language, name = "n_measures") |>
-  pivot_wider(names_from = doc_language, values_from = n_measures,
-              names_prefix = "n_", values_fill = 0L)
-
-if (!"n_en" %in% names(c1m_wide)) c1m_wide$n_en <- 0L
-if (!"n_bm" %in% names(c1m_wide)) c1m_wide$n_bm <- 0L
-
-c1m_wide |>
-  mutate(`Signed drift (BM − EN)` = n_bm - n_en) |>
-  arrange(year) |>
-  rename(Year = year, `n EN` = n_en, `n BM` = n_bm) |>
-  tt() |>
-  tt_theme_report()
+pc <- plot_malay_c1_comparability(malay_er_c1_measures)
+if (is.null(pc)) cat("No measures available yet.\n") else print(pc)
 ```
-
-
-[@tbl-c1-comparability should be a plot.]{.aside}
 
 Two C1-level residuals carry over from the prior iteration's analysis and are **not** aggregation artifacts: (i) some EN/BM years contain **foreign-comparator** measures (Japan, India, Australia stimulus packages; Philippines TRAIN Act) that should be filtered upstream by country-of-enactment tagging in C1; and (ii) **2018 BM** extracted suspiciously few measures from a full Economic Report, a recall asymmetry to investigate at C1, not C0. These belong to the C1 step and bound how comparable any downstream aggregation can be.
 
@@ -113,9 +95,9 @@ The 2023 EN and BM documents are **different editions of the 2023 budget cycle**
 
 ### Why the drift varies by year
 
-@tbl-c1-comparability drift is not uniform across years; it concentrates in 2014 (the GST-announcement Budget). Two structural features of each year's Economic Report drive it, and both peak in 2014.
+The @fig-c1-comparability drift is not uniform across years; it concentrates in 2014 (the GST-announcement Budget). Two structural features of each year's Economic Report drive it, and both peak in 2014.
 
-First, **measure density**. The `malay_er_c1_measures` count is a post-filter count: the deployment filter (`filter_c1_measures()`) keeps only the most-prominent (rank-1) motivated measure per chunk. Before that cut, C1 surfaces several measures per chunk, and 2014 carries roughly two to three times the motivated-fiscal-measure load of a typical year. The denser the report, the more measures the rank-1 cut discards, and the more room chunk-boundary differences between the parallel EN and BM documents have to change *which* measure survives on each side.
+First, **measure density**. The comparability count above is a post-filter count: the deployment filter keeps only the most-prominent (rank-1) motivated measure per chunk. Before that cut, C1 surfaces several measures per chunk, and 2014 carries roughly two to three times the motivated-fiscal-measure load of a typical year. The denser the report, the more measures the rank-1 cut discards, and the more room chunk-boundary differences between the parallel EN and BM documents have to change *which* measure survives on each side.
 
 ```{r}
 #| label: fig-c1-density
@@ -147,30 +129,22 @@ C0 collapses C1 measure names into act-level clusters. The three scopes test dif
 
 ### Per-document: granular aggregation symmetry
 
-Per document, the count of distinct C1 measures, the count of C0 acts, and the compression ratio (surfaced act names → distinct acts). A symmetric aggregator should compress comparably on both sides; the previous JW clusterer fragmented BM more than EN.
+Per document, @fig-c0-perdoc shows the compression ratio — how many surfaced measures collapse into each distinct act — by year and language. A symmetric aggregator should compress comparably on both sides; the previous clusterer fragmented BM more than EN.
 
 ```{r}
-#| label: tbl-c0-perdoc
-#| tbl-cap: "C0 per-document aggregation: measures, acts, and compression by language"
+#| label: fig-c0-perdoc
+#| fig-cap: "C0 per-document compression (measures collapsed into distinct acts) by year and language. Comparable EN/BM bars indicate symmetric aggregation."
+#| fig-width: 8
+#| fig-height: 3.5
+#| warning: false
 
 if (c0_pending || nrow(m$per_doc) == 0L) {
-  tibble(Note = "C0 per-doc target not yet built") |> tt() |> tt_theme_report()
+  cat("C0 per-document results not yet built.\n")
 } else {
-  m$per_doc |>
-    transmute(
-      Year = year,
-      Language = toupper(doc_language),
-      `C1 measures` = n_measures,
-      `C0 acts` = n_acts,
-      `Compression` = sprintf("%.2f×", compression)
-    ) |>
-    arrange(Year, Language) |>
-    tt() |>
-    tt_theme_report()
+  pd0 <- plot_malay_c0_perdoc(m$per_doc)
+  if (is.null(pd0)) cat("No per-document aggregation available yet.\n") else print(pd0)
 }
 ```
-
-[@tbl-c0-perdoc shuld also be a plot. In general, we prefer showing plots than tables.]{.aside}
 
 ### Per-language: act inventory marginals
 
@@ -196,26 +170,23 @@ if (inv_pending) {
 ```
 
 ```{r}
-#| label: tbl-c0-perlang-labels
-#| tbl-cap: "Motivation-label marginal distribution by language. A BM-side over-representation of a structural label (e.g. LONG_RUN) surfaces here as a marginal shift — no act-by-act pairing required."
+#| label: fig-c0-perlang-labels
+#| fig-cap: "Motivation-label marginal distribution by language. A BM-side over-representation of a structural label (e.g. Long-run) surfaces here as a marginal shift — no act-by-act pairing required."
+#| fig-width: 8
+#| fig-height: 3.5
+#| warning: false
 
 if (inv_pending) {
-  tibble(Note = "C2 inventory not yet built") |> tt() |> tt_theme_report()
+  cat("C2 inventory not yet built.\n")
 } else {
-  m$per_language$labels |>
-    mutate(side = toupper(side)) |>
-    pivot_wider(names_from = side, values_from = n, values_fill = 0L) |>
-    rename(`Motivation label` = pred_label) |>
-    tt() |>
-    tt_theme_report()
+  pl <- plot_malay_c0_perlang_labels(m$per_language$labels)
+  if (is.null(pl)) cat("No motivation labels available yet.\n") else print(pl)
 }
 ```
 
-[@tbl-c0-perlang-labels should show neat motivation labels.]{.aside}
-
 ### Joint EN+BM: cross-language merge rate
 
-Run on the combined EN+BM pool, how often does C0 place an EN surface form and a BM surface form of the same act into one cluster? This is the direct, no-API probe of whether the current `c0_canonicalize` prompt bridges languages (e.g. `Subsidi Bahan Api` ↔ `fuel subsidy`). A low merge rate means C0 treats the languages as disjoint and cross-language aggregation needs a translation step.
+Run on the combined EN+BM pool, how often does C0 place an EN surface form and a BM surface form of the same act into one cluster? This is the direct, no-API probe of whether C0 bridges languages (e.g. *Subsidi Bahan Api* ↔ *fuel subsidy*). A low merge rate means C0 treats the languages as disjoint and cross-language aggregation needs a translation step.
 
 ```{r}
 #| label: tbl-c0-joint
@@ -241,7 +212,7 @@ When the merge rate is non-trivial, audit a few mixed clusters by eye (do the EN
 
 ## Headline: final-output consistency
 
-The pipeline runs end-to-end on each language and produces a set of acts, each carrying a C2 motivation label, sign, and exogeneity. The question is whether the two runs land on the same fiscal reasoning. Pure marginals cannot answer this (identical totals can hide compensating per-act errors), so the headline is **two timeline figures**: each act is a point placed on the year axis, coloured by motivation, shaped by sign, drawn solid if exogenous and hollow if endogenous, faceted by language. The reader compares the EN and BM rows directly.
+The pipeline runs end-to-end on each language and produces a set of acts, each carrying a C2 motivation label, sign, and exogeneity. The question is whether the two runs land on the same fiscal reasoning. Pure marginals cannot answer this (identical totals can hide compensating per-act errors), so the headline is **two timeline figures**: for each year and language, acts are counted into motivation × sign cells and drawn as a diverging stacked bar — increases grow the bar upward, decreases downward, coloured by motivation, faceted by language. The reader compares the EN and BM rows directly.
 
 The two figures differ only in the timing source: the first dates each act by the year **extracted from its name** (language-invariant numerals; partial coverage), the second by the **source-document year** (always present).
 
@@ -250,29 +221,25 @@ The two figures differ only in the timing source: the first dates each act by th
 A quick deterministic check before the plots: do the two sides surface acts carrying the same set of name-embedded years?
 
 ```{r}
-#| label: tbl-act-years
-#| tbl-cap: "Act-name-year multiset by language (years parsed from act names)"
+#| label: fig-act-years
+#| fig-cap: "Act-name-year multiset by language (years parsed from act names). Comparable EN/BM bars mean the two sides surface acts dated to the same years."
+#| fig-width: 8
+#| fig-height: 3.5
+#| warning: false
 
 if (inv_pending || nrow(m$per_language$act_years) == 0L) {
-  tibble(Note = "No act-name years available yet") |> tt() |> tt_theme_report()
+  cat("No act-name years available yet.\n")
 } else {
-  m$per_language$act_years |>
-    mutate(side = toupper(side)) |>
-    pivot_wider(names_from = side, values_from = n, values_fill = 0L) |>
-    rename(`Act-name year` = act_name_year) |>
-    arrange(`Act-name year`) |>
-    tt() |>
-    tt_theme_report()
+  pay <- plot_malay_act_years(m$per_language$act_years)
+  if (is.null(pay)) cat("No act-name years available yet.\n") else print(pay)
 }
 ```
-
-[@tbl-act-years should also be a plot.]{.aside}
 
 ### Timeline by act-name year
 
 ```{r}
 #| label: fig-timeline-actname
-#| fig-cap: "EN- vs BM-side acts placed by the year extracted from the act name. Colour = motivation; shape = sign (▲ increase, ▼ decrease, ● no change); solid = exogenous, faded = endogenous."
+#| fig-cap: "Act counts by year extracted from the act name, EN vs BM. Diverging stacked bars: increases grow upward, decreases downward, no-change acts sit at the baseline; colour = motivation; faceted by language."
 #| fig-width: 9
 #| fig-height: 7
 #| warning: false
@@ -287,7 +254,7 @@ if (is.null(p1)) cat("No acts carry a name-embedded year yet.\n") else print(p1)
 
 ```{r}
 #| label: fig-timeline-docyear
-#| fig-cap: "EN- vs BM-side acts placed by the modal source-document year. Same encodings as above."
+#| fig-cap: "Act counts by modal source-document year, EN vs BM. Same encodings as above."
 #| fig-width: 9
 #| fig-height: 7
 #| warning: false
@@ -296,18 +263,15 @@ p2 <- plot_malay_act_timeline(inv, timing = "doc_year")
 if (is.null(p2)) cat("Inventory not yet built.\n") else print(p2)
 ```
 
-
-[@fig-timeline-actname and @fig-timeline are quite inteligible. Instead of showing the act name, only count the number of acts in each year-language-motivation-sign cell. ]
-
 ## Interpretation
 
 Read the evidence in pipeline order:
 
 - **C1 step.** Any large pre-aggregation drift, foreign-comparator contamination, or the 2018 BM recall gap is a C1 issue and bounds everything downstream — it is not fixable by the aggregator.
-- **C0 step.** The per-document compression table closes the loop opened last iteration: does C0 produce **symmetric** act-level aggregation across languages where the JW clusterer fragmented BM more than EN? The joint merge rate separately tells us whether C0 bridges languages at all or treats them as disjoint vocabularies.
-- **C2 / headline.** The two timelines are where cross-language consistency of the *full* pipeline is read. Agreement looks like the same years lighting up with the same colours and shapes on both facets; systematic colour shifts (e.g. BM reaching for a structural label) or sign flips on the same act are the disagreements worth chasing. The act-name-year multiset and label-marginal tables are the statistical companions to the visual read.
+- **C0 step.** The per-document compression figure closes the loop opened last iteration: does C0 produce **symmetric** act-level aggregation across languages where the previous clusterer fragmented BM more than EN? The joint merge rate separately tells us whether C0 bridges languages at all or treats them as disjoint vocabularies.
+- **C2 / headline.** The two timelines are where cross-language consistency of the *full* pipeline is read. Agreement looks like the same years carrying the same colours and the same up/down balance on both facets; systematic colour shifts (e.g. BM reaching for a structural label) or sign flips on the same act are the disagreements worth chasing. The act-name-year multiset and label-marginal figures are the statistical companions to the visual read.
 
-::: {.callout-note title="Methodological caveat: translation, not independent source"}
+::: {.callout-note title="Methodological caveat: translation, not independent source" .column-margin}
 The BM Economic Reports are MoF translations of the EN versions, not independent fiscal-policy statements. Two consequences: **correlated errors are invisible** (if Haiku misreads a passage the same way in both languages because the translation preserved the misleading phrasing, this test records agreement); and **some disagreements are translation artifacts** (the translator's word choice, not the model's reasoning). The motivation language R&R rely on — "the actual words used by policymakers" — only fully applies to the EN side. Catching correlated errors requires expert validation on the EN side.
 :::
 
@@ -318,4 +282,4 @@ This test, conditional on its results, speaks to a narrow population of BM docum
 - **Speaks to:** professional MoF translations of modern Economic Reports (2014+), commissioned alongside the EN versions and expected to be high-quality.
 - **Does NOT speak to:** older Economic Report BM (1995-2013, 19 documents — MoF Bahasa originals, not parallel translations), all Budget Speech BM (9 documents, 2000-2008 + 2012 + 2015 — no EN parallels, different register), or crisis-booklet BM (4 documents — branded marketing register).
 
-The pilot window (`pilot_year_max = 2025` in `build_country_configs()`) now spans the full parallel EN+BM Economic Report record (2014–2025). The consistency-test sub-pipeline auto-includes any pair year flagged `has_en & has_bm` in `MANIFEST.csv`, so adding a future pair requires only dropping the two PDFs into `economic_report/` and flipping the manifest row.
+The pilot window now spans the full parallel EN+BM Economic Report record (2014–2025), and the consistency test auto-includes any year for which both an EN and a BM Economic Report are available, so adding a future pair requires only supplying the two documents.

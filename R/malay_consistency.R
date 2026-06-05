@@ -507,12 +507,48 @@ compute_malay_er_consistency_tallies <- function(c0_perdoc, c0_perlang, c0_joint
 }
 
 
-#' Timeline of EN- and BM-side acts by timing, direction, and exogeneity
+# ---------------------------------------------------------------------------
+# Motivation-label presentation: human-readable names + fill palette
+# ---------------------------------------------------------------------------
+
+# Canonical ordering of the four C2b motivation categories.
+.malay_motivation_levels <- c("SPENDING_DRIVEN", "COUNTERCYCLICAL",
+                              "DEFICIT_DRIVEN", "LONG_RUN")
+
+# Map the raw C2b enum to the human-readable names used across the project.
+.malay_motivation_labels <- c(
+  SPENDING_DRIVEN = "Spending-driven", COUNTERCYCLICAL = "Countercyclical",
+  DEFICIT_DRIVEN  = "Deficit-driven",  LONG_RUN        = "Long-run"
+)
+
+# Neat-label-keyed fill palette (plus a neutral grey for no-change acts).
+.malay_motivation_palette <- c(
+  `Spending-driven` = "#4477AA", `Countercyclical` = "#EE6677",
+  `Deficit-driven`  = "#228833", `Long-run`        = "#CCBB44",
+  `No change`       = "grey70"
+)
+
+#' Convert raw C2b motivation enum strings to human-readable labels
 #'
-#' One point per act, placed on the year axis by the chosen timing source.
-#' Faceted by language (rows EN/BM) so the reader visually compares the two
-#' full-pipeline runs. Colour = motivation label; shape = sign; exogenous acts
-#' are drawn solid, endogenous hollow.
+#' Returns an ordered factor so plots and tables share a stable category order;
+#' unrecognised inputs fall through unchanged.
+#'
+#' @param x Character vector of raw motivation labels (e.g. "LONG_RUN").
+#' @return An ordered factor of human-readable labels.
+#' @export
+pretty_motivation <- function(x) {
+  pretty <- dplyr::coalesce(unname(.malay_motivation_labels[x]), x)
+  factor(pretty, levels = unname(.malay_motivation_labels))
+}
+
+
+#' Timeline of EN- and BM-side acts as signed motivation counts
+#'
+#' For each language and year, counts the acts in every motivation × sign cell
+#' and draws them as a diverging stacked bar: increases grow the bar upward,
+#' decreases downward, no-change acts sit as a neutral band at the baseline.
+#' Faceted by language (rows EN/BM) so the reader compares the two full-pipeline
+#' runs. Colour = motivation label.
 #'
 #' @param inventory The `inventory` tibble from
 #'   `compute_malay_er_consistency_tallies()`.
@@ -534,32 +570,32 @@ plot_malay_act_timeline <- function(inventory, timing = c("act_name", "doc_year"
   df <- inventory |>
     dplyr::mutate(.year = .data[[year_col]],
                   side = factor(toupper(side), levels = c("EN", "BM"))) |>
-    dplyr::filter(!is.na(.year))
+    dplyr::filter(!is.na(.year)) |>
+    dplyr::mutate(
+      sign = dplyr::case_when(pred_sign %in% c("+", "-") ~ pred_sign,
+                              TRUE ~ "0"),
+      motivation = dplyr::if_else(sign == "0", "No change",
+                                  as.character(pretty_motivation(pred_label)))
+    ) |>
+    dplyr::count(side, .year, sign, motivation, name = "n") |>
+    dplyr::mutate(
+      signed_n   = dplyr::if_else(sign == "-", -n, n),
+      motivation = factor(motivation,
+                          levels = c(unname(.malay_motivation_labels), "No change"))
+    )
   if (nrow(df) == 0L) return(NULL)
 
-  ggplot2::ggplot(df, ggplot2::aes(x = .year, y = canonical_name)) +
-    ggplot2::geom_point(
-      ggplot2::aes(fill = pred_label, shape = pred_sign,
-                   alpha = pred_exogenous),
-      colour = "grey30", size = 3
-    ) +
-    ggplot2::scale_shape_manual(
-      values = c(`+` = 24, `-` = 25, `0` = 21),
-      name = "Sign", na.value = 23
-    ) +
-    ggplot2::scale_alpha_manual(
-      values = c(`TRUE` = 1, `FALSE` = 0.35),
-      breaks = c(TRUE, FALSE),
-      labels = c("exogenous", "endogenous"),
-      name = "Exogeneity", na.value = 0.35
-    ) +
-    ggplot2::facet_wrap(~ side, ncol = 1, scales = "free_y") +
-    ggplot2::labs(x = axis_lab, y = NULL, fill = "Motivation") +
-    ggplot2::guides(
-      fill = ggplot2::guide_legend(override.aes = list(shape = 21, alpha = 1))
-    ) +
+  ggplot2::ggplot(df, ggplot2::aes(x = factor(.year), y = signed_n,
+                                   fill = motivation)) +
+    ggplot2::geom_col(width = 0.7) +
+    ggplot2::geom_hline(yintercept = 0, linewidth = 0.3, colour = "grey40") +
+    ggplot2::scale_fill_manual(values = .malay_motivation_palette,
+                               name = "Motivation", drop = FALSE) +
+    ggplot2::facet_wrap(~ side, ncol = 1) +
+    ggplot2::labs(x = axis_lab, y = "Acts (increase ↑ / decrease ↓)") +
     ggplot2::theme_minimal(base_family = "Libertinus Serif", base_size = 10) +
-    ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+    ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                   panel.grid.major.x = ggplot2::element_blank())
 }
 
 
@@ -646,4 +682,145 @@ plot_malay_c1_fiscal_rate <- function(c1_raw, chunks) {
                   y = "Chunks with a motivated\nrank-1 fiscal measure") +
     ggplot2::theme_minimal(base_family = "Libertinus Serif", base_size = 10) +
     ggplot2::theme(panel.grid.major.x = ggplot2::element_blank())
+}
+
+
+# ---------------------------------------------------------------------------
+# Presentation plots: replacements for the notebook's diagnostic tables
+# ---------------------------------------------------------------------------
+
+# Shared bar-plot styling for the dodged EN/BM diagnostics below.
+.malay_lang_bar <- function(p) {
+  p +
+    ggplot2::geom_col(position = ggplot2::position_dodge2(preserve = "single"),
+                      width = 0.7) +
+    ggplot2::scale_fill_manual(values = .malay_lang_palette, name = "Language") +
+    ggplot2::theme_minimal(base_family = "Libertinus Serif", base_size = 10) +
+    ggplot2::theme(panel.grid.major.x = ggplot2::element_blank())
+}
+
+
+#' Document scope: pages and chunks per document-year-language
+#'
+#' Shows the extent to which the two language sides cover the same document:
+#' the page count and chunk count of each Economic Report year, by language.
+#' A figure replacement for the old "pair years/scope" text line. Empty-safe.
+#'
+#' @param chunks Tibble from the `malay_er_chunks` target.
+#' @return A ggplot object, or NULL if the input is empty.
+#' @export
+plot_malay_scope <- function(chunks) {
+  if (nrow(chunks) == 0L) return(NULL)
+
+  df <- chunks |>
+    dplyr::mutate(side = toupper(derive_doc_language(doc_id))) |>
+    dplyr::group_by(year, side) |>
+    dplyr::summarise(Pages = max(end_page),
+                     Chunks = dplyr::n_distinct(chunk_id),
+                     .groups = "drop") |>
+    tidyr::pivot_longer(c(Pages, Chunks), names_to = "metric",
+                        values_to = "value") |>
+    dplyr::mutate(metric = factor(metric, levels = c("Pages", "Chunks")))
+
+  .malay_lang_bar(
+    ggplot2::ggplot(df, ggplot2::aes(x = factor(year), y = value, fill = side))
+  ) +
+    ggplot2::facet_wrap(~ metric, ncol = 1, scales = "free_y") +
+    ggplot2::labs(x = "Economic Report year", y = NULL)
+}
+
+
+#' Distinct C1 measure names per year, by language (pre-aggregation)
+#'
+#' Figure replacement for the C1-comparability table: how many distinct fiscal
+#' measures each language side surfaces per year, before act-level aggregation.
+#' Empty-safe.
+#'
+#' @param c1_measures Tibble from the `malay_er_c1_measures` target.
+#' @return A ggplot object, or NULL if the input is empty.
+#' @export
+plot_malay_c1_comparability <- function(c1_measures) {
+  if (nrow(c1_measures) == 0L) return(NULL)
+
+  df <- c1_measures |>
+    dplyr::mutate(side = toupper(derive_doc_language(doc_id))) |>
+    dplyr::distinct(year, side, measure_name) |>
+    dplyr::count(year, side, name = "n_measures")
+  if (nrow(df) == 0L) return(NULL)
+
+  .malay_lang_bar(
+    ggplot2::ggplot(df, ggplot2::aes(x = factor(year), y = n_measures, fill = side))
+  ) +
+    ggplot2::labs(x = "Economic Report year", y = "Distinct fiscal measures")
+}
+
+
+#' C0 per-document aggregation symmetry, by language
+#'
+#' Figure replacement for the per-document compression table: the compression
+#' ratio (surfaced measures collapsed into distinct acts) per year and language.
+#' A symmetric aggregator compresses comparably on both sides. Empty-safe.
+#'
+#' @param per_doc The `per_doc` tibble from
+#'   `compute_malay_er_consistency_tallies()`.
+#' @return A ggplot object, or NULL if the input is empty.
+#' @export
+plot_malay_c0_perdoc <- function(per_doc) {
+  if (nrow(per_doc) == 0L) return(NULL)
+
+  df <- per_doc |>
+    dplyr::mutate(side = toupper(doc_language))
+
+  .malay_lang_bar(
+    ggplot2::ggplot(df, ggplot2::aes(x = factor(year), y = compression, fill = side))
+  ) +
+    ggplot2::labs(x = "Economic Report year",
+                  y = "Compression (measures → acts)")
+}
+
+
+#' Motivation-label marginal distribution by language
+#'
+#' Figure replacement for the label-marginal table, with human-readable
+#' motivation names: how many acts each language side assigns to each motivation
+#' category. Empty-safe.
+#'
+#' @param labels The `per_language$labels` tibble from
+#'   `compute_malay_er_consistency_tallies()`.
+#' @return A ggplot object, or NULL if the input is empty.
+#' @export
+plot_malay_c0_perlang_labels <- function(labels) {
+  if (nrow(labels) == 0L) return(NULL)
+
+  df <- labels |>
+    dplyr::mutate(side = toupper(side),
+                  motivation = pretty_motivation(pred_label))
+
+  .malay_lang_bar(
+    ggplot2::ggplot(df, ggplot2::aes(x = motivation, y = n, fill = side))
+  ) +
+    ggplot2::scale_x_discrete(drop = FALSE) +
+    ggplot2::labs(x = "Motivation", y = "Acts")
+}
+
+
+#' Act-name-year multiset by language
+#'
+#' Figure replacement for the act-name-year table: the count of acts carrying
+#' each name-embedded year, by language. Empty-safe.
+#'
+#' @param act_years The `per_language$act_years` tibble from
+#'   `compute_malay_er_consistency_tallies()`.
+#' @return A ggplot object, or NULL if the input is empty.
+#' @export
+plot_malay_act_years <- function(act_years) {
+  if (nrow(act_years) == 0L) return(NULL)
+
+  df <- act_years |>
+    dplyr::mutate(side = toupper(side))
+
+  .malay_lang_bar(
+    ggplot2::ggplot(df, ggplot2::aes(x = factor(act_name_year), y = n, fill = side))
+  ) +
+    ggplot2::labs(x = "Act-name year", y = "Acts")
 }
