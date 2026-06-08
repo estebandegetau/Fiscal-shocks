@@ -51,12 +51,15 @@ Rscript -e 'library(targets); cat(tar_manifest()$name, sep = "\n")' | grep <targ
 
 #### Check 3: Upstream dependencies not outdated
 
+Scope the check to the target (and its branches) — **never run a full-graph `tar_outdated()`**, which can hang on this pipeline:
+
 ```bash
-Rscript -e 'library(targets); cat(tar_outdated(), sep = "\n")'
+Rscript -e 'library(targets); cat(tar_outdated(names = any_of("<target_name>")), sep = "\n")'
 ```
 
 - **Pass**: Target not in outdated list (or only the target itself is outdated, which is expected)
 - **Fail**: Upstream dependencies are outdated. List them and suggest running those first.
+- If you need to inspect timestamps instead, use a scoped `tar_meta(fields = c("name", "time", "seconds"))` filtered to the relevant targets rather than a full-graph outdated check.
 
 #### Check 4: Codebook validates
 

@@ -116,6 +116,8 @@ Rename columns upstream via `dplyr::rename()` (or `setNames()`) before piping in
 - Use `tinytable::style_tt()` for conditional formatting when it aids interpretation
 - Use `tinytable::format_tt(fmt = "%.1f%%")`, `format_tt(fmt = "%.0f")`, etc. (sprintf-style format strings) for consistent number formatting
 - **`gt()` does not render in Typst.** Some older notebooks still use `gt()` (sourcing `R/gt_theme.R`). When you next edit such a notebook, migrate its tables to `tt()` so it renders to both formats.
+- **tinytable is fragile inside `results: 'asis'` chunks.** Build tables in a normal (non-`asis`) chunk with `tbl-`-labelled chunk options so Quarto handles numbering and the caption. If a table genuinely must be emitted from an `asis`/`cat()` loop, render to confirm it compiles in **both HTML and Typst** before relying on it; do not assume it works from the HTML render alone.
+- **Use `group_tt()` for grouped, bolded/indented row groups.** For self-contained tables with row-group labels, use `tinytable::group_tt(i = ...)` rather than hand-built markdown headings or manual indentation, so the grouping (bold label + indented members) survives into Typst.
 
 ### Caption style (cross-format bridge)
 

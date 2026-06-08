@@ -208,14 +208,16 @@ These rules govern how Claude Code operates in this project. They prevent recurr
 2. **Root cause first.** When something fails, identify the root cause before proposing a fix. Do not patch symptoms (e.g., don't fix test implementation when the codebook example is the problem).
 3. **Model ID validation.** Before writing any model parameter, verify against known valid IDs. Current valid: `claude-haiku-4-5-20251001`, `claude-sonnet-4-20250514`. Flag any legacy IDs (e.g., `claude-3-5-sonnet-20241022`).
 4. **Prefer existing files.** Search with Glob/Grep before creating new files. Duplicate implementations create maintenance burden.
-5. **NO autonomous API calls.** Never run `tar_make()` on API-calling targets without explicit user approval. Read-only operations (`tar_read()`, `tar_outdated()`, `tar_visnetwork()`) are always safe.
+5. **NO autonomous API calls.** Never run `tar_make()` on API-calling targets without explicit user approval. Read-only operations (`tar_read()`, `tar_outdated()`, `tar_visnetwork()`) are *API-safe* (no LLM cost), but "API-safe" is not "compute-cheap": a **full-graph `tar_outdated()` can be slow or hang** on this pipeline and may load workers. Prefer scoped checks (see #12).
 6. **Commit before pipeline runs.** Before running API-calling targets, ensure no uncommitted changes to codebook YAML or R function files. The iteration log stores git hashes for reproducibility.
 7. **One change at a time.** When iterating on a codebook, change one component per iteration. This makes the iteration log interpretable and supports ablation-style reasoning.
 8. **Pipeline data validation.** After `tar_make()` completes, verify result shape with `tar_read(<target>) |> str()` before proceeding.
-9. **Quarto render safety.** Always render specific files (`quarto render notebooks/c1_measure_id.qmd`), never the full project.
+9. **Quarto render safety.** Always render specific files (`quarto render notebooks/c1_measure_id.qmd`), never the full project. After editing figures or tables, render to verify before committing; render **both HTML and Typst** when the figure/table is paper-bound (the cross-format bridge). Skip the Typst render for trivial, non-paper edits.
 10. **Strategy reconciliation.** After a stage gate crossing (S1/S2/S3 pass) or when 3+ unresolved entries accumulate in `docs/deltas.md`, run `/strategy-sync` to reconcile implementation deltas with strategy docs. This is a human-driven reflection exercise: Claude challenges the user's reasoning, the user justifies decisions, and the rationale is recorded as an audit trail.
 11. **Grep before editing.** When modifying a parameter or config value, first grep the entire codebase for every reference. Show all occurrences to the user and propose a plan to update ALL of them consistently. Never assume a single-file fix is sufficient.
-12. **Verify target freshness.** Before reviewing pipeline results, check that evaluation targets have been rebuilt for the current codebook version. Run `tar_meta()` or `tar_outdated()` to verify timestamps. Do not review stale outputs.
+12. **Verify target freshness.** Before reviewing pipeline results, check that evaluation targets have been rebuilt for the current codebook version. Use a **scoped** check on the specific affected targets (`tar_outdated(names = ...)` or `tar_meta(fields = ...)` filtered to those targets), **never a full-graph `tar_outdated()`** (it can hang on this pipeline). Flag upfront if any check could spin a crew/callr worker before running it. Do not review stale outputs.
+13. **Surgical commits.** Stage only files relevant to the current task; **never `git add .`**. Preserve the user's unrelated work-in-progress, and show the committed diff. The decision to commit belongs to the human (see Research Companion Principle 4).
+14. **Preserve target hashes.** When adding diagnostic or probe tests (e.g. UMAP, FP32 quantization), add them **without invalidating existing targets**. Confirm with a scoped `tar_outdated(names = ...)` that the existing targets' hashes are preserved.
 
 ### Multi-Agent Workflow Patterns
 
@@ -371,7 +373,7 @@ tar_target(
 targets::tar_make()          # Run full pipeline
 targets::tar_make(stage_01)  # Run specific target
 targets::tar_visnetwork()    # Visualize dependency graph
-targets::tar_outdated()      # Check what needs updating
+targets::tar_outdated(names = ...)  # Check specific targets (scoped — avoid the full-graph call, it can hang; see Workflow Convention #12)
 ```
 ```
 

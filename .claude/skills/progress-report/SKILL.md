@@ -54,19 +54,13 @@ Summarize commit themes (codebook revisions, infrastructure, documentation, bug 
 
 #### 1d. Pipeline target status
 
-Run:
-
-```bash
-Rscript -e 'library(targets); cat(paste(tar_outdated(), collapse="\n"))'
-```
-
-And:
+Use the progress log, which reads cached state without re-hashing the graph. **Do not run a full-graph `tar_outdated()`** — it can hang on this pipeline.
 
 ```bash
 Rscript -e 'library(targets); p <- tar_progress(); cat(jsonlite::toJSON(table(p$progress), auto_unbox=TRUE))'
 ```
 
-Note which targets are complete, outdated, or errored.
+Note which targets are complete, dispatched, or errored. If you need to confirm staleness for a few specific targets, scope it: `tar_outdated(names = any_of(c("<target_a>", "<target_b>")))` — never the full graph.
 
 #### 1e. Strategy context
 
