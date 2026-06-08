@@ -1,0 +1,159 @@
+---
+title: "Claude Code Insights"
+subtitle: "36 sessions total · 34 analyzed · 270 messages · 235h · 30 commits"
+date: 2026-06-05
+date-range: "2026-05-20 to 2026-06-05"
+format: html
+---
+
+## At a Glance
+
+**What's working:** We treat the research notebook as a scientific instrument, consistently demanding root-cause understanding before any fix --- like tracing a missing 2023 table entry to a misnamed file rather than patching symptoms. Our plan-implement-verify-commit loop is disciplined: we run pilots before full runs, catch subtle issues like biased bootstrap CIs, and keep surgical commits that preserve unrelated work-in-progress.
+
+**What's hindering:** On Claude's side, figures and tables sometimes arrive in the wrong layout (sub-panel vs. column facet, formatting conventions) and require a rewrite, and a few edits missed schema details like a stale cached column. On our side, the bigger friction is environmental: verification checks repeatedly hung or spun up unexpected R crew workers, and orphaned processes plus redundant scheduled wakeups destabilized the container. These are worth tackling structurally rather than per-session.
+
+**Quick wins:** Capture our plan-pilot-then-pause routine and surgical commit conventions as a Custom Skill so they fire as one command instead of being re-explained each time. Use Hooks to auto-clean orphaned crew/renv workers after runs and to default verification toward fast scoped metadata checks, which would prevent the multi-minute stalls that keep recurring.
+
+**Ambitious workflows:** As models improve, we'll be able to hand off the full diagnose-fix-verify-commit loop to an autonomous agent that detects pipeline anomalies, traces root cause, applies scoped edits, runs targeted verification, and returns a reviewable change for approval. Lean into parallel agents for the many independent diagnostic figures, and consider a standing eval harness that scores each canonicalization method against ground truth, turning method development into a test-driven propose-pilot-score loop.
+
+## Project Areas
+
+| Area | Sessions | Description |
+|------|:--------:|-------------|
+| Consistency Pipeline Development (C0/C1/C2) | 11 | Designed, refactored, and migrated a multi-stage document consistency pipeline including the C0 aggregator, C1/C2 codebooks, and dynamic branching logic. Claude planned implementations across R, targets, and notebook files, caught schema bugs, verified deterministically, and committed reworked code. Heavy use of multi-file edits, design discussions, and test coverage verification. |
+| Quarto Notebook Visualization & Reporting | 10 | Added diagnostic plots, faceted figures, JW-distance box plots, Pareto-frontier visualizations, and Precision/Recall figures to Quarto research notebooks. Claude implemented ggplot chunks, verified full renders in HTML and Typst formats, and refined grouped tables to meet formatting requirements. Some figures required rewrites to match desired faceting and self-contained styling. |
+| Embedding & Clustering Methodology | 6 | Investigated UMAP clustering behavior, designed LLM-based clustering methods, and integrated multilingual embedding models via local Ollama setup. Claude researched approaches, ran pilot validations, diagnosed eval noise with quantization probes, and reframed evaluation methodology toward RR-structural agreement. Work included troubleshooting model installs and statistical bias in bootstrap CIs. |
+| Data Drift Diagnosis & Extraction Analysis | 5 | Diagnosed root causes of data anomalies including absent 2023 entries from tables, 2014 extraction drift, and concatenated-PDF measure drift. Claude traced data lineage, performed manual per-chunk error analysis, assembled and renamed corpus files, and updated manifests without requiring code changes. Delivered rigorous analysis to explain why specific years stood out. |
+| Environment Maintenance & Documentation | 4 | Resolved performance issues from orphaned R callr/crew workers, WSL2 memory limits, and network-dependent CSL render errors by vendoring files locally and applying VS Code excludes. Claude also upgraded a Quarto style-guide skill and synced strategy documentation. Careful commits preserved user work-in-progress while excluding unrelated edits. |
+
+: Project areas by session count {.striped}
+
+## Interaction Style
+
+We operate as a methodical research engineer who treats Claude Code as a collaborator in a serious, long-running data science project --- most of the work centers on a multilingual document-analysis pipeline built in R, Quarto, and targets. Our sessions are notably **goal-rich and multi-step**: rather than firing off one-liners, we typically bundle several related tasks into a single request (e.g., "diagnose this drift, explore a top-2 ranking alternative, understand why 2014 stood out, and add the findings as plots"). We expect Claude to plan first, implement across many files, verify renders deterministically, and commit cleanly --- and our high satisfaction rates (33 of 34 sessions fully or mostly achieved) suggest this expectation is consistently met. The heavy Bash usage (610 calls) alongside balanced Read/Edit counts shows we let Claude run substantial diagnostic and verification work autonomously rather than micromanaging each step.
+
+A defining trait is our **attention to correctness and provenance**. We repeatedly ask Claude to trace data lineage, confirm interpretations, and reconcile documentation with code --- and we care deeply that commits are surgical, frequently expecting Claude to exclude unrelated WIP edits. When Claude over-scopes or guesses wrong, we correct quickly and specifically: we rejected an over-engineered Typst-in-`_quarto.yml` proposal, demanded a column-facet figure rewritten from a sub-panel version, and pushed a table through several iterations until the bold-and-indented formatting matched the style guide exactly. We also **interrupt at decision points**, pausing a fix plan before completion or expecting Claude to halt for approval before expensive full runs, signaling that we want control over costly or irreversible steps.
+
+**Key pattern:** We batch multi-step research tasks into structured requests, let Claude plan and run autonomously through diagnosis-implementation-verify-commit cycles, and intervene precisely when output drifts from our exact specs.
+
+## Impressive Things We Did
+
+Over 34 sessions we've used Claude Code as a research engineering partner for a sophisticated R/Quarto NLP pipeline, combining rigorous data analysis with disciplined version control.
+
+### Root-cause diagnosis before fixing
+
+We consistently push for understanding before action, like tracing why 2023 was absent from Table 1 to a misnamed BM file and missing EN report, or pinning a 2020 measure drift to a concatenated PDF. By demanding the underlying cause rather than a surface patch, we turn debugging sessions into durable fixes that often require no code changes at all.
+
+### Plan, verify, then commit cleanly
+
+We run a tight loop of planning, implementing across multiple files, verifying renders deterministically, and committing only the relevant changes while preserving unrelated WIP. This discipline shows up repeatedly, from the C0 aggregator migration across six files to vendoring a network-dependent CSL locally, keeping our git history precise and our work reproducible.
+
+### Rigorous empirical methodology design
+
+We treat the notebook as a research instrument, designing pilot validations before full runs, adding diagnostic plots like Pareto frontiers and embedding-distance scatters, and catching subtle statistical issues such as biased bootstrap CIs. Pausing for approval after clean pilots and reframing evaluation toward RR-structural agreement shows we steer methodology with real scientific care.
+
+## Where Things Go Wrong
+
+Our sessions are highly productive, but friction clusters around long-running R/targets verification steps, runaway background processes, and figure/table outputs that need rework to match our formatting intent.
+
+### Slow and runaway pipeline verification
+
+Verification and "API-free" checks in our R/targets pipeline repeatedly hung or spun up unexpected crew workers, wasting minutes and creating concern. Scoping checks to metadata or specific targets up front, and confirming whether a check will trigger worker processes, would avoid these stalls.
+
+- A full-graph `tar_outdated()` verification hung for over 5 minutes and had to be killed and replaced with a faster scoped metadata check.
+- A supposedly deterministic "API-free" check unexpectedly spun a crew worker for ~16 minutes, prompting concern over runaway resource use.
+
+### Figure and table rework to match formatting intent
+
+Several visualizations and tables were delivered in a structure that didn't match our specific layout expectations, requiring a rewrite. Confirming the exact facet/layout and formatting conventions before generating the chunk would cut down on iteration.
+
+- An initial no-UMAP figure used gate as a sub-panel split instead of the M1-style column facet we wanted, requiring a full rewrite.
+- A tinytable rendering broke in the `asis` loop and the figure/table approach had to be reworked to meet our self-contained, bolded-and-indented formatting requirements.
+
+### Orphaned processes and environment instability
+
+Recurring container slowdowns came from orphaned crew/renv R workers and respawning callr processes, alongside redundant scheduled wakeups firing no-op prompts. Proactively cleaning up workers after runs and disabling redundant fallback continuations would keep the environment stable.
+
+- Respawning R callr processes and orphaned crew/renv workers caused PC slowdowns until the parent orchestrator was traced and killed.
+- Scheduled fallback wakeups fired redundantly three times after tasks had already completed, producing repeated no-op continuation prompts.
+
+## Suggestions
+
+### CLAUDE.md Additions to Consider
+
+1. **Surgical commits (Version Control / Git):** "When committing, only stage files relevant to the current task and preserve the user's unrelated WIP edits; never blanket `git add .`." *Why: Across multiple sessions Claude correctly excluded unrelated user edits and committed only relevant files, a recurring expectation worth codifying.*
+
+2. **Scoped verification (Pipeline / targets):** "Avoid full-graph `tar_outdated()` or full pipeline runs for verification; use scoped metadata checks and never spin up crew/callr workers for 'deterministic' or 'API-free' checks." *Why: A full-graph verification hung 5+ minutes and a supposedly API-free check spun a 16-min crew worker, both causing friction that scoped checks would prevent.*
+
+3. **Render both formats (Quarto / Notebooks):** "After adding or editing Quarto notebook figures/tables, always render both HTML and Typst/PDF formats to verify before committing." *Why: Nearly every data-visualization session ended with a render-verify-commit loop, so making it default removes a repeated manual step.*
+
+4. **Preserve target hashes (Pipeline / targets):** "New probe tests (e.g., UMAP, FP32 quantization) must be added without invalidating existing targets; confirm target hashes are preserved." *Why: Multiple sessions explicitly required adding tests 'without invalidating existing targets,' a repeated constraint Claude should assume by default.*
+
+5. **Self-contained table formatting (Quarto / Notebooks):** "Table formatting in notebooks should be self-contained with bold, indented captions/titles per the Quarto style guide; verify tinytable renders inside `asis` loops." *Why: Table and caption formatting required multiple rewrites to match the user's self-contained bolded style across sessions.*
+
+### Features to Try
+
+**Custom Skills.** We repeatedly run a verify-render-commit-sync-docs sequence and already maintain a `strategy-sync` and `style-guide` skill; a dedicated `/render-commit` skill would standardize our most common loop.
+
+```text
+# .claude/skills/render-commit/SKILL.md
+Render the notebook to both HTML and Typst, verify no render errors, then
+commit ONLY the notebook and directly-related files (never `git add .`),
+preserving any unrelated WIP.
+```
+
+**Hooks.** We hit repeated orphaned crew/renv/callr R workers slowing the machine; a hook can auto-check for and warn about runaway R processes after Bash runs.
+
+```json
+// .claude/settings.json
+{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "Bash",
+      "hooks": [{"type": "command", "command": "pgrep -fl 'callr|crew' | head"}]
+    }]
+  }
+}
+```
+
+**Task Agents.** Much of our work is tracing data lineage through C0/C1/C2 pipelines across many R/targets/notebook files; agents can map this wiring in parallel without bloating the main context.
+
+### Usage Patterns
+
+**Plan-pilot-then-pause for big pipeline changes.** Method 5 clustering and the C0 migration both succeeded because Claude planned, ran a small pilot, caught real bugs (free-text vs integer cluster keys, token undercount, schema mismatch), and paused for approval. Making this the default for any multi-file pipeline change catches schema/token bugs cheaply.
+
+> Before implementing this pipeline change, write a short plan, then run a minimal pilot on a single document/chunk to validate schema, token budgets, and target invalidation, and pause for my approval before any full run.
+
+**Scoped verification over full-graph checks.** Two friction events came from heavy verification: a 5-minute `tar_outdated()` hang and a 16-minute crew worker on a supposed API-free check. For our targets-based pipeline, scoped checks on the specific affected targets are far safer.
+
+> Verify only the targets affected by this change using a scoped metadata check (not a full tar_outdated graph), and tell me upfront if any step will spin a crew/callr worker before running it.
+
+**Commit discipline preserving WIP.** In several sessions Claude correctly committed only the relevant files while preserving unrelated work-in-progress edits, and we valued this. Making it an explicit standing instruction prevents accidental over-staging.
+
+> Stage and commit only the files directly related to this task with a clear message, leaving all my other modified/untracked files untouched, then show me the diff you committed.
+
+## On the Horizon
+
+Our work has matured from single-file edits into orchestrated research pipelines, positioning us to delegate entire diagnose-implement-verify-commit loops to autonomous agents.
+
+### Autonomous Pipeline Diagnose-Fix-Verify Loops
+
+Our sessions repeatedly follow a pattern: diagnose data drift (2014 C1, 2020 measure, bill-number fix), implement a fix across R/targets/notebook files, render to verify, then commit cleanly while preserving WIP. An autonomous agent could own this entire loop --- detecting anomalies in pipeline output, tracing root cause, applying scoped edits, running targeted `tar_make` verification, and committing only relevant files. This turns multi-hour investigation marathons into reviewable pull requests we approve.
+
+**Getting started:** Use a subagent with TodoWrite-driven phases and scoped `tar_outdated` metadata checks (avoiding the full-graph hangs we hit) to run the diagnose-fix-render-commit cycle end to end.
+
+### Parallel Agents for Diagnostic Figure Generation
+
+Half our goals are data visualization --- JW box plots, Pareto frontiers, embedding scatter, pipeline funnels, faceted metrics. These figures are largely independent and could be generated by parallel agents, each owning one ggplot chunk against the C0 eval data, rendering its own preview, and self-correcting layout (column-facet vs sub-panel) before we ever see it. We could request five diagnostic figures and receive five verified, render-clean chunks simultaneously instead of iterating one at a time.
+
+**Getting started:** Launch multiple Agent invocations in parallel, one per figure spec, each instructed to render-verify its chunk and match the style-guide skill (bold titles, M1-style column facets).
+
+### Continuous Eval Harness for Methods
+
+We're iterating across canonicalization methods (M2/M3 clustering, M5 LLM clustering, JW distance, embedding probes, FP32/F16 quantization) and repeatedly asking "why did this run drift?" A standing eval harness could treat each method as a hypothesis tested against RR-structural agreement ground truth, running pilots automatically, catching schema bugs (the missing measure_rank column, integer-vs-free-text cluster keys, token truncation) before full runs, and logging a leaderboard of precision/recall per method. Method development becomes test-driven: propose, pilot, score, promote.
+
+**Getting started:** Build a testthat-style probe suite plus a pilot-gate agent that validates schema and token budgets before committing to any expensive full run.
+
+## Fun Fact
+
+During a container slowdown investigation, Claude went hunting for zombie R processes and found the real culprit: orphaned crew/renv workers eating WSL2 memory and slowing the whole PC to a crawl. It traced a chain of respawning R callr workers back to their true orchestrator, killed them all, and even added VS Code excludes to the repo to stop them from coming back --- a satisfying ghost-busting moment after a 16-minute "API-free" check unexpectedly spawned a worker.
