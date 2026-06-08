@@ -38,11 +38,20 @@ filter_c1_measures <- function(predictions, chunks) {
   # After this filter, `discusses_motivation` refers to the most prominent
   # measure's flag — a deliberate semantic shift inherited from selecting
   # `measures[0]` as the prominent measure.
+  #
+  # Foreign-comparator drop: C1's per-measure `measure_country` enum is either
+  # the corpus country's own ISO or "OTHER" (a measure enacted by another
+  # government, cited as a comparator). Both downstream consumers — C2a evidence
+  # extraction and the C0 act aggregator — must only ever see domestic measures,
+  # so we drop "OTHER" here at the single chokepoint. The `%in%` form is NA-safe:
+  # a FISCAL_MEASURE whose country tag failed to parse (NA) is kept rather than
+  # silently discarded.
   predictions |>
     dplyr::filter(
       pred_label == "FISCAL_MEASURE",
       measure_rank == 1L,
-      discusses_motivation %in% TRUE
+      discusses_motivation %in% TRUE,
+      !measure_country %in% "OTHER"
     ) |>
     dplyr::left_join(
       chunks |> dplyr::select(dplyr::all_of(c("doc_id", "chunk_id", "text", meta_cols))),

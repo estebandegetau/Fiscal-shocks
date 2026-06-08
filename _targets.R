@@ -741,6 +741,81 @@ list(
     deployment = "main"
   ),
 
+  # ---------------------------------------------------------------------------
+  # C0 act aggregation -> C2b classification (continues the deployment chain).
+  #
+  # All five targets branch per-country via single-input `map(..., iteration =
+  # "list")`. Each country branch IS one whole-country pool, so C0 aggregates the
+  # country jointly (EN + BM together) in a single M5 call -- one deduplicated
+  # cross-language act inventory per country.
+  #
+  # Positional-zip invariant: country_c0_acts and country_c2b_inputs zip two
+  # branched inputs each. This is safe ONLY because every target in this chain
+  # descends from country_c1_measures via single-input `map` (1:1 branch
+  # preservation, never `cross`/`tar_group_*`), so branch order is identical
+  # across country_c2a_evidence / country_measure_pool / country_c0_clusters /
+  # country_c0_acts. Do not insert a branch-dropping step into this chain.
+  # ---------------------------------------------------------------------------
+
+  tar_target(
+    country_measure_pool,
+    build_country_measure_pool(country_c1_measures),
+    pattern = map(country_c1_measures),
+    iteration = "list",
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    country_c0_clusters,
+    run_c0_deployment(
+      country_measure_pool,
+      instruction = c0_m5_prompt$instruction,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens = 8192,
+      seed = 1L,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    pattern = map(country_measure_pool),
+    iteration = "list",
+    packages = c("tidyverse", "httr2", "jsonlite", "withr"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    country_c0_acts,
+    reshape_c0_clusters_deployment(country_c0_clusters, country_measure_pool),
+    pattern = map(country_c0_clusters, country_measure_pool),
+    iteration = "list",
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    country_c2b_inputs,
+    aggregate_c0_acts_deployment(country_c0_acts, country_c2a_evidence),
+    pattern = map(country_c0_acts, country_c2a_evidence),
+    iteration = "list",
+    packages = c("tidyverse", "stringr")
+  ),
+
+  tar_target(
+    country_c2b,
+    run_c2b_deployment(
+      country_c2b_inputs,
+      c2b_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2b = 4096,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    pattern = map(country_c2b_inputs),
+    iteration = "list",
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
   # =============================================================================
   # Malaysia EN/BM Cross-Language Consistency Test
   # Self-contained sub-pipeline that slices country_chunks to Economic Report
