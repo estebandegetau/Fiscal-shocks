@@ -102,7 +102,8 @@ deployment_country_targets <- tarchetypes::tar_map(
     assemble_country_body(
       file_paths = country_pdf_files,
       text_branches = country_text,
-      country_urls_for_country = country_urls_for(country_urls, country_slug)
+      country_urls_for_country = country_urls_for(country_urls, country_slug),
+      country_iso = build_country_configs()[[country_slug]]$country_iso
     ),
     packages = c("tidyverse")
   )
@@ -692,7 +693,8 @@ list(
   tar_target(
     country_chunks,
     make_chunks(country_body, window_size = 10, overlap = 3,
-                max_tokens = 40000, min_chars = 100L),
+                max_tokens = 40000, min_chars = 100L,
+                carry_cols = c("country", "country_iso")),
     pattern = map(country_body),
     iteration = "list",
     packages = c("tidyverse", "purrr")
@@ -703,7 +705,7 @@ list(
     run_c1_deployment(
       country_chunks,
       c1_codebook,
-      country_iso = country_configs[[unique(country_chunks$country)[1]]]$country_iso %||% "US",
+      country_iso = unique(country_chunks$country_iso)[1] %||% "US",
       model = "claude-haiku-4-5-20251001",
       max_tokens = 3072,
       provider = "anthropic",

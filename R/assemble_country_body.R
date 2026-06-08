@@ -33,6 +33,9 @@ country_urls_for <- function(country_urls, country) {
 #'   - Every column from `country_urls` is preserved
 #'   - Seven extraction columns appended: `text`, `n_pages`, `ocr_used`,
 #'     `n_pages_ocr`, `pages_ocr`, `extraction_time`, `extracted_at`
+#'   - One config column appended: `country_iso` (the corpus country's ISO
+#'     code, carried into chunks by `make_chunks(carry_cols = ...)` so the
+#'     deployment chain reads it from the branched data, not the global config)
 #'   - Manifest rows with no file: `n_pages = 0L`, `text = list(character(0))`,
 #'     `n_pages_ocr = 0L`, `pages_ocr = list(logical(0))`
 #'   - On-disk files with no manifest match: synthesized row with
@@ -43,11 +46,16 @@ country_urls_for <- function(country_urls, country) {
 #' @param text_branches List of one-row tibbles from `extract_pdf_file()`
 #'   branches (one per element of `file_paths`)
 #' @param country_urls_for_country Tibble — the manifest for one country
-#' @return Tibble matching the legacy `country_body` schema
+#' @param country_iso Character ISO 3166-1 alpha-2 code for the corpus country
+#'   (e.g. `"MY"`), from `build_country_configs()`. Stamped onto every row as a
+#'   `country_iso` column so it travels through `make_chunks()` into the chunks.
+#'   Defaults to `NA_character_` for back-compatibility with callers that omit it.
+#' @return Tibble matching the legacy `country_body` schema, plus `country_iso`
 #' @export
 assemble_country_body <- function(file_paths,
                                   text_branches,
-                                  country_urls_for_country) {
+                                  country_urls_for_country,
+                                  country_iso = NA_character_) {
   if (length(file_paths) != length(text_branches)) {
     stop(sprintf(
       "assemble_country_body: file_paths (%d) and text_branches (%d) length mismatch",
@@ -142,5 +150,6 @@ assemble_country_body <- function(file_paths,
     matched[0, , drop = FALSE]
   }
 
-  dplyr::bind_rows(matched, orphans)
+  dplyr::bind_rows(matched, orphans) |>
+    dplyr::mutate(country_iso = country_iso)
 }

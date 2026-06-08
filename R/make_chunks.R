@@ -13,6 +13,14 @@
 #' @param min_chars Minimum character count for a chunk to be retained (default: 100L).
 #'   Chunks with `nchar(text) <= min_chars` are dropped as extraction artifacts.
 #'   Set to `0L` to disable filtering.
+#' @param carry_cols Character vector of doc-level metadata columns to copy from
+#'   `pages_df` onto every chunk row (default: `character(0)`, i.e. no passthrough).
+#'   Only columns present in `pages_df` and not already part of the chunk schema
+#'   are carried; each is treated as a doc-level scalar recycled across the
+#'   document's chunks. Used by the deployment pipeline to carry `country` /
+#'   `country_iso` so chunks self-describe their corpus (the US `chunks` target
+#'   passes nothing and is unaffected). Avoid naming list-columns (e.g.
+#'   `pages_ocr`); they would bloat every chunk row.
 #'
 #' @return Data frame with columns:
 #'   - doc_id: Document identifier
@@ -22,6 +30,7 @@
 #'   - n_pages: Number of pages in chunk
 #'   - text: Combined text from all pages in chunk
 #'   - approx_tokens: Estimated token count
+#'   - any columns named in `carry_cols` (appended), each a doc-level scalar
 #'
 #' @examples
 #' \dontrun{
@@ -35,11 +44,18 @@ make_chunks <- function(pages_df,
                         overlap = 10,
                         max_tokens = 40000,
                         chars_per_token = 4,
-                        min_chars = 100L) {
+                        min_chars = 100L,
+                        carry_cols = character(0)) {
 
   if (!is.data.frame(pages_df)) {
     stop("pages_df must be a data frame")
   }
+
+  # Doc-level metadata columns to copy onto each chunk row. Drop any that
+  # collide with the reserved chunk schema (they are produced explicitly below).
+  reserved_cols <- c("doc_id", "year", "chunk_id", "start_page", "end_page",
+                     "n_pages", "text", "approx_tokens")
+  carry <- setdiff(intersect(carry_cols, names(pages_df)), reserved_cols)
 
   if (!"text" %in% names(pages_df)) {
     stop("pages_df must have a 'text' column containing list of page texts")
@@ -129,6 +145,11 @@ make_chunks <- function(pages_df,
         approx_tokens = round(approx_tokens)
       )
     })
+
+    # Append carried doc-level metadata (scalar, recycled across the doc's chunks)
+    for (col in carry) {
+      doc_chunks[[col]] <- doc[[col]][[1]]
+    }
 
     doc_chunks
   })
