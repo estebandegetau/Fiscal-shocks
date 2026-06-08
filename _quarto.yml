@@ -57,6 +57,7 @@ website:
           - notebooks/verify_malaysia_urls.qmd
           - notebooks/malay_consistency.qmd
           - notebooks/verify_country_body.qmd
+          - notebooks/deployment.qmd
 
 format: 
   html:

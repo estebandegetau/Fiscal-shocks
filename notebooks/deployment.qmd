@@ -1,0 +1,246 @@
+---
+title: "Deployment Headline: Cross-Country Fiscal-Shock Inventory"
+subtitle: "Full C1 → C0 → C2 deployment pipeline, by country"
+execute:
+  cache: true
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, stringr, purrr)
+
+here::i_am("notebooks/deployment.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/tt_theme.R"))
+source(here("R/malay_consistency.R"))   # pretty_motivation() + motivation palette
+source(here("R/deployment_report.R"))
+
+tar_load(c(
+  country_chunks,
+  country_c1_predictions,
+  country_c1_measures,
+  country_c0_clusters,
+  country_c0_acts,
+  country_c2b,
+  country_measure_pool
+))
+
+# Positionally zip the country identity onto every branched target, then flatten.
+chunks   <- bind_country(country_chunks,         country_chunks)
+c1_raw   <- bind_country(country_c1_predictions, country_chunks)
+c1_meas  <- bind_country(country_c1_measures,    country_chunks)
+
+m <- compute_deployment_tallies(
+  c0_acts      = bind_country(country_c0_acts,      country_chunks),
+  c0_clusters  = bind_country(country_c0_clusters,  country_chunks),
+  c2b          = bind_country(country_c2b,          country_chunks),
+  measure_pool = bind_country(country_measure_pool, country_chunks)
+)
+
+inv         <- m$inventory
+n_country   <- dplyr::n_distinct(chunks$country_iso)
+inv_pending <- nrow(inv) == 0L
+```
+
+## Framing
+
+This is the deployment headline: the end-to-end output of the validated **C1 → C0 → C2** pipeline run on each deployment country's full document corpus. It presents the same figures and tables as the Malaysia EN/BM consistency report, but with the comparison axis swapped from **language** to **country**.
+
+The pipeline runs independently per country. C1 identifies fiscal measures, C0 aggregates measure names into acts, and C2 classifies each act's motivation, sign, and exogeneity. Today only Malaysia is deployed, so every comparison figure shows a single country; the notebook auto-extends to a panel per country as Indonesia, Thailand, the Philippines, and Vietnam are onboarded.
+
+::: {.column-margin}
+This is a deployment inventory, not a validity test. There are no ground-truth labels for any deployment country; the act-level outputs are inputs requiring expert validation (Phase 2 success criteria: ≥80% expert agreement on C1, ≥70% on C2), not research findings.
+:::
+
+Each country's acts are clustered within that country only. We do **not** attempt to merge acts across countries: a Malaysian GST and a future Indonesian GST are distinct national measures, so there is no cross-country analog of the consistency report's joint EN/BM merge probe. The per-country C0 cluster summary below takes that slot.
+
+### Scope
+
+@fig-scope shows each country's corpus extent: pages and chunks per document year, summed across that year's documents. As more countries are added, comparable totals indicate comparable corpus depth; large gaps flag coverage asymmetries that bound everything downstream.
+
+```{r}
+#| label: fig-scope
+#| fig-cap: "**Corpus scope.** Pages and chunks per country and document year, summed across that year's documents."
+#| fig-width: 8
+#| fig-height: 5
+
+ps <- plot_deployment_scope(chunks)
+if (is.null(ps)) cat("No chunk data available yet.\n") else print(ps)
+```
+
+## C1-step comparability
+
+Before aggregation, what set of raw fiscal measures does C1 surface for each country? This is where real extraction differences live, independent of how acts are later aggregated. @fig-c1-comparability counts the distinct fiscal measures C1 produced per year, by country.
+
+```{r}
+#| label: fig-c1-comparability
+#| fig-cap: "**Distinct C1 fiscal measures per year, by country (pre-aggregation).** The raw extraction load that bounds any downstream aggregation."
+#| fig-width: 8
+#| fig-height: 3.5
+
+pc <- plot_deployment_c1_comparability(c1_meas)
+if (is.null(pc)) cat("No measures available yet.\n") else print(pc)
+```
+
+### Measure density and the rank-1 filter
+
+The comparability count above is a post-filter count: the deployment filter keeps only the most-prominent (rank-1) motivated measure per chunk. Before that cut, C1 surfaces several measures per chunk. @fig-c1-density shows that raw load per country-year, and @fig-c1-fiscal-rate shows the share of chunks whose rank-1 measure is a motivated fiscal measure. Measure-dense years carry several times the typical load, and the rank-1 cut discards the rest.
+
+```{r}
+#| label: fig-c1-density
+#| fig-cap: "**Motivated fiscal measures C1 surfaces per year, before the rank-1 deployment filter.** Dense years carry the heaviest load, which is what the rank-1 cut discards."
+#| fig-width: 8
+#| fig-height: 3.5
+
+pd <- plot_deployment_c1_density(c1_raw)
+if (is.null(pd)) cat("No motivated measures available yet.\n") else print(pd)
+```
+
+```{r}
+#| label: fig-c1-fiscal-rate
+#| fig-cap: "**Share of each year's chunks whose most-prominent (rank-1) measure is a motivated fiscal measure, by country.**"
+#| fig-width: 8
+#| fig-height: 3.5
+
+pr <- plot_deployment_c1_fiscal_rate(c1_raw, chunks)
+if (is.null(pr)) cat("No chunk data available yet.\n") else print(pr)
+```
+
+## C0 aggregation diagnostics
+
+C0 collapses C1 measure names into act-level clusters. The figures below describe that aggregation per country.
+
+### Compression
+
+@fig-c0-perdoc shows the compression ratio, how many surfaced measures collapse into each distinct act, by year and country, averaged across the year's documents.
+
+```{r}
+#| label: fig-c0-perdoc
+#| fig-cap: "**C0 compression (measures collapsed into distinct acts) per year and country.** Higher bars mean more measure variants per canonical act."
+#| fig-width: 8
+#| fig-height: 3.5
+
+pd0 <- plot_deployment_c0_perdoc(m$per_doc)
+if (is.null(pd0)) cat("No per-document aggregation available yet.\n") else print(pd0)
+```
+
+### Per-country cluster summary
+
+How many distinct acts does C0 produce for each country, and how many measure variants does each act absorb on average? @tbl-c0-summary is the per-country analog of the consistency report's joint merge-rate probe.
+
+```{r}
+#| label: tbl-c0-summary
+#| tbl-cap: "Per-country C0 cluster summary: distinct acts, measure variants, and cluster sizes"
+
+if (nrow(m$c0_summary) == 0L) {
+  tibble(Note = "C0 clusters not yet built") |> tt() |> tt_theme_report()
+} else {
+  m$c0_summary |>
+    transmute(
+      Country = str_to_title(country),
+      `Acts (clusters)` = n_clusters,
+      `Measure variants` = n_variants,
+      `Mean variants / act` = round(mean_members, 2),
+      `Largest cluster` = max_members
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
+
+### Act inventory marginals
+
+Pooling all of a country's documents, @tbl-c0-counts reports the act count and the exogenous/endogenous split, and @fig-c0-labels shows the motivation-label marginal distribution.
+
+```{r}
+#| label: tbl-c0-counts
+#| tbl-cap: "Per-country act inventory: counts and exogeneity split"
+
+if (inv_pending) {
+  tibble(Note = "C2 inventory not yet built") |> tt() |> tt_theme_report()
+} else {
+  m$per_country$counts |>
+    transmute(
+      Country = str_to_title(country),
+      `C0 acts` = n_acts,
+      Exogenous = n_exogenous,
+      Endogenous = n_endogenous
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
+
+```{r}
+#| label: fig-c0-labels
+#| fig-cap: "**Motivation-label marginal distribution by country.** How many acts each country assigns to each motivation category."
+#| fig-width: 8
+#| fig-height: 3.5
+
+if (inv_pending) {
+  cat("C2 inventory not yet built.\n")
+} else {
+  pl <- plot_deployment_c0_labels(m$per_country$labels)
+  if (is.null(pl)) cat("No motivation labels available yet.\n") else print(pl)
+}
+```
+
+## Headline: act inventory timeline
+
+The pipeline produces, per country, a set of acts each carrying a C2 motivation label, sign, and exogeneity. The headline is a timeline: for each year and country, acts are counted into motivation × sign cells and drawn as a diverging stacked bar. Increases grow the bar upward, decreases downward, no-change acts sit at the baseline, colour encodes motivation, faceted by country.
+
+The two figures differ only in the timing source. The primary one dates each act by its **source-document year** (always present); the secondary one by the year **extracted from the act name** (language-invariant numerals, but sparse: most acts carry no name-embedded year).
+
+### Act-name year multiset
+
+```{r}
+#| label: fig-act-years
+#| fig-cap: "**Act-name-year multiset by country** (years parsed from act names). Sparse: most acts carry no name-embedded year."
+#| fig-width: 8
+#| fig-height: 3.5
+
+if (inv_pending || nrow(m$per_country$act_years) == 0L) {
+  cat("No act-name years available yet.\n")
+} else {
+  pay <- plot_deployment_act_years(m$per_country$act_years)
+  if (is.null(pay)) cat("No act-name years available yet.\n") else print(pay)
+}
+```
+
+### Timeline by source-document year
+
+```{r}
+#| label: fig-timeline-docyear
+#| fig-cap: "**Act counts by modal source-document year, by country.** Diverging stacked bars: increases grow upward, decreases downward, no-change acts sit at the baseline; colour = motivation."
+#| fig-width: 9
+#| fig-height: 7
+
+p1 <- plot_deployment_act_timeline(inv, timing = "doc_year")
+if (is.null(p1)) cat("Inventory not yet built.\n") else print(p1)
+```
+
+### Timeline by act-name year
+
+```{r}
+#| label: fig-timeline-actname
+#| fig-cap: "**Act counts by year extracted from the act name, by country.** Same encodings as above; covers only the acts that carry a name-embedded year."
+#| fig-width: 9
+#| fig-height: 7
+
+p2 <- plot_deployment_act_timeline(inv, timing = "act_name")
+if (is.null(p2)) cat("No acts carry a name-embedded year yet.\n") else print(p2)
+```
+
+## Interpretation
+
+Read the evidence in pipeline order:
+
+- **C1 step.** The comparability, density, and fiscal-rate figures describe what raw material the extractor surfaces per country. Any extraction gap here bounds everything downstream and is not fixable by the aggregator.
+- **C0 step.** The compression figure and cluster summary describe how aggressively C0 collapses measure variants into acts. A country whose corpus repeats the same handful of acts across many documents compresses more.
+- **C2 / headline.** The timelines are the deliverable: each country's acts placed by year, direction, and motivation. They are the starting point for expert review, not a finding.
+
+## Implications
+
+The same pipeline, codebooks, and figures apply to every country: onboarding the next one adds a corpus and a configuration entry, and this notebook gains a panel. The act inventory each country produces is the artifact an expert reviews against the Phase 2 agreement targets; comparable structure across countries (similar compression, plausible motivation marginals, no degenerate years) is the signal that the country-agnostic codebooks transferred.
