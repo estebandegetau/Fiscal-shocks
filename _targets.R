@@ -706,6 +706,7 @@ list(
       country_chunks,
       c1_codebook,
       country_iso = unique(country_chunks$country_iso)[1] %||% "US",
+      country = unique(country_chunks$country)[1] %||% "united states",
       model = "claude-haiku-4-5-20251001",
       max_tokens = 3072,
       provider = "anthropic",
@@ -861,6 +862,7 @@ list(
     run_c1_deployment(
       malay_er_chunks, c1_codebook,
       country_iso = "MY",
+      country = "malaysia",
       model = "claude-haiku-4-5-20251001",
       max_tokens = 3072,
       provider = "anthropic",

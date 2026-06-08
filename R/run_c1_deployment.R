@@ -80,6 +80,10 @@ filter_c1_measures <- function(predictions, chunks) {
 #'   runtime `{country_iso}` substitution and per-measure `country` enum
 #'   validation. Defaults to "US"; deployment branches should pass the
 #'   value from `build_country_configs()`.
+#' @param country Character country slug (e.g. "malaysia") for runtime
+#'   `{country}` substitution (title-cased into the prose corpus-country name).
+#'   Defaults to "united states"; deployment branches should pass the `country`
+#'   value from `build_country_configs()`.
 #' @param model Character model ID
 #' @param max_tokens Integer max output tokens
 #' @param show_progress Logical
@@ -98,6 +102,7 @@ filter_c1_measures <- function(predictions, chunks) {
 run_c1_deployment <- function(chunks,
                               codebook,
                               country_iso = "US",
+                              country = "united states",
                               model = "claude-haiku-4-5-20251001",
                               max_tokens = 1024,
                               show_progress = TRUE,
@@ -144,7 +149,8 @@ run_c1_deployment <- function(chunks,
     n_chunks, country_label, country_iso
   ))
 
-  system_prompt <- construct_codebook_prompt(codebook, country_iso = country_iso)
+  system_prompt <- construct_codebook_prompt(codebook, country_iso = country_iso,
+                                             country = country)
 
   pb <- NULL
   if (show_progress) {

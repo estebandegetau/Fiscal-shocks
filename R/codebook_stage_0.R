@@ -110,13 +110,19 @@ get_valid_labels <- function(codebook) {
 #'   (instructions, clarifications, output_instructions). Used by C1 v0.7.0+
 #'   for runtime country-of-enactment enum rendering; harmless for codebooks
 #'   that do not use the token.
+#' @param country Character country slug (default "united states") title-cased
+#'   via `stringr::str_to_title()` and substituted for the literal `{country}`
+#'   token. Supplies the human-readable corpus-country name in prose context
+#'   (distinct from `{country_iso}`, which remains the schema enum value).
+#'   Harmless for codebooks that do not use the token.
 #' @return Character string with the assembled system prompt
 #' @export
 construct_codebook_prompt <- function(codebook,
                                       class_order = NULL,
                                       exclude_components = NULL,
                                       exclude_sections = NULL,
-                                      country_iso = "US") {
+                                      country_iso = "US",
+                                      country = "united states") {
   parts <- character()
 
   # Task description and instructions
@@ -238,18 +244,25 @@ construct_codebook_prompt <- function(codebook,
 
   assembled <- paste(parts, collapse = "")
 
-  # Runtime country-of-enactment token substitution. Codebooks may reference
-  # {country_iso} anywhere in instructions / clarifications / output_instructions;
-  # resolve to the deployment ISO code before sending to the model. Codebooks
-  # that do not use the token are unaffected.
+  # Runtime country token substitution. Codebooks may reference {country_iso}
+  # (the schema enum value the model must emit) and/or {country} (the human-
+  # readable corpus-country name used in prose context) anywhere in instructions
+  # / clarifications / output_instructions; resolve both before sending to the
+  # model. The {country} slug is title-cased (e.g. "malaysia" -> "Malaysia").
+  # The two tokens are not fixed-substrings of one another, so substitution
+  # order is immaterial. Codebooks that use neither token are unaffected.
+  country_name <- stringr::str_to_title(country)
+  assembled <- gsub("{country}", country_name, assembled, fixed = TRUE)
   assembled <- gsub("{country_iso}", country_iso, assembled, fixed = TRUE)
 
-  # Implementation guard: any literal {country_iso} that survives substitution
-  # would let the model see an unresolved template token and hallucinate a
-  # country tag. Fail loudly rather than silently emit a broken prompt.
-  if (grepl("{country_iso}", assembled, fixed = TRUE)) {
-    stop("construct_codebook_prompt: unresolved {country_iso} token remains ",
-         "in assembled prompt after substitution")
+  # Implementation guard: any literal {country_iso} or {country} that survives
+  # substitution would let the model see an unresolved template token and
+  # hallucinate a country tag. Fail loudly rather than silently emit a broken
+  # prompt.
+  if (grepl("{country_iso}", assembled, fixed = TRUE) ||
+      grepl("{country}", assembled, fixed = TRUE)) {
+    stop("construct_codebook_prompt: unresolved {country_iso} or {country} ",
+         "token remains in assembled prompt after substitution")
   }
 
   assembled

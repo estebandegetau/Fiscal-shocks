@@ -14,7 +14,7 @@ codebook:
 
 
     The chunk you are analysing comes from a corpus published by the government of
-    **{country_iso}**. Some chunks discuss fiscal measures enacted by other countries
+    **{country}** (ISO code: `{country_iso}`). Some chunks discuss fiscal measures enacted by other countries
     (foreign comparators, supranational bodies); these still qualify as FISCAL_MEASURE
     because they describe fiscal policy, but their country-of-enactment is `OTHER`, not
     `{country_iso}`. The country-of-enactment tag is applied per measure, since a single
@@ -33,7 +33,7 @@ codebook:
         - "Retrospective references that name a specific act and provide substantive detail about its provisions — such as rate changes, affected populations, or revenue effects — should be classified as FISCAL_MEASURE, even if the passage was written years after enactment"
         - "The passage names a specific act, proposal, or executive action and provides some indication of its fiscal implications — this could include rate changes, affected populations, revenue estimates, effective dates, program descriptions, or even a general description of the measure's purpose and scope — rather than merely naming the measure or describing only its political history without indicating what it would change"
         - "The significance of a measure is determined by how substantively the passage discusses it, not by its revenue impact; even small fiscal changes qualify if described in detail"
-        - "Foreign-government fiscal measures (e.g., a chunk from a {country_iso} government document that discusses a Japanese consumption-tax change or a U.S. stimulus package as a comparator) still qualify as FISCAL_MEASURE; tag the per-measure country as `OTHER`"
+        - "Foreign-government fiscal measures (e.g., a chunk from a {country} government document that discusses a Japanese consumption-tax change or a U.S. stimulus package as a comparator) still qualify as FISCAL_MEASURE; tag the per-measure country as `OTHER`"
 
       negative_clarification:
         - "Simple extensions or renewals of existing provisions that do not alter rates, coverage, or scope are excluded from classification as fiscal measures"
