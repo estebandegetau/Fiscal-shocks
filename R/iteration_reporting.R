@@ -141,6 +141,146 @@ gt_manual_analysis_table <- function(manual_data) {
 }
 
 # =============================================================================
+# tinytable Tables
+#
+# tinytable ports of the gt_* helpers above, following the project convention
+# that newly-edited notebooks use tinytable (tt) + tt_theme_report(). The gt_*
+# versions are retained for notebooks still on gt (e.g. iteration_summary.qmd).
+# Requires tt_theme_report() from R/tt_theme.R to be sourced.
+# =============================================================================
+
+#' S2 metrics summary table (tinytable)
+#'
+#' @param s2_data tibble from iteration_logs$s2, pre-filtered to one iteration
+#' @return tinytable object
+tt_s2_metrics_table <- function(s2_data) {
+  tbl <- s2_data |>
+    dplyr::mutate(
+      Estimate = dplyr::case_when(
+        !is.na(ci_lower) & !is.na(ci_upper) ~
+          sprintf("%.3f [%.3f, %.3f]", value, ci_lower, ci_upper),
+        TRUE ~ sprintf("%.3f", value)
+      ),
+      Target = dplyr::if_else(is.na(target), "—",
+                               sprintf("≥ %.2f", target)),
+      Status = dplyr::case_when(
+        is.na(pass) ~ "—",
+        pass ~ "Pass",
+        TRUE ~ "Fail"
+      )
+    ) |>
+    dplyr::select(Metric = metric, Estimate, Target, Status)
+
+  pass_rows <- which(tbl$Status == "Pass")
+  fail_rows <- which(tbl$Status == "Fail")
+
+  out <- tinytable::tt(tbl)
+  if (length(pass_rows) > 0) {
+    out <- tinytable::style_tt(out, i = pass_rows, background = "#E8F5E9")
+  }
+  if (length(fail_rows) > 0) {
+    out <- tinytable::style_tt(out, i = fail_rows, background = "#FFEBEE")
+  }
+  tt_theme_report(out)
+}
+
+#' H&K Table 4-style ablation table (tinytable)
+#'
+#' @param ablation_data tibble from iteration_logs$s3_ablation, pre-filtered
+#' @return tinytable object
+tt_ablation_table <- function(ablation_data) {
+  tbl <- ablation_data |>
+    dplyr::mutate(
+      condition = factor(condition,
+        levels = c("full", "no_label_def", "no_clarifications", "all_removed"),
+        labels = c("Full codebook", "No label definitions",
+                    "No clarifications", "All removed")
+      )
+    ) |>
+    dplyr::arrange(condition) |>
+    dplyr::transmute(
+      Condition    = as.character(condition),
+      Accuracy     = sprintf("%.3f", accuracy),
+      F1           = sprintf("%.3f", f1),
+      `Δ Accuracy` = dplyr::if_else(is.na(accuracy_drop), "—",
+                                          sprintf("%.3f", accuracy_drop)),
+      `Δ F1`       = dplyr::if_else(is.na(f1_drop), "—",
+                                          sprintf("%.3f", f1_drop))
+    )
+
+  full_rows <- which(tbl$Condition == "Full codebook")
+
+  out <- tinytable::tt(tbl)
+  if (length(full_rows) > 0) {
+    out <- tinytable::style_tt(out, i = full_rows, background = "#E8F5E9")
+  }
+  tt_theme_report(out)
+}
+
+#' H&K Table 5-style manual error analysis table (tinytable)
+#'
+#' @param manual_data tibble from iteration_logs$s3_manual, pre-filtered to
+#'   one iteration
+#' @return tinytable object
+tt_manual_analysis_table <- function(manual_data) {
+  category_labels <- c(
+    "A_llm_correct"         = "A: LLM correct",
+    "B_incorrect_gold"      = "B: Incorrect gold standard",
+    "C_document_error"      = "C: Document error",
+    "D_non_compliance"      = "D: LLM non-compliance",
+    "E_semantics_reasoning" = "E: Semantics/reasoning mistake",
+    "F_other"               = "F: Other"
+  )
+
+  tbl <- manual_data |>
+    dplyr::mutate(
+      Category = dplyr::coalesce(category_labels[category], category),
+      Proportion = sprintf("%.2f", count / sum(count))
+    ) |>
+    dplyr::select(Category, Count = count, Proportion)
+
+  a_rows <- which(grepl("^A:", tbl$Category))
+  e_rows <- which(grepl("^E:", tbl$Category))
+  f_rows <- which(grepl("^F:", tbl$Category))
+
+  out <- tinytable::tt(tbl)
+  if (length(a_rows) > 0) out <- tinytable::style_tt(out, i = a_rows, background = "#E8F5E9")
+  if (length(e_rows) > 0) out <- tinytable::style_tt(out, i = e_rows, background = "#FFEBEE")
+  if (length(f_rows) > 0) out <- tinytable::style_tt(out, i = f_rows, background = "#FFF3E0")
+  tt_theme_report(out)
+}
+
+#' Bias-corrected manual-analysis metrics table (tinytable)
+#'
+#' Renders the label-noise-adjusted gate result (confusion matrix + metrics)
+#' for one manual-analysis iteration. Percentage metrics are stored in percent
+#' units (e.g. 81.8) in the iteration log.
+#'
+#' @param bc_data one-row tibble from iteration_logs$s3_manual_bias_corrected
+#' @return tinytable object
+tt_bias_corrected_table <- function(bc_data) {
+  bc <- bc_data[1, ]
+  pct <- function(x) if (is.na(x)) "—" else sprintf("%.1f%%", x)
+  int <- function(x) if (is.na(x)) "—" else as.character(x)
+
+  tbl <- tibble::tibble(
+    Quantity = c(
+      "Effective N", "True positives", "True negatives",
+      "False positives", "False negatives",
+      "Accuracy", "Precision", "Recall",
+      "Tier 1 recall", "Tier 2 recall", "Specificity"
+    ),
+    Value = c(
+      int(bc$effective_n), int(bc$tp), int(bc$tn), int(bc$fp), int(bc$fn),
+      pct(bc$accuracy), pct(bc$precision), pct(bc$recall),
+      pct(bc$tier1_recall), pct(bc$tier2_recall), pct(bc$specificity)
+    )
+  )
+
+  tinytable::tt(tbl) |> tt_theme_report()
+}
+
+# =============================================================================
 # ggplot2 Plots
 # =============================================================================
 

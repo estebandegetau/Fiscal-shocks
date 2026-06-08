@@ -132,15 +132,15 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 
 ### `c1_measure_id.qmd` -- C1 Codebook Evaluation (S0-S3)
 
-**Purpose:** Full H&K evaluation notebook for the C1 (Measure Identification) codebook. Reports S0 design, S1 behavioral tests, S2 zero-shot metrics, and S3 error analysis.
+**Purpose:** Two-part H&K results notebook for the C1 (Measure Identification) codebook: (1) the full final-iteration (v0.7.0) battery mimicking the Halterman & Keith presentables, and (2) the development history sourced programmatically from the iteration log so log edits invalidate the figures/tables.
 
 **Key content:**
 
-- **S0:** Binary classification (FISCAL_MEASURE vs. NOT_FISCAL_MEASURE). Codebook structure summary, negative example stratification, evaluation data counts.
-- **S1:** Behavioral test results (legal outputs, memorization, order invariance). Pass/fail dashboard.
-- **S2:** Zero-shot chunk classification metrics with 95% bootstrap CIs (Recall, Precision, F1, Accuracy, Specificity). Confusion matrix. Per-act recall breakdown. Error details.
-- **S3:** Test V (exclusion criteria consistency), Test VI (generic labels), Test VII (swapped labels), and ablation study (H&K Table 4 component-type ablation).
-- **Status:** Reads from pipeline targets (`c1_s1_results`, `c1_s2_results`, `c1_s2_eval`, `c1_s3_results`). Notebook structure is complete; results depend on pipeline execution.
+- **Part 1 — Final codebook (v0.7.0), live targets.** S0 codebook/negatives/data summary tables; the **full assembled prompt** the LLM saw (`construct_codebook_prompt()` from `R/codebook_stage_0.R`, US tokens resolved). H&K Figure 3 (S1, via `plot_s1_behavioral()`); S2 metrics (`tt_s2_metrics_table()`) plus live detail not in the log — confusion matrix, per-act recall, multi-measure act recall, error examples (`c1_s2_eval`). H&K Figure 4 (S3, via `plot_s3_behavioral()`); ablation Table 4 (`tt_ablation_table()`); the v0.7.0 multi-measure diagnostics (over-listing, country distribution, under-listing from `c1_s3_results`). Manual error analysis Table 5 (`tt_manual_analysis_table()`) + bias-corrected gate metrics (`tt_bias_corrected_table()`).
+- **Part 2 — Development history, log-sourced.** Iteration timeline; performance trajectories (`plot_metric_trajectory()`); a per-version narrative rendering the `interpretation`/`decision` prose from the log.
+- **Data sourcing.** Standard H&K figures/tables come from `tar_read(iteration_logs)` filtered to the latest formal (Claude) C1 iteration via an inline `latest()` helper (numerically identical to the live run; log edits re-render them). Live targets (`c1_codebook`, `c1_s2_eval`, `c1_s3_results`) supply only the richer detail and the prompt not captured in the log.
+- **Reuse.** H&K plot helpers and the `tt_*` table helpers live in `R/iteration_reporting.R` (shared with `iteration_summary.qmd`, which still uses the `gt_*` variants). The cross-codebook rollup is `iteration_summary.qmd`.
+- **Conventions.** Uses tinytable (`tt()` + `tt_theme_report()`) and `pacman::p_load()`.
 
 ### `c0_aggregator.qmd` -- C0 Act Aggregator Method Comparison
 

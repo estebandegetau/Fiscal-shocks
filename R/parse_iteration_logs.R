@@ -32,7 +32,11 @@ parse_meta_entry <- function(entry, codebook_id) {
     provider         = entry$provider %||% NA_character_,
     stage            = entry$stage %||% NA_character_,
     overall_pass     = safe_pluck(entry, "results", "overall_pass", .default = NA),
-    condition        = entry$condition %||% NA_character_
+    condition        = entry$condition %||% NA_character_,
+    # Prose fields for programmatic narration of development history
+    changes          = entry$changes %||% NA_character_,
+    interpretation   = entry$interpretation %||% NA_character_,
+    decision         = entry$decision %||% NA_character_
   )
 }
 
@@ -296,6 +300,7 @@ parse_s3_manual_entry <- function(entry, codebook_id) {
     tibble::tibble(
       codebook  = codebook_id,
       iteration = entry$iteration,
+      model     = entry$model %||% NA_character_,
       category  = c$category %||% NA_character_,
       count     = as.integer(c$count %||% NA_integer_),
       pct       = as.numeric(c$pct %||% NA_real_)
@@ -317,6 +322,41 @@ parse_s3_manual_entry <- function(entry, codebook_id) {
   }
 
   cats_tbl
+}
+
+#' Parse bias-corrected metrics from a single manual-analysis iteration entry
+#'
+#' The manual-analysis stage records a `bias_corrected_metrics` block (the
+#' label-noise-adjusted gate result). `parse_s3_manual_entry()` attaches these
+#' as an attribute that `bind_rows()` drops, so they are surfaced here as their
+#' own one-row tibble instead.
+#'
+#' @param entry List — one element of the iterations array
+#' @param codebook_id Character codebook identifier
+#' @return One-row tibble, or NULL if not a manual stage / no bias-corrected block
+parse_s3_bias_corrected_entry <- function(entry, codebook_id) {
+  if (!identical(entry$stage, "s3_manual_analysis")) return(NULL)
+
+  bc <- entry$results$bias_corrected_metrics
+  if (is.null(bc)) return(NULL)
+
+  cm <- bc$confusion_matrix
+  tibble::tibble(
+    codebook     = codebook_id,
+    iteration    = entry$iteration,
+    model        = entry$model %||% NA_character_,
+    effective_n  = as.integer(bc$effective_n %||% NA_integer_),
+    tp           = as.integer(safe_pluck(cm, "tp", .default = NA)),
+    tn           = as.integer(safe_pluck(cm, "tn", .default = NA)),
+    fp           = as.integer(safe_pluck(cm, "fp", .default = NA)),
+    fn           = as.integer(safe_pluck(cm, "fn", .default = NA)),
+    accuracy     = as.numeric(bc$accuracy %||% NA_real_),
+    precision    = as.numeric(bc$precision %||% NA_real_),
+    recall       = as.numeric(bc$recall %||% NA_real_),
+    tier1_recall = as.numeric(bc$tier1_recall %||% NA_real_),
+    tier2_recall = as.numeric(bc$tier2_recall %||% NA_real_),
+    specificity  = as.numeric(bc$specificity %||% NA_real_)
+  )
 }
 
 # =============================================================================
@@ -345,6 +385,7 @@ parse_iteration_log <- function(path, codebook_id) {
   s3_tests_list   <- list()
   s3_abl_list     <- list()
   s3_manual_list  <- list()
+  s3_bc_list      <- list()
 
 
   for (entry in entries) {
@@ -373,17 +414,22 @@ parse_iteration_log <- function(path, codebook_id) {
     # S3 manual analysis
     s3m <- parse_s3_manual_entry(entry, codebook_id)
     if (!is.null(s3m)) s3_manual_list <- c(s3_manual_list, list(s3m))
+
+    # S3 manual analysis — bias-corrected metrics
+    s3bc <- parse_s3_bias_corrected_entry(entry, codebook_id)
+    if (!is.null(s3bc)) s3_bc_list <- c(s3_bc_list, list(s3bc))
   }
 
   list(
-    meta         = dplyr::bind_rows(meta_list),
-    s1           = dplyr::bind_rows(s1_list),
-    s2           = dplyr::bind_rows(s2_metrics_list),
-    s2_per_class = dplyr::bind_rows(s2_pc_list),
-    s2_confusion = dplyr::bind_rows(s2_cm_list),
-    s3           = dplyr::bind_rows(s3_tests_list),
-    s3_ablation  = dplyr::bind_rows(s3_abl_list),
-    s3_manual    = dplyr::bind_rows(s3_manual_list)
+    meta                     = dplyr::bind_rows(meta_list),
+    s1                       = dplyr::bind_rows(s1_list),
+    s2                       = dplyr::bind_rows(s2_metrics_list),
+    s2_per_class             = dplyr::bind_rows(s2_pc_list),
+    s2_confusion             = dplyr::bind_rows(s2_cm_list),
+    s3                       = dplyr::bind_rows(s3_tests_list),
+    s3_ablation              = dplyr::bind_rows(s3_abl_list),
+    s3_manual                = dplyr::bind_rows(s3_manual_list),
+    s3_manual_bias_corrected = dplyr::bind_rows(s3_bc_list)
   )
 }
 
@@ -400,7 +446,7 @@ parse_all_iteration_logs <- function(paths) {
 
   # Combine each tibble type across codebooks
   tibble_names <- c("meta", "s1", "s2", "s2_per_class", "s2_confusion",
-                    "s3", "s3_ablation", "s3_manual")
+                    "s3", "s3_ablation", "s3_manual", "s3_manual_bias_corrected")
 
   combined <- purrr::set_names(purrr::map(tibble_names, function(nm) {
     tbls <- purrr::map(results, nm) |> purrr::compact()

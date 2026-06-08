@@ -1,349 +1,457 @@
 ---
 title: "C1: Measure Identification"
-subtitle: "H&K Stages S0-S3 Evaluation"
+subtitle: "H&K Stages S0-S3 — final codebook (v0.7.0) and development history"
 date: today
 date-format: long
 ---
 
-## Setup
-
 ```{r}
 #| label: setup
 #| cache: false
+#| message: false
 
-library(targets)
-library(tidyverse)
-library(gt)
-library(here)
+pacman::p_load(targets, tidyverse, here, tinytable, patchwork, scales)
 
 here::i_am("notebooks/c1_measure_id.qmd")
 tar_config_set(store = here("_targets"))
-source(here("R/gt_theme.R"))
-set_theme(theme_minimal())
 
-# Load pipeline targets
+source(here("R/tt_theme.R"))
+source(here("R/iteration_reporting.R"))
+source(here("R/codebook_stage_0.R"))
+
+# Parsed development history (all codebooks); live final-iteration targets.
+il          <- tar_read(iteration_logs)
 c1_codebook <- tar_read(c1_codebook)
-c1_neg <- tar_read(c1_negative_examples)
-aligned <- tar_read(aligned_data)
+c1_neg      <- tar_read(c1_negative_examples)
+aligned     <- tar_read(aligned_data)
+s2_eval     <- tar_read(c1_s2_eval)
+s3          <- tar_read(c1_s3_results)
+
+# Select the latest formal (Claude) C1 iteration within a parsed-log tibble.
+# Recomputed from the log on every render, so adding an iteration re-points the
+# figures/tables automatically.
+latest <- function(tbl) {
+  tbl |>
+    dplyr::filter(codebook == "c1", grepl("claude", model)) |>
+    dplyr::filter(iteration == max(iteration))
+}
 ```
 
-## S0: Codebook Design
+C1 implements R&R Step 2 (Measure Identification): scanning a document chunk and
+deciding whether any portion of it substantively discusses a specific fiscal
+measure. The current deliverable is **v0.7.0**, accepted for deployment at S3
+iteration 33. This notebook has two parts: the full final-iteration battery
+(mimicking the Halterman & Keith presentables) and the development history that
+produced it. The cross-codebook rollup lives in
+[iteration_summary.qmd](iteration_summary.qmd).
 
-C1 implements R&R Step 2 (Measure Identification): determining whether a passage substantively describes a specific enacted fiscal measure. This is a binary classification task.
+# Part 1: The Final Codebook (v0.7.0)
 
-**Classes:**
+## S0: Codebook and Prompt
 
-- `FISCAL_MEASURE`: Contemporaneous, substantive description of an enacted fiscal action
-- `NOT_FISCAL_MEASURE`: Everything else (proposals, retrospective references, economic commentary)
+C1 is a binary classification task with two classes:
 
-### Codebook Summary
+- `FISCAL_MEASURE`: any portion of the chunk substantively discusses a specific
+  enacted, proposed, or under-consideration fiscal action.
+- `NOT_FISCAL_MEASURE`: everything else (general economic commentary, aggregates,
+  administrative procedure, bare name-drops).
+
+Under v0.7.0 the positive class additionally returns a structured `measures[]`
+array (one entry per distinct act, with a per-measure country tag and three
+relevance flags), which is what downstream codebooks consume.
 
 ```{r}
-#| label: s0-summary
+#| label: tbl-s0-summary
+#| tbl-cap: "C1 codebook structure (live `c1_codebook`)."
 
 tibble(
-  field = c("Name", "Version", "Classes", "Clarifications per class",
-            "Neg. clarifications per class", "Examples per class"),
-  value = c(
+  Field = c("Name", "Version", "Classes", "Clarifications per class",
+            "Neg. clarifications per class"),
+  Value = c(
     c1_codebook$name,
     c1_codebook$version,
-    length(c1_codebook$classes),
+    as.character(length(c1_codebook$classes)),
     paste(map_int(c1_codebook$classes, ~length(.x$clarification)), collapse = ", "),
-    paste(map_int(c1_codebook$classes, ~length(.x$negative_clarification)), collapse = ", "),
-    paste(map_int(c1_codebook$classes, ~length(.x$positive_examples) + length(.x$negative_examples)), collapse = ", ")
+    paste(map_int(c1_codebook$classes, ~length(.x$negative_clarification)), collapse = ", ")
   )
 ) |>
-  gt() |>
-  cols_label(field = "Field", value = "Value") |>
-  gt_theme_report()
+  tt() |>
+  tt_theme_report()
 ```
 
-### Negative Examples
+### Evaluation negatives
 
-The evaluation uses stratified hard negatives from `us_body`, designed to test the most common confusion patterns.
+The zero-shot evaluation draws stratified hard negatives from `us_body`,
+designed to test the most common confusion patterns.
 
 ```{r}
-#| label: s0-negatives
+#| label: tbl-s0-negatives
+#| tbl-cap: "Stratified hard-negative pool for evaluation."
 
 c1_neg |>
   count(negative_type) |>
-  mutate(pct = n / sum(n) * 100) |>
-  gt() |>
-  cols_label(negative_type = "Type", n = "Count", pct = "%") |>
-  fmt_number(columns = pct, decimals = 1) |>
-  gt_theme_report()
+  mutate(pct = sprintf("%.1f", n / sum(n) * 100)) |>
+  rename(Type = negative_type, Count = n, `%` = pct) |>
+  tt() |>
+  tt_theme_report()
 ```
 
-### Evaluation Data
-
 ```{r}
-#| label: s0-data-summary
+#| label: tbl-s0-data
+#| tbl-cap: "Evaluation data sources."
 
-n_acts <- nrow(aligned)
 n_passages <- sum(aligned$n_passages)
 n_neg <- nrow(c1_neg)
 
 tibble(
-  source = c("Positive (aligned_data passages)", "Negative (stratified hard negatives)", "Total"),
-  n = c(n_passages, n_neg, n_passages + n_neg)
+  Source = c("Positive (aligned_data passages)",
+             "Negative (stratified hard negatives)", "Total"),
+  Count = c(n_passages, n_neg, n_passages + n_neg)
 ) |>
-  gt() |>
-  cols_label(source = "Source", n = "Count") |>
-  gt_theme_report()
+  tt() |>
+  tt_theme_report()
 ```
 
-## S1: Behavioral Tests
+### The full prompt
+
+This is the assembled system prompt the model saw for the US evaluation run,
+with the `{country}` / `{country_iso}` tokens resolved (here, the United States).
+At deployment the same template is re-rendered per country.
 
 ```{r}
-#| label: s1-load
+#| label: full-prompt
+#| echo: false
+#| results: asis
+#| attr-output: 'style="font-size:0.78em;"'
 
-s1 <- tar_read(c1_s1_results)
+prompt_text <- construct_codebook_prompt(
+  c1_codebook,
+  country_iso = "US",
+  country     = "united states"
+)
+
+cat("```\n", prompt_text, "\n```\n", sep = "")
 ```
 
-### Results Summary
+## S1: Behavioral Tests (H&K Figure 3)
+
+S1 checks that the model emits legal labels, can recover the class definitions
+from memory, and is insensitive to class ordering. Test III (in-context example
+recovery) is **skipped** for C1: v0.7.0 carries no in-codebook examples.
 
 ```{r}
-#| label: s1-summary
+#| label: fig-s1-behavioral
+#| fig-cap: "S1 behavioral tests for C1 v0.7.0. Tests I/II shown as percent correct; Test IV shown as Fleiss' kappa with Landis (1977) reference bands."
+#| fig-height: 5
+#| warning: false
 
-s1$summary |>
-  mutate(
-    result = case_when(
-      comparison == ">=" & metric >= threshold ~ "PASS",
-      comparison == "<" & metric < threshold ~ "PASS",
-      TRUE ~ "FAIL"
-    ),
-    metric_fmt = case_when(
-      comparison == "<" ~ sprintf("%.1f%%", metric * 100),
-      TRUE ~ sprintf("%.0f%%", metric * 100)
-    ),
-    threshold_fmt = case_when(
-      comparison == "<" ~ sprintf("< %.0f%%", threshold * 100),
-      TRUE ~ sprintf(">= %.0f%%", threshold * 100)
-    )
+plot_s1_behavioral(latest(il$s1))
+```
+
+```{r}
+#| label: tbl-s1-summary
+#| tbl-cap: "S1 results for the latest C1 iteration."
+
+latest(il$s1) |>
+  filter(!skipped) |>
+  transmute(
+    Test = test,
+    Value = if_else(grepl("IV", test),
+                    sprintf("%.1f%% change", value * 100),
+                    sprintf("%.0f%%", value * 100)),
+    Threshold = if_else(grepl("IV", test),
+                        sprintf("< %.0f%%", threshold * 100),
+                        sprintf("≥ %.0f%%", threshold * 100)),
+    Status = if_else(pass, "Pass", "Fail")
   ) |>
-  select(test, metric_fmt, threshold_fmt, result) |>
-  gt() |>
-  cols_label(
-    test = "Test", metric_fmt = "Result",
-    threshold_fmt = "Threshold", result = "Status"
-  ) |>
-  gt_theme_report()
+  tt() |>
+  tt_theme_report()
 ```
 
-### Test IV: Order Invariance Details
+## S2: Zero-Shot Evaluation
 
-Three class orderings (original, reversed, shuffled) are compared per H&K. Pass criterion: max pairwise change rate < 5%.
+Tier 1 chunks carry verbatim R&R passages (high-confidence labels); Tier 2
+chunks are name-matched via the IKA heuristic (noisier). Tier 1 recall is the
+metric we trust most.
 
 ```{r}
-#| label: s1-order-invariance
+#| label: tbl-s2-metrics
+#| tbl-cap: "S2 zero-shot metrics with 95% bootstrap CIs (latest C1 iteration)."
 
-iv <- s1$test_iv
-
-cat(sprintf("Reversed change rate: %.1f%% (%d/%d)\n",
-            iv$change_rate_reversed * 100, iv$n_changed_reversed, iv$n_total))
-cat(sprintf("Shuffled change rate: %.1f%% (%d/%d)\n",
-            iv$change_rate_shuffled * 100, iv$n_changed_shuffled, iv$n_total))
-cat(sprintf("Fleiss's kappa: %.3f (%s)\n", iv$fleiss_kappa, iv$kappa_interpretation))
-
-if (!iv$pass) {
-  cat("\nOrder invariance test FAILED. Changed predictions:\n\n")
-  iv$details |>
-    filter(changed_reversed | changed_shuffled) |>
-    select(text_id, label_original, label_reversed, label_shuffled,
-           changed_reversed, changed_shuffled) |>
-    gt() |>
-    gt_theme_report()
-} else {
-  cat(sprintf("\nOrder invariance PASSED (max change rate: %.1f%%, threshold: <5%%).\n",
-              iv$change_rate * 100))
-}
+tt_s2_metrics_table(latest(il$s2))
 ```
 
-## S2: Zero-shot Evaluation
+### Confusion matrix
 
 ```{r}
-#| label: s2-load
-#| eval: false
-
-s2_results <- tar_read(c1_s2_results)
-s2_eval <- tar_read(c1_s2_eval)
-```
-
-### Primary Metrics
-
-```{r}
-#| label: s2-metrics
-#| eval: false
-
-ci_fmt <- function(est, ci) {
-  sprintf("%.1f%% [%.1f%%, %.1f%%]", est * 100, ci[1] * 100, ci[2] * 100)
-}
-
-tibble(
-  metric = c("Recall", "Precision", "F1", "Accuracy", "Specificity"),
-  estimate = c(
-    ci_fmt(s2_eval$recall, s2_eval$recall_ci),
-    ci_fmt(s2_eval$precision, s2_eval$precision_ci),
-    ci_fmt(s2_eval$f1, s2_eval$f1_ci),
-    ci_fmt(s2_eval$accuracy, s2_eval$accuracy_ci),
-    ci_fmt(s2_eval$specificity, s2_eval$specificity_ci)
-  ),
-  target = c(">= 90%", ">= 80%", "—", "—", "—")
-) |>
-  gt() |>
-  cols_label(metric = "Metric", estimate = "Estimate [95% CI]", target = "Target") |>
-  gt_theme_report()
-```
-
-### Confusion Matrix
-
-```{r}
-#| label: s2-confusion
-#| eval: false
+#| label: tbl-s2-confusion
+#| tbl-cap: "S2 confusion matrix (live `c1_s2_eval`). Rows = predicted, columns = true."
 
 as.data.frame.matrix(s2_eval$confusion_matrix) |>
   rownames_to_column("Predicted") |>
-  gt() |>
-  tab_header(title = "Confusion Matrix", subtitle = "Rows = Predicted, Columns = True") |>
-  gt_theme_report()
+  tt() |>
+  tt_theme_report()
 ```
 
-### Per-Act Recall
+### Per-act recall
 
-Acts with the lowest passage-level recall may indicate codebook weaknesses.
+Acts with passage-level recall below 1 may indicate codebook weaknesses or
+(more often at Tier 2) noisy labels.
 
 ```{r}
-#| label: s2-act-recall
-#| eval: false
+#| label: tbl-s2-act-recall
+#| tbl-cap: "Acts with imperfect passage-level recall (live `c1_s2_eval$act_recall`)."
 
 s2_eval$act_recall |>
   filter(recall < 1) |>
   arrange(recall) |>
-  gt() |>
-  cols_label(
-    act_name = "Act", year = "Year", n_passages = "Passages",
-    n_correct = "Correct", recall = "Recall"
-  ) |>
-  fmt_number(columns = recall, decimals = 2) |>
-  gt_theme_report()
+  mutate(recall = sprintf("%.2f", recall)) |>
+  rename(Act = act_name, Year = year, Chunks = n_chunks,
+         `T1` = n_tier1, `T2` = n_tier2, Correct = n_correct, Recall = recall) |>
+  tt() |>
+  tt_theme_report()
 ```
 
-### Error Details
+### Multi-measure act recall
+
+A v0.7.0-specific secondary diagnostic: for chunks discussing multiple acts, did
+the model list each act?
 
 ```{r}
-#| label: s2-errors
-#| eval: false
+#| label: tbl-s2-multimeasure
+#| tbl-cap: "Per-act recall on multi-act chunks (live `c1_s2_eval$multi_measure_act_recall`)."
+
+if (!is.null(s2_eval$multi_measure_act_recall) &&
+    nrow(s2_eval$multi_measure_act_recall) > 0) {
+  s2_eval$multi_measure_act_recall |>
+    arrange(recall) |>
+    mutate(recall = sprintf("%.2f", recall)) |>
+    rename(Act = act_name, Chunks = n_chunks,
+           Recalled = n_recalled, Recall = recall) |>
+    head(20) |>
+    tt() |>
+    tt_theme_report()
+} else {
+  cat("No multi-measure act-recall diagnostic available for this run.")
+}
+```
+
+### Error examples
+
+```{r}
+#| label: tbl-s2-errors
+#| tbl-cap: "Sample of S2 misclassifications (live `c1_s2_eval$error_analysis`)."
 
 if (nrow(s2_eval$error_analysis) > 0) {
   s2_eval$error_analysis |>
-    select(act_name, year, text_type, true_label, pred_label, confidence) |>
-    slice_head(n = 20) |>
-    gt() |>
-    cols_label(
-      act_name = "Act", year = "Year", text_type = "Type",
-      true_label = "True", pred_label = "Predicted", confidence = "Conf."
-    ) |>
-    fmt_number(columns = confidence, decimals = 2) |>
-    gt_theme_report()
+    select(act_name, year, text_type, true_label, pred_label) |>
+    slice_head(n = 15) |>
+    rename(Act = act_name, Year = year, Type = text_type,
+           True = true_label, Predicted = pred_label) |>
+    tt() |>
+    tt_theme_report()
 } else {
   cat("No errors in S2 evaluation.")
 }
 ```
 
-## S3: Error Analysis
+## S3: Error Analysis (H&K Figure 4)
+
+S3 perturbs the codebook to probe robustness: Test V (exclusion-criteria
+minimal pairs), Test VI (generic labels), Test VII (swapped label names).
 
 ```{r}
-#| label: s3-load
-#| eval: false
+#| label: fig-s3-behavioral
+#| fig-cap: "S3 behavioral tests for C1 v0.7.0 (Tests V–VII), with the full-codebook baseline F1 as a reference line."
+#| fig-height: 5
+#| warning: false
 
-s3 <- tar_read(c1_s3_results)
+plot_s3_behavioral(latest(il$s3), latest(il$s3_ablation))
 ```
 
-### Test V: Exclusion Criteria Consistency
+### Ablation (H&K Table 4)
 
-H&K Test V injects a monetary policy distractor into documents and adds a
-corresponding exclusion rule to the codebook, then tests all four combinations
-of (normal/modified) x (document/codebook). The model should only apply the
-exclusion when both the trigger and the rule are present (combo 4).
+Components ranked by the accuracy/F1 drop when removed. Larger drops indicate
+more load-bearing components.
 
 ```{r}
-#| label: s3-test-v
-#| eval: false
+#| label: tbl-s3-ablation
+#| tbl-cap: "Component ablation for the latest C1 iteration."
 
-s3$test_v$combos |>
-  mutate(accuracy_pct = accuracy * 100) |>
-  gt() |>
-  cols_label(combo = "Condition", n_correct = "Correct",
-             n_total = "Total", accuracy_pct = "Accuracy %") |>
-  fmt_number(columns = accuracy_pct, decimals = 1) |>
-  gt_theme_report()
+tt_ablation_table(latest(il$s3_ablation))
 ```
 
-### Ablation Study
+### Multi-measure schema diagnostics
 
-Components ranked by accuracy drop when removed. Larger drops indicate more important components.
+Three v0.7.0 schema checks (live `c1_s3_results`): are we over-listing measures,
+mis-tagging country of enactment, or under-listing on multi-act chunks?
 
 ```{r}
-#| label: s3-ablation
-#| eval: false
+#| label: tbl-s3-overlisting
+#| tbl-cap: "Over-listing: distribution of measures listed per FISCAL_MEASURE chunk."
 
-s3$ablation |>
-  select(class, component_type, component_idx, baseline_accuracy,
-         ablated_accuracy, accuracy_drop) |>
-  arrange(desc(accuracy_drop)) |>
-  mutate(across(c(baseline_accuracy, ablated_accuracy, accuracy_drop),
-                ~. * 100)) |>
-  gt() |>
-  cols_label(
-    class = "Class", component_type = "Type", component_idx = "#",
-    baseline_accuracy = "Baseline %", ablated_accuracy = "Ablated %",
-    accuracy_drop = "Drop %"
+ov <- s3$overlisting
+tibble(
+  Quantity = c("Mean measures / chunk", "Median (p50)", "p90",
+               "Max", "Chunks with ≥3 measures", "FISCAL_MEASURE chunks"),
+  Value = c(sprintf("%.2f", ov$mean_n_measures), sprintf("%.0f", ov$p50),
+            sprintf("%.0f", ov$p90), as.character(ov$max_n_measures),
+            as.character(ov$n_tail), as.character(ov$n_chunks))
+) |>
+  tt() |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: tbl-s3-country
+#| tbl-cap: "Country-of-enactment tag distribution across listed measures."
+
+cd <- s3$country_distribution
+tibble(
+  Quantity = c("Domestic (US) measures", "OTHER (foreign) measures",
+               "Chunks containing any OTHER measure"),
+  Value = c(as.character(cd$n_domestic), as.character(cd$n_other),
+            as.character(cd$n_chunks_with_other))
+) |>
+  tt() |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: tbl-s3-underlisting
+#| tbl-cap: "Under-listing: per-act recall on chunks expected to name multiple acts."
+
+ul <- s3$under_listing
+if (!is.null(ul)) {
+  tibble(
+    Quantity = c("Multi-act chunks tested", "Mean per-act recall",
+                 "Chunks with full recall"),
+    Value = c(as.character(ul$n_total), sprintf("%.2f", ul$mean_recall),
+              as.character(ul$n_full_recall))
   ) |>
-  fmt_number(columns = c(baseline_accuracy, ablated_accuracy, accuracy_drop),
-             decimals = 1) |>
-  gt_theme_report()
+    tt() |>
+    tt_theme_report()
+} else {
+  cat("No multi-act chunks in the S3 baseline set; under-listing not evaluated.")
+}
 ```
 
-### Test VI: Generic Labels
+## Manual Error Analysis (H&K Table 5)
+
+The actual S3 gate is a human read of all 40 baseline chunks against the H&K
+six-category framework (A–F). This is the headline result for v0.7.0.
 
 ```{r}
-#| label: s3-test-vi
-#| eval: false
+#| label: tbl-s3-manual
+#| tbl-cap: "Manual error-analysis category distribution (latest C1 iteration)."
 
-tibble(
-  condition = c("Original labels", "Generic labels (LABEL_1, LABEL_2)"),
-  accuracy = c(s3$test_vi$original_accuracy, s3$test_vi$generic_accuracy) * 100,
-) |>
-  mutate(change_rate = c(NA, s3$test_vi$change_rate * 100)) |>
-  gt() |>
-  cols_label(condition = "Condition", accuracy = "Accuracy %",
-             change_rate = "Label Change %") |>
-  fmt_number(columns = c(accuracy, change_rate), decimals = 1) |>
-  sub_missing() |>
-  gt_theme_report()
+tt_manual_analysis_table(latest(il$s3_manual))
 ```
 
-### Test VII: Swapped Labels
+After excluding Category B (incorrect gold standard), the label-noise-adjusted
+performance is:
 
 ```{r}
-#| label: s3-test-vii
-#| eval: false
+#| label: tbl-s3-biascorrected
+#| tbl-cap: "Bias-corrected gate metrics (Category B excluded)."
 
-tibble(
-  behavior = c("Follows definitions", "Follows label names"),
-  rate = c(s3$test_vii$follows_definitions_rate,
-           s3$test_vii$follows_names_rate) * 100
-) |>
-  gt() |>
-  cols_label(behavior = "Behavior", rate = "Rate %") |>
-  fmt_number(columns = rate, decimals = 1) |>
-  gt_theme_report()
+tt_bias_corrected_table(latest(il$s3_manual_bias_corrected))
 ```
 
-<!-- Interpretation: s3$test_vii$interpretation (available after S3 pipeline run) -->
+The two Tier 1 false negatives in v0.7.0 (a Category E pair) are genuine
+semantic errors: the model recognized the relevant material but applied a
+stricter "substantive" bar than the codebook authorizes. The hypothesized cause
+is that the multi-measure schema raises the implicit threshold for what counts
+as a measure worth listing. The gaps were judged non-blocking and recorded for a
+future C1 revision; v0.7.0 was accepted for deployment.
 
-## Iteration Notes
+# Part 2: Development History
 
-Record codebook revision decisions and their rationale here after reviewing S2 and S3 results.
+Everything below is sourced from `prompts/iterations/c1.yml` via the parsed
+`iteration_logs` target, so editing the log re-renders these figures and the
+narrative.
 
-- **v0.1.0**: Initial codebook. Review results above before deciding on revisions.
+## Timeline
+
+```{r}
+#| label: tbl-timeline
+#| tbl-cap: "C1 iteration timeline (all runs, including exploratory non-Claude models)."
+
+il$meta |>
+  filter(codebook == "c1") |>
+  arrange(iteration) |>
+  transmute(
+    `#` = iteration,
+    Version = codebook_version,
+    Stage = toupper(stage),
+    Date = format(date, "%Y-%m-%d"),
+    Model = str_remove(model, "-20251001$"),
+    Pass = case_when(overall_pass ~ "✓", !overall_pass ~ "✗", TRUE ~ "—")
+  ) |>
+  tt() |>
+  tt_theme_report()
+```
+
+## Performance trajectory
+
+The S2 zero-shot trajectory across formal (Claude) iterations. The decisive jump
+came with the v0.3.0 "detection reframe" (recall 29% → 81%), and the v0.4.0
+relevance-filter reframe pushed Tier 1 recall to ceiling.
+
+```{r}
+#| label: fig-recall-trajectory
+#| fig-cap: "C1 Tier 1 recall across formal iterations."
+#| fig-height: 3.5
+#| warning: false
+
+plot_metric_trajectory(il$s2, "tier1_recall", codebook_filter = "c1")
+```
+
+```{r}
+#| label: fig-combined-trajectory
+#| fig-cap: "C1 combined recall across formal iterations."
+#| fig-height: 3.5
+#| warning: false
+
+plot_metric_trajectory(il$s2, "combined_recall", codebook_filter = "c1")
+```
+
+```{r}
+#| label: fig-precision-trajectory
+#| fig-cap: "C1 precision across formal iterations."
+#| fig-height: 3.5
+#| warning: false
+
+plot_metric_trajectory(il$s2, "precision", codebook_filter = "c1")
+```
+
+## What we learned, by version
+
+For each codebook version, the concluding iteration's interpretation and
+decision (verbatim from the log).
+
+```{r}
+#| label: version-narrative
+#| echo: false
+#| results: asis
+
+version_story <- il$meta |>
+  filter(codebook == "c1", !is.na(codebook_version)) |>
+  group_by(codebook_version) |>
+  slice_max(iteration, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  arrange(iteration)
+
+for (i in seq_len(nrow(version_story))) {
+  r <- version_story[i, ]
+  cat(sprintf("\n### v%s — concluded at iteration %d (%s, %s)\n\n",
+              r$codebook_version, r$iteration, toupper(r$stage),
+              format(r$date, "%Y-%m-%d")))
+  if (!is.na(r$interpretation) && nzchar(trimws(r$interpretation))) {
+    cat("**What we found.** ", trimws(r$interpretation), "\n\n", sep = "")
+  }
+  if (!is.na(r$decision) && nzchar(trimws(r$decision))) {
+    cat("**Decision.** ", trimws(r$decision), "\n\n", sep = "")
+  }
+}
+```
