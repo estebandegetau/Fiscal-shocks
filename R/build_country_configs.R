@@ -27,8 +27,8 @@ build_country_configs <- function() {
     malaysia = list(
       country = "malaysia",
       country_iso = "MY",
-      pilot_year_min = 1980L,
-      pilot_year_max = 2025L,
+      pilot_year_min = 1980, 
+      pilot_year_max = 2023,
       primary_language = "en",
       notes = paste(
         "Pilot per docs/phase_1/malaysia_strategy.md.",
