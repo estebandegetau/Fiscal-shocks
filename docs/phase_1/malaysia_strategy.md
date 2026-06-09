@@ -272,7 +272,7 @@ This is a **stronger** research contribution than just "we labeled more acts."
 
 ### Phase 1A: Deployment (Weeks 1-4)
 
-**Prerequisite (updated 2026-06-05):** C0 (Act Aggregator) selected via RR-mapped method comparison (M5 LLM canonical clustering leads), **not** an H&K S0-S3 gate — C0's task is clustering, not classification. Deployment proceeds once the Malaysia EN/BM consistency test gives a good-enough read of cross-language consistency, with formal expert review (below) as the validation backstop; the consistency test demonstrated that the implicit chunk→act mapping `aligned_data` provided in Phase 0 does not generalize to corpora without imposed labels. See `docs/strategy.md` C0 Blueprint.
+**Prerequisite (updated 2026-06-05):** C0 (Act Aggregator) selected via RR-mapped method comparison (M5 LLM canonical clustering leads), **not** an H&K S0-S3 gate — C0's task is clustering, not classification. Deployment proceeds once the Malaysia EN/BM consistency test gives a good-enough read of cross-language consistency, with formal expert review (below) as the validation backstop; the consistency test demonstrated that the implicit chunk→act mapping `aligned_data` provided in Phase 0 does not generalize to corpora without imposed labels. See `docs/strategy.md` C0 Blueprint. **Deployment runs Sonnet 4.6** (Haiku selected the method on US RR gold but fragments at Malaysia single-shot scale); a Sonnet RR + EN/BM re-validation is planned, expert review as backstop.
 
 - [ ] Download Malaysia government documents (1980-2022)
 - [ ] Run PDF extraction (PyMuPDF or pdftools)
