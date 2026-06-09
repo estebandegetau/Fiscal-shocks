@@ -3,6 +3,8 @@ title: "C1: Measure Identification"
 subtitle: "H&K Stages S0-S3 — final codebook (v0.7.0) and development history"
 date: today
 date-format: long
+execute:
+  cache: true
 ---
 
 ```{r}
@@ -118,11 +120,14 @@ This is the assembled system prompt the model saw for the US evaluation run,
 with the `{country}` / `{country_iso}` tokens resolved (here, the United States).
 At deployment the same template is re-rendered per country.
 
+:::{.callout-note .column-page }
+
+## Prompt exccerpt from C1
+
 ```{r}
-#| label: full-prompt
 #| echo: false
-#| results: asis
-#| attr-output: 'style="font-size:0.78em;"'
+
+
 
 prompt_text <- construct_codebook_prompt(
   c1_codebook,
@@ -130,14 +135,20 @@ prompt_text <- construct_codebook_prompt(
   country     = "united states"
 )
 
-cat("```\n", prompt_text, "\n```\n", sep = "")
+# cat("```\n", prompt_text, "\n```\n", sep = "")
+
+cat(prompt_text)
 ```
+
+:::
 
 ## S1: Behavioral Tests (H&K Figure 3)
 
 S1 checks that the model emits legal labels, can recover the class definitions
 from memory, and is insensitive to class ordering. Test III (in-context example
 recovery) is **skipped** for C1: v0.7.0 carries no in-codebook examples.
+
+
 
 ```{r}
 #| label: fig-s1-behavioral
@@ -167,6 +178,9 @@ latest(il$s1) |>
   tt() |>
   tt_theme_report()
 ```
+
+
+[@tbl-s1-summary should have neat labels for test names, as those shown in @fig-s1-behavioral.]{.aside}
 
 ## S2: Zero-Shot Evaluation
 
@@ -381,7 +395,7 @@ il$meta |>
   filter(codebook == "c1") |>
   arrange(iteration) |>
   transmute(
-    `#` = iteration,
+    Iter = iteration,
     Version = codebook_version,
     Stage = toupper(stage),
     Date = format(date, "%Y-%m-%d"),
