@@ -757,7 +757,9 @@ list(
   # descends from country_c1_measures via single-input `map` (1:1 branch
   # preservation, never `cross`/`tar_group_*`), so branch order is identical
   # across country_c2a_evidence / country_measure_pool / country_c0_clusters /
-  # country_c0_acts. Do not insert a branch-dropping step into this chain.
+  # country_c0_clusters_checked / country_c0_acts. country_c0_clusters_checked
+  # is a 1:1 pass-through guard (returns its input unchanged), so it preserves
+  # branch order. Do not insert a branch-dropping step into this chain.
   # ---------------------------------------------------------------------------
 
   tar_target(
@@ -768,36 +770,36 @@ list(
     packages = "tidyverse"
   ),
 
-  tar_target(
-    country_c0_clusters,
-    run_c0_deployment(
-      country_measure_pool,
-      instruction = c0_m5_prompt$instruction,
-      model = "claude-haiku-4-5-20251001",
-      max_tokens = 64000,
-      seed = 1L,
-      provider = "anthropic",
-      base_url = "https://api.anthropic.com/v1",
-      api_key = Sys.getenv("ANTHROPIC_API_KEY")
-    ),
-    pattern = map(country_measure_pool),
-    iteration = "list",
-    packages = c("tidyverse", "httr2", "jsonlite", "withr"),
-    deployment = "main"
-  ),
+  # tar_target(
+  #   country_c0_clusters,
+  #   run_c0_deployment(
+  #     country_measure_pool,
+  #     instruction = c0_m5_prompt$instruction,
+  #     model = "claude-haiku-4-5-20251001",
+  #     max_tokens = 64000,
+  #     seed = 1L,
+  #     provider = "anthropic",
+  #     base_url = "https://api.anthropic.com/v1",
+  #     api_key = Sys.getenv("ANTHROPIC_API_KEY")
+  #   ),
+  #   pattern = map(country_measure_pool),
+  #   iteration = "list",
+  #   packages = c("tidyverse", "httr2", "jsonlite", "withr"),
+  #   deployment = "main"
+  # ),
 
-  tar_target(
-    country_c0_acts,
-    reshape_c0_clusters_deployment(country_c0_clusters, country_measure_pool),
-    pattern = map(country_c0_clusters, country_measure_pool),
-    iteration = "list",
-    packages = "tidyverse"
-  ),
+  # tar_target(
+  #   country_c0_acts,
+  #   reshape_c0_clusters_deployment(country_c0_clusters, country_measure_pool),
+  #   pattern = map(country_c0_clusters, country_measure_pool),
+  #   iteration = "list",
+  #   packages = "tidyverse"
+  # ),
 
 #---- Test C0 on Sonnet
 
   tar_target(
-    country_c0_clusters_sonnet,
+    country_c0_clusters,
     run_c0_deployment_stream(
       country_measure_pool,
       instruction = c0_m5_prompt$instruction,
@@ -814,10 +816,25 @@ list(
     deployment = "main"
   ),
 
+  # Quality guard: hard-FAIL (halt before C2b) on a degenerate near-no-merge C0
+  # clustering (merge_rate < 1%); WARN below 5%. Pass-through -- returns
+  # country_c0_clusters unchanged, so the raw value stays cached/inspectable.
   tar_target(
-    country_c0_acts_sonnet,
-    reshape_c0_clusters_deployment(country_c0_clusters_sonnet, country_measure_pool),
-    pattern = map(country_c0_clusters_sonnet, country_measure_pool),
+    country_c0_clusters_checked,
+    guard_c0_merge_rate(
+      country_c0_clusters,
+      fail_below = 0.01,
+      warn_below = 0.05
+    ),
+    pattern = map(country_c0_clusters),
+    iteration = "list",
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    country_c0_acts,
+    reshape_c0_clusters_deployment(country_c0_clusters_checked, country_measure_pool),
+    pattern = map(country_c0_clusters_checked, country_measure_pool),
     iteration = "list",
     packages = "tidyverse"
   ),

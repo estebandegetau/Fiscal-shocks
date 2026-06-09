@@ -93,6 +93,66 @@ run_c0_deployment <- function(measure_pool,
 }
 
 
+#' Guard against degenerate "no-merge" C0 clustering output
+#'
+#' Pass-through quality gate on a single-country-branch C0 cluster tibble. A
+#' known intermittent API failure returns every surface form as its own
+#' singleton cluster (merge_rate = 0), which would otherwise silently feed the
+#' downstream C2b classifier. `stop()`s below `fail_below`, `warning()`s below
+#' `warn_below`, else silent. ALWAYS returns `c0_clusters` UNCHANGED (including
+#' its "integrity" attribute), so it drops into the deployment chain in place of
+#' the raw target without altering the data contract.
+#'
+#' merge_rate = (n_inputs - n_clusters) / n_inputs, with
+#' n_inputs = nrow(c0_clusters) (one row per distinct surface form) and
+#' n_clusters = n_distinct(cluster_id).
+#'
+#' Strict FAIL applies regardless of pool size: a legitimately all-distinct
+#' small country (20-40 acts) could trip FAIL as a false positive. This is an
+#' accepted trade-off; revisit with a `min_inputs` floor if it bites in Phase 3.
+#'
+#' Empty-input safe: an empty branch returns unchanged with no check.
+#'
+#' @param c0_clusters Tibble from `run_c0_deployment_stream()` /
+#'   `run_c0_deployment()`: variant_id, measure_name, cluster_id,
+#'   canonical_name, n_members (with "integrity" attribute).
+#' @param fail_below Numeric. Hard-error when merge_rate < this. Default 0.01.
+#' @param warn_below Numeric. Warn when merge_rate < this. Default 0.05.
+#' @return `c0_clusters`, unchanged (identity pass-through).
+#' @export
+guard_c0_merge_rate <- function(c0_clusters,
+                                fail_below = 0.01,
+                                warn_below = 0.05) {
+  if (nrow(c0_clusters) == 0L) return(c0_clusters)   # empty branch: preserve as-is
+
+  stopifnot(all(c("measure_name", "cluster_id") %in% names(c0_clusters)))
+
+  n_inputs   <- nrow(c0_clusters)
+  n_clusters <- dplyr::n_distinct(c0_clusters$cluster_id)
+  merge_rate <- (n_inputs - n_clusters) / n_inputs
+
+  variant_lbl <- if ("variant_id" %in% names(c0_clusters)) {
+    paste(unique(c0_clusters$variant_id), collapse = ",")
+  } else NA_character_
+
+  msg <- sprintf(
+    "C0 merge-rate guard [variant_id=%s]: n_inputs=%d, n_clusters=%d, merge_rate=%.4f",
+    variant_lbl, n_inputs, n_clusters, merge_rate
+  )
+
+  if (merge_rate < fail_below) {
+    stop(sprintf(
+      "%s < FAIL threshold %.4f. Degenerate (near-)no-merge C0 output; halting before C2b. Inspect tar_read(country_c0_clusters).",
+      msg, fail_below))
+  } else if (merge_rate < warn_below) {
+    warning(sprintf("%s < WARN threshold %.4f (suspiciously low merge rate).",
+                    msg, warn_below))
+  }
+
+  c0_clusters   # identity return -- do NOT pipe; preserves the integrity attribute
+}
+
+
 #' Expand C0 cluster assignments back to chunk-level rows
 #'
 #' `run_c0_deployment()` returns one row per (measure_name, cluster) with no
