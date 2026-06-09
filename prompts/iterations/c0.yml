@@ -242,3 +242,160 @@ iterations:
       this pass. Carry forward the unbuilt over-merge year-spread diagnostic
       (iteration 1 decision item 2). Pivot to EN/BM (English / Bahasa Melayu)
       tests next.
+
+  - iteration: 3
+    codebook_version: "0.2.0"
+    date: "2026-06-09"
+    git_commit: "1da6f9f"
+    model: "claude-sonnet-4-6"
+    baseline_model: "claude-haiku-4-5-20251001"
+    stage: "deployment_model_compare"
+    method: "M5 (LLM canonical clustering), deployment scope"
+    git_state_caveat: >
+      HEAD 1da6f9f is the committed Sonnet streaming-path infra
+      (call_claude_api_stream / run_c0_deployment_stream / the
+      country_c0_clusters_sonnet + country_c0_acts_sonnet targets). The working
+      tree was dirty at log time: _targets.R carries the uncommitted Haiku
+      deployment max_tokens 8192 -> 64000 bump (needed so Haiku's deployment run
+      is token-matched to Sonnet's), plus exploratory edits to deployment.qmd /
+      c0_aggregator.qmd / c1_measure_id.qmd. The two compared targets are both
+      built and read directly; full reproduction additionally requires the
+      _targets.R max_tokens change.
+    changes: >
+      No codebook change (c0_canonicalize.yml held at v0.2.0). This iteration is
+      a DEPLOYMENT-scale model swap, not a prompt edit: the same M5 instruction
+      is run at the Malaysia deployment scope (country_measure_pool, 877 distinct
+      surface forms / 1036 rows) on two models. Haiku 4.5
+      (country_c0_clusters/_acts, non-streaming) vs Sonnet 4.6
+      (country_c0_clusters_sonnet/_acts, streaming via run_c0_deployment_stream).
+      Both seed 1, max_tokens 64000, deployment=main. Sonnet needs the streaming
+      path because a non-streaming request at max_tokens=64000 holds the socket
+      open with no bytes flowing and trips a ~60s idle timeout (commit 1da6f9f
+      rationale). Distinct from iterations 1-2, which scored M5 on the US
+      synthetic sample against R&R's 49 reference acts; here there is NO ground
+      truth (Malaysia), so the comparison is aggregation behaviour + face
+      validity under the asymmetric-cost rule (over-merge corrupts C2b inputs =
+      costly; under-merge = parallel-but-correct = recoverable).
+    eval:
+      framework: >
+        Deployment comparison, no ground truth. Axes: cluster counts /
+        compression, cross-model agreement (ARI), merge-pair directionality,
+        the carried-forward within-cluster year-spread over-merge diagnostic
+        (iteration 1 decision item 2, computed inline here), and manual face
+        validity of the merges the two models disagree on.
+      pool_distinct_surface_forms: 877
+      pool_rows: 1036
+      country: "Malaysia (MY)"
+    results:
+      integrity:
+        - model: "haiku"
+          n_expected: 877
+          n_returned: 877
+          n_missing: 0
+          n_extra: 0
+          parse_ok: true
+          stop_reason: "end_turn"
+          wall_seconds: 64.3
+        - model: "sonnet"
+          n_expected: 877
+          n_returned: 877
+          n_missing: 0
+          n_extra: 0
+          parse_ok: true
+          stop_reason: "end_turn"
+          wall_seconds: 241.0
+          note: >
+            Streaming path completed cleanly with no truncation, validating both
+            the streaming infra and that the 64000-token budget is sufficient.
+      aggregation:
+        - metric: "n_clusters"
+          haiku: 827
+          sonnet: 783
+          note: "Sonnet merges more (out of 877 distinct surface forms)."
+        - metric: "singleton_clusters"
+          haiku: 723
+          haiku_pct: 0.8740
+          sonnet: 667
+          sonnet_pct: 0.8520
+        - metric: "merged_pairs"
+          haiku: 740
+          sonnet: 1623
+          note: "Sonnet does ~2.2x more pairwise aggregation."
+        - metric: "max_cluster_size"
+          haiku: 26
+          sonnet: 48
+          note: >
+            Both peak on GST. Haiku scatters GST across 9 clusters (English
+            forms, Bahasa 'Cukai Barang/Barangan dan Perkhidmatan', CBP
+            abbreviation, modifier variants); Sonnet consolidates all 48 into one.
+      cross_model_agreement:
+        - metric: "adjusted_rand_index"
+          value: 0.5640
+          note: >
+            Moderate. The two share the singleton-heavy backbone and diverge on
+            how aggressively to merge the high-frequency acts.
+      merge_directionality:
+        pairs_merged_by_both: 667
+        merged_by_haiku_only: 73
+        merged_by_sonnet_only: 956
+        note: >
+          The clusterings nearly nest (Sonnet superset of Haiku): Sonnet keeps
+          90% (667/740) of Haiku's merges and adds 956 more. Sonnet's extra
+          merges are overwhelmingly legitimate canonicalization -- cross-language
+          EN/BM bridging (Cukai Barang dan Perkhidmatan <-> Goods and Services
+          Tax), abbreviation collapse (CBP <-> GST), and one pure-semantic merge
+          (Economic Package (May 2003) <-> Package of New Strategies (May 2003)).
+          The 73 Haiku-only merges are mixed and include the costly failure mode:
+          Haiku lumps 'Minimum Wages Order in 2012' with 'Minimum Wages Order
+          2022' (distinct acts a decade apart) -- an over-merge Sonnet correctly
+          splits. Sonnet's only downside seen is occasional under-merge ('Fiscal
+          Responsibility Act' vs '... (FRA)'), which is recoverable per the
+          asymmetric-cost rule.
+      over_merge_diagnostic:
+        metric: "within-cluster year span (carried-forward iter-1 item 2)"
+        haiku_clusters_yr_range_gt10: 2
+        sonnet_clusters_yr_range_gt10: 4
+        haiku_clusters_yr_range_gt20: 1
+        sonnet_clusters_yr_range_gt20: 1
+        note: >
+          All 4 of Sonnet's wide-year-span clusters are ONE act mentioned across
+          years, not cross-act lumping (GST 2005 proposal -> 2015 enactment ->
+          2021 retrospective; Promotion of Investments Act 1986; SJKP; DFI). Zero
+          detected cross-act over-merges in Sonnet. Haiku's worse failure mode
+          (Minimum Wages 2012 vs 2022) is same-direction over-merge the year-span
+          metric would also flag if wired into the pipeline.
+    interpretation: >
+      Although Haiku's performance in development, under a synthetic sample, was
+      able to reasonably recover R&R's taxonomy of fiscal shocks (only after
+      filtering to roughly the top ~30% most-discussed acts -- i.e. ~70% of acts
+      set aside), at deployment the sheer size of the clustering problem (877
+      distinct surface forms in one shot) prevents Haiku from merging measure
+      names that are clearly the same act. The fragmentation is concrete: Haiku
+      splits GST across 9 clusters, failing to bridge the Bahasa form 'Cukai
+      Barang dan Perkhidmatan' and the abbreviation 'CBP' to the English 'Goods
+      and Services Tax', and it even over-merges two genuinely distinct acts
+      (Minimum Wages 2012 vs 2022). Sonnet, on the other hand, solves the
+      attention issue and renders a more merged response: it consolidates the
+      GST EN/BM/abbreviation variants into a single cluster, performs a
+      pure-semantic merge the lexical methods cannot, and avoids the
+      Minimum-Wages over-merge. Crucially, Sonnet's extra aggregation does not
+      cost precision -- the carried-forward year-span over-merge diagnostic finds
+      zero cross-act lumps in Sonnet. Under the asymmetric-cost rule (over-merge
+      bad, under-merge recoverable), Sonnet dominates: it merges more of what
+      should merge while introducing no detected over-merges, and its only
+      shortfall is occasional recoverable under-merge. This also vindicates the
+      iteration-2 read that Haiku's ceiling was a capability / instruction-
+      adherence limit rather than a prompt-phrasing gap -- the same v0.2.0
+      instruction, unchanged, behaves correctly on Sonnet.
+    decision: >
+      Default to Sonnet (claude-sonnet-4-6) for C0 deployment. Open follow-ups,
+      none blocking the default: (i) validate the model choice where ground
+      truth exists by re-running the US M5 RR-mapped eval on Sonnet -- does it
+      beat Haiku's 37/40-recoverable and, in particular, fix the leading
+      'H.R. NNNN, the <Name>' prefix splits iteration 2 could not? (ii) wire the
+      within-cluster year-span over-merge diagnostic into the pipeline as a
+      standing guard (it already pays off here); (iii) confirm cost/throughput at
+      Phase 3 scale (Sonnet ~3.8x Haiku wall time, needs the streaming path), C0
+      being single-shot per country so likely affordable. Carry forward the
+      synthetic country-agnostic worked-example idea from iteration 2 as moot for
+      Sonnet but still relevant if a cheaper model is ever revisited.

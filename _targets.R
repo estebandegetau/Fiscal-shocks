@@ -774,7 +774,7 @@ list(
       country_measure_pool,
       instruction = c0_m5_prompt$instruction,
       model = "claude-haiku-4-5-20251001",
-      max_tokens = 8192,
+      max_tokens = 64000,
       seed = 1L,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
