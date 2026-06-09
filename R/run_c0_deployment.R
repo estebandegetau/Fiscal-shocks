@@ -198,3 +198,158 @@ aggregate_c0_acts_deployment <- function(c0_acts, c2a_evidence) {
                   canonical_name, cluster_id, chunk_id, doc_id, measure_name,
                   evidence, enacted_signals, timing_signals, c2a_valid)
 }
+
+
+# =============================================================================
+# Streaming C0 deployment variants
+#
+# Purely additive twins of run_c0_deployment() / run_m5_llm_clusters() /
+# .run_m5_one_seed(). Each is a line-for-line copy of its original with a single
+# swapped call: the API request goes through the streaming `call_claude_api_stream()`
+# instead of the non-streaming `call_llm_api()`. This lets slow, high-`max_tokens`
+# models (e.g. claude-sonnet-4-6 at max_tokens = 64000) stream their response
+# instead of buffering it into a connection that the idle timeout drops mid-flight.
+#
+# Output contract is identical to the non-streaming chain — tibble (variant_id,
+# measure_name, cluster_id, canonical_name, n_members) with the "integrity"
+# attribute — so reshape_c0_clusters_deployment() consumes it unchanged. Only the
+# model and the transport differ from the Haiku path; the cluster-assembly logic
+# is byte-identical, keeping the Sonnet-vs-Haiku comparison apples-to-apples.
+# All reused helpers (build_m5_user_message, prepare_m5_input, parse_json_response,
+# .coerce_m5_records, .empty_m5_clusters) are sourced globally and untouched.
+# =============================================================================
+
+#' Streaming twin of `run_c0_deployment()`
+#'
+#' Identical signature and empty-pool guard; delegates to the streaming
+#' `run_m5_llm_clusters_stream()`. See `run_c0_deployment()` for parameter docs.
+#' @keywords internal
+#' @export
+run_c0_deployment_stream <- function(measure_pool,
+                                     instruction,
+                                     model = "claude-sonnet-4-6",
+                                     max_tokens = 8192L,
+                                     seed = 1L,
+                                     provider = "anthropic",
+                                     base_url = NULL,
+                                     api_key = NULL) {
+  empty <- tibble::tibble(
+    variant_id = character(0), measure_name = character(0),
+    cluster_id = integer(0), canonical_name = character(0),
+    n_members = integer(0)
+  )
+  if (nrow(measure_pool) == 0L) {
+    message("C0 deployment (stream): empty measure pool, skipping clustering")
+    return(empty)
+  }
+
+  run_m5_llm_clusters_stream(
+    measure_pool,
+    model = model, instruction = instruction,
+    max_tokens = max_tokens, provider = provider,
+    base_url = base_url, api_key = api_key, seeds = seed
+  )
+}
+
+
+#' Streaming twin of `run_m5_llm_clusters()`
+#'
+#' Line-for-line copy of `run_m5_llm_clusters()` that maps the streaming
+#' `.run_m5_one_seed_stream()` over seeds. See `run_m5_llm_clusters()` for docs.
+#' @keywords internal
+run_m5_llm_clusters_stream <- function(measure_pool, model, instruction,
+                                       max_tokens = 8192, temperature = 0,
+                                       provider = "anthropic", base_url = NULL,
+                                       api_key = NULL, seeds = 1:5) {
+  m5_input <- prepare_m5_input(measure_pool)
+
+  results <- purrr::map(seeds, function(s) {
+    .run_m5_one_seed_stream(m5_input, s, model, instruction, max_tokens,
+                            temperature, provider, base_url, api_key)
+  })
+
+  clusters  <- purrr::map_dfr(results, "clusters")
+  integrity <- purrr::map_dfr(results, "integrity")
+  attr(clusters, "integrity") <- integrity
+  clusters
+}
+
+
+#' Streaming twin of `.run_m5_one_seed()`
+#'
+#' Line-for-line copy of `.run_m5_one_seed()` with the single non-streaming
+#' `call_llm_api()` call replaced by the streaming `call_claude_api_stream()`
+#' (anthropic-only; `provider`/`base_url`/`api_key` are accepted for signature
+#' parity but unused on the stream path, exactly as `call_llm_api()` ignores them
+#' for the anthropic provider). Everything else is identical.
+#' @keywords internal
+.run_m5_one_seed_stream <- function(m5_input, seed, model, instruction, max_tokens,
+                                    temperature, provider, base_url, api_key) {
+  variant_id <- sprintf("m5_haiku_namesyear_s%d", seed)
+  expected   <- m5_input$surface_id
+
+  ord       <- withr::with_seed(seed, sample.int(nrow(m5_input)))
+  user_msg  <- build_m5_user_message(m5_input[ord, , drop = FALSE])
+
+  resp <- call_claude_api_stream(
+    messages    = list(list(role = "user", content = user_msg)),
+    model       = model,
+    max_tokens  = max_tokens,
+    temperature = temperature,
+    system      = instruction
+  )
+  stop_reason <- resp$stop_reason %||% NA_character_
+  text        <- tryCatch(resp$content[[1]]$text, error = function(e) "")
+  parsed      <- parse_json_response(text)
+  records     <- if (!is.null(parsed$error)) NULL else .coerce_m5_records(parsed)
+
+  empty_integrity <- function(parse_ok) {
+    tibble::tibble(variant_id = variant_id, seed = seed,
+                   n_expected = length(expected), n_returned = 0L,
+                   n_missing = length(expected), n_extra = 0L,
+                   parse_ok = parse_ok, stop_reason = stop_reason)
+  }
+  if (is.null(records)) {
+    warning(sprintf("M5 seed %d: could not parse a {id, cluster} array", seed))
+    return(list(clusters = .empty_m5_clusters(), integrity = empty_integrity(FALSE)))
+  }
+
+  assign_df <- purrr::map_dfr(records, function(e) {
+    tibble::tibble(surface_id  = suppressWarnings(as.integer(e[["id"]])),
+                   raw_cluster = as.character(e[["cluster"]]))
+  }) |>
+    dplyr::filter(!is.na(surface_id)) |>
+    dplyr::distinct(surface_id, .keep_all = TRUE)
+
+  n_returned  <- nrow(assign_df)
+  n_extra     <- sum(!assign_df$surface_id %in% expected)
+  assign_df   <- assign_df |> dplyr::filter(surface_id %in% expected)
+  missing_ids <- setdiff(expected, assign_df$surface_id)
+
+  filled <- dplyr::bind_rows(
+    assign_df,
+    tibble::tibble(surface_id  = missing_ids,
+                   raw_cluster = paste0("__singleton_", missing_ids))
+  ) |>
+    dplyr::mutate(cluster_id = as.integer(factor(raw_cluster))) |>
+    dplyr::left_join(m5_input, by = "surface_id")
+
+  canon <- filled |>
+    dplyr::arrange(dplyr::desc(n_occurrences),
+                   dplyr::desc(nchar(measure_name)), measure_name) |>
+    dplyr::group_by(cluster_id) |>
+    dplyr::summarize(canonical_name = dplyr::first(measure_name),
+                     n_members = dplyr::n(), .groups = "drop")
+
+  clusters <- filled |>
+    dplyr::left_join(canon, by = "cluster_id") |>
+    dplyr::transmute(variant_id = variant_id,
+                     measure_name, cluster_id, canonical_name, n_members)
+
+  integrity <- tibble::tibble(
+    variant_id = variant_id, seed = seed, n_expected = length(expected),
+    n_returned = n_returned, n_missing = length(missing_ids), n_extra = n_extra,
+    parse_ok = TRUE, stop_reason = stop_reason)
+
+  list(clusters = clusters, integrity = integrity)
+}

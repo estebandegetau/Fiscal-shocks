@@ -794,6 +794,36 @@ list(
     packages = "tidyverse"
   ),
 
+#---- Test C0 on Sonnet
+
+  tar_target(
+    country_c0_clusters_sonnet,
+    run_c0_deployment_stream(
+      country_measure_pool,
+      instruction = c0_m5_prompt$instruction,
+      model = "claude-sonnet-4-6",
+      max_tokens = 64000,
+      seed = 1L,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    pattern = map(country_measure_pool),
+    iteration = "list",
+    packages = c("tidyverse", "httr2", "jsonlite", "withr"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    country_c0_acts_sonnet,
+    reshape_c0_clusters_deployment(country_c0_clusters_sonnet, country_measure_pool),
+    pattern = map(country_c0_clusters_sonnet, country_measure_pool),
+    iteration = "list",
+    packages = "tidyverse"
+  ),
+
+#---- Resume Deployment Stage
+
   tar_target(
     country_c2b_inputs,
     aggregate_c0_acts_deployment(country_c0_acts, country_c2a_evidence),

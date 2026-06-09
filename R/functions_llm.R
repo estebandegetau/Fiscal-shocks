@@ -113,6 +113,159 @@ call_claude_api <- function(messages,
 }
 
 
+#' Call Claude (Anthropic) Messages API with server-sent-event streaming
+#'
+#' Streaming twin of `call_claude_api()`. Behaves identically from the caller's
+#' point of view — same signature, same returned list shape (`$content[[1]]$text`,
+#' `$stop_reason`, `$usage$*`), same retry/backoff loop — but issues a
+#' `stream = TRUE` request and assembles the response from SSE deltas instead of
+#' buffering the whole body. This avoids the idle-connection drop that kills slow,
+#' high-`max_tokens` non-streaming requests (e.g. Sonnet at max_tokens = 64000):
+#' bytes flow continuously, so the socket never goes idle long enough to time out.
+#'
+#' Anthropic-only by construction (hardcoded URL + `ANTHROPIC_API_KEY`), mirroring
+#' `call_claude_api()`; `provider`/`base_url`/`api_key` are not parameters because
+#' the non-streaming twin ignores them on the anthropic path too.
+#'
+#' @param messages,model,max_tokens,temperature,max_retries,system As in
+#'   `call_claude_api()`.
+#' @return List with `content` (list of one text block), `stop_reason`, `usage`.
+#' @keywords internal
+call_claude_api_stream <- function(messages,
+                                   model = "claude-sonnet-4-6",
+                                   max_tokens = 1000,
+                                   temperature = 0.0,
+                                   max_retries = 10,
+                                   system = NULL) {
+
+  # Check for API key
+  api_key <- Sys.getenv("ANTHROPIC_API_KEY")
+  if (api_key == "") {
+    stop("ANTHROPIC_API_KEY not found in environment. Set it in .env file.")
+  }
+
+  # Build request body (stream = TRUE is the only difference from call_claude_api)
+  body <- list(
+    model = model,
+    max_tokens = max_tokens,
+    temperature = temperature,
+    messages = messages,
+    stream = TRUE
+  )
+  if (!is.null(system)) {
+    body$system <- system
+  }
+
+  # Retry loop with exponential backoff (mirrors call_claude_api)
+  for (attempt in seq_len(max_retries)) {
+    con <- NULL
+    result <- tryCatch({
+      # Rate limiting: conservative 2s spacing, as in call_claude_api
+      Sys.sleep(2)
+
+      # 600s timeout backstop; bytes stream continuously so it should never fire
+      req <- httr2::request("https://api.anthropic.com/v1/messages") |>
+        httr2::req_headers(
+          `x-api-key` = api_key,
+          `anthropic-version` = "2023-06-01",
+          `content-type` = "application/json"
+        ) |>
+        httr2::req_body_json(body) |>
+        httr2::req_timeout(600)
+
+      con <- httr2::req_perform_connection(req)
+      # Raise on HTTP error status (message carries "HTTP 429" etc. for backoff)
+      httr2::resp_check_status(con)
+
+      text_parts   <- character(0)
+      stop_reason  <- NA_character_
+      input_tokens <- 0L
+      output_tokens <- 0L
+
+      repeat {
+        event <- httr2::resp_stream_sse(con)
+        if (is.null(event)) break                       # end of stream
+        if (is.null(event$data) || !nzchar(event$data)) next
+        ev <- tryCatch(
+          jsonlite::fromJSON(event$data, simplifyVector = FALSE),
+          error = function(e) NULL
+        )
+        if (is.null(ev)) next
+        etype <- ev$type %||% event$type
+        if (identical(etype, "content_block_delta")) {
+          if (!is.null(ev$delta$text)) {
+            text_parts <- c(text_parts, ev$delta$text)
+          }
+        } else if (identical(etype, "message_start")) {
+          input_tokens <- ev$message$usage$input_tokens %||% input_tokens
+        } else if (identical(etype, "message_delta")) {
+          if (!is.null(ev$delta$stop_reason)) {
+            stop_reason <- ev$delta$stop_reason
+          }
+          output_tokens <- ev$usage$output_tokens %||% output_tokens
+        } else if (identical(etype, "error")) {
+          stop("Anthropic stream error: ", ev$error$message %||% "unknown")
+        }
+      }
+
+      list(
+        content = list(list(type = "text",
+                            text = paste0(text_parts, collapse = ""))),
+        stop_reason = stop_reason,
+        usage = list(
+          input_tokens = input_tokens,
+          output_tokens = output_tokens,
+          cache_creation_input_tokens = 0L,
+          cache_read_input_tokens = 0L
+        )
+      )
+    },
+    error = function(e) {
+      structure(list(message = conditionMessage(e)),
+                class = "c0_stream_error")
+    },
+    finally = {
+      if (!is.null(con)) try(close(con), silent = TRUE)
+    })
+
+    # Success: log and return the Anthropic-shaped list
+    if (!inherits(result, "c0_stream_error")) {
+      log_api_call(
+        model = model,
+        input_tokens = result$usage$input_tokens,
+        output_tokens = result$usage$output_tokens,
+        cache_creation_input_tokens = 0L,
+        cache_read_input_tokens = 0L,
+        timestamp = Sys.time()
+      )
+      return(result)
+    }
+
+    # Failure: backoff (mirrors call_claude_api's handling)
+    emsg <- result$message
+    if (attempt == max_retries) {
+      log_api_error(model = model, error = emsg, timestamp = Sys.time())
+      stop("Streaming API call failed after ", max_retries, " attempts: ", emsg)
+    }
+    if (grepl("429|Too Many Requests", emsg)) {
+      wait_time <- 60
+      message("Rate limit hit (attempt ", attempt, "/", max_retries,
+              "), waiting ", wait_time, "s...")
+    } else if (grepl("529|overloaded", emsg, ignore.case = TRUE)) {
+      wait_time <- 60
+      message("Server overloaded (attempt ", attempt, "/", max_retries,
+              "), waiting ", wait_time, "s...")
+    } else {
+      wait_time <- 2^attempt
+      message("API error (attempt ", attempt, "/", max_retries,
+              "), retrying in ", wait_time, "s...")
+    }
+    message("Error: ", emsg)
+    Sys.sleep(wait_time)
+  }
+}
+
+
 #' Call OpenAI-compatible API with retry logic
 #'
 #' Works with OpenAI, Ollama, Groq, and any OpenAI-compatible endpoint.
