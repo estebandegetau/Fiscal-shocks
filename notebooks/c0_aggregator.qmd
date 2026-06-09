@@ -311,7 +311,13 @@ ggplot(funnel_df, aes(x = stage, y = n, fill = segment)) +
 
 ```{r}
 #| label: fig-jw-within-doc-1980
-#| fig-cap: "**Within-document JW distance**. Pairwise Jaro-Winkler distance among rank-1 C1 measure names within each 1980 US document, one panel per series. Red cells (JW < 0.15) would merge under single-linkage at threshold 0.15; orange cells (0.15-0.30) are near-misses that did not merge but plausibly should have; blue cells (≥ 0.30) are distinct measures. Only the upper triangle is shown; the diagonal is JW = 0 by construction. The pool is each document's distinct C1 surface forms intersected with the rank-1 corpus pool (`rownames(c0_us_embeddings)`); non-rank-1 surface forms are omitted, matching @fig-emb-within-doc-1980."
+#| fig-cap-location: bottom
+#| fig-cap:  | 
+#|    "**Within-document JW distance**.
+#|    Pairwise Jaro-Winkler distance among rank-1 C1 measure names within each 1980 US document, one panel per series.
+#|    Red cells (JW < 0.15) would merge under single-linkage at threshold 0.15; orange cells (0.15-0.30) are near-misses that did not merge but plausibly should have; blue cells (≥ 0.30) are distinct measures.
+#|    Only the upper triangle is shown; the diagonal is JW = 0 by construction.
+#|    The pool is each document's distinct C1 surface forms intersected with the rank-1 corpus pool (`rownames(c0_us_embeddings)`); non-rank-1 surface forms are omitted, matching @fig-emb-within-doc-1980."
 #| fig-subcap:
 #|   - "Economic Report of the President"
 #|   - "Budget"
@@ -320,6 +326,7 @@ ggplot(funnel_df, aes(x = stage, y = n, fill = segment)) +
 #| fig-width: 12
 #| fig-height: 9
 #| warning: false
+
 
 jw_band_fill_doc <- ggplot2::scale_fill_stepsn(
   colours = c("#b2182b", "#f4a582", "#92c5de", "#2166ac"),
@@ -391,6 +398,7 @@ The colour bands are tighter than the JW figure's because E5 packs everything in
 
 ```{r}
 #| label: fig-emb-within-doc-1980
+#| fig-cap-location: bottom
 #| fig-cap: "**Within-document embedding distance**. Pairwise Euclidean distance among L2-normalised E5 embeddings of distinct C1 measure names within each 1980 US document, one panel per series. Bands at 0.40 / 0.45 / 0.50 correspond to corpus-wide Q25 / median / Q75. Only the upper triangle is shown; the diagonal is 0 by construction. Measure names without an embedding (i.e., never appeared at rank 1 in the corpus) are omitted."
 #| fig-subcap:
 #|   - "Economic Report of the President"
@@ -1557,6 +1565,7 @@ plot_umap_rr_scan <- function(gate_name, kind = c("headline", "counts")) {
 
 ```{r}
 #| label: fig-umap-rr-headline
+#| fig-cap-location: bottom
 #| fig-cap: "**UMAP headline metrics — marginal scan**. Columns: the four swept knobs (`n_neighbors`, `n_components`, `min_dist`, `min_cluster_size`). Rows: the four headline metrics, ↑ / ↓ in the strip label. x steps through each knob's three values; each point is one of the 162 variants at that value (the other three knobs vary), with a median crossbar per (value × blocking). Colour: blocking. Gates split across sub-panels. A flat column = that knob does not move the metric. Y-axes free per metric row; x free per knob column."
 #| fig-subcap:
 #|   - "Keyword gate"
@@ -1572,6 +1581,7 @@ plot_umap_rr_scan("jw", "headline")
 
 ```{r}
 #| label: fig-umap-rr-counts
+#| fig-cap-location: bottom
 #| fig-cap: "**UMAP match counts — marginal scan**. Same layout as @fig-umap-rr-headline but plotting raw counts. Rows: total clusters emitted, clusters carrying an RR match, RR acts covered (out of 49). `n clusters` is gate-invariant so its row repeats across the two sub-panels. Points are exact counts (no bootstrap CI); the crossbar is the median over the marginalized knobs."
 #| fig-subcap:
 #|   - "Keyword gate"
