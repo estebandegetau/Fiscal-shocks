@@ -169,6 +169,19 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - **Headline — final-output consistency:** act-name-year multiset figure by language plus **two timeline figures** (`plot_malay_act_timeline()`, timing = act-name year vs. source-doc year). Reworked to **diverging stacked bars**: acts counted per year × language × motivation × sign, increases growing the bar upward and decreases downward, colour = motivation (neat labels), faceted by language. The "BM over-uses LONG_RUN" signal survives as a label-marginal shift without pairing.
 - **Decision:** Data/statistical evidence only — tallies + timeline, no untrusted matcher. The dropped matcher's verification role is replaced by an eyeball audit of joint-scope mixed clusters. Speaks only to modern professionally-translated MoF ERs (2014+) — NOT older ER BM, Budget Speech BM, or crisis-booklet BM.
 
+### `deployment.qmd` -- Cross-Country Deployment Headline
+
+**Purpose:** The deployment headline — end-to-end output of the validated **C1 → C0 → C2** pipeline run on each deployment country's full corpus. Presents the same figures/tables as `malay_consistency.qmd` but with the comparison axis swapped from **language (EN/BM)** to **country**. A deployment inventory, **not a validity test**: no ground-truth labels exist for any deployment country, so the act-level outputs are inputs requiring Phase 2 expert validation (≥80% C1, ≥70% C2 agreement), not findings. Today only Malaysia is deployed; the notebook auto-extends to a panel per country as Indonesia, Thailand, the Philippines, and Vietnam are onboarded.
+
+**Key content:**
+
+- **Reads existing deployment targets** (`country_chunks`, `country_c1_predictions`, `country_c1_measures`, `country_c0_clusters`, `country_c0_acts`, `country_c2b`, `country_measure_pool`); tallies computed inline (no `_targets.R` change). Helpers in `R/deployment_report.R`: `bind_country()` (positional-zip country identity onto the country-less branched targets), `compute_deployment_tallies()`, and the `plot_deployment_*` family. Reuses `pretty_motivation()` + the motivation palette from `R/malay_consistency.R` (unmodified).
+- **Scope:** pages/chunks per country × document year (`fig-scope`).
+- **C1-step comparability:** distinct fiscal measures per year by country (`fig-c1-comparability`), plus measure density and the rank-1 deployment filter (`fig-c1-density`, `fig-c1-fiscal-rate`).
+- **C0 aggregation diagnostics:** compression per year (`fig-c0-perdoc`); per-country cluster summary (`tbl-c0-summary`, the per-country analog of the consistency report's joint EN/BM merge probe — acts are clustered within each country only, never merged across countries); act-inventory marginals (`tbl-c0-counts`, `fig-c0-labels`).
+- **Headline — act inventory timeline:** diverging stacked bars (increases up, decreases down, no-change at baseline, colour = motivation, faceted by country), dated by source-document year (`fig-timeline-docyear`, primary) and by act-name year (`fig-timeline-actname`, `fig-act-years`, sparse).
+- **Decision:** Deployment deliverable / expert-review starting point. Comparable structure across countries (similar compression, plausible motivation marginals, no degenerate years) is the signal that the country-agnostic codebooks transferred. Uses tinytable + `pacman::p_load()`.
+
 ## Archived Notebooks
 
 Located in `notebooks/unused/` unless noted otherwise. These are from earlier exploratory phases and are no longer active:
@@ -193,6 +206,7 @@ Located in `notebooks/unused/` unless noted otherwise. These are from earlier ex
 7. `c1_measure_id.qmd` -- See the C1 evaluation framework (template for C2-C4)
 8. `c0_aggregator.qmd` -- See the C0 act-aggregator method comparison (RR-mapped eval; not H&K S0-S3)
 9. `malay_consistency.qmd` -- See the Malaysia EN/BM cross-language consistency test (Phase 2 BM-only readiness diagnostic)
+10. `deployment.qmd` -- See the cross-country deployment headline (C1 → C0 → C2 act inventory per country)
 
 ## Conventions
 

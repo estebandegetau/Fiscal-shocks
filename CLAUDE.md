@@ -51,7 +51,7 @@ The contribution is **methodological**, not just dataset scale:
   - **C3 (Timing)**: Not started
   - **C4 (Magnitude)**: Not started
   - See `docs/strategy.md` for authoritative methodology
-- **Phase 1**: Deployment pipeline wired (commit b92ee61: dynamic-branched country pipeline URLs → C2a evidence). Re-validation gated on C1 v0.7.0 S1-S3 (and downstream cascade).
+- **Phase 1**: Deployment pipeline wired end-to-end — dynamic-branched country URLs → C1 → C0 → C2b act inventory (commit b92ee61 wired URLs → C2a evidence; commits 15664c7, 4c3f631 carried `country_iso` through and wired C0 + C2b). Cross-country headline notebook `notebooks/deployment.qmd` presents the per-country C1 → C0 → C2 inventory (commit fbd04b3). Re-validation gated on C1 v0.7.0 S1-S3 (and downstream cascade).
 - **Phase 2**: BLOCKED on C0 (Act Aggregator) readiness per 2026-05-18 strategy update. Sequencing plan (`docs/deltas.md` 2026-05-18): C1 v0.7.0 implemented + S1-S3 re-validation complete (Step 4 ✅, closed 2026-05-20 iter 33); next is C2a v0.6.0 (Step 5), C2 re-validation (Step 6), C0 codebook (Step 7). See `docs/phase_1/malaysia_strategy.md` and `docs/phase_1/CLAUDE.md`.
 - **Phase 3**: Not yet started
 
