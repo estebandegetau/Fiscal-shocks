@@ -2,7 +2,7 @@
 title: "Deployment Headline: Cross-Country Fiscal-Shock Inventory"
 subtitle: "Full C1 → C0 → C2 deployment pipeline, by country"
 execute:
-  cache: true
+  cache: false
 ---
 
 ```{r}
@@ -186,6 +186,48 @@ if (inv_pending) {
   if (is.null(pl)) cat("No motivation labels available yet.\n") else print(pl)
 }
 ```
+
+
+## Identification by frequency
+
+```{r}
+country_c2b[[1]] |>
+  ggplot(aes(n_evidence_items)) +
+  stat_ecdf()
+
+
+country_c2b[[1]] |>
+  filter(enacted) |>
+  ggplot(aes(n_evidence_items)) +
+  stat_ecdf()
+
+
+country_c2b[[1]] |>
+  slice_max(n_evidence_items, n = 20) |>
+  select(act_name, year, pred_label, pred_sign, n_evidence_items)
+
+country_c2b[[1]] |>
+  arrange(desc(n_evidence_items)) |>
+  mutate(
+    per_evidence = n_evidence_items / sum(n_evidence_items),
+    cum_per_evidence = cumsum(per_evidence),
+    acts = row_number()
+  ) |>
+  ggplot(aes(x = cum_per_evidence, y = acts)) +
+  geom_step()
+
+
+country_c2b[[1]] |>
+  arrange(desc(n_evidence_items)) |>
+  mutate(
+    per_evidence = n_chunks / sum(n_chunks),
+    cum_per_evidence = cumsum(per_evidence),
+    acts = row_number()
+  ) |>
+  ggplot(aes(x = cum_per_evidence, y = acts)) +
+  geom_step()
+```
+
 
 ## Headline: act inventory timeline
 
