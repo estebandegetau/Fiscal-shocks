@@ -29,9 +29,13 @@ call_claude_api <- function(messages,
   body <- list(
     model = model,
     max_tokens = max_tokens,
-    temperature = temperature,
     messages = messages
   )
+
+  # Sampling params (temperature/top_p/top_k) 400 on Opus 4.7+; omit them there
+  if (!model_rejects_sampling_params(model)) {
+    body$temperature <- temperature
+  }
 
   # Add system prompt if provided
   if (!is.null(system)) {
@@ -148,10 +152,13 @@ call_claude_api_stream <- function(messages,
   body <- list(
     model = model,
     max_tokens = max_tokens,
-    temperature = temperature,
     messages = messages,
     stream = TRUE
   )
+  # Sampling params (temperature/top_p/top_k) 400 on Opus 4.7+; omit them there
+  if (!model_rejects_sampling_params(model)) {
+    body$temperature <- temperature
+  }
   if (!is.null(system)) {
     body$system <- system
   }
@@ -567,6 +574,20 @@ parse_json_response <- function(response_text, required_fields = NULL) {
     warning("Response text: ", substr(response_text, 1, 200))
     return(list(error = "JSON parsing failed", raw_response = response_text))
   })
+}
+
+
+#' Does this model reject sampling parameters (temperature/top_p/top_k)?
+#'
+#' Opus 4.7 and later (4.7, 4.8, ...) removed temperature/top_p/top_k; sending any
+#' of them returns HTTP 400. Opus <= 4.6, all Sonnet, and all Haiku accept them.
+#' Extend the pattern when new sampling-free models ship.
+#'
+#' @param model Character string for model ID
+#' @return TRUE if the model rejects sampling params, FALSE otherwise
+#' @keywords internal
+model_rejects_sampling_params <- function(model) {
+  grepl("^claude-opus-4-([7-9])($|[^0-9])", model)
 }
 
 
