@@ -803,7 +803,7 @@ list(
     run_c0_deployment_stream(
       country_measure_pool,
       instruction = c0_m5_prompt$instruction,
-      model = "claude-opus-4-8",
+      model = "claude-sonnet-4-6",
       max_tokens = 64000,
       seed = 1L,
       provider = "anthropic",
