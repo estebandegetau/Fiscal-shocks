@@ -527,3 +527,115 @@ iterations:
       'm5_haiku_namesyear_s%d' regardless of model, so the guard message and
       output mislabel Sonnet/Opus runs as 'haiku' -- worth fixing so logs aren't
       misleading.
+
+  - iteration: 5
+    codebook_version: "0.2.0"
+    date: "2026-06-10"
+    git_commit: "3591dab"
+    model: "claude-opus-4-8"
+    stage: "deployment_model_test"
+    method: "M5 (LLM canonical clustering), deployment scope"
+    changes: >
+      No codebook change (c0_canonicalize.yml held at v0.2.0). Config + infra
+      changes only, executing iteration 4's decision to try Opus 4.8:
+      (1) country_c0_clusters model swapped claude-sonnet-4-6 -> claude-opus-4-8
+      and max_tokens lowered 128000 -> 64000 (commit 56bdb30);
+      (2) the streaming helper call_claude_api_stream() now omits `temperature`
+      for Opus 4.7+ via the new model_rejects_sampling_params() predicate (Opus
+      4.7+ returns HTTP 400 on sampling params), which fixed the initial 400
+      (commit 56bdb30);
+      (3) the same guard was reverted in the non-streaming call_claude_api() to
+      preserve the byte-identical Haiku C1/C2a deployment cache, which the first
+      cut had spuriously invalidated (commit 3591dab). Same 877-surface-form
+      Malaysia pool, seed 1. Working tree clean at log time.
+    context: >
+      Goal: test whether Opus 4.8 removes the run-to-run clustering-quality
+      variance Sonnet showed in iters 3-4, judged on GST consolidation. The
+      transport fix worked -- no more HTTP 400, Opus responded with
+      stop_reason=end_turn -- but the run produced NO usable output: Opus 4.8
+      prepended a narration line ("I'll analyze the surface forms and group them
+      by the underlying fiscal measure.") before the JSON array, so
+      parse_json_response() failed and seed 1 fell to the empty-clusters path.
+      The prompt already says "Return ONLY a JSON array" (build_m5_user_message,
+      R/c0_aggregator.R) and Sonnet/Haiku obey it; Opus 4.8 narrates more by
+      default and ignored it.
+    results:
+      transport:
+        http_400_resolved: true
+        note: >
+          temperature-guard fix validated: Opus 4.8 request accepted, no 400
+          across the run.
+      integrity:
+        - model: "opus-4-8"
+          n_expected: 877
+          n_returned: 0
+          n_missing: 877
+          n_extra: 0
+          parse_ok: false
+          stop_reason: "end_turn"
+          note: >
+            Clean completion (end_turn, not max_tokens). parse_ok=FALSE: the
+            response led with a prose preamble before the array, breaking the
+            strict JSON parser. 0/877 surface forms recovered; empty cluster
+            tibble (304 B vs Sonnet's 42 KB).
+      guard:
+        target: "country_c0_clusters_checked"
+        status: "PASS (FALSE PASS)"
+        note: >
+          guard_c0_merge_rate() short-circuits on nrow==0 (return as-is, intended
+          for a legitimately empty measure pool), so the parse-failure empty
+          sailed through and fed an empty country_c0_acts (188 B). The integrity
+          attribute (parse_ok=FALSE, n_returned=0 vs n_expected=877) carries the
+          signal but is never inspected -- a guard gap distinct from the
+          877-singleton no-merge case the guard was built for (commit 8b6cc8a).
+      comparison_vs_sonnet:
+        - metric: "surface_forms_parsed"
+          opus_4_8: 0
+          good_sonnet_iter3: 877
+          weak_sonnet_iter4: 877
+        - metric: "n_clusters"
+          opus_4_8: 0
+          good_sonnet_iter3: 783
+        - metric: "merge_rate"
+          opus_4_8: null
+          good_sonnet_iter3: 0.1072
+        - metric: "gst_clusters_headline"
+          opus_4_8: null
+          good_sonnet_iter3: 1
+          haiku_iter3: 9
+          note: >
+            Opus produced no clustering, so the GST headline acceptance metric
+            from iteration 4 is undefined -- the run cannot be judged on quality
+            because it produced no output.
+    interpretation: >
+      Per /review-iteration: the Opus 4.8 attempt is a transport success and an
+      output failure. The temperature guard removed the HTTP 400 (no sampling
+      params sent to Opus 4.7+), but Opus 4.8's default narration prepends a prose
+      preamble ahead of the JSON array, which the strict parse_json_response()
+      cannot tolerate -- yielding 0/877 and an empty inventory. This is the
+      documented Opus 4.8 behavioral shift (narrates more; with thinking disabled
+      it may write reasoning into the visible response), and the existing "Return
+      ONLY a JSON array" instruction -- sufficient for Sonnet/Haiku -- does not
+      constrain it. The merge-rate guard then false-passed the empty result.
+      Against a Sonnet baseline that, even on a weak draw, parses all 877 and does
+      real (if inconsistent) consolidation, Opus 4.8 as currently wired is strictly
+      worse: it gives nothing. There is no evidence here of Opus upside, only added
+      parse fragility.
+    decision: >
+      Fall back on Sonnet 4.6 for C0 deployment, with its known limitations
+      (run-to-run quality variance, weak merge-rate proxy, GST under-merge from
+      iter 4). Revert country_c0_clusters model claude-opus-4-8 -> claude-sonnet-4-6
+      (config change, not yet applied at log time -- _targets.R still points at
+      Opus from commit 56bdb30). The transport-layer temperature guard
+      (model_rejects_sampling_params in call_claude_api_stream) is KEPT: it is
+      correct and harmless for Sonnet, and leaves the Opus path runnable for a
+      future retry. Carried-forward / non-blocking for any future Opus attempt:
+      (i) make parse_json_response() preamble-tolerant (extract first '['..matching
+      ']') OR enable adaptive thinking / structured outputs on the stream call --
+      this exact response had a well-formed array after the prose, so it was
+      recoverable; (ii) close the guard gap so an empty caused by parse_ok=FALSE /
+      n_returned<n_expected FAILs rather than passing as an empty pool;
+      (iii) add claude-opus-4-8 to get_model_pricing() (cosmetic -- silences the
+      Haiku-fallback warning and fixes cost accounting). Still carried from iter 4:
+      a merge-QUALITY companion to the merge-rate guard; the best-of-N-seeds
+      question; the variant_id 'haiku' mislabel.
