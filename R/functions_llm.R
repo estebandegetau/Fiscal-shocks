@@ -29,13 +29,9 @@ call_claude_api <- function(messages,
   body <- list(
     model = model,
     max_tokens = max_tokens,
+    temperature = temperature,
     messages = messages
   )
-
-  # Sampling params (temperature/top_p/top_k) 400 on Opus 4.7+; omit them there
-  if (!model_rejects_sampling_params(model)) {
-    body$temperature <- temperature
-  }
 
   # Add system prompt if provided
   if (!is.null(system)) {
