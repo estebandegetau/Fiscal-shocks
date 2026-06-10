@@ -399,3 +399,131 @@ iterations:
       being single-shot per country so likely affordable. Carry forward the
       synthetic country-agnostic worked-example idea from iteration 2 as moot for
       Sonnet but still relevant if a cheaper model is ever revisited.
+
+  - iteration: 4
+    codebook_version: "0.2.0"
+    date: "2026-06-10"
+    git_commit: "cd5aee9"
+    model: "claude-sonnet-4-6"
+    stage: "deployment_run_variance"
+    method: "M5 (LLM canonical clustering), deployment scope"
+    changes: >
+      No codebook change (c0_canonicalize.yml held at v0.2.0) and no config
+      change: this is a fresh re-run of the SAME Sonnet deployment target
+      (country_c0_clusters, run_c0_deployment_stream, claude-sonnet-4-6, seed 1,
+      max_tokens 64000) on the SAME 877-surface-form Malaysia pool from iteration
+      3, now passing through the merge-rate guard added at commit 8b6cc8a
+      (country_c0_clusters_checked, guard_c0_merge_rate, FAIL<1% / WARN<5%). The
+      run was triggered by tar_make and is read directly from the rebuilt target;
+      the prior iteration-3 "good Sonnet" value is no longer cached, so the
+      comparison below uses the iteration-3 logged numbers. Working tree clean at
+      log time.
+    context: >
+      Purpose was to confirm the guard behaves on a normal deployment draw. It
+      did pass -- but the run it passed is a materially degraded Sonnet draw,
+      exposing that merge_rate (the guarded quantity) is a weak proxy for merge
+      QUALITY. LLM calls send no API seed and temp=0 is not deterministic, so
+      run-to-run variance on a byte-identical request is large (same root cause as
+      the iteration-3 / commit 8b6cc8a degenerate 0%-merge incident, just not bad
+      enough to trip the 1% FAIL floor this time).
+    results:
+      guard:
+        target: "country_c0_clusters_checked"
+        merge_rate: 0.0878
+        fail_below: 0.0100
+        warn_below: 0.0500
+        status: "PASS"
+        note: >
+          8.78% clears both FAIL (1%) and WARN (5%); no warning fired. Guard is
+          blind to the quality regression documented below.
+      integrity:
+        - model: "sonnet"
+          n_expected: 877
+          n_returned: 877
+          n_missing: 0
+          n_extra: 0
+          parse_ok: true
+          stop_reason: "end_turn"
+          note: "Clean response; the degradation is in clustering quality, not transport/parse."
+      aggregation_vs_iter3:
+        - metric: "n_clusters"
+          this_run: 800
+          good_sonnet_iter3: 783
+          haiku_iter3: 827
+          degenerate_guard_trip: 877
+        - metric: "merge_rate"
+          this_run: 0.0878
+          good_sonnet_iter3: 0.1072
+          haiku_iter3: 0.0570
+          degenerate_guard_trip: 0.0000
+        - metric: "singleton_clusters"
+          this_run: 750
+          this_run_pct: 0.9375
+          good_sonnet_iter3: 667
+          good_sonnet_iter3_pct: 0.8520
+          haiku_iter3: 723
+        - metric: "max_cluster_size"
+          this_run: 7
+          good_sonnet_iter3: 48
+          haiku_iter3: 26
+          note: "This run's top cluster is BR1M (7); GST core cluster holds only 6."
+        - metric: "merged_pairs"
+          this_run: 126
+          good_sonnet_iter3: 1623
+          haiku_iter3: 740
+          note: >
+            ~13x below the good Sonnet baseline and BELOW even Haiku. Despite a
+            higher merge_rate than Haiku, this draw does only tiny 2-member merges
+            (50 multi-member clusters, mean 2.54 members) and whiffs every large
+            consolidation -- why merge_rate is a poor quality proxy.
+      headline_metric_gst:
+        surface_forms: 26
+        clusters_this_run: 20
+        clusters_good_sonnet_iter3: 1
+        clusters_haiku_iter3: 9
+        note: >
+          GST treated as the headline canonicalization metric. This run scatters
+          the 26 GST surface forms (English 'Goods and Services Tax', Bahasa
+          'Cukai Barang/Barangan dan Perkhidmatan', 'CBP' abbreviation, GST
+          implementation/relief/zero-rating variants) across 20 clusters -- worse
+          than Haiku's 9 and far from the good Sonnet run's full consolidation
+          into 1. Exactly the EN/BM-bridging + abbreviation-collapse failure that
+          motivated the Sonnet default, here produced by Sonnet itself.
+      over_merge_diagnostic:
+        metric: "within-cluster year span (carried-forward iter-1 item 2)"
+        clusters_yr_range_gt10: 0
+        clusters_yr_range_gt20: 0
+        max_span: 0
+        note: >
+          Zero over-merge -- the failure is entirely under-merge / fragmentation.
+          The merging that did happen is conservative (near-identical surface
+          forms only).
+    interpretation: >
+      Sonnet is showing inconsistent clustering performance. This fresh draw of
+      the identical target/config produced a materially weaker result than the
+      iteration-3 Sonnet run that justified the Sonnet default: max cluster 7 vs
+      48, merged_pairs 126 vs 1623 (below even Haiku's 740), GST split across 20
+      clusters vs 1. The merge-rate guard passed it (8.78%) because merge_rate
+      counts how many inputs were touched, not whether the big acts consolidated;
+      a draw that sprinkles trivial 2-member merges clears the floor while losing
+      almost all the canonicalization value. GST can be read as the headline
+      metric -- the single most-discussed act, with the clearest EN/BM +
+      abbreviation variants -- and on it this draw underperforms even Haiku. The
+      run-to-run variance (no API seed, temp=0 non-deterministic) is large enough
+      that a single Sonnet deployment draw is not reliable, and the current guard
+      cannot distinguish a good draw from a weak one.
+    decision: >
+      Try Opus 4.8 (claude-opus-4-8) for C0 deployment to test whether a more
+      capable model removes the run-to-run quality variance Sonnet exhibits at
+      877-surface-form deployment scale -- using GST consolidation (target: a
+      single cluster, or at most a small number) as the headline acceptance
+      signal alongside merged_pairs / max_cluster_size and the zero-over-merge
+      year-span check. Carried-forward (non-blocking): (i) the merge-rate guard
+      needs a merge-QUALITY companion (merged_pairs or max_cluster_size floor, or
+      a GST-anchor consolidation check), since this run proves merge_rate alone
+      cannot catch a weak draw; (ii) revisit whether a single deployment draw is
+      ever safe or whether best-of-N seeds are required regardless of model.
+      Cosmetic infra note: run_c0_deployment_stream hardcodes variant_id
+      'm5_haiku_namesyear_s%d' regardless of model, so the guard message and
+      output mislabel Sonnet/Opus runs as 'haiku' -- worth fixing so logs aren't
+      misleading.
