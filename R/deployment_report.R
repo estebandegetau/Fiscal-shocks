@@ -241,7 +241,7 @@ mark_chosen_acts <- function(inventory, threshold = 0.8) {
     dplyr::mutate(
       .lo = min(doc_year_modal, na.rm = TRUE),
       .hi = max(doc_year_modal, na.rm = TRUE),
-      .eligible = enacted %in% TRUE & !is.na(year) & year >= .lo & year <= .hi,
+      .eligible = enacted %in% TRUE & !is.na(year) & year >= .lo & year <= .hi & pred_sign != "0",
       relevance = dplyr::if_else(.eligible,
                                  as.double(n_evidence_items) * n_chunks, NA_real_)
     ) |>
