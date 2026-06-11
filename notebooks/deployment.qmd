@@ -21,7 +21,6 @@ theme_set(theme_minimal())
 
 tar_load(c(
     country_chunks,
-    country_c1_predictions,
     country_c1_measures,
     country_c0_clusters,
     country_c0_acts,
@@ -31,7 +30,6 @@ tar_load(c(
 
 # Positionally zip the country identity onto every branched target, then flatten.
 chunks <- bind_country(country_chunks, country_chunks)
-c1_raw <- bind_country(country_c1_predictions, country_chunks)
 c1_meas <- bind_country(country_c1_measures, country_chunks)
 
 m <- compute_deployment_tallies(
@@ -44,6 +42,19 @@ m <- compute_deployment_tallies(
 inv <- m$inventory
 n_country <- dplyr::n_distinct(chunks$country_iso)
 inv_pending <- nrow(inv) == 0L
+
+# Relevance-based "chosen acts" cut (80% of relevance), computed per country.
+# `eligible` = enacted, in-range acts (the relevance-figure + tbl-top-20 base);
+# `chosen`   = the top acts that accumulate 80% of relevance (marginals + timeline).
+inv_chosen <- mark_chosen_acts(inv)
+eligible   <- dplyr::filter(inv_chosen, !is.na(relevance))
+chosen     <- dplyr::filter(inv_chosen, chosen)
+
+# Headline scalars for the inline prose (single-country today; aggregates if more).
+n_total_acts  <- nrow(inv)
+n_chosen_acts <- nrow(chosen)
+yr_lo <- if (nrow(chunks)) min(chunks$year) else NA_integer_
+yr_hi <- if (nrow(chunks)) max(chunks$year) else NA_integer_
 ```
 
 ## Framing
@@ -72,17 +83,45 @@ ps <- plot_deployment_scope(chunks)
 if (is.null(ps)) cat("No chunk data available yet.\n") else print(ps)
 ```
 
-[@fig-scope looks good, but the x axis should only display breaks every 5 years. So do all figures that plot years in the x axis.]{.aside}
+@tbl-scope reports the headline tally per country: the document-year span analysed, the corpus size (documents, pages, chunks), the fiscal measures C1 surfaces, the acts C0 clusters them into, and how many of those acts C2 classifies as exogenous.
 
-[We need a table that shows, per country (rows) the headline tally of Documents, Pages, Chunks, Surfaced fiscal measures (only rank 1), Clustered fiscal measures, Exogenous fiscal measures. Also include the years range we're analysing in each country in the first row.]{.aside}
+```{r}
+#| label: tbl-scope
+#| tbl-cap: "Per-country headline tally: corpus size, surfaced and clustered fiscal measures, and exogenous acts."
+
+scope_tally <- compute_deployment_scope_tally(
+  chunks       = chunks,
+  c1_measures  = c1_meas,
+  c0_summary   = m$c0_summary,
+  counts       = m$per_country$counts
+)
+
+if (nrow(scope_tally) == 0L) {
+  tibble(Note = "Deployment targets not yet built") |> tt() |> tt_theme_report()
+} else {
+  scope_tally |>
+    transmute(
+      Country = str_to_title(country),
+      `Years analysed` = years,
+      Documents = n_docs,
+      Pages = n_pages,
+      Chunks = n_chunks,
+      `Surfaced fiscal measures` = n_surfaced,
+      `Clustered fiscal measures` = n_clustered,
+      `Exogenous fiscal measures` = n_exogenous
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
 
 ## C1-step comparability
 
-Before aggregation, what set of raw fiscal measures does C1 surface for each country? This is where real extraction differences live, independent of how acts are later aggregated. @fig-c1-comparability counts the distinct fiscal measures C1 produced per year, by country.
+Before aggregation, what set of fiscal measures does C1 surface for each country? This is where real extraction differences live, independent of how acts are later aggregated. @fig-c1-comparability counts the distinct fiscal measures C1 surfaces per year, by country.
 
 ```{r}
 #| label: fig-c1-comparability
-#| fig-cap: "**Distinct C1 fiscal measures per year, by country (pre-aggregation).** The raw extraction load that bounds any downstream aggregation."
+#| fig-cap: "**Surfaced fiscal measures per year, by country (pre-aggregation).** The extraction load that bounds any downstream aggregation."
 #| fig-width: 8
 #| fig-height: 3.5
 
@@ -90,52 +129,23 @@ pc <- plot_deployment_c1_comparability(c1_meas)
 if (is.null(pc)) cat("No measures available yet.\n") else print(pc)
 ```
 
-### Measure density and the rank-1 filter
-
-The comparability count above is a post-filter count: the deployment filter keeps only the most-prominent (rank-1) motivated measure per chunk. Before that cut, C1 surfaces several measures per chunk. @fig-c1-density shows that raw load per country-year, and @fig-c1-fiscal-rate shows the share of chunks whose rank-1 measure is a motivated fiscal measure. Measure-dense years carry several times the typical load, and the rank-1 cut discards the rest.
-
-```{r}
-#| label: fig-c1-density
-#| fig-cap: "**Motivated fiscal measures C1 surfaces per year, before the rank-1 deployment filter.** Dense years carry the heaviest load, which is what the rank-1 cut discards."
-#| fig-width: 8
-#| fig-height: 3.5
-
-pd <- plot_deployment_c1_density(c1_raw)
-if (is.null(pd)) cat("No motivated measures available yet.\n") else print(pd)
-```
-
-```{r}
-#| label: fig-c1-fiscal-rate
-#| fig-cap: "**Share of each year's chunks whose most-prominent (rank-1) measure is a motivated fiscal measure, by country.**"
-#| fig-width: 8
-#| fig-height: 3.5
-
-pr <- plot_deployment_c1_fiscal_rate(c1_raw, chunks)
-if (is.null(pr)) cat("No chunk data available yet.\n") else print(pr)
-```
-
-
-[Let's remove altogather the Rank-1 measurements and mentions to it. Always display Surfaced fiscal measures.]{.aside}
-
 ## C0 aggregation diagnostics
 
 C0 collapses C1 measure names into act-level clusters. The figures below describe that aggregation per country.
 
-### Compression
+### Merge rate
 
-@fig-c0-perdoc shows the compression ratio, how many surfaced measures collapse into each distinct act, by year and country, averaged across the year's documents.
+@fig-c0-perdoc shows the merge rate, $(\text{surfaced measures} / \text{distinct acts}) - 1$, by year and country, averaged across the year's documents. Zero means no merging (every surface form is its own act); higher means more variants absorbed per act.
 
 ```{r}
 #| label: fig-c0-perdoc
-#| fig-cap: "**C0 compression (measures collapsed into distinct acts) per year and country.** Higher bars mean more measure variants per canonical act."
+#| fig-cap: "**C0 merge rate (surfaced measures per act − 1) per year and country.** Higher bars mean more measure variants absorbed into each canonical act."
 #| fig-width: 8
 #| fig-height: 3.5
 
 pd0 <- plot_deployment_c0_perdoc(m$per_doc)
 if (is.null(pd0)) cat("No per-document aggregation available yet.\n") else print(pd0)
 ```
-
-[@fig-c0-perdoc should show merge rate (surfaced / clusters) - 1 instead]{.aside}
 
 ### Per-country cluster summary
 
@@ -151,9 +161,10 @@ if (nrow(m$c0_summary) == 0L) {
   m$c0_summary |>
     transmute(
       Country = str_to_title(country),
-      `Acts (clusters)` = n_clusters,
       `Measure variants` = n_variants,
-      `Mean variants / act` = round(mean_members, 2),
+      `Acts (clusters)` = n_clusters,
+      `Merge rate` = round(n_variants / n_clusters - 1, 2),
+      `N singletons` = n_singletons,
       `Largest cluster` = max_members
     ) |>
     tt() |>
@@ -161,32 +172,36 @@ if (nrow(m$c0_summary) == 0L) {
 }
 ```
 
-[@tbl-c0-summary should show the following columns per country: Measure variants (surfaced names), Acts (clusters), Merge rate, N singletons (Clusters with one distinct name), Largest cluster]{.aside}
-
 ```{r}
 #| label: fig-enacted
 #| fig-cap: |
 #|    **Acts by their *enacted* status.** An act is said to be enacted if C2b found sufficient evidence in that regard.
 
-country_c2b[[1]] |>
+inv |>
   drop_na(enacted) |>
-  ggplot(aes(x = enacted)) +
-  geom_bar()
+  mutate(
+    Status = factor(if_else(enacted, "Enacted", "Not enacted"),
+                    levels = c("Enacted", "Not enacted")),
+    Country = str_to_title(country)
+  ) |>
+  ggplot(aes(x = Status)) +
+  geom_bar() +
+  facet_wrap(~ Country) +
+  labs(x = "Enacted status", y = "Acts")
 
 ```
-
-
-[Please make @fig-enacted show neat enacted labels and axis labels]{.aside}
 
 ```{r}
 #| label: fig-enacted-evidence
 #| fig-cap: Probability of enacted by amount of evidence
 
 
-country_c2b[[1]] |>
-  mutate(enacted = as.numeric(enacted)) |>
+inv |>
+  drop_na(enacted) |>
+  mutate(enacted = as.numeric(enacted), Country = str_to_title(country)) |>
   ggplot(aes(n_evidence_items, enacted)) +
   geom_smooth(se = F) +
+  facet_wrap(~ Country) +
   scale_x_log10() +
   labs(
     x = "Evidence items (log scale)",
@@ -199,7 +214,7 @@ country_c2b[[1]] |>
 
 Notice that the language used by @romer to define what constitutes as a "significant change to fiscal liabilities" over-identifies seemingly innocuous fiscal changes when operationalizing it through the LLM chain we developed. We showed whilst [developing C0](/notebooks/c0_aggregator.qmd) that we can recover @romer 's taxonomy of US fiscal changes by selecting a threshold of the most discussed acts in the corpus.
 
-This section asks what is a sensible threshold for selecting meaningful fiscal changes that surfaced from our pipeline, that we know are over-identified. While RR's taxonomy included 49 distinct fiscal changes spanning 58 years (from 1945 to 2003), the raw acts aggregated by clusters found 805 such acts in 42 years in Malaysia (from 1981 to 2023). Thus we say RR's language, as operationalized by our pipeline, over-identifies fiscal changes.
+This section asks what is a sensible threshold for selecting meaningful fiscal changes that surfaced from our pipeline, that we know are over-identified. While RR's taxonomy included 49 distinct fiscal changes spanning 58 years (from 1945 to 2003), the acts aggregated by C0 number `r n_total_acts` over `r yr_hi - yr_lo` years (from `r yr_lo` to `r yr_hi`). Thus we say RR's language, as operationalized by our pipeline, over-identifies fiscal changes.
 
 To sift through the most relevant changes, without yet knowing the fiscal magnitude of each, we recur to a frequentist approach. We use two raw variables to map on to a relevance index. First, more relevant acts should have produced more **evidence items**, as surfaced by C2a. Moreover, more relevant acts should also be discussed in **more parts of the corpus**. So, we will want the acts for which we have a lot of evidence to extract their motivation from, and that were more widely discussed in the government documents.
 
@@ -212,28 +227,17 @@ $$
 
 
 
-Then, how is *relevance* accumulated by act? @fig-acts-chosen shows that 23 acts accumulate 80% of the relevance, as defined above. 
+Then, how is *relevance* accumulated by act? @fig-acts-chosen shows that `r n_chosen_acts` acts accumulate 80% of the relevance, as defined above.
 
 
 
 
 
 ```{r}
-docs_start <- m$per_doc$year |> min()
-docs_end <- m$per_doc$year |> max()
-
-headline <- country_c2b[[1]] |>
-  filter(enacted, between(year, docs_start, docs_end)) |>
-  arrange(desc(n_evidence_items), desc(n_chunks)) |>
-  mutate(
-    relevance = n_evidence_items * n_chunks
-  ) |>
-  arrange(desc(relevance)) |>
-  mutate(
-    relevance_per = relevance / sum(relevance),
-    cum_relevance = cumsum(relevance_per),
-    acts_chosen = row_number()
-    )
+# `eligible` (from mark_chosen_acts in the setup chunk) already carries, per
+# country: relevance = n_evidence_items * n_chunks, relevance_per, cum_relevance,
+# acts_chosen (rank), and the chosen flag — over enacted, in-range acts only.
+headline <- eligible
 ```
 
 
@@ -247,8 +251,10 @@ headline <- country_c2b[[1]] |>
 
 
 headline |>
+  mutate(Country = str_to_title(country)) |>
   ggplot(aes(n_chunks, n_evidence_items)) +
-  geom_jitter(aes(size = relevance_per, color = (cum_relevance <= 0.80))) +
+  geom_jitter(aes(size = relevance_per, color = chosen)) +
+  facet_wrap(~ Country) +
   scale_x_log10(n.breaks = 10) +
   scale_y_log10(n.breaks = 10) +
   scale_size_continuous(labels = scales::percent) +
@@ -257,22 +263,27 @@ headline |>
     y = "Evidence items (log scale)",
     size = "% Relevance",
     color = "Chosen"
-  ) 
+  )
 
 ```
 
 ```{r}
 #| label: fig-acts-chosen
 #| fig-cap: |
-#|    **Choosing acts according to the accumulated evidence items**. 23 acts accumulate 80% of the relevance.
+#|    **Choosing acts according to accumulated relevance**. The dashed line marks the 80% relevance cut.
 #| fig-cap-location: bottom
 
  
 
-headline |>
-  add_row(acts_chosen = 0, cum_relevance = 0) |>
+origin <- headline |>
+  distinct(country, country_iso) |>
+  mutate(acts_chosen = 0, cum_relevance = 0)
+
+bind_rows(origin, headline) |>
+  mutate(Country = str_to_title(country)) |>
   ggplot(aes(cum_relevance, acts_chosen)) +
   geom_step() +
+  facet_wrap(~ Country) +
   scale_y_log10(n.breaks = 20) +
   scale_x_continuous(labels = scales::percent, n.breaks = 6, limits = c(0, 1)) +
   geom_vline(xintercept = 0.8, linetype = "dashed", color = "darkgrey") +
@@ -294,14 +305,17 @@ headline |>
 #|    **Timeline of un/chosen acts**.
 
 headline |>
-  ggplot(aes(year, fill = (cum_relevance <= 0.8))) +
+  mutate(Country = str_to_title(country)) |>
+  ggplot(aes(year, fill = chosen)) +
   geom_bar() +
+  facet_wrap(~ Country) +
+  scale_x_continuous(breaks = scales::breaks_width(5)) +
   scale_y_log10(n.breaks = 6) +
   labs(
     x = "Year",
     y = "Acts (log scale)",
     fill = "Chosen"
-  ) 
+  )
 ```
 
 
@@ -314,10 +328,13 @@ headline |>
 #|    Acts that accumulate 80% of relevance.
 #| tbl-column: body-outset
 
-headline |>
+chosen |>
   arrange(desc(relevance)) |>
-  filter(cum_relevance <= 0.8) |>
-  mutate(cum_relevance = scales::percent(cum_relevance, accuracy = 0.1)) |>
+  mutate(
+    act_name = str_remove(act_name, "\\s*\\[c\\d+\\]$"),
+    cum_relevance = scales::percent(cum_relevance, accuracy = 0.1),
+    pred_label = pretty_motivation(pred_label)
+  ) |>
   select(
     `Act name` = act_name,
     Year = year,
@@ -327,15 +344,17 @@ headline |>
     `Chunks` = n_chunks,
     `Accumulated relevance` = cum_relevance
     ) |>
-  tt()
+  tt(notes = c(
+    "Year: the year parsed from the act name when it contains one, otherwise the modal year of the source documents that discuss the act.",
+    "Evidence items: motivation quote-and-signal pairs C2a extracted from the documents, pooled across all of the act's chunks.",
+    "Effect: the net direction C2b assigns to the act's effect on fiscal liabilities — + increase (revenue-raising), − decrease (revenue-reducing), 0 no net change."
+  )) |>
+  tt_theme_report()
 ```
-
-
-[Add a footnote to @tbl-top-20 explaining how the year variable was computed. The footnote should also describe what evidence items are, and what the effect variable is describing (see prompts/c2b_classification.yml). Also, note that using tt_theme_report() on this table showed horizontal lines between each row; this should not happen, horizontal lines should only indicate the start of the table, the end of the header and the end of the table. Also, remove the [c77] codes from the act names using regex; they are a pipeline mechanism and have no real-world meaning.]{.aside}
 
 ### Act inventory marginals
 
-[Everything in this section and below should be filtered to the chosen acts with the 80% rule defined above.]{.aside}
+The marginals and the timeline below are restricted to the chosen acts (the 80%-relevance cut defined above), not the full over-identified inventory.
 
 Pooling all of a country's documents, @tbl-c0-counts reports the act count and the exogenous/endogenous split, and @fig-c0-labels shows the motivation-label marginal distribution.
 
@@ -343,10 +362,10 @@ Pooling all of a country's documents, @tbl-c0-counts reports the act count and t
 #| label: tbl-c0-counts
 #| tbl-cap: "Per-country act inventory: counts and exogeneity split"
 
-if (inv_pending) {
-  tibble(Note = "C2 inventory not yet built") |> tt() |> tt_theme_report()
+if (nrow(chosen) == 0L) {
+  tibble(Note = "No chosen acts yet") |> tt() |> tt_theme_report()
 } else {
-  m$per_country$counts |>
+  inventory_marginals(chosen)$counts |>
     transmute(
       Country = str_to_title(country),
       `C0 acts` = n_acts,
@@ -364,10 +383,10 @@ if (inv_pending) {
 #| fig-width: 8
 #| fig-height: 3.5
 
-if (inv_pending) {
-  cat("C2 inventory not yet built.\n")
+if (nrow(chosen) == 0L) {
+  cat("No chosen acts yet.\n")
 } else {
-  pl <- plot_deployment_c0_labels(m$per_country$labels)
+  pl <- plot_deployment_c0_labels(inventory_marginals(chosen)$labels)
   if (is.null(pl)) cat("No motivation labels available yet.\n") else print(pl)
 }
 ```
@@ -377,62 +396,26 @@ if (inv_pending) {
 
 ## Headline: act inventory timeline
 
-The pipeline produces, per country, a set of acts each carrying a C2 motivation label, sign, and exogeneity. The headline is a timeline: for each year and country, acts are counted into motivation × sign cells and drawn as a diverging stacked bar. Increases grow the bar upward, decreases downward, no-change acts sit at the baseline, colour encodes motivation, faceted by country.
-
-The two figures differ only in the timing source. The primary one dates each act by its **source-document year** (always present); the secondary one by the year **extracted from the act name** (language-invariant numerals, but sparse: most acts carry no name-embedded year).
-
-### Act-name year multiset
+The pipeline produces, per country, a set of acts each carrying a C2 motivation label, sign, and exogeneity. The headline is a timeline of the **chosen** acts: for each year and country, acts are counted into motivation × sign cells and drawn as a diverging stacked bar. Increases grow the bar upward, decreases downward, no-change acts sit at the baseline, colour encodes motivation, faceted by country. Acts are dated by the single act-level year used throughout this section (parsed from the act name when present, else the modal source-document year).
 
 ```{r}
-#| label: fig-act-years
-#| fig-cap: "**Act-name-year multiset by country** (years parsed from act names). Sparse: most acts carry no name-embedded year."
-#| fig-width: 8
-#| fig-height: 3.5
-
-if (inv_pending || nrow(m$per_country$act_years) == 0L) {
-  cat("No act-name years available yet.\n")
-} else {
-  pay <- plot_deployment_act_years(m$per_country$act_years)
-  if (is.null(pay)) cat("No act-name years available yet.\n") else print(pay)
-}
-```
-
-[There is no need for @fig-act-years, since above we show the distribution of acts by year and chosen status.]{.aside}
-
-### Timeline by source-document year
-
-```{r}
-#| label: fig-timeline-docyear
-#| fig-cap: "**Act counts by modal source-document year, by country.** Diverging stacked bars: increases grow upward, decreases downward, no-change acts sit at the baseline; colour = motivation."
+#| label: fig-timeline
+#| fig-cap: "**Chosen-act counts by year, by country.** Diverging stacked bars: increases grow upward, decreases downward, no-change acts sit at the baseline; colour = motivation."
 #| fig-width: 9
 #| fig-height: 7
 
-p1 <- plot_deployment_act_timeline(inv, timing = "doc_year")
-if (is.null(p1)) cat("Inventory not yet built.\n") else print(p1)
+p1 <- plot_deployment_act_timeline(chosen, timing = "year")
+if (is.null(p1)) cat("No chosen acts yet.\n") else print(p1)
 ```
-
-### Timeline by act-name year
-
-```{r}
-#| label: fig-timeline-actname
-#| fig-cap: "**Act counts by year extracted from the act name, by country.** Same encodings as above; covers only the acts that carry a name-embedded year."
-#| fig-width: 9
-#| fig-height: 7
-
-p2 <- plot_deployment_act_timeline(inv, timing = "act_name")
-if (is.null(p2)) cat("No acts carry a name-embedded year yet.\n") else print(p2)
-```
-
-
-[Collapse @fig-timeline-actname and @fig-timeline-docyear to a single plot that shows only chosen acts by the single year variable we have been using above.]{.aside}
 
 ## Interpretation
 
 Read the evidence in pipeline order:
 
-- **C1 step.** The comparability, density, and fiscal-rate figures describe what raw material the extractor surfaces per country. Any extraction gap here bounds everything downstream and is not fixable by the aggregator.
-- **C0 step.** The compression figure and cluster summary describe how aggressively C0 collapses measure variants into acts. A country whose corpus repeats the same handful of acts across many documents compresses more.
-- **C2 / headline.** The timelines are the deliverable: each country's acts placed by year, direction, and motivation. They are the starting point for expert review, not a finding.
+- **C1 step.** The comparability figure describes what raw material the extractor surfaces per country. Any extraction gap here bounds everything downstream and is not fixable by the aggregator.
+- **C0 step.** The merge-rate figure and cluster summary describe how aggressively C0 collapses measure variants into acts. A country whose corpus repeats the same handful of acts across many documents merges more.
+- **Identification by frequency.** R&R's language over-identifies through the LLM chain, so we keep the acts that accumulate 80% of relevance (evidence items × chunks). Everything from the marginals onward is restricted to that chosen set.
+- **C2 / headline.** The timeline is the deliverable: each country's chosen acts placed by year, direction, and motivation. It is the starting point for expert review, not a finding.
 
 ## Implications
 
