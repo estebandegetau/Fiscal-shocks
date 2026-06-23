@@ -1,0 +1,155 @@
+---
+title: "A brainstorm of where we're at and where to go next"
+author: Esteban Degetau
+date: 2026-06-14
+date-format: long
+format: 
+     typst:
+        papersize: a4
+        margin:
+            x: 0cm
+            y: 0cm
+        columns: 1
+---
+
+## Research questions
+
+1. Can we use Large Language Models (LLMs) to **replicate** @romer methodology to identify exogenous fiscal changes in the US?
+
+    $\iff$ How well can LLMs perform this task (as measured by @halterman2025)?
+
+    A subset of this question has already been answered, inasmuch as:
+
+    i.  **Identification** of fiscal measures in the document corpus
+    ii. Classification into **exogenous** and endogenous
+    iii. Predict the **direction** of the change (though its magnitude)
+
+    We still have to show the automated, LLM approach can:
+
+    iv. Extract the measures' **magnitude** in % of GDP
+    v. Extract the measures' **timing** in quarters
+
+1. Can the same LLM approach, trained with @romer's labels, be used to **translate** the knowledge of @romer2010 to other countries?
+
+    We have produced a set of fiscal changes occoured in Malaysia from 1981 to 2023, classified into exogenous and endogenous, as per our @romer -validated LLM approach.
+
+    This set needs **expert review** to answer Q2.
+
+
+If experts validate (2), and we can validate (iv and v), then we can 
+
+1. Build a dataset of country-level **fiscal multipliers**, based on the same reproducible, comparable narrative analysis identification method.
+
+    - This is the largest fish I can think of leveraging the methodology we've developed.
+
+    - We'll be able to draw cross-country and cross-region comp
+    ## Plan for a comp#arisons.
+
+    - I got inspired by @burke_global_2015 and @hsiang_quantifying_2013: this is a level of knowledge generation that is super valuable.
+
+1. Build a **dataset of fiscal changes**, complying with conditions (i-iv), that local researchers can leverage to answer the particular within-country questions they may have.
+
+{{< pagebreak >}}
+
+## Literature review: where to plant the flag
+
+*Synthesized from the `_Fiscal Shocks` Zotero collection and related work, 2026-06-15.*
+
+The brainstorm above frames a cross-country **fiscal multipliers** dataset as the largest fish. The literature now forces a sharper position: a generic "cross-country LLM fiscal multipliers" paper is no longer open territory, but a specific conjunction of design choices is wide open and is plausibly bigger.
+
+### The field has converged on a single shortcut
+
+Three LLM-based narrative fiscal papers define the immediate competition, and read together they share one revealing design choice.
+
+| Paper | Source (all secondary) | Side | Outputs | Coverage | Validation |
+|---|---|---|---|---|---|
+| @das_mapping_nodate | EIU Country Reports | Spending only | Direction only ($-1/0/+1$), **no magnitude** | 64 countries | Concordance vs benchmark |
+| @bhasin_identifying_2026 | IMF Article IV reports | Austerity (contraction only) | Binary + weak %GDP ($r=0.59$), **annual** | 17 OECD | Concordance vs benchmark |
+| @fritsch_high-frequency_nodate | News wires | Both | %GDP market surprise, quarterly | US only | Concordance vs benchmark |
+
+Each reads a secondary, harmonized, English-language source precisely to avoid the cost of primary national documents, and each pays for that shortcut in the same currency: no act-level magnitude in % of GDP, no quarterly timing, no separately validated exogeneity, and no emerging-market-native coverage. Two admissions are quotable ammunition:
+
+- @das_mapping_nodate observe only the qualitative direction of each action and explicitly do not recover dollar-equivalent magnitudes.
+- @bhasin_identifying_2026 trace their entire LLM-versus-benchmark multiplier gap to "shock sizing, not event selection," conceding that magnitude (the quantity secondary sources cannot deliver) is the binding constraint on credible multipliers.
+
+A deeper flaw is common to all three: they validate by concordance against a pre-existing narrative series (@romer2010 for the US; action-based consolidation datasets for the OECD). That strategy only works where such a series already exists, so it cannot travel to the countries the method is meant to serve. The (non-LLM) monetary analog @aruoba_identifying_nodate points to the alternative: validate against forecast-error predictability and theory-consistent impulse responses rather than against an existing label set.
+
+### Our white space: the uncontested conjunction
+
+The open niche is the intersection none of the competitors occupy: a **tax-side**, full-richness (measure $\times$ exo/endo $\times$ sign $\times$ **%GDP magnitude** $\times$ **quarterly timing**), **emerging-market / Southeast Asia** dataset built from **primary national documents in the local language**, made credible by **ground-truth-free validation** [@halterman2025] plus expert agreement. Each wedge is defensible:
+
+- **Tax-side in EMs is uncontested.** @das_mapping_nodate defer taxes; @bhasin_identifying_2026 lump revenue into aggregate austerity; @fritsch_high-frequency_nodate do taxes but for the US only. No tax-side narrative series exists for any emerging market. Composition is first-order: @mertens2013 show personal income tax cuts are far more potent for output than corporate ones, a decomposition only the narrative record enables.
+- **Magnitude in %GDP is the field's collective Achilles heel.** Primary budget documents report actual revenue-change estimates; a competitor has already shown sizing is what drives multiplier differences.
+- **Primary national sources plus EM data scarcity is secretly a contamination advantage** (see the credibility section): non-English, never-digitized documents are far less likely to sit in an LLM's pretraining corpus.
+- **Formal LLM validation is unclaimed**, and is the only paradigm that survives the absence of ground truth.
+
+A positioning rule follows: do **not** compete with @das_mapping_nodate on country count. Lead on depth and richness per country, and on the substantive question only this dataset can answer. The method is the enabler, not the headline.
+
+### The flagship question, ranked
+
+The original "cross-country multipliers" goal needs upgrading, because @das_mapping_nodate already have spending multipliers for 64 countries. The frontier is the tax-side question the canonical authors say they cannot answer.
+
+**Candidate 1 (recommended flagship): decompose the fiscal procyclicality trap.** *How much of emerging-market "when it rains it pours" is exogenous shock versus endogenous policy response, and what is the true tax multiplier across the developing world?* This is the strongest framing because:
+
+- It is a famous, named, unresolved development-macro puzzle, legible to an interdisciplinary audience as "why do poor countries' policies amplify rather than smooth their own crises?" @vegh_how_2015 document that tax *policy* is procyclical in developing countries.
+- It is the one question the best existing work explicitly cannot answer. @vegh_how_2015 built a statutory-rate dataset and still conceded the procyclical correlation "could just reflect the effect of tax multipliers," because the rate series carries no record of motivation. They name the @romer2010 narrative classification as the missing input. Our pipeline supplies exactly that.
+- It is uniquely a tax-narrative problem, not a spending or SVAR problem. @mertens_reconciliation_2014 prove that pure SVARs cannot recover the tax multiplier because they must assume the output-elasticity of revenue, and that the bias is worse outside the US. @jha_effectiveness_2014 concede that roughly 70% of EM revenue variation is non-discretionary, the exact contamination narrative motivation removes.
+
+**Candidate 2: the tax-side @ilzetzki_how_2013.** *Are tax multipliers smaller in EMs, and do they depend on the exchange-rate regime, openness, and debt?* @ilzetzki_how_2013 established this heterogeneity for spending (near zero under flexible rates, large under fixed, negative at high debt). The tax-side analog is open and is a cleaner positive-economics flagship, ranking just behind Candidate 1 because "are multipliers smaller" is more incremental than cracking a named puzzle.
+
+**The strongest paper probably fuses the two:** use the new narrative tax shocks to (i) produce the first credible EM tax multipliers, (ii) show how they vary with regime and development, and (iii) decompose how much of measured procyclicality was exogenous all along. @frankel_graduation_2013 supply the "graduation" angle: does the *effectiveness* of tax policy, not just its cyclicality, change as institutions improve?
+
+De-prioritized as flagship: state-dependence (recession versus expansion) is underpowered at 20 to 60 acts per country, and PIT/CIT/VAT composition is an excellent second paper rather than the headline. The authoritative gap citation is @ramey_macroeconomic_2016: the fiscal section of the handbook is essentially US-only, and the words "emerging" and "developing" never appear.
+
+### Packaging: the Burke and Hsiang template
+
+The inspiration papers [@burke_global_2015; @hsiang_quantifying_2013] share one architecture: the headline is not a coefficient but a number expressed in a unit that did not previously exist in comparable form across countries. Inventing the common currency *is* the contribution. Mapped onto this project:
+
+1. **Name the incomparability problem.** Comparable exogenous fiscal shocks exist for one country (the US) plus the UK [@cloyne_discretionary_2013]; the gap is the absence of a common unit across countries.
+2. **Impose one common model and unit.** The validated pipeline outputs the same Romer-Romer unit for every country.
+3. **Reveal the universal object.** The flagship sentence is the instrument's reach: for the first time, a consistent exogenous-tax-shock series from primary documents across N countries, multiple languages, and four decades.
+4. **Front-load identification.** The R&R exogeneity criterion is the "ideal experiment"; contamination probes neutralize "the LLM is just recalling known shocks."
+5. **Survive heterogeneity.** EN/BM stress tests and behavioral-plus-robustness validation.
+6. **Declare a new empirical foundation.** A platform, replicable beyond Southeast Asia.
+7. **State the stakes in the matched unit.** The procyclicality decomposition or the first comparable cross-country tax multipliers, as the demonstrated downstream payoff.
+
+### The credibility bar we must clear
+
+@ludwig_large_2025 is required reading: this project is precisely their "estimation problem" (an LLM-measured variable feeding a downstream causal estimate). Four hard requirements:
+
+1. **Contamination is a centerpiece, not a footnote.** The published @romer2010 shock list and the long-public US source documents are almost certainly in pretraining, so the Phase 1 US validation against `us_shocks.csv` overstates true performance. @ludwig_large_2025 show that "ignore information after date $\tau$" prompts fail and can worsen leakage. Run a first-half text-completion probe on the US sources and the R&R list, and treat strong US agreement as consistent with memorization. The EM, in-language, never-digitized documents turn data scarcity into a contamination advantage.
+2. **Accuracy is not validity.** An LLM uniformly close to truth can still produce arbitrarily biased downstream estimates; the bias equals the correlation of LLM error with the regressors. For us the dangerous regressor is the business cycle, the exact dimension exogeneity hinges on, so we must show mislabeling is uncorrelated with the cycle.
+3. **Do not plug raw LLM shocks into the multiplier regression.** Use the debiased estimator against a small random expert-labeled validation sample, framed as "LLM labels amplify a small validation sample" (tighter standard errors than experts alone). Confront the tension honestly: 125 to 250 validation items is infeasible at 20 to 40 Malaysian acts, so use fraction-of-corpus or pooled-regional validation, or scope-limit the inferential claim.
+4. **Validate without ground truth** [@asirvatham_gpt_2026; @halterman2025]. Benchmark against inter-expert disagreement (model-versus-consensus compared to human-versus-consensus), and report expert-versus-expert agreement as the ceiling so the $\geq$80% / $\geq$70% gates read as parity with an individual expert, not agreement with absolute truth.
+
+One adversarial flag for the transfer claim: @gentzkow_text_2019 note that fixed text measures notoriously fail to transfer across domains, and @halterman2025 find cross-codebook fine-tuning overfits. The claim here (frozen, country-agnostic, zero-shot codebooks) is not directly refuted, but both results must be acknowledged and transfer shown to survive. @korinek_ai_2025 supplies the standard caveats (hallucination, error cascades, prompt brittleness) and notably declines to vouch for LLMs in causal inference, leaving the validated-instrument niche open.
+
+### Recommendation and open decisions
+
+Build the paper around **Candidate 1 fused with Candidate 2**, framed Burke-Hsiang style as "we built and validated the instrument that turns a US-only method into a global comparative one," with multipliers as the demonstrated payoff rather than the central inferential claim. Three calls remain mine (Agustín's and mine) to make and defend at peer review:
+
+- Spending versus tax as the flagship: ceding spending breadth to @das_mapping_nodate and winning on tax depth.
+- Procyclicality decomposition (bigger, more "Science") versus clean tax-multiplier heterogeneity (cleaner, lower-risk) as the lead result.
+- How hard to push the debiased estimation given small EM corpora, which may constrain how inferential the flagship multiplier claim can be.
+
+### Canonical papers to add
+
+Already in my Zotero, exported to `references.bib` with verified entries (please confirm against your copies):
+
+- Ilzetzki, Mendoza & Végh (2013), "How big (small?) are fiscal multipliers?", *Journal of Monetary Economics* 60(2), `@ilzetzki_how_2013`.
+- Frankel, Végh & Vuletin (2013), "On graduation from fiscal procyclicality," *Journal of Development Economics* 100(1), `@frankel_graduation_2013`.
+
+Not yet in the library, to pull in published form:
+
+- Kaminsky, Reinhart & Végh (2004), "When It Rains, It Pours: Procyclical Capital Flows and Macroeconomic Policies," *NBER Macroeconomics Annual*. The origin of the procyclicality stylized fact.
+- Auerbach & Gorodnichenko (2012), "Measuring the Output Responses to Fiscal Policy," *AEJ: Economic Policy*. State-dependent multipliers.
+- Guajardo, Leigh & Pescatori (2014), "Expansionary Austerity? International Evidence," *Journal of the European Economic Association*. Action-based fiscal consolidations.
+- Riera-Crichton, Végh & Vuletin (2016), "Tax multipliers: Pitfalls in measurement and identification," *Journal of Monetary Economics*.
+- Gechert (2015), "What fiscal policy is most effective? A meta-regression analysis," *Oxford Economic Papers*.
+- Blanchard & Perotti (2002), "An Empirical Characterization of the Dynamic Effects of Changes in Government Spending and Taxes on Output," *QJE*. The SVAR baseline.
+- Adler et al. (2024), the action-based consolidation benchmark used by @das_mapping_nodate and @bhasin_identifying_2026 (track down the exact reference for positioning).
+
+{{< pagebreak >}}
+
+### References
+
