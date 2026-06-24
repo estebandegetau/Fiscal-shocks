@@ -26,8 +26,9 @@ status <- tibble::tribble(
   # --- s1 motivation ---
   "vegh_how_2015",            "§1", "cite-only",   "yes", "yes", "pending",
   "jha_effectiveness_2014",   "§1", "cite-only",   "yes", "yes", "pending",
-  "frankel_graduation_2013",  "§1", "cite-only",   "no",  "no",  "pending",
-  "ilzetzki_how_2013",        "§1", "cite-only",   "no",  "no",  "pending",
+  "frankel_graduation_2013",  "§1", "cite-only",   "yes", "yes", "pending",
+  "ilzetzki_how_2013",        "§1", "cite-only",   "yes", "yes", "pending",
+  "acosta_ormaechea_tax_2012","§1", "cite-only",   "yes", "yes", "pending",
   "Kaminsky-Reinhart-Végh",   "§1", "cite-only",   "yes", "yes", "pending",
   "R&R Fiscal Space",         "§1", "cite-only",   "yes", "yes", "pending",
   "R&R New Evidence",         "§1", "cite-only",   "yes", "yes", "pending",
@@ -45,6 +46,7 @@ status <- tibble::tribble(
   "tillmann_disagreement_2024","§2","cite-only",   "yes", "yes", "pending",
   "latifi_fiscal_nodate",     "§2", "cite-only",   "yes", "yes", "pending",
   "kim_understanding_2015",   "§2", "cite-only",   "yes", "yes", "pending",
+  "hebous_revisiting_2018",   "§2", "cite-only",   "yes", "yes", "pending",
   # --- s3 effects ---
   "Blanchard-Perotti",        "§3", "cite-only",   "yes", "yes", "pending",
   "Auerbach-Gorodnichenko",   "§3", "cite-only",   "yes", "yes", "pending",
@@ -56,6 +58,7 @@ status <- tibble::tribble(
   "jorda_estimation_2005",    "§3", "cite-only",   "yes", "yes", "pending",
   "jorda_local_nodate",       "§3", "cite-only",   "yes", "yes", "pending",
   "dube",                     "§3", "cite-only",   "yes", "yes", "pending",
+  "ramey_government_2018",    "§3", "cite-only",   "yes", "yes", "pending",
   # --- s4 llm text-as-data ---
   "das_mapping_nodate",       "§4", "competitor",  "yes", "yes", "pending",
   "bhasin_identifying_2026",  "§4", "competitor",  "yes", "yes", "pending",
@@ -66,15 +69,25 @@ status <- tibble::tribble(
   "gentzkow_text_2019",       "§4", "cite-only",   "yes", "yes", "pending",
   "korinek_ai_2025",          "§4", "cite-only",   "yes", "yes", "pending",
   "feuerriegel_using_2025",   "§4", "cite-only",   "yes", "yes", "pending",
+  "ash_text_2023",            "§4", "cite-only",   "yes", "yes", "pending",
+  "grimmer_text_2022",        "§4", "cite-only",   "yes", "yes", "pending",
+  "gilardi_chatgpt_2023",     "§4", "cite-only",   "yes", "yes", "pending",
   # --- s5 validation ---
   "halterman2025",            "§5", "read-deep",   "yes", "yes", "full",
   "asirvatham_gpt_2026",      "§5", "read-deep",   "yes", "yes", "full",
   "rathje_gpt_2024",          "§5", "exemplar",    "yes", "yes", "pending",
   "singh_deadly_2026",        "§5", "exemplar",    "yes", "yes", "pending",
   "zhao_agentic_2026",        "§5", "exemplar",    "yes", "yes", "pending",
+  "fellegi_theory_1969",      "§5", "cite-only",   "yes", "yes", "pending",
+  "abramitzky_automated_2021","§5", "cite-only",   "yes", "yes", "pending",
+  "binette_almost_2022",      "§5", "cite-only",   "yes", "yes", "pending",
   # --- s6 generated-regressor ---
   "ludwig_large_2025",        "§6", "read-deep",   "yes", "yes", "full",
+  "battaglia_inference_2024", "§6", "read-deep",   "yes", "yes", "pending",
+  "angelopoulos_prediction-powered_2023","§6","read-deep","yes","yes","pending",
+  "egami_using_2023",         "§6", "read-deep",   "yes", "yes", "pending",
   # --- s7 datasets ---
+  "pescatori_new_2011",       "§7", "benchmark",   "yes", "yes", "pending",
   "Adler et al. 2024",        "§7", "benchmark",   "yes", "yes", "pending",
   "Guajardo-Leigh-Pescatori", "§7", "benchmark",   "yes", "yes", "pending",
   "romer_replication_2019",   "§7", "benchmark",   "yes", "yes", "pending"
@@ -105,21 +118,21 @@ tt(status)
 
 ## Frankel, Végh & Vuletin 2013 — On Graduation from Fiscal Procyclicality {#sec-frankel_graduation_2013}
 
-**Citekey** `@frankel_graduation_2013` · **Status** file ✗ (in bib, not filed in `_Fiscal Shocks`) · tag pending · §1 · consultation: pending
+**Citekey** `@frankel_graduation_2013` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
 **Role** cite-only
 
 **Summary.** About a third of developing countries have "graduated" to countercyclical fiscal policy; institutional quality is the key determinant.
 
-**Relation.** *Pending `/lit-digest`.* Seed: supplies the "graduation" angle (does the *effectiveness* of tax policy change as institutions improve?). Action: file into the Zotero collection.
+**Relation.** *Pending `/lit-digest`.* Seed: supplies the "graduation" angle (does the *effectiveness* of tax policy change as institutions improve?). Now filed in `_Fiscal Shocks` (Zotero `R64M3ZMY`).
 
 ## Ilzetzki, Mendoza & Végh 2013 — How Big (Small?) Are Fiscal Multipliers? {#sec-ilzetzki_how_2013}
 
-**Citekey** `@ilzetzki_how_2013` · **Status** file ✗ (in bib, not filed in `_Fiscal Shocks`) · tag pending · §1 · consultation: pending
+**Citekey** `@ilzetzki_how_2013` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
 **Role** cite-only
 
 **Summary.** Government-spending multipliers depend on country characteristics: near zero under flexible rates, large under fixed, negative at high debt.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the spending result whose tax-side analog is our Candidate-2 flagship. Action: file into the collection; bib entry carries a "verify against Zotero copy" note.
+**Relation.** *Pending `/lit-digest`.* Seed: the spending result whose tax-side analog is our Candidate-2 flagship. Now filed in `_Fiscal Shocks` (Zotero `XWMP6F75`).
 
 ## Kaminsky, Reinhart & Végh 2004 — When It Rains, It Pours {#sec-kaminsky_when_2004}
 
@@ -183,6 +196,15 @@ tt(status)
 **Summary.** Meta-analysis converging many studies onto a common climate–conflict effect size.
 
 **Relation.** *Pending `/lit-digest`.* Seed: the second Burke-Hsiang architecture template. Links: [[#sec-burke_global_2015]].
+
+## Acosta Ormaechea & Yoo 2012 — Tax Composition and Growth: A Broad Cross-Country Perspective {#sec-acosta_ormaechea_tax_2012}
+
+**Citekey** `@acosta_ormaechea_tax_2012` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** IMF cross-country panel linking tax composition (income vs. consumption/property) to long-run growth.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the canonical "tax composition and growth" anchor the motivation needs — comparable cross-country shock series are both scarce and valuable. Fills the §1 PENDING ACQUISITION slot in `lit_review.qmd`. Links: [[#sec-vegh_how_2015]].
 
 # §2 Narrative identification (pillar)
 
@@ -266,6 +288,15 @@ tt(status)
 **Summary.** A social-science methodology text on narrative inquiry.
 
 **Relation.** *Pending `/lit-digest`.* Seed: narrative-methodology background; weak fit, retained as a framing cite.
+
+## Hebous & Zimmermann 2018 — Revisiting the Narrative Approach of Estimating Tax Multipliers {#sec-hebous_revisiting_2018}
+
+**Citekey** `@hebous_revisiting_2018` · **Status** file ✓ · tag ✓ · §2 · consultation: pending
+**Role** cite-only
+
+**Summary.** Re-examines the narrative tax-multiplier estimates, probing sensitivity of the R&R/narrative series and the multiplier magnitudes they imply.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the "method scrutiny" cite that rounds out §2 alongside [[#sec-mertens_reconciliation_2014]] — fills the §2 PENDING ACQUISITION slot in `lit_review.qmd`. Links: [[#sec-romer2010]].
 
 # §3 Effects of fiscal policy
 
@@ -359,6 +390,15 @@ tt(status)
 
 **Relation.** *Pending `/lit-digest`.* Seed: a candidate downstream estimator for the shock series.
 
+## Ramey & Zubairy 2018 — Government Spending Multipliers in Good Times and in Bad {#sec-ramey_government_2018}
+
+**Citekey** `@ramey_government_2018` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** Estimates state-dependent government-spending multipliers from US historical data using local projections, finding little evidence multipliers are larger in slack.
+
+**Relation.** *Pending `/lit-digest`.* Seed: strengthens the state-dependence point in §3 and pairs the LP toolkit with a fiscal application — fills the §3 PENDING ACQUISITION slot in `lit_review.qmd`. Links: [[#sec-jorda_estimation_2005]].
+
 # §4 LLMs as measurement tools
 
 ## Das et al. 2026 — Mapping Government Spending Actions Across 64 Countries {#sec-das_mapping_nodate}
@@ -442,6 +482,33 @@ tt(status)
 
 **Relation.** *Pending `/lit-digest`.* Seed: situates our tooling in the broader NLP-for-social-science methods literature.
 
+## Ash & Hansen 2023 — Text Algorithms in Economics {#sec-ash_text_2023}
+
+**Citekey** `@ash_text_2023` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Annual Review survey of text-as-data algorithms (embeddings, topic models, supervised learning) and their economics applications.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the econ text-as-data canon alongside [[#sec-gentzkow_text_2019]]; situates our LLM tooling in the methods lineage. Fills part of the §4 PENDING ACQUISITION slot.
+
+## Grimmer, Roberts & Stewart 2022 — Text as Data: A New Framework for Machine Learning and the Social Sciences {#sec-grimmer_text_2022}
+
+**Citekey** `@grimmer_text_2022` · **Status** file ✓ (book; no PDF) · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Textbook framework for text-as-data in the social sciences: the discovery → measurement → inference workflow, and the validation discipline measurement requires.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the measurement-validity framing our H&K pipeline instantiates; canonical §4 cite. Book (cannot be PDF-filed) — citekey resolves in `references.bib`. Links: [[#sec-halterman2025]].
+
+## Gilardi, Alizadeh & Kubli 2023 — ChatGPT Outperforms Crowd Workers for Text-Annotation Tasks {#sec-gilardi_chatgpt_2023}
+
+**Citekey** `@gilardi_chatgpt_2023` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Shows zero-shot ChatGPT exceeds crowd workers (and approaches experts) on several text-annotation tasks in political science.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the LLM-annotation-validity anchor for §4 — the social-science precedent that LLMs can stand in for human coders, which our expert-agreement gates both rely on and stress-test. Links: [[#sec-halterman2025]].
+
 # §5 Validation (pillar)
 
 ## Halterman & Keith 2025 — Codebook LLMs {#sec-halterman2025}
@@ -489,6 +556,33 @@ tt(status)
 
 **Relation.** *Pending `/lit-digest`.* Seed: traceable-reasoning + expert-agreement validation pattern, an analog to our expert-validation gates.
 
+## Fellegi & Sunter 1969 — A Theory for Record Linkage {#sec-fellegi_theory_1969}
+
+**Citekey** `@fellegi_theory_1969` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** cite-only
+
+**Summary.** The foundational probabilistic record-linkage theory: decision rule for matching/non-matching record pairs under controlled error rates.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the classical anchor for the C0 aggregation / entity-resolution sub-task — the "is this the same act" problem our canonical clustering solves with an LLM. Fills the §5-core record-linkage PENDING ACQUISITION slot. Links: [[#sec-abramitzky_automated_2021]], [[#sec-binette_almost_2022]].
+
+## Abramitzky, Boustan & Eriksson et al. 2021 — Automated Linking of Historical Data {#sec-abramitzky_automated_2021}
+
+**Citekey** `@abramitzky_automated_2021` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** cite-only
+
+**Summary.** JEL survey of automated record-linkage methods in economic history, benchmarking linking algorithms and their error/bias trade-offs.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the econ-history precedent for automated linking that legitimizes a machine-assisted C0 aggregation step. Links: [[#sec-fellegi_theory_1969]], [[#sec-binette_almost_2022]].
+
+## Binette & Steorts 2022 — (Almost) All of Entity Resolution {#sec-binette_almost_2022}
+
+**Citekey** `@binette_almost_2022` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** cite-only
+
+**Summary.** Modern survey of entity resolution: blocking, pairwise matching, clustering, and evaluation against ground truth.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the state-of-the-art ER framing for C0 — blocking + clustering vocabulary maps onto our year-blocked and canonical-clustering methods. Links: [[#sec-fellegi_theory_1969]], [[#sec-abramitzky_automated_2021]].
+
 # §6 Generated-regressor inference (pillar)
 
 ## Ludwig, Mullainathan & Rambachan 2025 — LLMs: An Applied Econometric Framework {#sec-ludwig_large_2025}
@@ -498,9 +592,45 @@ tt(status)
 
 **Summary.** Splits LLM uses into prediction (needs "no training leakage") and estimation/measurement (needs a validation sample for valid downstream inference). Accuracy ≠ validity (bias = correlation of LLM error with regressors); debias against a small random validation sample (125–250 items help); model/prompt choice can flip downstream estimates absent debiasing. Distilled in `docs/codebook_sources.md` §5.1.
 
-**Relation.** The §6 pillar's sole anchor — our LLM fiscal shocks are exactly their "estimation problem" feeding a VAR/LP. Currently single-sourced; acquire Battaglia et al., Angelopoulos PPI, Egami to de-risk. Links: [[#sec-mertens_reconciliation_2014]], [[#sec-asirvatham_gpt_2026]].
+**Relation.** A §6 pillar anchor — our LLM fiscal shocks are exactly their "estimation problem" feeding a VAR/LP. The de-risking trio (Battaglia, Angelopoulos, Egami) is now filed, ending the single-source risk. Links: [[#sec-mertens_reconciliation_2014]], [[#sec-asirvatham_gpt_2026]], [[#sec-battaglia_inference_2024]], [[#sec-angelopoulos_prediction-powered_2023]], [[#sec-egami_using_2023]].
+
+## Battaglia, Christensen, Hansen & Sacher 2024 — Inference for Regression with Variables Generated from Unstructured Data {#sec-battaglia_inference_2024}
+
+**Citekey** `@battaglia_inference_2024` · **Status** file ✓ · tag ✓ · §6 · consultation: pending
+**Role** read-deep
+
+**Summary.** Bias and valid-inference corrections for regressions whose covariates are generated from unstructured data (text) by AI/ML; the directly-on-point treatment of the generated-regressor problem.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the §6 pillar's most direct external source — names and corrects exactly the bias our LLM-measured shocks would inject downstream. Highest-priority deep read. Fills the §6 PENDING ACQUISITION slot. Links: [[#sec-ludwig_large_2025]].
+
+## Angelopoulos, Bates, Fannjiang, Jordan & Zrnic 2023 — Prediction-Powered Inference {#sec-angelopoulos_prediction-powered_2023}
+
+**Citekey** `@angelopoulos_prediction-powered_2023` · **Status** file ✓ · tag ✓ · §6 · consultation: pending
+**Role** read-deep
+
+**Summary.** A framework for valid confidence intervals when ML predictions substitute for some gold-standard labels, combining a labeled and a large predicted sample.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the debias-against-a-validation-sample machinery [[#sec-ludwig_large_2025]] invokes, generalized; underwrites our Phase 2 expert-labeled-subset design. Links: [[#sec-egami_using_2023]].
+
+## Egami, Hinck, Stewart & Wei 2023 — Using Imperfect Surrogates for Downstream Inference {#sec-egami_using_2023}
+
+**Citekey** `@egami_using_2023` · **Status** file ✓ · tag ✓ · §6 · consultation: pending
+**Role** read-deep
+
+**Summary.** Design-based supervised learning: how to use imperfect LLM/ML "surrogate" labels in downstream social-science inference without bias, via a design-based correction against expert labels.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the social-science-facing version of the generated-regressor fix, closest in spirit to our expert-validation workflow. Links: [[#sec-angelopoulos_prediction-powered_2023]], [[#sec-battaglia_inference_2024]].
 
 # §7 Datasets
+
+## Devries, Guajardo, Leigh & Pescatori 2011 — A New Action-Based Dataset of Fiscal Consolidation {#sec-pescatori_new_2011}
+
+**Citekey** `@pescatori_new_2011` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Role** benchmark
+
+**Summary.** The original IMF action-based narrative dataset of fiscal-consolidation measures for OECD economies, identifying policy actions motivated by deficit reduction rather than the cycle.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the founding narrative-comparator dataset that Guajardo et al. and Adler et al. update — the lineage our output landscape is measured against. Fills the §7 PENDING ACQUISITION slot in `lit_review.qmd`. Links: [[#sec-guajardo_leigh_pescatori]], [[#sec-adler_2024]].
 
 ## Adler et al. 2024 — An Updated Action-Based Dataset of Fiscal Consolidation {#sec-adler_2024}
 

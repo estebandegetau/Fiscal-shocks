@@ -20,6 +20,64 @@ credibility tracks involvement).
 
 ---
 
+## 2026-06-24: Intake of 15 new arrivals — §6 pillar de-risked, §5/§4 cores filled (all sections)
+
+Second intake-loop run against `_Fiscal Shocks` (now 62 items). **Decision:** tag the
+15 items that arrived since the bulk pass, write their `lit_base.qmd` status stubs at
+`consultation: pending`, and reconcile. Tags applied by Claude via the Zotero MCP on
+user confirmation; all 15 citekeys resolve in `references.bib`.
+
+**Outcome.** 15 items tagged (one section + one role each). This run closes most of the
+acquisition shopping list from the 2026-06-24 bulk pass:
+
+- **§6 generated-regressor pillar — de-risked.** Battaglia et al. 2024
+  (`@battaglia_inference_2024`), Angelopoulos et al. 2023
+  (`@angelopoulos_prediction-powered_2023`), Egami et al. 2023 (`@egami_using_2023`)
+  all filed `s6-generated-reg` + `read-deep`. The pillar goes from single-sourced
+  (`@ludwig_large_2025`) to four read-deep sources — the highest referee risk is now
+  covered (deep read still pending `/lit-digest`).
+- **§5 record-linkage core.** Fellegi & Sunter 1969 (`@fellegi_theory_1969`),
+  Abramitzky et al. 2021 (`@abramitzky_automated_2021`), Binette & Steorts 2022
+  (`@binette_almost_2022`) → `s5-validation` + `cite-only`. **Role call (note):** the
+  prior log proposed `read-deep` for the C0 entity-resolution ones; downgraded to
+  `cite-only` because the C0 method-comparison is largely built and these situate it
+  rather than drive new codebook design — revisit if the C0 writeup needs distillation.
+- **§4 annotation canon.** Ash & Hansen 2023 (`@ash_text_2023`), Grimmer, Roberts &
+  Stewart 2022 (`@grimmer_text_2022`, book — no PDF, citekey resolves), Gilardi et al.
+  2023 (`@gilardi_chatgpt_2023`) → `s4-llm-text` + `cite-only`.
+- **§1/§3/§7 single-cite fills.** Acosta Ormaechea & Yoo 2012
+  (`@acosta_ormaechea_tax_2012`, §1); Ramey & Zubairy 2018 (`@ramey_government_2018`,
+  §3); Devries-Guajardo-Leigh-Pescatori 2011 (`@pescatori_new_2011`, §7, benchmark);
+  plus Hebous & Zimmermann 2018 (`@hebous_revisiting_2018`, §2 method-scrutiny).
+- **Two prior "in-bib-not-filed" items resolved:** `@frankel_graduation_2013`
+  (`R64M3ZMY`) and `@ilzetzki_how_2013` (`XWMP6F75`) are now filed and tagged; their
+  `lit_base.qmd` status flipped file ✓ / tag ✓.
+
+**Flags for the human (source-side):**
+
+- **Junk, still untagged:** `BBEM65RQ` ("gPT AS A MEASUREMENT TOOL - Google Search") —
+  carried over from last pass; still needs deletion at the Zotero source.
+- **Pin-risk cleared for Ramey & Zubairy:** the user fixed `ramey_government_nodate` →
+  `ramey_government_2018` (pinned) before this run, so it no longer carries the
+  silent-rename risk. Other `_nodate` keys remain on the pin list (`das_mapping_nodate`,
+  `fritsch_high-frequency_nodate`, `aruoba_identifying_nodate`, `latifi_fiscal_nodate`,
+  `romer_trouble_nodate`, `jorda_local_nodate`).
+- **No duplicates detected** in the current collection (the earlier Kaminsky dup
+  `QJWG8RSN` is no longer present — likely merged at source).
+
+**Reconciliation.** All 15 new keys resolve in `references.bib`; no dangling
+`@`-citations across `docs/*.qmd`/`*.md` (the lone `embedding_gemma_2025` mention is
+prose inside the prior log entry, not a citation).
+
+**Remaining gaps (deferred per user — leave noted in `lit_review.qmd`, not blocking):**
+§4 (Dell 2024, Ziems et al. 2024, Törnberg 2024, BIS LLM primer); §5 (a dedicated
+contamination/memorization cite; a multilingual/low-resource-NLP eval cite); §7 (IMF
+Tax Policy Reform Database, Dabla-Norris & Lima, statutory-rate panels).
+
+**Next:** run `/lit-digest` on the new `consultation: pending` entries (esp. the three
+§6 read-deep sources); then `/lit-synthesize` to fold the now-filled §4/§5/§6 cites
+into `lit_review.qmd` and retire its `PENDING ACQUISITION` markers.
+
 ## 2026-06-24: Bulk intake + reconciliation of the 48-item `_Fiscal Shocks` library (all sections)
 
 First run of the intake loop (`docs/lit_review_workflow.md`) against the existing
