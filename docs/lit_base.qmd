@@ -29,9 +29,10 @@ status <- tibble::tribble(
   "frankel_graduation_2013",  "§1", "cite-only",   "yes", "yes", "pending",
   "ilzetzki_how_2013",        "§1", "cite-only",   "yes", "yes", "pending",
   "acosta_ormaechea_tax_2012","§1", "cite-only",   "yes", "yes", "pending",
-  "Kaminsky-Reinhart-Végh",   "§1", "cite-only",   "yes", "yes", "pending",
-  "R&R Fiscal Space",         "§1", "cite-only",   "yes", "yes", "pending",
-  "R&R New Evidence",         "§1", "cite-only",   "yes", "yes", "pending",
+  "crispolti_cross-country_2022","§1","cite-only", "yes", "yes", "pending",
+  "kaminsky_when_2004",       "§1", "cite-only",   "yes", "yes", "pending",
+  "romer_fiscal_2019",        "§1", "cite-only",   "yes", "yes", "pending",
+  "romer_new_2017",           "§1", "cite-only",   "yes", "yes", "pending",
   "angrist_credibility_2010", "§1", "cite-only",   "yes", "yes", "pending",
   "romer_trouble_nodate",     "§1", "cite-only",   "yes", "yes", "pending",
   "burke_global_2015",        "§1", "exemplar",    "yes", "yes", "pending",
@@ -48,23 +49,24 @@ status <- tibble::tribble(
   "kim_understanding_2015",   "§2", "cite-only",   "yes", "yes", "pending",
   "hebous_revisiting_2018",   "§2", "cite-only",   "yes", "yes", "pending",
   # --- s3 effects ---
-  "Blanchard-Perotti",        "§3", "cite-only",   "yes", "yes", "pending",
-  "Auerbach-Gorodnichenko",   "§3", "cite-only",   "yes", "yes", "pending",
-  "Gechert",                  "§3", "cite-only",   "yes", "yes", "pending",
-  "Riera-Crichton et al.",    "§3", "cite-only",   "yes", "yes", "pending",
-  "Ramey 2019",               "§3", "cite-only",   "yes", "yes", "pending",
+  "blanchard_empirical_nodate","§3","cite-only",   "yes", "yes", "pending",
+  "auerbach_measuring_2012",  "§3", "cite-only",   "yes", "yes", "pending",
+  "gechert_what_2015",        "§3", "cite-only",   "yes", "yes", "pending",
+  "riera-crichton_tax_2016",  "§3", "cite-only",   "yes", "yes", "pending",
+  "ramey_ten_2019",           "§3", "cite-only",   "yes", "yes", "pending",
   "ramey_macroeconomic_2016", "§3", "cite-only",   "yes", "yes", "pending",
   "ramey_identifying_2011",   "§3", "cite-only",   "yes", "yes", "pending",
   "jorda_estimation_2005",    "§3", "cite-only",   "yes", "yes", "pending",
   "jorda_local_nodate",       "§3", "cite-only",   "yes", "yes", "pending",
   "dube",                     "§3", "cite-only",   "yes", "yes", "pending",
   "ramey_government_2018",    "§3", "cite-only",   "yes", "yes", "pending",
+  "dabla-norris_macroeconomic_2023","§3","cite-only","yes","yes","pending",
   # --- s4 llm text-as-data ---
   "das_mapping_nodate",       "§4", "competitor",  "yes", "yes", "pending",
   "bhasin_identifying_2026",  "§4", "competitor",  "yes", "yes", "pending",
   "fritsch_high-frequency_nodate","§4","competitor","yes","yes", "pending",
   "aruoba_identifying_nodate","§4", "exemplar",    "yes", "yes", "pending",
-  "Fernandez-Fuertes 2025",   "§4", "exemplar",    "yes", "yes", "pending",
+  "fernandez-fuertes_monetary_2025","§4","exemplar","yes","yes","pending",
   "torreblanca_credibility_2025","§4","exemplar",  "yes", "yes", "pending",
   "gentzkow_text_2019",       "§4", "cite-only",   "yes", "yes", "pending",
   "korinek_ai_2025",          "§4", "cite-only",   "yes", "yes", "pending",
@@ -72,6 +74,11 @@ status <- tibble::tribble(
   "ash_text_2023",            "§4", "cite-only",   "yes", "yes", "pending",
   "grimmer_text_2022",        "§4", "cite-only",   "yes", "yes", "pending",
   "gilardi_chatgpt_2023",     "§4", "cite-only",   "yes", "yes", "pending",
+  "dell_deep_2025",           "§4", "cite-only",   "yes", "yes", "pending",
+  "ziems_can_2024",           "§4", "cite-only",   "yes", "yes", "pending",
+  "tornberg_large_2025",      "§4", "cite-only",   "yes", "yes", "pending",
+  "gambacorta_cb-lms_2024",   "§4", "cite-only",   "yes", "yes", "pending",
+  "araujo_artificial_2024",   "§4", "cite-only",   "yes", "yes", "pending",
   # --- s5 validation ---
   "halterman2025",            "§5", "read-deep",   "yes", "yes", "full",
   "asirvatham_gpt_2026",      "§5", "read-deep",   "yes", "yes", "full",
@@ -81,6 +88,12 @@ status <- tibble::tribble(
   "fellegi_theory_1969",      "§5", "cite-only",   "yes", "yes", "pending",
   "abramitzky_automated_2021","§5", "cite-only",   "yes", "yes", "pending",
   "binette_almost_2022",      "§5", "cite-only",   "yes", "yes", "pending",
+  "carlini_quantifying_2022", "§5", "read-deep",   "yes", "yes", "pending",
+  "golchin_time_2024",        "§5", "cite-only",   "yes", "yes", "pending",
+  "deng_unveiling_2024",      "§5", "cite-only",   "yes", "yes", "pending",
+  "ahuja_mega_2023",          "§5", "cite-only",   "yes", "yes", "pending",
+  "singh_indicgenbench_2024", "§5", "cite-only",   "yes", "yes", "pending",
+  "xuan_mmlu-prox_2025",      "§5", "cite-only",   "yes", "yes", "pending",
   # --- s6 generated-regressor ---
   "ludwig_large_2025",        "§6", "read-deep",   "yes", "yes", "full",
   "battaglia_inference_2024", "§6", "read-deep",   "yes", "yes", "pending",
@@ -88,8 +101,8 @@ status <- tibble::tribble(
   "egami_using_2023",         "§6", "read-deep",   "yes", "yes", "pending",
   # --- s7 datasets ---
   "pescatori_new_2011",       "§7", "benchmark",   "yes", "yes", "pending",
-  "Adler et al. 2024",        "§7", "benchmark",   "yes", "yes", "pending",
-  "Guajardo-Leigh-Pescatori", "§7", "benchmark",   "yes", "yes", "pending",
+  "adler_updated_2024",       "§7", "benchmark",   "yes", "yes", "pending",
+  "guajardo_expansionary_2014","§7","benchmark",   "yes", "yes", "pending",
   "romer_replication_2019",   "§7", "benchmark",   "yes", "yes", "pending"
 )
 
@@ -136,16 +149,16 @@ tt(status)
 
 ## Kaminsky, Reinhart & Végh 2004 — When It Rains, It Pours {#sec-kaminsky_when_2004}
 
-**Citekey** _pending re-export_ · Zotero `C375EN8P` (duplicate `QJWG8RSN`, tagged `duplicate-review`) · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Citekey** `@kaminsky_when_2004` · Zotero `C375EN8P` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
 **Role** cite-only
 
 **Summary.** Origin of the "when it rains, it pours" procyclicality stylized fact for emerging-market capital flows and macro policy.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the named puzzle our flagship decomposes. Action: merge the duplicate at the Zotero source; add to next bib export.
+**Relation.** *Pending `/lit-digest`.* Seed: the named puzzle our flagship decomposes. Note: the former duplicate `QJWG8RSN` no longer appears in the collection (likely merged at source); citekey now resolves in the re-exported bib.
 
 ## Romer & Romer 2019 — Fiscal Space and the Aftermath of Financial Crises {#sec-rr_fiscal_space}
 
-**Citekey** _pending re-export_ · Zotero `5JBXFRX9` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Citekey** `@romer_fiscal_2019` · Zotero `5JBXFRX9` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
 **Role** cite-only
 
 **Summary.** Fiscal-space framing for the severity of post-crisis downturns.
@@ -154,7 +167,7 @@ tt(status)
 
 ## Romer & Romer 2017 — New Evidence on the Aftermath of Financial Crises {#sec-rr_new_evidence}
 
-**Citekey** _pending re-export_ · Zotero `HYNHB8X3` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Citekey** `@romer_new_2017` · Zotero `HYNHB8X3` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
 **Role** cite-only
 
 **Summary.** Empirical evidence on output costs of financial crises in advanced economies.
@@ -205,6 +218,15 @@ tt(status)
 **Summary.** IMF cross-country panel linking tax composition (income vs. consumption/property) to long-run growth.
 
 **Relation.** *Pending `/lit-digest`.* Seed: the canonical "tax composition and growth" anchor the motivation needs — comparable cross-country shock series are both scarce and valuable. Fills the §1 PENDING ACQUISITION slot in `lit_review.qmd`. Links: [[#sec-vegh_how_2015]].
+
+## Crispolti, Amaglobeli & Sheng 2022 — Cross-Country Evidence on the Revenue Impact of Tax Reforms {#sec-crispolti_cross-country_2022}
+
+**Citekey** `@crispolti_cross-country_2022` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** IMF cross-country study estimating the revenue impact of discretionary tax-policy reforms, built on a tax-reform action dataset.
+
+**Relation.** *Pending `/lit-digest`.* Seed: cross-country tax-reform/revenue evidence motivating why comparable exogenous tax measures matter. **Dual-fit:** filed §1 (motivation) but defensibly §7 (adjacent to the IMF Tax Policy Reform Database / statutory-rate panels) — revisit at synthesis. Links: [[#sec-acosta_ormaechea_tax_2012]], [[#sec-dabla-norris_macroeconomic_2023]].
 
 # §2 Narrative identification (pillar)
 
@@ -302,48 +324,48 @@ tt(status)
 
 ## Blanchard & Perotti 2002 — Dynamic Effects of Spending and Taxes on Output {#sec-blanchard_perotti}
 
-**Citekey** _pending re-export_ · Zotero `XDDZP426` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Citekey** `@blanchard_empirical_nodate` · Zotero `XDDZP426` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
 **Role** cite-only
 
 **Summary.** The SVAR baseline for identifying fiscal shocks via institutional-timing assumptions.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the SVAR tradition our narrative approach is an alternative to. Add to next bib export.
+**Relation.** *Pending `/lit-digest`.* Seed: the SVAR tradition our narrative approach is an alternative to. Citekey now resolves in the re-exported bib.
 
 ## Auerbach & Gorodnichenko 2012 — Measuring the Output Responses to Fiscal Policy {#sec-auerbach_gorodnichenko}
 
-**Citekey** _pending re-export_ · Zotero `RKVTWKCU` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Citekey** `@auerbach_measuring_2012` · Zotero `RKVTWKCU` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
 **Role** cite-only
 
 **Summary.** State-dependent fiscal multipliers — larger in recessions than expansions.
 
-**Relation.** *Pending `/lit-digest`.* Seed: motivates state-dependence as a (de-prioritized) downstream question. Add to next bib export.
+**Relation.** *Pending `/lit-digest`.* Seed: motivates state-dependence as a (de-prioritized) downstream question. Citekey now resolves in the re-exported bib.
 
 ## Gechert 2015 — What Fiscal Policy Is Most Effective? A Meta-Regression {#sec-gechert}
 
-**Citekey** _pending re-export_ · Zotero `PN2C6PIY` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Citekey** `@gechert_what_2015` · Zotero `PN2C6PIY` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
 **Role** cite-only
 
 **Summary.** Meta-regression synthesizing multiplier estimates across the literature.
 
-**Relation.** *Pending `/lit-digest`.* Seed: reference point for plausible multiplier magnitudes. Add to next bib export.
+**Relation.** *Pending `/lit-digest`.* Seed: reference point for plausible multiplier magnitudes. Citekey now resolves in the re-exported bib.
 
 ## Riera-Crichton, Végh & Vuletin 2016 — Tax Multipliers: Pitfalls in Measurement {#sec-riera_crichton}
 
-**Citekey** _pending re-export_ · Zotero `TNSX9KDL` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Citekey** `@riera-crichton_tax_2016` · Zotero `TNSX9KDL` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
 **Role** cite-only
 
 **Summary.** Catalogues measurement and identification pitfalls specific to tax multipliers.
 
-**Relation.** *Pending `/lit-digest`.* Seed: warns of the exact errors our magnitude/exogeneity outputs must avoid. Add to next bib export.
+**Relation.** *Pending `/lit-digest`.* Seed: warns of the exact errors our magnitude/exogeneity outputs must avoid. Citekey now resolves in the re-exported bib.
 
 ## Ramey 2019 — Ten Years after the Financial Crisis: Renaissance in Fiscal Research {#sec-ramey_2019}
 
-**Citekey** _pending re-export_ · Zotero `SYE7PVL2` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Citekey** `@ramey_ten_2019` · Zotero `SYE7PVL2` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
 **Role** cite-only
 
 **Summary.** Survey of the post-crisis fiscal-multiplier literature.
 
-**Relation.** *Pending `/lit-digest`.* Seed: situates demand for credible shock series. Add to next bib export.
+**Relation.** *Pending `/lit-digest`.* Seed: situates demand for credible shock series. Citekey now resolves in the re-exported bib.
 
 ## Ramey 2016 — Macroeconomic Shocks and Their Propagation {#sec-ramey_macroeconomic_2016}
 
@@ -397,7 +419,16 @@ tt(status)
 
 **Summary.** Estimates state-dependent government-spending multipliers from US historical data using local projections, finding little evidence multipliers are larger in slack.
 
-**Relation.** *Pending `/lit-digest`.* Seed: strengthens the state-dependence point in §3 and pairs the LP toolkit with a fiscal application — fills the §3 PENDING ACQUISITION slot in `lit_review.qmd`. Links: [[#sec-jorda_estimation_2005]].
+**Relation.** *Pending `/lit-digest`.* Seed: strengthens the state-dependence point in §3 and pairs the LP toolkit with a fiscal application — fills the §3 PENDING ACQUISITION slot in `lit_review.qmd`. Note: two Zotero copies exist — the PDF copy `WRUHDRNP` (tagged, `duplicate-review`) and a no-PDF copy `46AXGD36`; merge at source keeping the PDF copy (citekey `ramey_government_2018` unaffected). Links: [[#sec-jorda_estimation_2005]].
+
+## Dabla-Norris & Lima 2023 — Macroeconomic Effects of Tax Rate and Base Changes {#sec-dabla-norris_macroeconomic_2023}
+
+**Citekey** `@dabla-norris_macroeconomic_2023` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** Estimates the macroeconomic effects of discretionary tax changes, separating tax-rate from tax-base reforms, using evidence drawn from action-based fiscal-consolidation episodes.
+
+**Relation.** *Pending `/lit-digest`.* Seed: an effects-of-tax-changes study whose rate-vs-base decomposition speaks to our magnitude/composition schema. **Dual-fit:** filed §3 (effects) but defensibly §7 (built on the action-based consolidation dataset lineage) — revisit at synthesis. Links: [[#sec-mertens2013]], [[#sec-crispolti_cross-country_2022]], [[#sec-pescatori_new_2011]].
 
 # §4 LLMs as measurement tools
 
@@ -439,12 +470,12 @@ tt(status)
 
 ## Fernandez-Fuertes 2025 — Monetary Policy Shocks: LLMs and Central-Bank Communication {#sec-fernandez_fuertes}
 
-**Citekey** _pending re-export_ · Zotero `QBBU9ZQ2` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Citekey** `@fernandez-fuertes_monetary_2025` · Zotero `QBBU9ZQ2` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
 **Role** exemplar-other-domain
 
 **Summary.** LLM analysis of central-bank communication to identify monetary-policy shocks.
 
-**Relation.** *Pending `/lit-digest`.* Seed: an LLM-as-measurement deployment outside fiscal policy. Add to next bib export.
+**Relation.** *Pending `/lit-digest`.* Seed: an LLM-as-measurement deployment outside fiscal policy. Citekey now resolves in the re-exported bib.
 
 ## Torreblanca et al. 2025 — The Credibility Revolution in Political Science {#sec-torreblanca_credibility_2025}
 
@@ -508,6 +539,51 @@ tt(status)
 **Summary.** Shows zero-shot ChatGPT exceeds crowd workers (and approaches experts) on several text-annotation tasks in political science.
 
 **Relation.** *Pending `/lit-digest`.* Seed: the LLM-annotation-validity anchor for §4 — the social-science precedent that LLMs can stand in for human coders, which our expert-agreement gates both rely on and stress-test. Links: [[#sec-halterman2025]].
+
+## Ziems et al. 2024 — Can Large Language Models Transform Computational Social Science? {#sec-ziems_can_2024}
+
+**Citekey** `@ziems_can_2024` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Benchmarks zero-shot LLMs across a suite of computational-social-science annotation tasks, mapping where they can and cannot substitute for human coders.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the capabilities-and-limits survey that bounds the LLM-as-annotator claim our pipeline rests on. Links: [[#sec-gilardi_chatgpt_2023]], [[#sec-tornberg_large_2025]].
+
+## Törnberg 2025 — LLMs Outperform Expert Coders and Supervised Classifiers at Annotating Political Social Media {#sec-tornberg_large_2025}
+
+**Citekey** `@tornberg_large_2025` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Finds zero-shot LLMs exceed both trained expert coders and supervised classifiers at annotating political social-media messages.
+
+**Relation.** *Pending `/lit-digest`.* Seed: a strong-form LLM-annotation-validity cite reinforcing [[#sec-gilardi_chatgpt_2023]]; the precedent our expert-agreement gates lean on. Links: [[#sec-ziems_can_2024]].
+
+## Dell 2025 — Deep Learning for Economists {#sec-dell_deep_2025}
+
+**Citekey** `@dell_deep_2025` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Survey of deep-learning and LLM methods for economists, covering text-as-data measurement, embeddings, and structured extraction.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the LLM-for-economists meta layer situating our tooling in the discipline's methods canon. Links: [[#sec-korinek_ai_2025]], [[#sec-gentzkow_text_2019]].
+
+## Gambacorta et al. 2024 — CB-LMs: Language Models for Central Banking {#sec-gambacorta_cb-lms_2024}
+
+**Citekey** `@gambacorta_cb-lms_2024` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Introduces encoder-only language models retrained on a central-bank corpus (speeches, policy documents, research), outperforming foundational models on central-bank idiom tasks.
+
+**Relation.** *Pending `/lit-digest`.* Seed: a domain-specialized-LM exemplar for applying LLMs to government/policy economic text. Links: [[#sec-araujo_artificial_2024]].
+
+## Araujo et al. 2024 — Artificial Intelligence in Central Banking {#sec-araujo_artificial_2024}
+
+**Citekey** `@araujo_artificial_2024` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** BIS overview of AI/LLM adoption across central-bank functions, including text analysis of policy and economic documents.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the BIS LLM-primer the plan names for §4; situates LLM economic-text analysis institutionally. Links: [[#sec-gambacorta_cb-lms_2024]].
 
 # §5 Validation (pillar)
 
@@ -583,6 +659,60 @@ tt(status)
 
 **Relation.** *Pending `/lit-digest`.* Seed: the state-of-the-art ER framing for C0 — blocking + clustering vocabulary maps onto our year-blocked and canonical-clustering methods. Links: [[#sec-fellegi_theory_1969]], [[#sec-abramitzky_automated_2021]].
 
+## Carlini et al. 2022 — Quantifying Memorization Across Neural Language Models {#sec-carlini_quantifying_2022}
+
+**Citekey** `@carlini_quantifying_2022` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** read-deep
+
+**Summary.** Measures how verbatim training-data memorization scales with model size, example duplication, and prompt context — establishing that larger LLMs reproduce more of their pretraining corpus.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the mechanistic backing for our H&K **S1 memorization test** — the threat that an LLM "recognizes" a historical US fiscal act from pretraining rather than reading the supplied chunk. Pillar deep-read; distill the memorization mechanics into `docs/codebook_sources.md`. Links: [[#sec-golchin_time_2024]], [[#sec-deng_unveiling_2024]], [[#sec-halterman2025]].
+
+## Golchin & Surdeanu 2024 — Time Travel in LLMs: Tracing Data Contamination {#sec-golchin_time_2024}
+
+**Citekey** `@golchin_time_2024` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** cite-only
+
+**Summary.** Proposes prompt-based methods to detect whether specific datasets leaked into an LLM's pretraining data.
+
+**Relation.** *Pending `/lit-digest`.* Seed: a contamination-detection technique relevant to certifying our US historical corpus is read, not recalled. Links: [[#sec-carlini_quantifying_2022]], [[#sec-deng_unveiling_2024]].
+
+## Deng et al. 2024 — Unveiling the Spectrum of Data Contamination: A Survey {#sec-deng_unveiling_2024}
+
+**Citekey** `@deng_unveiling_2024` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** cite-only
+
+**Summary.** Survey of data-contamination detection and remediation methods across the LLM evaluation literature.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the survey anchor for the contamination/memorization risk our S1 test guards against. Links: [[#sec-carlini_quantifying_2022]], [[#sec-golchin_time_2024]].
+
+## Ahuja et al. 2023 — MEGA: Multilingual Evaluation of Generative AI {#sec-ahuja_mega_2023}
+
+**Citekey** `@ahuja_mega_2023` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** cite-only
+
+**Summary.** Benchmarks generative LLMs across many languages and tasks, documenting systematic degradation on lower-resource languages relative to English.
+
+**Relation.** *Pending `/lit-digest`.* Seed: evidence of the cross-lingual performance gap our EN/BM (and SEA-extension) stress test must measure. Links: [[#sec-singh_indicgenbench_2024]], [[#sec-xuan_mmlu-prox_2025]], [[#sec-rathje_gpt_2024]].
+
+## Singh et al. 2024 — IndicGenBench: Multilingual Benchmark for LLM Generation {#sec-singh_indicgenbench_2024}
+
+**Citekey** `@singh_indicgenbench_2024` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** cite-only
+
+**Summary.** A large multi-way parallel benchmark across 29 Indic languages, finding persistent gaps versus English even for the strongest models.
+
+**Relation.** *Pending `/lit-digest`.* Seed: a low-resource-language evaluation precedent directly analogous to the Bahasa Malaysia leg of our cross-language test. Links: [[#sec-ahuja_mega_2023]], [[#sec-xuan_mmlu-prox_2025]].
+
+## Xuan et al. 2025 — MMLU-ProX: A Multilingual Benchmark for Advanced LLM Evaluation {#sec-xuan_mmlu-prox_2025}
+
+**Citekey** `@xuan_mmlu-prox_2025` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** cite-only
+
+**Summary.** A 29-language parallel benchmark (identical questions per language) showing marked accuracy declines in low-resource languages.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the parallel-question design is the methodological template for a like-for-like EN/BM comparison; reinforces the cross-lingual-risk evidence base. Links: [[#sec-ahuja_mega_2023]], [[#sec-singh_indicgenbench_2024]].
+
 # §6 Generated-regressor inference (pillar)
 
 ## Ludwig, Mullainathan & Rambachan 2025 — LLMs: An Applied Econometric Framework {#sec-ludwig_large_2025}
@@ -634,21 +764,21 @@ tt(status)
 
 ## Adler et al. 2024 — An Updated Action-Based Dataset of Fiscal Consolidation {#sec-adler_2024}
 
-**Citekey** _pending re-export_ · Zotero `7ZQA6BJ3` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Citekey** `@adler_updated_2024` · Zotero `7ZQA6BJ3` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
 **Role** benchmark
 
 **Summary.** Updated action-based consolidation dataset for OECD economies.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the OECD benchmark Das and Bhasin validate against. Add to next bib export. Links: [[#sec-guajardo_leigh_pescatori]].
+**Relation.** *Pending `/lit-digest`.* Seed: the OECD benchmark Das and Bhasin validate against. Citekey now resolves in the re-exported bib. Links: [[#sec-guajardo_leigh_pescatori]].
 
 ## Guajardo, Leigh & Pescatori 2014 — Expansionary Austerity? International Evidence {#sec-guajardo_leigh_pescatori}
 
-**Citekey** _pending re-export_ · Zotero `MFGJ6A8H` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Citekey** `@guajardo_expansionary_2014` · Zotero `MFGJ6A8H` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
 **Role** benchmark
 
 **Summary.** Action-based narrative fiscal-consolidation dataset and its output effects.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the narrative-comparator class for our output landscape. Add to next bib export. Links: [[#sec-adler_2024]].
+**Relation.** *Pending `/lit-digest`.* Seed: the narrative-comparator class for our output landscape. Citekey now resolves in the re-exported bib. Links: [[#sec-adler_2024]].
 
 ## Romer & Romer 2019 — Replication Data for the 2010 Tax-Shock Measure {#sec-romer_replication_2019}
 

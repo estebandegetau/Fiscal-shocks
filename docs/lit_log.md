@@ -20,6 +20,68 @@ credibility tracks involvement).
 
 ---
 
+## 2026-06-24: Intake of 14 new arrivals — §5 contamination + cross-lingual cores, §4 meta layer (all sections)
+
+Third intake-loop run against `_Fiscal Shocks` (now 75 items). **Decision:** tag the 14
+items missing section/role tags, write their `lit_base.qmd` status stubs at
+`consultation: pending`, and reconcile. Tags applied by Claude via the Zotero MCP on
+user confirmation; all 14 citekeys resolve in `references.bib`.
+
+**Outcome.** 14 items tagged (one section + one role each). This run builds out the two
+newest §5 sub-bullets and the §4 meta layer:
+
+- **§5 contamination/memorization core (backs the H&K S1 test).** Carlini et al. 2022
+  (`@carlini_quantifying_2022`, `read-deep` — upgraded from the proposed `cite-only` per
+  user: memorization mechanics warrant distillation into `codebook_sources.md`), Golchin &
+  Surdeanu 2024 (`@golchin_time_2024`), Deng et al. 2024 (`@deng_unveiling_2024`) →
+  `s5-validation`. These give the S1 memorization test a literature spine.
+- **§5 cross-lingual / low-resource core (backs the EN/BM stress test).** Ahuja et al. 2023
+  (`@ahuja_mega_2023`, MEGA), Singh et al. 2024 (`@singh_indicgenbench_2024`, IndicGenBench),
+  Xuan et al. 2025 (`@xuan_mmlu-prox_2025`, MMLU-ProX) → `s5-validation` + `cite-only`. The
+  parallel-question benchmark design (MMLU-ProX) is the template for a like-for-like EN/BM
+  comparison.
+- **§4 LLM-for-economists + annotation + central-bank meta layer.** Dell 2025
+  (`@dell_deep_2025`), Ziems et al. 2024 (`@ziems_can_2024`), Törnberg 2025
+  (`@tornberg_large_2025`), Gambacorta et al. 2024 (`@gambacorta_cb-lms_2024`, CB-LMs),
+  Araujo et al. 2024 (`@araujo_artificial_2024`, the BIS LLM primer) → `s4-llm-text` +
+  `cite-only`. §4 now covers the meta/annotation/central-bank slots the plan named.
+- **§1/§3 dual-fit tax-policy cites.** Crispolti et al. 2022 (`@crispolti_cross-country_2022`)
+  filed §1 motivation but flagged defensibly §7; Dabla-Norris & Lima 2023
+  (`@dabla-norris_macroeconomic_2023`) filed §3 effects but flagged defensibly §7. Both
+  marked **dual-fit** in `lit_base.qmd` to revisit at synthesis.
+
+**Reconciliation finding (the headline of this run).** The human's bib re-export means **11
+prior `lit_base.qmd` "pending re-export" placeholders now resolve to real citekeys.** Updated
+both the status table and the entry citekey lines from descriptive labels / `_pending
+re-export_` to the resolved `@key`: `@kaminsky_when_2004`, `@romer_fiscal_2019`,
+`@romer_new_2017`, `@blanchard_empirical_nodate`, `@auerbach_measuring_2012`,
+`@gechert_what_2015`, `@riera-crichton_tax_2016`, `@ramey_ten_2019`,
+`@fernandez-fuertes_monetary_2025`, `@adler_updated_2024`, `@guajardo_expansionary_2014`.
+Each verified by Zotero-key + author/year/title against the bib. No live dangling citations
+(`embedding_gemma_2025` appears only in a prior log note, not as a citation).
+
+**Flags for the human (source-side):**
+
+- **Duplicate (Ramey & Zubairy 2018).** Two Zotero copies: the PDF copy `WRUHDRNP` (now
+  tagged `s3-effects` / `cite-only` / `duplicate-review`) and a no-PDF copy `46AXGD36` (also
+  tagged). **Merge at source keeping the PDF copy**; citekey `@ramey_government_2018`
+  unaffected.
+- **Junk in bib.** `noauthor_gpt_nodate` ("gPT AS A MEASUREMENT TOOL — Google Search" HTML
+  capture) is in `references.bib` but not in the collection — delete at the Zotero source and
+  re-export.
+- **Kaminsky duplicate cleared.** The former `QJWG8RSN` duplicate no longer appears in the
+  collection (merged at source); `lit_base.qmd` note updated.
+
+**Acquisition shopping list (remaining gaps — minor).**
+
+- **§2** Hayo & Uhl (Germany, Bundestag textual analysis) — plan-listed; we currently hold
+  Latifi/Tillmann as alternates.
+- **§7** the Giavazzi (expansionary-austerity) extension named in the plan.
+
+**Next steps.** Human re-exports `references.bib` (to drop the junk entry and pick up the
+merged Ramey copy); then run `/lit-digest` to read the new `pending` entries — priority the
+`read-deep` Carlini memorization paper for the S1-test distillation.
+
 ## 2026-06-24: Intake of 15 new arrivals — §6 pillar de-risked, §5/§4 cores filled (all sections)
 
 Second intake-loop run against `_Fiscal Shocks` (now 62 items). **Decision:** tag the
