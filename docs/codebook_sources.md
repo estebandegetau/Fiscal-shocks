@@ -685,3 +685,45 @@ Documents → C1 (Measure ID) → C2 (Motivation) → C3 (Timing) + C4 (Magnitud
 | C3 | ±1 Quarter | ≥95% |
 | C4 | MAPE | <30% |
 | C4 | Sign Accuracy | ≥95% |
+
+## Section 5: Downstream Inference & Validation Robustness
+
+*Added 2026-06-24 (literature-review intake). Distilled from two `read-deep` sources that extend, rather than duplicate, Sections 1–3: `@ludwig_large_2025` (the §6 generated-regressor pillar) and `@asirvatham_gpt_2026` (the §5 validation pillar). Brief notes on two §2 country/method-scrutiny extensions (`@cloyne_discretionary_2013`, `@mertens_reconciliation_2014`) close the section. Implementation reference only — review prose lives in `docs/lit_review.qmd`.*
+
+### 5.1 Ludwig, Mullainathan & Rambachan (2025) — the estimation/prediction split
+
+The single most consequential framing for how our outputs may be *used*. They treat the LLM as a black box and split empirical uses into two problems with different validity requirements:
+
+- **Prediction problem** (forecast an outcome from text): valid iff **no training leakage** between the LLM's training data and the researcher's sample.
+- **Estimation/measurement problem** (automate measurement of a concept that then feeds a downstream parameter): valid downstream inference requires **combining LLM outputs with a small labeled validation sample**.
+
+**Our pipeline is squarely the estimation case.** LLM-classified fiscal shocks ($\hat{V}_r$) become regressors in VARs / local projections, so the binding requirement is a validation sample, not behavioral-test accuracy.
+
+**Key results to honor:**
+
+1. **Accuracy is not validity (Lemma 3).** Even a uniformly $\delta$-accurate model can yield estimation error $\geq G\cdot\sum|\delta(r)|\cdot q_{D_r}$, because LLM errors can correlate with economic variables. Plug-in validity holds across all contexts *iff* measurement error is exactly zero (Prop. 2). High S1–S3 accuracy does **not** license raw plug-in use downstream.
+2. **The dangerous error is correlated error.** Plug-in bias $\beta = \beta^* + \lambda_{\Delta|W}$, where $\lambda_{\Delta|W}$ is the regression of the LLM error $\Delta_r = \hat{V}_r - V_r$ on covariates $W_r$. For us the dangerous $W$ is the business cycle — the exact axis exogeneity hinges on. We must show mislabeling is uncorrelated with the cycle.
+3. **Debias against a random validation sample (Eq. 14).** $\hat\beta_{debiased} = \hat\beta + \hat\lambda_{\Delta|W}$: regress $\hat{V}_r$ on $W_r$ in the primary sample, regress $\Delta_r$ on $W_r$ in the validation sample, subtract; bootstrap both for inference. Properly done, "LLM outputs amplify rather than replace existing measurements" and can give *tighter* SEs than the validation sample alone (precision-gain condition Eq. 16). Simulations: validation samples of **125–250 items** already help materially.
+4. **Specification-search risk.** Without debiasing, "seemingly innocuous choices — which LLM, which prompt — lead to dramatically different parameter estimates" (varying in magnitude, sign, significance). Lock the estimand to expert R&R labels $f^*$, not to "what Sonnet outputs." Directly implicates our Haiku→Sonnet C0 swap and any codebook iteration as downstream-inference risks unless debiasing absorbs them.
+5. **Leakage enforcement is design, not prompting.** "Ignore information after date $\tau$" prompts failed empirically and sometimes *worsened* leakage. They advise against closed models (Anthropic/OpenAI) for the prediction case because training data is undisclosed. For the *measurement* case, leakage is mechanically zero under random sampling or full-population coverage — so our dominant US threat is measurement error (fix: validation sample), with contamination a separate concern for the prediction-framed contamination probe.
+
+**Project implication:** the Malaysia corpus (20–40 acts) cannot supply 125–250 random expert labels, so the honest options are fraction-of-corpus validation, pooled-regional validation, or scope-limiting the inferential multiplier claim. This is an open design decision flagged in `brainstorm.qmd`, not a solved problem.
+
+### 5.2 Asirvatham, Mokski & Shleifer (2026) — validating GPT-as-measurement (GABRIEL)
+
+Closest external template for "is the LLM output good enough to be a measurement," built on two pillars — **accuracy** (agreement with benchmarks) and **directness** (the measurement comes from the text, not from a proxy). Validates OpenAI GPT models; the *framing* transfers to Claude, the exact correlations do not.
+
+**Borrowable methods:**
+
+1. **Contamination via staggered cutoffs.** Date each dataset by first-posting date; compare a model's accuracy on pre- vs. post-training-cutoff data. They find "no statistically significant difference in mean accuracy before versus after" cutoffs — no contamination *use*, even where memorization is possible. **Hard for us:** US fiscal documents (1945–2022) and the R&R label set are deep in pretraining and we cannot date past a cutoff. Borrow the *directness logic* instead (next point).
+2. **Directness / shortcut-inference test (signal stripping).** Remove the signal (e.g., all environmental content) holding everything else fixed; a direct measure collapses toward zero. They report a **98% reduction** in the stripped attribute while the proxy attribute barely moves. **High-value, low-cost addition for C2:** mask the stated motivation sentences and re-classify exogenous/endogenous — if the call survives, the model is inferring from act name / era / party (a construct-validity failure), not reading the rationale.
+3. **Human-parity, not raw accuracy (MH vs. leave-one-out HH).** Compare model-vs-consensus correlation to human-vs-consensus; "disagreement with human annotations does not necessarily mean GPT error." This is exactly the right frame for our no-ground-truth Phase 2 expert-agreement gates (≥80% / ≥70%): report expert-vs-expert agreement as the ceiling.
+4. **No-cherry-picking benchmark + held-out discipline.** They test against 1000+ tasks (not hand-picked positive cases) and prescribe doing all tuning on a random training subsample with a held-out test set — endorsing our stage-independence (S2/S3 split) convention against the "you tuned on the test set" critique.
+5. **Prompt-robustness with a caveat.** 100 prompt variants and 100 attribute-definition variants give near-identical ratings ("not due to our specific prompt, but a general capability"), but *leading* wording still biases. Supports not over-engineering codebook prose and the deferred re-validations after cosmetic edits (e.g., the C1 `{country}` token) — while warning that exogeneity-criterion phrasing must stay neutral.
+
+**Caution:** their "manual validation often unnecessary" claim is hedged ("similar enough to the broad range of comprehension tasks we demonstrate"). Fiscal-exogeneity classification is narrower and more adversarial than generic comprehension, so our small-N manual S3 audit gate is justified, not redundant.
+
+### 5.3 §2 country / method-scrutiny extensions (abstract-depth)
+
+- **`@cloyne_discretionary_2013` (UK).** Applies the R&R narrative strategy to a new country and finds "remarkably similar" magnitudes (a 1% tax cut raises GDP ~0.6% on impact, ~2.5% over three years). The only non-US tax-narrative precedent — the empirical anchor for our country-transfer claim. Captured from the detailed abstract; no codebook change implied (it validates the R&R operationalization already in Section 1).
+- **`@mertens_reconciliation_2014` (method scrutiny).** Shows pure SVARs cannot recover the tax multiplier without assuming the output-elasticity of revenue, and that narrative proxies used as instruments yield larger multipliers (~2 on impact, up to 3). Reinforces why the narrative record (not a statutory-rate or SVAR series) is the necessary input, and that measurement error in narrative series matters — links directly to §5.1's debiasing argument.

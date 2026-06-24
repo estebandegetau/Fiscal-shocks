@@ -1,0 +1,535 @@
+---
+title: "Literature base"
+date: 2026-06-24
+date-format: long
+toc: true
+toc-depth: 2
+---
+
+```{r}
+#| label: setup
+#| include: false
+pacman::p_load(tinytable, dplyr, here)
+
+here::i_am("docs/lit_base.qmd")
+```
+
+*Role: the annotated bibliography for the methodological paper — one entry per source, recording (i) its status in the library, (ii) a summary of its contents, and (iii) its relation to our project and the rest of the literature. This is the per-source knowledge base that feeds `docs/lit_review.qmd` (synthesis) and is distinct from `docs/lit_log.md` (process decisions). Maintained by the `/lit-intake` (status + stubs), `/lit-digest` (summary + relation), and `/lit-synthesize` (reads from here) skills.*
+
+The `consultation` field is the shared state: `pending` (stub, not yet read), `abstract` (read at abstract depth), or `full` (full-text read and distilled). `/lit-digest` advances it. Citekeys come from `references.bib`; sources in Zotero but not yet exported show "pending re-export" plus their Zotero item key.
+
+```{r}
+#| label: tbl-status
+#| tbl-cap: "Library status by source. File = PDF in Zotero; Tag = section/role tags applied; Consult = consultation depth."
+status <- tibble::tribble(
+  ~Source, ~Sec, ~Role, ~File, ~Tag, ~Consult,
+  # --- s1 motivation ---
+  "vegh_how_2015",            "§1", "cite-only",   "yes", "yes", "pending",
+  "jha_effectiveness_2014",   "§1", "cite-only",   "yes", "yes", "pending",
+  "frankel_graduation_2013",  "§1", "cite-only",   "no",  "no",  "pending",
+  "ilzetzki_how_2013",        "§1", "cite-only",   "no",  "no",  "pending",
+  "Kaminsky-Reinhart-Végh",   "§1", "cite-only",   "yes", "yes", "pending",
+  "R&R Fiscal Space",         "§1", "cite-only",   "yes", "yes", "pending",
+  "R&R New Evidence",         "§1", "cite-only",   "yes", "yes", "pending",
+  "angrist_credibility_2010", "§1", "cite-only",   "yes", "yes", "pending",
+  "romer_trouble_nodate",     "§1", "cite-only",   "yes", "yes", "pending",
+  "burke_global_2015",        "§1", "exemplar",    "yes", "yes", "pending",
+  "hsiang_quantifying_2013",  "§1", "exemplar",    "yes", "yes", "pending",
+  # --- s2 narrative ---
+  "romer2010",                "§2", "read-deep",   "yes", "yes", "full",
+  "romer",                    "§2", "read-deep",   "yes", "yes", "full",
+  "romer_presidential_2023",  "§2", "cite-only",   "yes", "yes", "pending",
+  "mertens2013",              "§2", "read-deep",   "yes", "yes", "abstract",
+  "mertens_reconciliation_2014","§2","read-deep",  "yes", "yes", "abstract",
+  "cloyne_discretionary_2013","§2", "read-deep",   "yes", "yes", "abstract",
+  "tillmann_disagreement_2024","§2","cite-only",   "yes", "yes", "pending",
+  "latifi_fiscal_nodate",     "§2", "cite-only",   "yes", "yes", "pending",
+  "kim_understanding_2015",   "§2", "cite-only",   "yes", "yes", "pending",
+  # --- s3 effects ---
+  "Blanchard-Perotti",        "§3", "cite-only",   "yes", "yes", "pending",
+  "Auerbach-Gorodnichenko",   "§3", "cite-only",   "yes", "yes", "pending",
+  "Gechert",                  "§3", "cite-only",   "yes", "yes", "pending",
+  "Riera-Crichton et al.",    "§3", "cite-only",   "yes", "yes", "pending",
+  "Ramey 2019",               "§3", "cite-only",   "yes", "yes", "pending",
+  "ramey_macroeconomic_2016", "§3", "cite-only",   "yes", "yes", "pending",
+  "ramey_identifying_2011",   "§3", "cite-only",   "yes", "yes", "pending",
+  "jorda_estimation_2005",    "§3", "cite-only",   "yes", "yes", "pending",
+  "jorda_local_nodate",       "§3", "cite-only",   "yes", "yes", "pending",
+  "dube",                     "§3", "cite-only",   "yes", "yes", "pending",
+  # --- s4 llm text-as-data ---
+  "das_mapping_nodate",       "§4", "competitor",  "yes", "yes", "pending",
+  "bhasin_identifying_2026",  "§4", "competitor",  "yes", "yes", "pending",
+  "fritsch_high-frequency_nodate","§4","competitor","yes","yes", "pending",
+  "aruoba_identifying_nodate","§4", "exemplar",    "yes", "yes", "pending",
+  "Fernandez-Fuertes 2025",   "§4", "exemplar",    "yes", "yes", "pending",
+  "torreblanca_credibility_2025","§4","exemplar",  "yes", "yes", "pending",
+  "gentzkow_text_2019",       "§4", "cite-only",   "yes", "yes", "pending",
+  "korinek_ai_2025",          "§4", "cite-only",   "yes", "yes", "pending",
+  "feuerriegel_using_2025",   "§4", "cite-only",   "yes", "yes", "pending",
+  # --- s5 validation ---
+  "halterman2025",            "§5", "read-deep",   "yes", "yes", "full",
+  "asirvatham_gpt_2026",      "§5", "read-deep",   "yes", "yes", "full",
+  "rathje_gpt_2024",          "§5", "exemplar",    "yes", "yes", "pending",
+  "singh_deadly_2026",        "§5", "exemplar",    "yes", "yes", "pending",
+  "zhao_agentic_2026",        "§5", "exemplar",    "yes", "yes", "pending",
+  # --- s6 generated-regressor ---
+  "ludwig_large_2025",        "§6", "read-deep",   "yes", "yes", "full",
+  # --- s7 datasets ---
+  "Adler et al. 2024",        "§7", "benchmark",   "yes", "yes", "pending",
+  "Guajardo-Leigh-Pescatori", "§7", "benchmark",   "yes", "yes", "pending",
+  "romer_replication_2019",   "§7", "benchmark",   "yes", "yes", "pending"
+)
+
+tt(status)
+```
+
+# §1 Motivation
+
+## Vegh & Vuletin 2015 — How Is Tax Policy Conducted over the Business Cycle? {#sec-vegh_how_2015}
+
+**Citekey** `@vegh_how_2015` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** Documents that tax *policy* (statutory rates), not just tax revenue, is procyclical in developing countries and acyclical in industrial ones, using a novel 62-country rate dataset.
+
+**Relation.** *Pending `/lit-digest`.* Seed: names the `@romer2010` narrative classification as the missing input and concedes the procyclical correlation "could just reflect the effect of tax multipliers" — the gap our pipeline fills. Links: [[#sec-romer2010]].
+
+## Jha et al. 2014 — Effectiveness of Countercyclical Fiscal Policy: Developing Asia {#sec-jha_effectiveness_2014}
+
+**Citekey** `@jha_effectiveness_2014` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** Finds tax cuts have larger countercyclical output effects than spending in developing Asia.
+
+**Relation.** *Pending `/lit-digest`.* Seed: concedes ~70% of EM revenue variation is non-discretionary — the endogeneity narrative motivation removes.
+
+## Frankel, Végh & Vuletin 2013 — On Graduation from Fiscal Procyclicality {#sec-frankel_graduation_2013}
+
+**Citekey** `@frankel_graduation_2013` · **Status** file ✗ (in bib, not filed in `_Fiscal Shocks`) · tag pending · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** About a third of developing countries have "graduated" to countercyclical fiscal policy; institutional quality is the key determinant.
+
+**Relation.** *Pending `/lit-digest`.* Seed: supplies the "graduation" angle (does the *effectiveness* of tax policy change as institutions improve?). Action: file into the Zotero collection.
+
+## Ilzetzki, Mendoza & Végh 2013 — How Big (Small?) Are Fiscal Multipliers? {#sec-ilzetzki_how_2013}
+
+**Citekey** `@ilzetzki_how_2013` · **Status** file ✗ (in bib, not filed in `_Fiscal Shocks`) · tag pending · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** Government-spending multipliers depend on country characteristics: near zero under flexible rates, large under fixed, negative at high debt.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the spending result whose tax-side analog is our Candidate-2 flagship. Action: file into the collection; bib entry carries a "verify against Zotero copy" note.
+
+## Kaminsky, Reinhart & Végh 2004 — When It Rains, It Pours {#sec-kaminsky_when_2004}
+
+**Citekey** _pending re-export_ · Zotero `C375EN8P` (duplicate `QJWG8RSN`, tagged `duplicate-review`) · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** Origin of the "when it rains, it pours" procyclicality stylized fact for emerging-market capital flows and macro policy.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the named puzzle our flagship decomposes. Action: merge the duplicate at the Zotero source; add to next bib export.
+
+## Romer & Romer 2019 — Fiscal Space and the Aftermath of Financial Crises {#sec-rr_fiscal_space}
+
+**Citekey** _pending re-export_ · Zotero `5JBXFRX9` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** Fiscal-space framing for the severity of post-crisis downturns.
+
+**Relation.** *Pending `/lit-digest`.* Seed: motivation-side framing; R&R authors, but not the tax-narrative method.
+
+## Romer & Romer 2017 — New Evidence on the Aftermath of Financial Crises {#sec-rr_new_evidence}
+
+**Citekey** _pending re-export_ · Zotero `HYNHB8X3` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** Empirical evidence on output costs of financial crises in advanced economies.
+
+**Relation.** *Pending `/lit-digest`.* Seed: motivation-side framing companion to [[#sec-rr_fiscal_space]].
+
+## Angrist & Pischke 2010 — The Credibility Revolution in Empirical Economics {#sec-angrist_credibility_2010}
+
+**Citekey** `@angrist_credibility_2010` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** The design-based "credibility revolution" in empirical micro.
+
+**Relation.** *Pending `/lit-digest`.* Seed: framing for why credible identification matters; sets up the narrative-identification stakes.
+
+## Romer (Paul) — The Trouble With Macroeconomics {#sec-romer_trouble_nodate}
+
+**Citekey** `@romer_trouble_nodate` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** cite-only
+
+**Summary.** Polemic that macroeconomic identification remains opaque and under-disciplined by fact.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the identification critique our narrative + validation approach answers.
+
+## Burke, Hsiang & Miguel 2015 — Global Non-linear Effect of Temperature on Economic Production {#sec-burke_global_2015}
+
+**Citekey** `@burke_global_2015` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** exemplar-other-domain
+
+**Summary.** Estimates a global temperature–output response; headline is a new comparable cross-country unit.
+
+**Relation.** *Pending `/lit-digest`.* Seed: paper-architecture template ("invent a new common unit"). Imperfect §-fit — filed in §1 as a framing exemplar. Links: [[#sec-hsiang_quantifying_2013]].
+
+## Hsiang, Burke & Miguel 2013 — Quantifying the Influence of Climate on Human Conflict {#sec-hsiang_quantifying_2013}
+
+**Citekey** `@hsiang_quantifying_2013` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Role** exemplar-other-domain
+
+**Summary.** Meta-analysis converging many studies onto a common climate–conflict effect size.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the second Burke-Hsiang architecture template. Links: [[#sec-burke_global_2015]].
+
+# §2 Narrative identification (pillar)
+
+## Romer & Romer 2010 — Macroeconomic Effects of Tax Changes {#sec-romer2010}
+
+**Citekey** `@romer2010` · **Status** file ✓ · tag ✓ · §2 · consultation: full
+**Role** read-deep
+
+**Summary.** The foundational narrative method: read historical documents to identify *why* taxes changed and separate exogenous changes (long-run growth / deficit-reduction motivated) from endogenous ones (responding to current or prospective output). Full implementation detail lives in `docs/codebook_sources.md` §1.
+
+**Relation.** The method we automate — the spine of the whole project. Every codebook (C1–C4) operationalizes a step of it. Links: [[#sec-romer]], [[#sec-cloyne_discretionary_2013]], [[#sec-romer_presidential_2023]].
+
+## Romer & Romer — A Narrative Analysis of Postwar Tax Changes {#sec-romer}
+
+**Citekey** `@romer` · **Status** file ✓ · tag ✓ · §2 · consultation: full
+**Role** read-deep
+
+**Summary.** The companion act-by-act narrative classification underlying `@romer2010`; the source of the 50-act reference index distilled in `docs/codebook_sources.md` §1.6.
+
+**Relation.** Our gold reference for US validation (`us_shocks.csv` lineage). Links: [[#sec-romer2010]].
+
+## Romer & Romer 2023 — Presidential Address: Does Monetary Policy Matter? {#sec-romer_presidential_2023}
+
+**Citekey** `@romer_presidential_2023` · **Status** file ✓ · tag ✓ · §2 · consultation: pending
+**Role** cite-only
+
+**Summary.** States the requirements for rigorous narrative identification (the four-requirements framing), applied to monetary policy.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the narrative-method doctrine; Das et al. adopt its four requirements (see `codebook_sources.md` §2.1).
+
+## Mertens & Ravn 2013 — Dynamic Effects of Personal and Corporate Income Tax Changes {#sec-mertens2013}
+
+**Citekey** `@mertens2013` · **Status** file ✓ · tag ✓ · §2 · consultation: abstract
+**Role** read-deep
+
+**Summary.** Personal income tax changes are far more potent for output than corporate ones, a composition decomposition only the narrative record enables.
+
+**Relation.** Motivates carrying PIT/CIT/VAT composition through our schema. Links: [[#sec-mertens_reconciliation_2014]].
+
+## Mertens & Ravn 2014 — A Reconciliation of SVAR and Narrative Tax-Multiplier Estimates {#sec-mertens_reconciliation_2014}
+
+**Citekey** `@mertens_reconciliation_2014` · **Status** file ✓ · tag ✓ · §2 · consultation: abstract
+**Role** read-deep
+
+**Summary.** Pure SVARs cannot recover the tax multiplier without assuming the output-elasticity of revenue; narrative proxies as instruments yield larger multipliers (~2 on impact, up to 3), and narrative measurement error is itself consequential.
+
+**Relation.** Method-scrutiny anchor: why the narrative record is the necessary input, and a direct bridge to the §6 generated-regressor/measurement-error problem. Links: [[#sec-ludwig_large_2025]].
+
+## Cloyne 2013 — Discretionary Tax Changes and the Macroeconomy (UK) {#sec-cloyne_discretionary_2013}
+
+**Citekey** `@cloyne_discretionary_2013` · **Status** file ✓ · tag ✓ · §2 · consultation: abstract
+**Role** read-deep
+
+**Summary.** Applies the R&R narrative strategy to the UK and finds "remarkably similar" magnitudes (1% tax cut → +0.6% GDP on impact, +2.5% over three years).
+
+**Relation.** The single most important precedent for our cross-country transfer claim — the only non-US tax-narrative series. Links: [[#sec-romer2010]].
+
+## Tillmann et al. 2024 — Disagreement about Fiscal Policy {#sec-tillmann_disagreement_2024}
+
+**Citekey** `@tillmann_disagreement_2024` · **Status** file ✓ · tag ✓ · §2 · consultation: pending
+**Role** cite-only
+
+**Summary.** Uses NLP on Bundestag speeches (1960–) to construct fiscal-disagreement series and trace macro effects.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the German textual-analysis tradition — reads parliamentary speech rather than budget documents. Links: [[#sec-latifi_fiscal_nodate]].
+
+## Latifi et al. — Fiscal Policy in the Bundestag {#sec-latifi_fiscal_nodate}
+
+**Citekey** `@latifi_fiscal_nodate` · **Status** file ✓ · tag ✓ · §2 · consultation: pending
+**Role** cite-only
+
+**Summary.** Embedding-based measurement of fiscal-policy sentiment in Bundestag debates, fed into VARs to identify spending shocks.
+
+**Relation.** *Pending `/lit-digest`.* Seed: a contrast to the document-based R&R lineage we follow. Links: [[#sec-tillmann_disagreement_2024]].
+
+## Kim 2015 — Understanding Narrative Inquiry {#sec-kim_understanding_2015}
+
+**Citekey** `@kim_understanding_2015` · **Status** file ✓ · tag ✓ · §2 · consultation: pending
+**Role** cite-only
+
+**Summary.** A social-science methodology text on narrative inquiry.
+
+**Relation.** *Pending `/lit-digest`.* Seed: narrative-methodology background; weak fit, retained as a framing cite.
+
+# §3 Effects of fiscal policy
+
+## Blanchard & Perotti 2002 — Dynamic Effects of Spending and Taxes on Output {#sec-blanchard_perotti}
+
+**Citekey** _pending re-export_ · Zotero `XDDZP426` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** The SVAR baseline for identifying fiscal shocks via institutional-timing assumptions.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the SVAR tradition our narrative approach is an alternative to. Add to next bib export.
+
+## Auerbach & Gorodnichenko 2012 — Measuring the Output Responses to Fiscal Policy {#sec-auerbach_gorodnichenko}
+
+**Citekey** _pending re-export_ · Zotero `RKVTWKCU` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** State-dependent fiscal multipliers — larger in recessions than expansions.
+
+**Relation.** *Pending `/lit-digest`.* Seed: motivates state-dependence as a (de-prioritized) downstream question. Add to next bib export.
+
+## Gechert 2015 — What Fiscal Policy Is Most Effective? A Meta-Regression {#sec-gechert}
+
+**Citekey** _pending re-export_ · Zotero `PN2C6PIY` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** Meta-regression synthesizing multiplier estimates across the literature.
+
+**Relation.** *Pending `/lit-digest`.* Seed: reference point for plausible multiplier magnitudes. Add to next bib export.
+
+## Riera-Crichton, Végh & Vuletin 2016 — Tax Multipliers: Pitfalls in Measurement {#sec-riera_crichton}
+
+**Citekey** _pending re-export_ · Zotero `TNSX9KDL` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** Catalogues measurement and identification pitfalls specific to tax multipliers.
+
+**Relation.** *Pending `/lit-digest`.* Seed: warns of the exact errors our magnitude/exogeneity outputs must avoid. Add to next bib export.
+
+## Ramey 2019 — Ten Years after the Financial Crisis: Renaissance in Fiscal Research {#sec-ramey_2019}
+
+**Citekey** _pending re-export_ · Zotero `SYE7PVL2` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** Survey of the post-crisis fiscal-multiplier literature.
+
+**Relation.** *Pending `/lit-digest`.* Seed: situates demand for credible shock series. Add to next bib export.
+
+## Ramey 2016 — Macroeconomic Shocks and Their Propagation {#sec-ramey_macroeconomic_2016}
+
+**Citekey** `@ramey_macroeconomic_2016` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** Handbook chapter synthesizing identification of monetary, fiscal, and technology shocks.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the authoritative gap citation — the handbook's fiscal section is US-only; "emerging"/"developing" never appear.
+
+## Ramey 2011 — Identifying Government Spending Shocks: It's All in the Timing {#sec-ramey_identifying_2011}
+
+**Citekey** `@ramey_identifying_2011` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** Anticipation of fiscal changes biases shock identification; timing is decisive.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the anticipation/timing dimension any shock series (and C3) must respect.
+
+## Jordà 2005 — Estimation and Inference of Impulse Responses by Local Projections {#sec-jorda_estimation_2005}
+
+**Citekey** `@jorda_estimation_2005` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** Introduces local projections for impulse-response estimation.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the estimation toolkit our downstream payoff would use. Links: [[#sec-jorda_local_nodate]], [[#sec-dube]].
+
+## Jordà — Local Projections for Applied Economics {#sec-jorda_local_nodate}
+
+**Citekey** `@jorda_local_nodate` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** Review connecting local projections to the potential-outcomes/treatment-effects framework.
+
+**Relation.** *Pending `/lit-digest`.* Seed: bridges the macro IRF and applied-micro languages. Links: [[#sec-jorda_estimation_2005]].
+
+## Dube et al. — A Local Projections Approach to DiD Event Studies {#sec-dube}
+
+**Citekey** `@dube` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** LP-based difference-in-differences event-study estimator.
+
+**Relation.** *Pending `/lit-digest`.* Seed: a candidate downstream estimator for the shock series.
+
+# §4 LLMs as measurement tools
+
+## Das et al. 2026 — Mapping Government Spending Actions Across 64 Countries {#sec-das_mapping_nodate}
+
+**Citekey** `@das_mapping_nodate` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** competitor
+
+**Summary.** First global quarterly narrative database of discretionary spending actions, from a fixed GPT-4.1 prompt over EIU Country Reports, 64 countries.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the flagship competitor — recovers direction only (no %GDP magnitude), defers taxes, validates by concordance. We win on tax-side depth + magnitude. Links: [[#sec-bhasin_identifying_2026]], [[#sec-fritsch_high-frequency_nodate]].
+
+## Bhasin & Loungani 2026 — Identifying Episodes of Fiscal Austerity {#sec-bhasin_identifying_2026}
+
+**Citekey** `@bhasin_identifying_2026` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** competitor
+
+**Summary.** Hierarchical LLM framework extracting austerity episodes from IMF Article IV reports, 17 OECD countries.
+
+**Relation.** *Pending `/lit-digest`.* Seed: traces its LLM-vs-benchmark gap to "shock sizing, not event selection" — conceding magnitude is the binding constraint. Links: [[#sec-das_mapping_nodate]].
+
+## Fritsch & Mazlish — High-Frequency Fiscal Shocks {#sec-fritsch_high-frequency_nodate}
+
+**Citekey** `@fritsch_high-frequency_nodate` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** competitor
+
+**Summary.** LLM identification of high-frequency US fiscal shocks (1947–2025) from news wires, with asset-price and multiplier results.
+
+**Relation.** *Pending `/lit-digest`.* Seed: quarterly %GDP precedent, but US-only. Links: [[#sec-das_mapping_nodate]].
+
+## Aruoba & Drechsel — Identifying Monetary Policy Shocks: A Natural-Language Approach {#sec-aruoba_identifying_nodate}
+
+**Citekey** `@aruoba_identifying_nodate` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** exemplar-other-domain
+
+**Summary.** Natural-language identification of monetary-policy shocks (non-LLM), validated against forecast-error predictability and theory-consistent IRFs.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the validate-without-ground-truth precedent we follow instead of concordance-against-existing-series. Links: [[#sec-asirvatham_gpt_2026]].
+
+## Fernandez-Fuertes 2025 — Monetary Policy Shocks: LLMs and Central-Bank Communication {#sec-fernandez_fuertes}
+
+**Citekey** _pending re-export_ · Zotero `QBBU9ZQ2` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** exemplar-other-domain
+
+**Summary.** LLM analysis of central-bank communication to identify monetary-policy shocks.
+
+**Relation.** *Pending `/lit-digest`.* Seed: an LLM-as-measurement deployment outside fiscal policy. Add to next bib export.
+
+## Torreblanca et al. 2025 — The Credibility Revolution in Political Science {#sec-torreblanca_credibility_2025}
+
+**Citekey** `@torreblanca_credibility_2025` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** exemplar-other-domain
+
+**Summary.** Uses an LLM to classify 91,632 articles by causal research design over two decades.
+
+**Relation.** *Pending `/lit-digest`.* Seed: large-scale LLM-as-classifier exemplar in a social science.
+
+## Gentzkow, Kelly & Taddy 2019 — Text as Data {#sec-gentzkow_text_2019}
+
+**Citekey** `@gentzkow_text_2019` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Canonical survey of text-as-data methods for economics.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the canon — and the adversarial flag that fixed text measures notoriously fail to transfer across domains (which our frozen codebooks must survive). Links: [[#sec-halterman2025]].
+
+## Korinek 2025 — AI Agents for Economic Research {#sec-korinek_ai_2025}
+
+**Citekey** `@korinek_ai_2025` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Practical guide to building LLM agents for economic research workflows.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the LLM-for-economists meta layer; catalogues hallucination/error-cascade/prompt-brittleness caveats and declines to vouch for LLMs in causal inference.
+
+## Feuerriegel et al. 2025 — Using NLP to Analyse Text Data in Behavioural Science {#sec-feuerriegel_using_2025}
+
+**Citekey** `@feuerriegel_using_2025` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Role** cite-only
+
+**Summary.** Review of the NLP pipeline and modelling choices for behavioural-science text analysis.
+
+**Relation.** *Pending `/lit-digest`.* Seed: situates our tooling in the broader NLP-for-social-science methods literature.
+
+# §5 Validation (pillar)
+
+## Halterman & Keith 2025 — Codebook LLMs {#sec-halterman2025}
+
+**Citekey** `@halterman2025` · **Status** file ✓ · tag ✓ · §5 · consultation: full
+**Role** read-deep
+
+**Summary.** The five-stage codebook-LLM measurement framework (prepare → behavioral tests → zero-shot eval → error analysis → fine-tune), built on the premise that codebook conceptualization is a first-order concern. Distilled in `docs/codebook_sources.md` §3.
+
+**Relation.** The validation spine of the project — our S0–S3 pipeline is its instantiation. Links: [[#sec-asirvatham_gpt_2026]], [[#sec-gentzkow_text_2019]].
+
+## Asirvatham, Mokski & Shleifer 2026 — GPT as a Measurement Tool {#sec-asirvatham_gpt_2026}
+
+**Citekey** `@asirvatham_gpt_2026` · **Status** file ✓ · tag ✓ · §5 · consultation: full
+**Role** read-deep
+
+**Summary.** The GABRIEL package; separates **accuracy** (benchmark agreement) from **directness** (the measurement comes from the text, via a signal-stripping test); contamination-via-cutoff and prompt-robustness evidence; human-parity framing. Distilled in `docs/codebook_sources.md` §5.2.
+
+**Relation.** Closest external template for "is the LLM output a valid measurement"; seeds a proposed C2 motivation-masking robustness test and the human-parity framing for our no-ground-truth Phase 2 gates. Links: [[#sec-halterman2025]], [[#sec-ludwig_large_2025]].
+
+## Rathje et al. 2024 — GPT for Multilingual Psychological Text Analysis {#sec-rathje_gpt_2024}
+
+**Citekey** `@rathje_gpt_2024` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** exemplar-other-domain
+
+**Summary.** GPT detects psychological constructs across 12 languages, outperforming dictionary methods.
+
+**Relation.** *Pending `/lit-digest`.* Seed: directly relevant to our EN/BM cross-language stress test.
+
+## Singh 2026 — Deadly Stigma {#sec-singh_deadly_2026}
+
+**Citekey** `@singh_deadly_2026` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** exemplar-other-domain
+
+**Summary.** Uses a physician-validated LLM to detect stigmatizing language in clinical notes within an RD design.
+
+**Relation.** *Pending `/lit-digest`.* Seed: LLM-as-measurement validated against expert judgment in another domain.
+
+## Zhao et al. 2026 — An Agentic System for Rare-Disease Diagnosis {#sec-zhao_agentic_2026}
+
+**Citekey** `@zhao_agentic_2026` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Role** exemplar-other-domain
+
+**Summary.** Multi-agent LLM diagnostic system with traceable reasoning; 95.4% expert agreement on reasoning chains.
+
+**Relation.** *Pending `/lit-digest`.* Seed: traceable-reasoning + expert-agreement validation pattern, an analog to our expert-validation gates.
+
+# §6 Generated-regressor inference (pillar)
+
+## Ludwig, Mullainathan & Rambachan 2025 — LLMs: An Applied Econometric Framework {#sec-ludwig_large_2025}
+
+**Citekey** `@ludwig_large_2025` · **Status** file ✓ · tag ✓ · §6 · consultation: full
+**Role** read-deep
+
+**Summary.** Splits LLM uses into prediction (needs "no training leakage") and estimation/measurement (needs a validation sample for valid downstream inference). Accuracy ≠ validity (bias = correlation of LLM error with regressors); debias against a small random validation sample (125–250 items help); model/prompt choice can flip downstream estimates absent debiasing. Distilled in `docs/codebook_sources.md` §5.1.
+
+**Relation.** The §6 pillar's sole anchor — our LLM fiscal shocks are exactly their "estimation problem" feeding a VAR/LP. Currently single-sourced; acquire Battaglia et al., Angelopoulos PPI, Egami to de-risk. Links: [[#sec-mertens_reconciliation_2014]], [[#sec-asirvatham_gpt_2026]].
+
+# §7 Datasets
+
+## Adler et al. 2024 — An Updated Action-Based Dataset of Fiscal Consolidation {#sec-adler_2024}
+
+**Citekey** _pending re-export_ · Zotero `7ZQA6BJ3` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Role** benchmark
+
+**Summary.** Updated action-based consolidation dataset for OECD economies.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the OECD benchmark Das and Bhasin validate against. Add to next bib export. Links: [[#sec-guajardo_leigh_pescatori]].
+
+## Guajardo, Leigh & Pescatori 2014 — Expansionary Austerity? International Evidence {#sec-guajardo_leigh_pescatori}
+
+**Citekey** _pending re-export_ · Zotero `MFGJ6A8H` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Role** benchmark
+
+**Summary.** Action-based narrative fiscal-consolidation dataset and its output effects.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the narrative-comparator class for our output landscape. Add to next bib export. Links: [[#sec-adler_2024]].
+
+## Romer & Romer 2019 — Replication Data for the 2010 Tax-Shock Measure {#sec-romer_replication_2019}
+
+**Citekey** `@romer_replication_2019` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Role** benchmark
+
+**Summary.** ICPSR replication archive for the R&R 2010 shock series.
+
+**Relation.** *Pending `/lit-digest`.* Seed: the US reference series (`us_shocks.csv` lineage) we replicate and validate against. Links: [[#sec-romer2010]].
+
+# References
+
+::: {#refs}
+:::

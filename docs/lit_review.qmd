@@ -1,0 +1,136 @@
+---
+title: "Literature review"
+date: 2026-06-24
+date-format: long
+toc: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+pacman::p_load(tinytable, dplyr, here)
+
+here::i_am("docs/lit_review.qmd")
+```
+
+*Role: the synthesized, full-length review prose for the methodological paper, organized by the argument in `docs/lit_review_plan.md` (§1–§7). It draws on the tagged `_Fiscal Shocks` Zotero library; the positioning argument it serves lives in `docs/brainstorm.qmd`, and the codebook-implementation distillations in `docs/codebook_sources.md`. Gaps awaiting acquisition are marked inline. A handful of sources are in Zotero but not yet in `references.bib`; those are named in plain text and flagged "citekey pending re-export" until the next BetterBibTeX export.*
+
+The methodological spine is four moves: take a hand-built narrative identification method (§2), scale it with LLMs (§4), validate the LLM as a measurement tool (§5), and hand off a generated variable for downstream inference (§6). Sections 2, 5, and 6 are the load-bearing pillars; sections 1, 3, and 7 motivate and situate.
+
+```{r}
+#| label: tbl-coverage
+#| tbl-cap: "Coverage of the seven review sections in the current library."
+coverage <- tibble::tribble(
+  ~Section, ~Role, ~Items, ~Status,
+  "§1 Motivation",          "Situate",  "10", "Adequate framing",
+  "§2 Narrative",           "Pillar",   "11", "Strong",
+  "§3 Effects",             "Situate",  "11", "Adequate",
+  "§4 LLM text-as-data",    "Situate",  "9",  "Competitors complete; canon thin",
+  "§5 Validation",          "Pillar",   "6",  "Exemplars good; core gaps",
+  "§6 Generated-regressor", "Pillar",   "1",  "Single-sourced — highest risk",
+  "§7 Datasets",            "Situate",  "3",  "Adequate"
+)
+
+tt(coverage)
+```
+
+## 1. Motivation: why exogenous fiscal measures matter
+
+*The "why." For most emerging markets we lack consistent, comparable measures of exogenous fiscal shocks, the input credible fiscal analysis needs. Kept compressed; it does not lead the paper.*
+
+The motivating puzzle is fiscal procyclicality in the developing world: poor countries' fiscal policies tend to amplify rather than smooth their own crises. The stylized fact originates with Kaminsky, Reinhart & Végh (2004) on "when it rains, it pours" (citekey pending re-export), and @vegh_how_2015 sharpen it on the tax side, documenting that tax *policy*, not just tax revenue, is procyclical in developing countries while acyclical in industrial ones. Crucially, they concede that the procyclical correlation "could just reflect the effect of tax multipliers" because their statutory-rate series carries no record of *motivation*, and they name the @romer2010 narrative classification as the missing input. This is the gap our pipeline fills.
+
+The development-macro stakes are well established. @ilzetzki_how_2013 show fiscal multipliers depend on country characteristics (exchange-rate regime, openness, debt), @frankel_graduation_2013 document that institutional quality governs whether a country "graduates" from procyclicality, and @jha_effectiveness_2014 find that in developing Asia tax cuts have larger countercyclical effects than spending, while conceding that roughly 70% of revenue variation is non-discretionary, the exact endogeneity that narrative motivation removes. The broader identification stakes are framed by the credibility revolution [@angrist_credibility_2010] and, in macro specifically, by the critique that macroeconomic identification remains opaque [@romer_trouble_nodate].
+
+> **PENDING ACQUISITION:** an IMF-style tax-composition–growth / EMDE-multiplier cite (e.g., "Tax Composition and Growth") — needed to anchor the claim that comparable cross-country shock series are scarce *and* valuable. Currently carried only by `@jha_effectiveness_2014` and `@vegh_how_2015`.
+
+## 2. Pillar: the narrative identification approach we are scaling
+
+*The method we automate. The methodological backbone, distinct from "effects" (§3) and "datasets" (§7).*
+
+The foundation is @romer2010 and its companion narrative analysis [@romer], which read historical documents to identify *why* taxes changed and to separate exogenous tax changes (motivated by long-run growth or deficit-reduction goals) from endogenous ones (responding to current or prospective output). The methodological doctrine, what makes narrative analysis rigorous, is stated most explicitly in @romer_presidential_2023. These are distilled for codebook design in `docs/codebook_sources.md` §1.
+
+The method travels. @cloyne_discretionary_2013 applies the R&R strategy to the United Kingdom and finds "remarkably similar" magnitudes (a 1% tax cut raises GDP about 0.6% on impact and 2.5% over three years), the single most important precedent for our cross-country transfer claim. On the composition margin, @mertens2013 show personal income tax changes are far more potent for output than corporate ones, a decomposition only the narrative record enables.
+
+The method is also contested, which is why §2 must engage scrutiny rather than only foundation. @mertens_reconciliation_2014 prove that pure SVARs cannot recover the tax multiplier without assuming the output-elasticity of revenue, that narrative proxies used as instruments deliver larger multipliers (around 2 on impact, up to 3), and that measurement error in narrative series is itself consequential, a point that links directly to the generated-regressor problem in §6. A parallel textual-analysis tradition in Germany [@latifi_fiscal_nodate; @tillmann_disagreement_2024] reads parliamentary speech rather than budget documents, a useful contrast to the document-based R&R lineage we follow. Narrative-inquiry methodology more broadly is surveyed by @kim_understanding_2015.
+
+> **PENDING ACQUISITION:** Hebous & Zimmermann (revisiting narrative tax multipliers) — needed to round out "method scrutiny" alongside `@mertens_reconciliation_2014`.
+
+## 3. How these shocks get used: effects of fiscal policy
+
+*Shows the demand for the variable we produce, and motivates the §6 pillar (what happens when the regressor is LLM-measured).*
+
+The demand side is the multiplier literature. The SVAR tradition begins with Blanchard & Perotti (2002) (citekey pending re-export) and the narrative-vs-SVAR reconciliation runs through @mertens_reconciliation_2014. State-dependence, multipliers that differ in recessions and expansions, is established by Auerbach & Gorodnichenko (2012) (citekey pending re-export), and the measurement pitfalls specific to tax multipliers are catalogued by Riera-Crichton, Végh & Vuletin (2016) (citekey pending re-export). The magnitude of multipliers across studies is synthesized by the meta-regression of Gechert (2015) (citekey pending re-export) and by Ramey's surveys [@ramey_macroeconomic_2016; and "Ten Years after the Financial Crisis" (2019), citekey pending re-export]. @ramey_identifying_2011 adds the anticipation/timing dimension that any fiscal-shock series must respect.
+
+The estimation toolkit our downstream payoff would use is local projections [@jorda_estimation_2005; @jorda_local_nodate], including the difference-in-differences event-study variant [@dube]. The authoritative gap citation closing this section is @ramey_macroeconomic_2016: the fiscal portion of the handbook is essentially US-only, and the words "emerging" and "developing" do not appear.
+
+> **RECONCILIATION NOTE:** Blanchard-Perotti, Auerbach-Gorodnichenko, Riera-Crichton, Gechert, and Ramey (2019) are in the `_Fiscal Shocks` library but not yet in `references.bib`. They will resolve to `@`-citekeys on the next BetterBibTeX export; no new acquisition is needed.
+
+> **PENDING ACQUISITION:** Ramey & Zubairy (state-dependent multipliers, local-projections) — wanted to strengthen the state-dependence point.
+
+## 4. LLMs as measurement tools: text-as-data foundations and deployment
+
+*Situates the tooling in the econ text-as-data canon and the social-science annotation literature, and introduces the direct competitors.*
+
+The econ text-as-data canon is anchored by @gentzkow_text_2019, who also supply an adversarial flag we must answer: fixed text measures notoriously fail to transfer across domains, exactly the property our frozen, country-agnostic codebooks claim. The meta layer for economists is @korinek_ai_2025, who catalogues hallucination, error cascades, and prompt brittleness and pointedly declines to vouch for LLMs in causal inference, leaving the validated-instrument niche open. The NLP pipeline itself is reviewed for social scientists by @feuerriegel_using_2025.
+
+The direct competition is three LLM-based narrative fiscal papers that, read together, share one revealing shortcut. @das_mapping_nodate map spending actions across 64 countries from EIU Country Reports but recover only qualitative direction, no %GDP magnitude, and defer taxes. @bhasin_identifying_2026 extract austerity episodes from IMF Article IV reports for 17 OECD countries and trace their entire LLM-versus-benchmark gap to "shock sizing, not event selection," conceding that magnitude is the binding constraint. @fritsch_high-frequency_nodate recover quarterly %GDP fiscal surprises from news wires, but for the US only. Each reads a secondary, harmonized, English-language source precisely to avoid the cost of primary national documents, and each validates by concordance against a pre-existing narrative series, a strategy that cannot travel to the countries the method is meant to serve. The (non-LLM) monetary analog @aruoba_identifying_nodate points to the alternative: validate against forecast-error predictability and theory-consistent impulse responses rather than an existing label set. Related LLM-as-measurement deployments outside fiscal policy include central-bank-communication analysis (Fernandez-Fuertes 2025, citekey pending re-export) and the classification of research designs across 91,632 political-science articles [@torreblanca_credibility_2025].
+
+> **PENDING ACQUISITION:** the social-science annotation canon, Ash & Hansen (2023, ARE), Grimmer, Roberts & Stewart (2022), and Gilardi, Alizadeh & Kubli (2023, PNAS) — needed so §4 cites the annotation-validity literature, not only the fiscal competitors.
+
+[Grimmer, Roberts & Stewart (2022) is a book that I cannot buy to add to the library as PDF. Do find the bibkey in references.bib]{.aside}
+
+## 5. Pillar: is the LLM output good enough to be a measurement?
+
+*The H&K spine plus the broader measurement-validity tradition, organized by our three sub-tasks: extraction, aggregation/entity-resolution, categorization.*
+
+The framework is @halterman2025: a five-stage pipeline (prepare a codebook for humans and LLMs, test basic capabilities, evaluate zero-shot accuracy, analyze errors, and only then fine-tune) built on the premise that "codebook conceptualization is still a first-order concern." It is distilled for our behavioral tests and error analysis in `docs/codebook_sources.md` §3, and it supplies the central insight that off-the-shelf LLMs follow real codebooks imperfectly zero-shot.
+
+The closest external validation template is @asirvatham_gpt_2026 (the GABRIEL package), which separates two requirements our project conflates at its peril: **accuracy** (agreement with a benchmark) and **directness** (the measurement comes from the text, not from a correlated proxy). Their signal-stripping test, remove the rated content and confirm the rating collapses (a 98% reduction in their case), is the model for a high-value robustness check we should add to C2: mask the stated motivation and re-classify exogenous-versus-endogenous; if the call survives, the model is inferring from act name, era, or party rather than reading the rationale. They also reframe "is the model good enough" as human-parity (model-versus-consensus compared to leave-one-out human-versus-consensus), the correct frame for our no-ground-truth Phase 2 expert-agreement gates, and endorse the held-out discipline our S2/S3 split already enforces. Exemplars of LLM-as-measurement validated against expert judgment in other domains reinforce the pattern: multilingual psychological annotation [@rathje_gpt_2024], which is directly relevant to our EN/BM stress test; physician-validated detection of stigmatizing clinical language [@singh_deadly_2026]; and a traceable-reasoning diagnostic agent with 95.4% expert agreement [@zhao_agentic_2026].
+
+Two sub-tasks of our pipeline are under-covered and are the section's main gap. **Aggregation / entity resolution (C0)**, recognizing that "the Goods and Services Tax" and "Cukai Barang dan Perkhidmatan" are one act, is a record-linkage problem with a deep literature we do not yet cite. **Contamination / memorization**, the threat that historical US documents and the published R&R list sit in pretraining, is currently argued only through `@ludwig_large_2025` and `@asirvatham_gpt_2026`.
+
+> **PENDING ACQUISITION (§5 core, high priority):**
+>
+> - Record linkage / entity resolution for C0: Fellegi & Sunter (1969); Abramitzky, Boustan & Eriksson (2021); Binette & Steorts (2022).
+> - A dedicated contamination/memorization cite to back the S1 memorization test.
+> - A multilingual / low-resource-NLP evaluation cite for the EN/BM and SEA extension (both a risk and a contribution angle).
+
+## 6. Pillar: using LLM-generated variables in downstream inference
+
+*The riskiest gap. Our output becomes a regressor in a VAR or local projection, making it a generated-regressor / measurement-error problem. This section is currently single-sourced.*
+
+This is the pillar with the least coverage and the highest referee risk. The anchor is @ludwig_large_2025, who frame precisely our case: an LLM-measured variable feeding a downstream causal estimate is an "estimation problem," and valid inference requires combining LLM outputs with a small labeled validation sample, not merely high classification accuracy. Three of their results bind on us, and are distilled in `docs/codebook_sources.md` §5:
+
+- **Accuracy is not validity.** A model uniformly close to the truth can still produce arbitrarily biased downstream estimates; the bias equals the correlation of the LLM's error with the regressors. For us the dangerous regressor is the business cycle, the exact axis exogeneity hinges on.
+- **Debias against a validation sample.** Do not plug raw LLM shocks into the multiplier regression; use the debiased estimator against a small random expert-labeled sample, which can yield tighter standard errors than the expert sample alone. Their simulations suggest 125–250 validation items suffice, a number infeasible at 20–40 Malaysian acts, forcing an honest design choice (fraction-of-corpus or pooled-regional validation, or a scope-limited inferential claim).
+- **Specification search is a real risk.** Absent debiasing, the choice of model or prompt can change downstream coefficients in sign and significance, which directly implicates our Haiku-to-Sonnet C0 decision and any codebook iteration.
+
+A single source is not enough to defend a pillar at peer review.
+
+> **PENDING ACQUISITION (§6, highest priority):**
+>
+> - Battaglia, Christensen, Hansen & Sacher (2024), *Inference for Regression with Variables Generated by AI or Machine Learning* — directly on point for bias and valid-inference corrections.
+> - Angelopoulos et al. (2023), *Prediction-Powered Inference*.
+> - Egami et al., using imperfect surrogates / design-based supervised learning, and the ML-predictions-as-covariates strand in *Political Analysis*.
+
+## 7. Existing fiscal datasets: the output landscape and comparators
+
+*What already exists, so our contribution and validation targets are legible.*
+
+The narrative / action-based lineage is the relevant comparator class. Guajardo, Leigh & Pescatori (2014, "Expansionary Austerity?") and the updated action-based consolidation dataset of Adler et al. (2024) (both citekeys pending re-export) are the OECD-focused benchmarks that @das_mapping_nodate and @bhasin_identifying_2026 validate against. The US reference series we replicate and validate against is the Romer-Romer shock list, available as replication data [@romer_replication_2019] and underlying `us_shocks.csv`.
+
+> **RECONCILIATION NOTE:** Guajardo-Leigh-Pescatori and Adler et al. are in the library but not yet in `references.bib` (pending re-export).
+
+> **PENDING ACQUISITION:** Devries, Guajardo, Leigh & Pescatori (2011, IMF WP), the original action-based dataset, and a statutory/text-mined comparator (IMF Tax Policy Reform Database) — needed so the "output landscape" is complete on both the narrative and statutory sides.
+
+[The statutory tax rates dataset is in @vegh_how_2015]{.aside}
+
+## Open sequencing note
+
+§1 (motivation) and §3 (effects) are confirmed as motivation and demand framing, not application targets. Pillars §2, §5, and §6 carry the methodological contribution, and of these §6 is the single-sourced, highest-risk gap to close first.
+
+## References
+
+::: {#refs}
+:::

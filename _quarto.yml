@@ -63,6 +63,8 @@ website:
           - docs/proposal.qmd
           - docs/brainstorm.qmd
           - docs/CIT_forward.qmd
+          - docs/lit_review.qmd
+          - docs/lit_base.qmd
 
 format: 
   html:

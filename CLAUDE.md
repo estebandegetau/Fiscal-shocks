@@ -159,6 +159,8 @@ Each evaluation stage (S1, S2, S3) has independent targets, model configs, and t
 - `docs/codebook_sources.md` - Codebook-implementation reference (R&R / Das / H&K distillation); NOT the literature review
 - `docs/lit_review_plan.md` - Literature coverage checklist (by paper section §1-§7)
 - `docs/lit_review_workflow.md` - How sources flow from Zotero into the paper (the literature workflow)
+- `docs/lit_base.qmd` - Annotated bibliography (per-source status + summary + relation)
+- `docs/lit_review.qmd` - Synthesized §1-§7 review prose
 - `docs/lit_log.md` - Append-only audit trail of literature decisions
 - `docs/phase_0/` - Phase 0 (Codebook Development) implementation context
 - `docs/phase_1/` - Phase 2 (Malaysia Pilot) strategy and expert review protocols
@@ -268,9 +270,11 @@ Use `/strategy-sync` when unresolved deltas accumulate in `docs/deltas.md` (doc-
 
 ### Literature & Citations
 
-The methodological paper's literature work uses a **three-doc architecture**: `docs/brainstorm.qmd` (§"where to plant the flag") is the canonical positioning argument, `docs/lit_review_plan.md` is the coverage checklist, and `docs/codebook_sources.md` is the codebook-implementation reference (R&R / Das / H&K distillation — not a review). The full intake process and tagging scheme live in `docs/lit_review_workflow.md`; literature decisions are logged in `docs/lit_log.md`.
+The methodological paper's literature work uses a **four-doc architecture**: `docs/brainstorm.qmd` (§"where to plant the flag") is the canonical positioning argument; `docs/lit_review_plan.md` is the coverage checklist; `docs/lit_base.qmd` is the per-source annotated bibliography (status + summary + relation, one entry per source); and `docs/lit_review.qmd` is the synthesized §1-§7 review prose. `docs/codebook_sources.md` is the separate codebook-implementation reference (R&R / Das / H&K distillation — not a review). The intake process and tagging scheme live in `docs/lit_review_workflow.md`; `docs/lit_log.md` is the audit trail of literature *decisions* only (the per-source catalog lives in `lit_base.qmd`).
 
-**Source-of-truth rule:** Zotero (`_Fiscal Shocks` collection) owns content and PDFs; the BetterBibTeX export `references.bib` owns citation keys and is **generated, never hand-edited** (fix content at the Zotero source and re-export). The human acquires PDFs (paywalls/blocking); Claude reads them via the Zotero MCP. The MCP reads full text reliably but does **not** reliably resolve citekeys, so citekeys always come from the bib.
+**Three skills run the loop:** `/lit-intake` (detect untagged/new sources → propose+apply tags → write `lit_base.qmd` status stubs → log + reconcile citekeys), `/lit-digest` (read `consultation: pending` sources → write their summary + relation, deep-read pillars into `codebook_sources.md`), and `/lit-synthesize` (refresh `lit_review.qmd` from `lit_base.qmd` → render + reconcile). The shared state is each entry's `consultation:` field. See `.claude/skills/lit-intake/`, `lit-digest/`, `lit-synthesize/`.
+
+**Source-of-truth rule:** Zotero (`_Fiscal Shocks` collection) owns content and PDFs; the BetterBibTeX export `references.bib` owns citation keys and is **generated, never hand-edited** (fix content at the Zotero source and re-export). The human acquires PDFs (paywalls/blocking) and re-exports the bib; Claude reads PDFs via the Zotero MCP. The MCP reads full text reliably but does **not** reliably resolve citekeys, so citekeys always come from the bib.
 
 ## {targets} Pipeline Conventions
 
