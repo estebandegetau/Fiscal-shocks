@@ -3,7 +3,7 @@ title: "Literature base"
 date: 2026-06-24
 date-format: long
 toc: true
-toc-depth: 2
+toc-depth: 1
 ---
 
 ```{r}
@@ -35,8 +35,8 @@ status <- tibble::tribble(
   "romer_new_2017",           "§1", "cite-only",   "yes", "yes", "pending",
   "angrist_credibility_2010", "§1", "cite-only",   "yes", "yes", "pending",
   "romer_trouble_nodate",     "§1", "cite-only",   "yes", "yes", "pending",
-  "burke_global_2015",        "§1", "exemplar",    "yes", "yes", "pending",
-  "hsiang_quantifying_2013",  "§1", "exemplar",    "yes", "yes", "pending",
+  "burke_global_2015",        "§1", "exemplar",    "yes", "yes", "abstract",
+  "hsiang_quantifying_2013",  "§1", "exemplar",    "yes", "yes", "abstract",
   # --- s2 narrative ---
   "romer2010",                "§2", "read-deep",   "yes", "yes", "full",
   "romer",                    "§2", "read-deep",   "yes", "yes", "full",
@@ -62,12 +62,12 @@ status <- tibble::tribble(
   "ramey_government_2018",    "§3", "cite-only",   "yes", "yes", "pending",
   "dabla-norris_macroeconomic_2023","§3","cite-only","yes","yes","pending",
   # --- s4 llm text-as-data ---
-  "das_mapping_nodate",       "§4", "competitor",  "yes", "yes", "pending",
-  "bhasin_identifying_2026",  "§4", "competitor",  "yes", "yes", "pending",
-  "fritsch_high-frequency_nodate","§4","competitor","yes","yes", "pending",
-  "aruoba_identifying_nodate","§4", "exemplar",    "yes", "yes", "pending",
-  "fernandez-fuertes_monetary_2025","§4","exemplar","yes","yes","pending",
-  "torreblanca_credibility_2025","§4","exemplar",  "yes", "yes", "pending",
+  "das_mapping_nodate",       "§4", "competitor",  "yes", "yes", "full",
+  "bhasin_identifying_2026",  "§4", "competitor",  "yes", "yes", "full",
+  "fritsch_high-frequency_nodate","§4","competitor","yes","yes", "full",
+  "aruoba_identifying_nodate","§4", "exemplar",    "yes", "yes", "abstract",
+  "fernandez-fuertes_monetary_2025","§4","exemplar","yes","yes","abstract",
+  "torreblanca_credibility_2025","§4","exemplar",  "yes", "yes", "abstract",
   "gentzkow_text_2019",       "§4", "cite-only",   "yes", "yes", "pending",
   "korinek_ai_2025",          "§4", "cite-only",   "yes", "yes", "pending",
   "feuerriegel_using_2025",   "§4", "cite-only",   "yes", "yes", "pending",
@@ -82,9 +82,9 @@ status <- tibble::tribble(
   # --- s5 validation ---
   "halterman2025",            "§5", "read-deep",   "yes", "yes", "full",
   "asirvatham_gpt_2026",      "§5", "read-deep",   "yes", "yes", "full",
-  "rathje_gpt_2024",          "§5", "exemplar",    "yes", "yes", "pending",
-  "singh_deadly_2026",        "§5", "exemplar",    "yes", "yes", "pending",
-  "zhao_agentic_2026",        "§5", "exemplar",    "yes", "yes", "pending",
+  "rathje_gpt_2024",          "§5", "exemplar",    "yes", "yes", "abstract",
+  "singh_deadly_2026",        "§5", "exemplar",    "yes", "yes", "abstract",
+  "zhao_agentic_2026",        "§5", "exemplar",    "yes", "yes", "abstract",
   "fellegi_theory_1969",      "§5", "cite-only",   "yes", "yes", "pending",
   "abramitzky_automated_2021","§5", "cite-only",   "yes", "yes", "pending",
   "binette_almost_2022",      "§5", "cite-only",   "yes", "yes", "pending",
@@ -100,10 +100,10 @@ status <- tibble::tribble(
   "angelopoulos_prediction-powered_2023","§6","read-deep","yes","yes","full",
   "egami_using_2023",         "§6", "read-deep",   "yes", "yes", "full",
   # --- s7 datasets ---
-  "pescatori_new_2011",       "§7", "benchmark",   "yes", "yes", "pending",
-  "adler_updated_2024",       "§7", "benchmark",   "yes", "yes", "pending",
-  "guajardo_expansionary_2014","§7","benchmark",   "yes", "yes", "pending",
-  "romer_replication_2019",   "§7", "benchmark",   "yes", "yes", "pending"
+  "pescatori_new_2011",       "§7", "benchmark",   "yes", "yes", "abstract",
+  "adler_updated_2024",       "§7", "benchmark",   "yes", "yes", "abstract",
+  "guajardo_expansionary_2014","§7","benchmark",   "yes", "yes", "abstract",
+  "romer_replication_2019",   "§7", "benchmark",   "yes", "yes", "abstract"
 )
 
 tt(status)
@@ -194,21 +194,21 @@ tt(status)
 
 ## Burke, Hsiang & Miguel 2015 — Global Non-linear Effect of Temperature on Economic Production {#sec-burke_global_2015}
 
-**Citekey** `@burke_global_2015` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Citekey** `@burke_global_2015` · Zotero `PU2P7CVS` · **Status** file ✓ · tag ✓ · §1 · consultation: abstract
 **Role** exemplar-other-domain
 
-**Summary.** Estimates a global temperature–output response; headline is a new comparable cross-country unit.
+**Summary.** Burke, Hsiang & Miguel (2015, *Nature*) estimate a single, globally common non-linear relationship between annual temperature and aggregate economic production from a large subnational country panel, finding output peaks near 13 °C and falls sharply at higher temperatures — the same dose–response in rich and poor countries — then project large global GDP losses under continued warming.
 
-**Relation.** *Pending `/lit-digest`.* Seed: paper-architecture template ("invent a new common unit"). Imperfect §-fit — filed in §1 as a framing exemplar. Links: [[#sec-hsiang_quantifying_2013]].
+**Relation.** The paper-architecture template: invent one new, comparable cross-country unit and estimate a single transferable function over it. That is the structural move our project makes by producing comparable *exogenous fiscal-shock* series across countries from heterogeneous national records. Imperfect §-fit (climate, not fiscal) — filed in §1 as a framing exemplar. Links: [[#sec-hsiang_quantifying_2013]].
 
 ## Hsiang, Burke & Miguel 2013 — Quantifying the Influence of Climate on Human Conflict {#sec-hsiang_quantifying_2013}
 
-**Citekey** `@hsiang_quantifying_2013` · **Status** file ✓ · tag ✓ · §1 · consultation: pending
+**Citekey** `@hsiang_quantifying_2013` · Zotero `K4C3I9HW` · **Status** file ✓ · tag ✓ · §1 · consultation: abstract
 **Role** exemplar-other-domain
 
-**Summary.** Meta-analysis converging many studies onto a common climate–conflict effect size.
+**Summary.** Hsiang, Burke & Miguel (2013, *Science*) meta-analyze dozens of studies across archaeology, criminology, economics, geography, history and political science onto a common standardized climate–conflict effect size, finding that warmer temperatures and rainfall extremes robustly raise both interpersonal and intergroup conflict.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the second Burke-Hsiang architecture template. Links: [[#sec-burke_global_2015]].
+**Relation.** The second Burke–Hsiang architecture template — converging heterogeneous studies onto one comparable unit — the rhetorical model for presenting a single cross-country fiscal-shock measure built from disparate national sources. Note: two Zotero copies exist (`K4C3I9HW`, `7C6BBH7P`); merge at source (citekey `hsiang_quantifying_2013` unaffected). Links: [[#sec-burke_global_2015]].
 
 ## Acosta Ormaechea & Yoo 2012 — Tax Composition and Growth: A Broad Cross-Country Perspective {#sec-acosta_ormaechea_tax_2012}
 
@@ -434,57 +434,57 @@ tt(status)
 
 ## Das et al. 2026 — Mapping Government Spending Actions Across 64 Countries {#sec-das_mapping_nodate}
 
-**Citekey** `@das_mapping_nodate` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Citekey** `@das_mapping_nodate` · Zotero `WBYNNC32` · **Status** file ✓ · tag ✓ · §4 · consultation: full
 **Role** competitor
 
-**Summary.** First global quarterly narrative database of discretionary spending actions, from a fixed GPT-4.1 prompt over EIU Country Reports, 64 countries.
+**Summary.** Das, Furceri, Patel & Peralta-Alva (2026, IMF WP/26/43) build the first global *quarterly* narrative database of discretionary government-spending actions by applying a fixed, zero-shot GPT-4.1 prompt to Economist Intelligence Unit Country Reports (64 countries, 1952–2023; 8,636 episodes). The prompt screens R&R-style for *exogenous* spending actions, but the production output is a discrete direction proxy z ∈ {−1, 0, +1} — spending-only, no tax side, no %GDP magnitude (an optional intensity field is excluded from the econometrics). Validation is fourfold: replicating R&R (2019) expert coding (>93%), a 51-run replicability test, local-projection prediction of realized spending, and ≥96% alignment with Adler et al. (2024) %GDP consolidations. Headline: a median cumulative spending multiplier ~0.7, larger in less-open economies, under fixed exchange rates, in downturns, and at the ZLB, identified via country-level Bayesian proxy-SVAR.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the flagship competitor — recovers direction only (no %GDP magnitude), defers taxes, validates by concordance. We win on tax-side depth + magnitude. Links: [[#sec-bhasin_identifying_2026]], [[#sec-fritsch_high-frequency_nodate]].
+**Relation.** The flagship competitor — it shares our exact thesis that a fixed, country-agnostic, off-the-shelf LLM prompt can scale R&R narrative identification cross-country *without retraining*, and even shares design instincts we use (conservative net-aggregation of multi-action passages, verbatim-evidence retention, separate validation vs. production prompts). We differ on all four differentiators: (1) spending-only vs. our tax-side depth; (2) **direction only** — the authors explicitly "do not observe dollar-equivalent sizes … only their qualitative direction," and their 51-run test shows the granular intensity field is the *least* replicable while coarse direction is stable, corroborating our position that quantitative %GDP sizing is the hard part and our contribution; (3) no Halterman & Keith behavioral/zero-shot/error-analysis framework vs. our S0–S3; (4) English-only EIU reports vs. our EN/BM bilingual transfer. Their three-tier no-ground-truth validation (expert-replication % + aggregate prediction + independent-dataset alignment) is a reusable template for our Malaysia/SEA setting. Note: Das positions only against Aruoba & Drechsel (monetary) and does *not* cite Bhasin or Fritsch — the competitor cluster is one we draw, not one they assert. Links: [[#sec-bhasin_identifying_2026]], [[#sec-fritsch_high-frequency_nodate]], [[#sec-adler_2024]], [[#sec-aruoba_identifying_nodate]].
 
 ## Bhasin & Loungani 2026 — Identifying Episodes of Fiscal Austerity {#sec-bhasin_identifying_2026}
 
-**Citekey** `@bhasin_identifying_2026` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Citekey** `@bhasin_identifying_2026` · Zotero `BLQ3YEEH` · **Status** file ✓ · tag ✓ · §4 · consultation: full
 **Role** competitor
 
-**Summary.** Hierarchical LLM framework extracting austerity episodes from IMF Article IV reports, 17 OECD countries.
+**Summary.** Bhasin & Loungani (2026, *J. Economic Dynamics & Control*) build a hierarchical five-prompt LLM cascade to identify fiscal-austerity (consolidation) episodes from IMF Article IV staff reports (2004–2020, 17 OECD countries): country filter → fiscal-policy gate → four-pillar austerity definition → R&R-style exogeneity filter → %GDP magnitude. Core model Llama-3.3-70B (GPT-4.1 / DeepSeek-R1 robustness checks converge). Validated against the Guajardo et al. (2014) / Adler et al. (2024) consolidation dataset over 289 country-years: precision 0.93, recall 0.90, F1 0.91. Headline: LLM-identified shocks yield *smaller* multipliers than the narrative benchmark, and a swap-decomposition attributes the divergence to shock *sizing*, not event selection.
 
-**Relation.** *Pending `/lit-digest`.* Seed: traces its LLM-vs-benchmark gap to "shock sizing, not event selection" — conceding magnitude is the binding constraint. Links: [[#sec-das_mapping_nodate]].
+**Relation.** The closest direct competitor on method — LLM-automated R&R identification with an explicit exogeneity gate *and* a %GDP magnitude step — sharing our cross-country ambition. It diverges on our differentiators: consolidation episodes broadly (revenue *or* expenditure lumped into a binary austerity label) vs. our tax decomposition; magnitude secondary to a binary label (size correlation only 0.59, systematically smaller than benchmark) vs. our first-class per-act %GDP; a single harmonized *secondary* source (Article IV, written *about* countries by IMF staff), validated against existing ground truth, vs. our *primary* budget/treasury documents with no Malaysia/SEA ground truth and H&K/expert-agreement gates they do not use. **Correction to the prior seed:** the paper does say "shock sizing, not event selection," but frames it *oppositely* — it argues the *narrative benchmark's* larger multipliers are inflated by persistence/residual endogeneity (ρ≈0.73, predictable from lagged GDP) and presents its own smaller, less-persistent sizes as *better-identified*. So it concedes only that Article IV reports yield conservative ("headline-package") magnitudes, not that magnitude is a binding accuracy constraint — our positioning should not overstate this. Their Prompt-4 exogeneity exemplars (Maastricht/SGP compliance, constitutional debt-brake, pre-announced medium-term programs) are concrete worked examples that could sharpen our C2 exogenous-side examples. Links: [[#sec-das_mapping_nodate]], [[#sec-fritsch_high-frequency_nodate]], [[#sec-guajardo_leigh_pescatori]], [[#sec-adler_2024]].
 
 ## Fritsch & Mazlish — High-Frequency Fiscal Shocks {#sec-fritsch_high-frequency_nodate}
 
-**Citekey** `@fritsch_high-frequency_nodate` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Citekey** `@fritsch_high-frequency_nodate` · Zotero `FWILZBHC` · **Status** file ✓ · tag ✓ · §4 · consultation: full
 **Role** competitor
 
-**Summary.** LLM identification of high-frequency US fiscal shocks (1947–2025) from news wires, with asset-price and multiplier results.
+**Summary.** Fritsch & Mazlish ("High-Frequency Fiscal Shocks," Oxford, preliminary) build a two-agent LLM pipeline producing daily-frequency US fiscal shocks (1947–2025): a *forecaster* agent reads each day's fiscal/macro news (full Reuters/WSJ articles for 2005–25; summaries pre-2005) and updates a present-value-of-deficits forecast, while a *classifier* agent labels each change endogenous / fiscal-event / both, apportions it into purchases (G), taxes/transfers (T) and interest (I), and tags permanence and stabilization. It thus recovers signed, %GDP-scaled magnitudes *with* a tax-vs-spending split at daily/event frequency, with a prompt-imposed knowledge-cutoff guarding against look-ahead bias. Validation: correlation 0.71 with Ramey (2011) defense shocks and **0.89 with R&R (2010) tax shocks**, plus high-frequency asset-price reactions (10Y yields, dollar, term spread) and multipliers.
 
-**Relation.** *Pending `/lit-digest`.* Seed: quarterly %GDP precedent, but US-only. Links: [[#sec-das_mapping_nodate]].
+**Relation.** The most direct competitor on three of our differentiators at once — signed %GDP magnitude, R&R-style exogeneity, and a tax-side decomposition — and its 0.89 correlation with R&R tax shocks is a strong validation benchmark. Our defensible distinctions: (i) it is **US-only**, with cross-country deployment merely *promised* as future work, whereas our contribution is the *executed* country-agnostic transfer (US→Malaysia→SEA) with frozen codebooks and expert-agreement gates; (ii) its inputs are **news wires** building a *forecast/expectations* series, fundamentally different from our reading of *primary* budget/treasury documents to classify *enacted* measures; (iii) it lacks the formal H&K 5-stage scaffolding we use, relying on correlation-recovery and asset-price/multiplier validation. Its high-frequency asset-price identification is *orthogonal* to our document-based approach (our unit is the enacted act at quarterly/annual frequency, not a datestamped market event), so it is a complement to cite, not a method to adopt. Links: [[#sec-das_mapping_nodate]], [[#sec-bhasin_identifying_2026]].
 
 ## Aruoba & Drechsel — Identifying Monetary Policy Shocks: A Natural-Language Approach {#sec-aruoba_identifying_nodate}
 
-**Citekey** `@aruoba_identifying_nodate` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Citekey** `@aruoba_identifying_nodate` · Zotero `NP8WKD26` · **Status** file ✓ · tag ✓ · §4 · consultation: abstract
 **Role** exemplar-other-domain
 
-**Summary.** Natural-language identification of monetary-policy shocks (non-LLM), validated against forecast-error predictability and theory-consistent IRFs.
+**Summary.** Aruoba & Drechsel identify monetary-policy shocks by applying natural-language-processing techniques to the documents Federal Reserve staff prepare in advance of policy decisions, extracting the information set behind each decision and purging the systematic component; the residual surprises are validated by the absence of forecast-error predictability and by theory-consistent impulse responses.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the validate-without-ground-truth precedent we follow instead of concordance-against-existing-series. Links: [[#sec-asirvatham_gpt_2026]].
+**Relation.** The validate-without-ground-truth precedent we follow: measurement validity is established through forecast-error orthogonality and theory-consistent IRFs rather than concordance against an existing series — the template for our no-ground-truth Phase 2 gates. Das et al. (2026) likewise position against this as their main narrative-identification precedent. Note: two Zotero copies (`NP8WKD26` journalArticle, no date; `I43BYWTD` 2024 preprint); merge at source. Links: [[#sec-asirvatham_gpt_2026]], [[#sec-das_mapping_nodate]].
 
 ## Fernandez-Fuertes 2025 — Monetary Policy Shocks: LLMs and Central-Bank Communication {#sec-fernandez_fuertes}
 
-**Citekey** `@fernandez-fuertes_monetary_2025` · Zotero `QBBU9ZQ2` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Citekey** `@fernandez-fuertes_monetary_2025` · Zotero `QBBU9ZQ2` · **Status** file ✓ · tag ✓ · §4 · consultation: abstract
 **Role** exemplar-other-domain
 
-**Summary.** LLM analysis of central-bank communication to identify monetary-policy shocks.
+**Summary.** Fernandez-Fuertes (2025, SSRN preprint) develops a multi-agent LLM framework that reads Fed communications (Beige Books, Minutes) released before each FOMC meeting to generate conditional expectations and construct narrative monetary-policy surprises that are *less noisy* than market-based measures, yielding theoretically consistent impulse responses and profitable yield-curve strategies. By extracting expectations directly rather than cleaning surprises ex post, it implements narrative identification at scale without high-frequency contamination.
 
-**Relation.** *Pending `/lit-digest`.* Seed: an LLM-as-measurement deployment outside fiscal policy. Citekey now resolves in the re-exported bib.
+**Relation.** A multi-agent-LLM-as-measurement deployment outside fiscal policy, and the closest monetary-side analog to our pipeline: it shares the move of extracting measurements/expectations directly from policy documents, and its explicit contamination-avoidance concern echoes the threat our S1 memorization test guards against. A companion to Aruoba & Drechsel on the monetary side of the LLM-narrative-identification frontier. Links: [[#sec-aruoba_identifying_nodate]], [[#sec-asirvatham_gpt_2026]].
 
 ## Torreblanca et al. 2025 — The Credibility Revolution in Political Science {#sec-torreblanca_credibility_2025}
 
-**Citekey** `@torreblanca_credibility_2025` · **Status** file ✓ · tag ✓ · §4 · consultation: pending
+**Citekey** `@torreblanca_credibility_2025` · Zotero `NUBCCS2W` · **Status** file ✓ · tag ✓ · §4 · consultation: abstract
 **Role** exemplar-other-domain
 
-**Summary.** Uses an LLM to classify 91,632 articles by causal research design over two decades.
+**Summary.** Torreblanca, Dinneen, Grossman & Xu (2025, preprint) use an LLM to classify 91,632 political-science articles published 2003–2023 across 174 journals by causal research design, charting how the credibility revolution reshaped the discipline.
 
-**Relation.** *Pending `/lit-digest`.* Seed: large-scale LLM-as-classifier exemplar in a social science.
+**Relation.** A large-scale LLM-as-classifier exemplar in a social science — demonstrating reliable LLM annotation at the corpus scale our deployment operates in, and pairing the LLM measurement tool with the credibility-revolution framing (cf. Angrist & Pischke) that motivates our identification stakes. Links: [[#sec-angrist_credibility_2010]].
 
 ## Gentzkow, Kelly & Taddy 2019 — Text as Data {#sec-gentzkow_text_2019}
 
@@ -607,30 +607,30 @@ tt(status)
 
 ## Rathje et al. 2024 — GPT for Multilingual Psychological Text Analysis {#sec-rathje_gpt_2024}
 
-**Citekey** `@rathje_gpt_2024` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Citekey** `@rathje_gpt_2024` · Zotero `8LABL4VM` · **Status** file ✓ · tag ✓ · §5 · consultation: abstract
 **Role** exemplar-other-domain
 
-**Summary.** GPT detects psychological constructs across 12 languages, outperforming dictionary methods.
+**Summary.** Rathje et al. (2024, *PNAS Nexus*) show that GPT detects psychological constructs (sentiment, discrete emotions, offensiveness) across 12 languages with accessible zero-shot prompts, outperforming established dictionary methods and approaching fine-tuned models without per-language retraining.
 
-**Relation.** *Pending `/lit-digest`.* Seed: directly relevant to our EN/BM cross-language stress test.
+**Relation.** Directly relevant to our EN/BM cross-language stress test: evidence that a single LLM can transfer a measurement construct across languages with no per-language retraining — the capability our Malaysia bilingual leg depends on — while the cross-lingual benchmark literature warns that this transfer degrades for lower-resource languages. Links: [[#sec-ahuja_mega_2023]], [[#sec-singh_indicgenbench_2024]], [[#sec-xuan_mmlu-prox_2025]], [[#sec-halterman2025]].
 
 ## Singh 2026 — Deadly Stigma {#sec-singh_deadly_2026}
 
-**Citekey** `@singh_deadly_2026` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Citekey** `@singh_deadly_2026` · Zotero `C3AVEYPB` · **Status** file ✓ · tag ✓ · §5 · consultation: abstract
 **Role** exemplar-other-domain
 
-**Summary.** Uses a physician-validated LLM to detect stigmatizing language in clinical notes within an RD design.
+**Summary.** Singh (2026, preprint "Deadly Stigma") uses a physician-validated LLM to detect stigmatizing language in clinical notes, then exploits exogenous variation in stigma to estimate its real-world harm — solving the measurement problem (stigma is hard to observe) so that a credible research design becomes feasible.
 
-**Relation.** *Pending `/lit-digest`.* Seed: LLM-as-measurement validated against expert judgment in another domain.
+**Relation.** An LLM-as-measurement validated against expert (physician) judgment and then fed into a causal design — the same two-step pattern as our pipeline (LLM measurement → downstream inference), with expert validation as the credibility anchor. A close analog to our expert-agreement gates and to the §6 generated-regressor concern of carrying LLM measurement error into downstream estimates. Links: [[#sec-zhao_agentic_2026]], [[#sec-halterman2025]].
 
 ## Zhao et al. 2026 — An Agentic System for Rare-Disease Diagnosis {#sec-zhao_agentic_2026}
 
-**Citekey** `@zhao_agentic_2026` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Citekey** `@zhao_agentic_2026` · Zotero `ATXC3JZM` · **Status** file ✓ · tag ✓ · §5 · consultation: abstract
 **Role** exemplar-other-domain
 
-**Summary.** Multi-agent LLM diagnostic system with traceable reasoning; 95.4% expert agreement on reasoning chains.
+**Summary.** Zhao et al. (2026, *Nature*) present a multi-agent LLM system for rare-disease diagnosis with *traceable reasoning* chains, reporting ~95% expert agreement on its reasoning steps (not just final labels) and strong diagnostic accuracy across a large patient cohort.
 
-**Relation.** *Pending `/lit-digest`.* Seed: traceable-reasoning + expert-agreement validation pattern, an analog to our expert-validation gates.
+**Relation.** The traceable-reasoning + expert-agreement validation pattern: experts verify the reasoning that produced a label, not only the label itself. A direct model for how our expert-validation gates could assess C2 motivation *rationales* (the evidence-and-reasoning behind an exogenous/endogenous call), strengthening the credibility argument beyond marginal-label agreement. Links: [[#sec-singh_deadly_2026]].
 
 ## Fellegi & Sunter 1969 — A Theory for Record Linkage {#sec-fellegi_theory_1969}
 
@@ -755,39 +755,39 @@ tt(status)
 
 ## Devries, Guajardo, Leigh & Pescatori 2011 — A New Action-Based Dataset of Fiscal Consolidation {#sec-pescatori_new_2011}
 
-**Citekey** `@pescatori_new_2011` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Citekey** `@pescatori_new_2011` · Zotero `C9YM26FG` · **Status** file ✓ · tag ✓ · §7 · consultation: abstract
 **Role** benchmark
 
-**Summary.** The original IMF action-based narrative dataset of fiscal-consolidation measures for OECD economies, identifying policy actions motivated by deficit reduction rather than the cycle.
+**Summary.** Devries, Guajardo, Leigh & Pescatori (2011, IMF WP) assemble the original action-based narrative dataset of fiscal-consolidation measures for 17 OECD economies, reading contemporaneous policy documents to identify changes motivated by deficit reduction rather than by a response to prospective economic conditions.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the founding narrative-comparator dataset that Guajardo et al. and Adler et al. update — the lineage our output landscape is measured against. Fills the §7 PENDING ACQUISITION slot in `lit_review.qmd`. Links: [[#sec-guajardo_leigh_pescatori]], [[#sec-adler_2024]].
+**Relation.** The founding narrative-comparator dataset that Guajardo et al. (2014) and Adler et al. (2024) extend, and the lineage Das and Bhasin validate against — the benchmark class our output landscape is measured against. Fills the §7 PENDING ACQUISITION slot in `lit_review.qmd`. Links: [[#sec-guajardo_leigh_pescatori]], [[#sec-adler_2024]].
 
 ## Adler et al. 2024 — An Updated Action-Based Dataset of Fiscal Consolidation {#sec-adler_2024}
 
-**Citekey** `@adler_updated_2024` · Zotero `7ZQA6BJ3` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Citekey** `@adler_updated_2024` · Zotero `7ZQA6BJ3` · **Status** file ✓ · tag ✓ · §7 · consultation: abstract
 **Role** benchmark
 
-**Summary.** Updated action-based consolidation dataset for OECD economies.
+**Summary.** Adler, Allen, Ganelli & Leigh (2024, IMF WP 2024/210) extend the action-based fiscal-consolidation dataset to a longer, broader OECD panel, supplying %GDP-sized consolidation measures identified from contemporaneous policy documents.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the OECD benchmark Das and Bhasin validate against. Citekey now resolves in the re-exported bib. Links: [[#sec-guajardo_leigh_pescatori]].
+**Relation.** The OECD %GDP benchmark that the LLM competitors lean on — Das et al. report ≥96% alignment against it and Bhasin validates against the same lineage — so it is the quantitative-magnitude comparator our per-act %GDP output is positioned beside. Links: [[#sec-guajardo_leigh_pescatori]], [[#sec-pescatori_new_2011]], [[#sec-das_mapping_nodate]], [[#sec-bhasin_identifying_2026]].
 
 ## Guajardo, Leigh & Pescatori 2014 — Expansionary Austerity? International Evidence {#sec-guajardo_leigh_pescatori}
 
-**Citekey** `@guajardo_expansionary_2014` · Zotero `MFGJ6A8H` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Citekey** `@guajardo_expansionary_2014` · Zotero `MFGJ6A8H` · **Status** file ✓ · tag ✓ · §7 · consultation: abstract
 **Role** benchmark
 
-**Summary.** Action-based narrative fiscal-consolidation dataset and its output effects.
+**Summary.** Guajardo, Leigh & Pescatori (2014, *JEEA*) use the action-based narrative dataset to estimate the short-run effects of fiscal consolidation on OECD output, finding consolidation is contractionary for private demand and GDP — and that conventional cyclically-adjusted measures bias estimates toward the "expansionary austerity" view.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the narrative-comparator class for our output landscape. Citekey now resolves in the re-exported bib. Links: [[#sec-adler_2024]].
+**Relation.** The narrative-comparator study that demonstrates *why* exogenous (action-based) identification overturns conclusions drawn from endogenous fiscal measures — the exact bias our exogeneity classification removes — and the benchmark Bhasin validates against. Links: [[#sec-adler_2024]], [[#sec-pescatori_new_2011]], [[#sec-bhasin_identifying_2026]].
 
 ## Romer & Romer 2019 — Replication Data for the 2010 Tax-Shock Measure {#sec-romer_replication_2019}
 
-**Citekey** `@romer_replication_2019` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Citekey** `@romer_replication_2019` · Zotero `YCM7BMYI` · **Status** file ✓ · tag ✓ · §7 · consultation: abstract
 **Role** benchmark
 
-**Summary.** ICPSR replication archive for the R&R 2010 shock series.
+**Summary.** Romer & Romer (2019) ICPSR/openICPSR replication archive for the 2010 tax-shock measure — the act-by-act narrative classification and constructed exogenous tax-change series underlying "The Macroeconomic Effects of Tax Changes."
 
-**Relation.** *Pending `/lit-digest`.* Seed: the US reference series (`us_shocks.csv` lineage) we replicate and validate against. Links: [[#sec-romer2010]].
+**Relation.** The US reference series (`us_shocks.csv` lineage) our pipeline replicates and validates against end-to-end in Phase 1, and the source the §4 LLM competitors (Das, Fritsch) benchmark their recovery against. Links: [[#sec-romer2010]].
 
 # References
 
