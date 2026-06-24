@@ -1,4 +1,6 @@
-# Literature Review: Implementation-Critical Details for Codebook Design
+# Codebook Sources: Implementation-Critical Details for Codebook Design
+
+*Role: a **codebook-implementation reference** distilling R&R, Das et al., and H&K into design decisions for the C1-C4 codebooks. This is **not** the project's literature review — for that see `docs/lit_review_plan.md` (coverage map), `docs/brainstorm.qmd` (positioning), and `docs/lit_review_workflow.md` (how sources flow into the paper).*
 
 This document distills implementation-relevant details from the source papers into a practical reference for codebook development. It is organized as "what we need to know before writing each codebook," not as a traditional literature survey.
 

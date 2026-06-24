@@ -144,7 +144,10 @@ These files are either stable reference documents, generated artifacts, or infra
 
 | File | Why ignore |
 |------|-----------|
-| `docs/literature_review.md` | Stable summary of published papers |
+| `docs/codebook_sources.md` | Codebook-implementation reference (R&R / Das / H&K distillation) |
+| `docs/lit_review_workflow.md` | Literature-workflow process doc; stable unless the workflow itself changes |
+| `docs/lit_review_plan.md` | Literature coverage checklist; updated via the literature workflow, not doc-sync |
+| `docs/lit_log.md` | Append-only literature decision log (like `deltas.md`); never auto-rewrite |
 | `docs/methods/*.md` | Faithful summaries of R&R and H&K papers |
 | `docs/articles/*.pdf` | Published papers (immutable) |
 | `docs/_metadata.yml` | Quarto config (human format decisions) |
@@ -156,7 +159,7 @@ These files are either stable reference documents, generated artifacts, or infra
 | `docs/phase_0/plan_phase0.html` + `*_files/` | Generated artifacts |
 | `docs/strategy_files/` | Build artifacts |
 
-**Exception:** If you discover a factual error in a Tier 3 reference doc (e.g., literature_review.md misquotes a paper), log a delta rather than editing directly.
+**Exception:** If you discover a factual error in a Tier 3 reference doc (e.g., codebook_sources.md misquotes a paper), log a delta rather than editing directly.
 
 ## Running a Full Sync Pass (/doc-sync)
 

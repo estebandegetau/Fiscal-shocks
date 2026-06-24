@@ -70,7 +70,7 @@ Gather all context without modifying anything:
 3. Read the iteration log (`prompts/iterations/c<N>.yml`) for history
 4. Read `docs/strategy.md` for success criteria and the relevant codebook blueprint
 5. Analyze failures: map to H&K error categories (A-F), identify confusion patterns, rank by severity
-6. Cross-reference domain knowledge from `docs/literature_review.md` and `docs/methods/` if the failure involves fiscal policy concepts
+6. Cross-reference domain knowledge from `docs/codebook_sources.md` and `docs/methods/` if the failure involves fiscal policy concepts
 
 Do NOT edit any files during this phase.
 
@@ -125,7 +125,7 @@ After the user runs the pipeline and results are available:
 ## Key References
 
 - `docs/strategy.md` — Authoritative methodology (C1-C4 blueprints, success criteria, iteration strategy)
-- `docs/literature_review.md` — Implementation-critical details for codebook design (Section 1.2: significant mention rule, Section 1.3: motivation categories, Section 1.4: magnitude fallback hierarchy, Section 1.5: timing midpoint rule)
+- `docs/codebook_sources.md` — Implementation-critical details for codebook design (Section 1.2: significant mention rule, Section 1.3: motivation categories, Section 1.4: magnitude fallback hierarchy, Section 1.5: timing midpoint rule)
 - `.claude/skills/codebook-yaml/SKILL.md` — YAML format specification, behavioral test design, output templates
 - `docs/methods/Methodology for Quantifying Exogenous Fiscal Shocks.md` — R&R details
 - `docs/methods/The Halterman & Keith Framework for LLM Content Analysis.md` — H&K framework

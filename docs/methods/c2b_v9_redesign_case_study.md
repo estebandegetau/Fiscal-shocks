@@ -54,7 +54,7 @@ The *why* of the constraint matters: the project must transfer to Malaysia, Indo
 
 The writing agent (a `general-purpose` Claude Code agent with no memory of the planning conversation) was given an explicit allow-list and an explicit deny-list of files to read.
 
-**Must read:** R&R 2010 §II.C-E; R&R companion paper §I.C, pp. 5-8 (the most authoritative source on motivation classification); `docs/methods/Methodology for Quantifying Exogenous Fiscal Shocks.md` §RR5 (the project's R&R distillation); `docs/literature_review.md` §1.3 (the verbatim-phrase table) and §4.2 (the cross-country mapping).
+**Must read:** R&R 2010 §II.C-E; R&R companion paper §I.C, pp. 5-8 (the most authoritative source on motivation classification); `docs/methods/Methodology for Quantifying Exogenous Fiscal Shocks.md` §RR5 (the project's R&R distillation); `docs/codebook_sources.md` §1.3 (the verbatim-phrase table) and §4.2 (the cross-country mapping).
 
 **Must NOT read:** any prior version of `prompts/c2b_classification.yml` (current or git history); the iteration log `prompts/iterations/c2b.yml`; any v0.5–v0.8 codebook content reproduced elsewhere.
 

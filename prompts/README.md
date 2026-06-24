@@ -31,5 +31,5 @@ These files belong to the superseded Model A/B/C approach. They are retained for
 ## References
 
 - `docs/strategy.md` -- Authoritative methodology (C1-C4 blueprints, success criteria, targets pipeline)
-- `docs/literature_review.md` -- Implementation-critical details from R&R and H&K for codebook design
+- `docs/codebook_sources.md` -- Implementation-critical details from R&R and H&K for codebook design
 - `.claude/skills/codebook-yaml/SKILL.md` -- YAML format specification and validation checklist

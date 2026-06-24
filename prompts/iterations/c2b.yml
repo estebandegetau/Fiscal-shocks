@@ -4614,7 +4614,7 @@ iterations:
 
       - CLAUDE.md: C2 status block + success criteria updated.
 
-      - docs/literature_review.md Section 1.3: 4-class table annotated
+      - docs/codebook_sources.md Section 1.3: 4-class table annotated
       as diagnostic context, not codebook content.
 
       - docs/deltas.md: new entry recording the v0.7.0 redesign.
@@ -5229,7 +5229,7 @@ iterations:
     changes: >
       Full rewrite drafted by a fresh general-purpose agent given only R&R
       primary sources (R&R 2010 §II.C-E; companion paper §I.C, pp. 5-8),
-      docs/methods §RR5, literature_review.md §1.3 (verbatim phrase table)
+      docs/methods §RR5, codebook_sources.md §1.3 (verbatim phrase table)
       and §4.2 (cross-country mapping), C1 v0.6.0 as a structural template
       (shape only), and the codebook-yaml SKILL — no access to any prior
       C2b version (current YAML, git history, or iteration log). Replaces

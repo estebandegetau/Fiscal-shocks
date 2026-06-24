@@ -119,7 +119,7 @@ Note: LOOCV is reserved for S3 few-shot ablation studies, not S2 evaluation.
 ## Key References
 
 - `docs/methods/The Halterman & Keith Framework for LLM Content Analysis.md` — Full H&K framework
-- `docs/literature_review.md` — Implementation-critical H&K details (Section 2: behavioral tests, error taxonomy, evaluation methodology)
+- `docs/codebook_sources.md` — Implementation-critical H&K details (Section 2: behavioral tests, error taxonomy, evaluation methodology)
 - `docs/strategy.md` — Success criteria per codebook, C1-C4 blueprints, iteration strategy
 - `.claude/skills/codebook-yaml/SKILL.md` — Behavioral test design section, semantic label risk mitigation
 

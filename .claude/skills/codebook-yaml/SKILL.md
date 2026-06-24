@@ -13,7 +13,7 @@ This skill defines conventions for all YAML codebook files (`prompts/c1_*.yml`, 
 Before writing or modifying a codebook, read:
 
 1. `docs/strategy.md` for codebook-to-R&R-phase mapping and success criteria
-2. `docs/literature_review.md` for implementation-critical details from R&R and H&K
+2. `docs/codebook_sources.md` for implementation-critical details from R&R and H&K
 3. `docs/methods/Methodology for Quantifying Exogenous Fiscal Shocks.md` for R&R operationalizations
 4. `docs/methods/The Halterman & Keith Framework for LLM Content Analysis.md` for H&K format specs
 

@@ -17,7 +17,7 @@ iterations:
       Designed jointly with C2b (act-level classification). Independent versioning.
     results: ~
     interpretation: >
-      S0 draft based on R&R motivation categories from docs/literature_review.md
+      S0 draft based on R&R motivation categories from docs/codebook_sources.md
       Section 1.3 and strategy.md C2 Blueprint. Boundary case rules (return-to-normal
       test, 1-year temporal rule, mixed motivations, offsetting exogenous changes)
       embedded in clarifications and negative clarifications. No examples included for

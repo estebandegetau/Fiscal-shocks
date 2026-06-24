@@ -156,6 +156,10 @@ Each evaluation stage (S1, S2, S3) has independent targets, model configs, and t
 - `docs/` - Documentation and proposals
 - `docs/strategy.md` - Authoritative methodology document (C1-C4 + H&K framework)
 - `docs/methods/` - Reference methodology documents (R&R, H&K)
+- `docs/codebook_sources.md` - Codebook-implementation reference (R&R / Das / H&K distillation); NOT the literature review
+- `docs/lit_review_plan.md` - Literature coverage checklist (by paper section §1-§7)
+- `docs/lit_review_workflow.md` - How sources flow from Zotero into the paper (the literature workflow)
+- `docs/lit_log.md` - Append-only audit trail of literature decisions
 - `docs/phase_0/` - Phase 0 (Codebook Development) implementation context
 - `docs/phase_1/` - Phase 2 (Malaysia Pilot) strategy and expert review protocols
 - `docs/archive/` - Historical Model A/B/C documentation (superseded)
@@ -261,6 +265,12 @@ Use `/iterate` to run the full codebook iteration cycle: pre-flight, pipeline re
 ### Strategy Reconciliation
 
 Use `/strategy-sync` when unresolved deltas accumulate in `docs/deltas.md` (doc-sync will nudge you at 3+). The skill groups related deltas, challenges their implications against the full strategy, and records your justifications. See `.claude/skills/strategy-sync/SKILL.md`.
+
+### Literature & Citations
+
+The methodological paper's literature work uses a **three-doc architecture**: `docs/brainstorm.qmd` (§"where to plant the flag") is the canonical positioning argument, `docs/lit_review_plan.md` is the coverage checklist, and `docs/codebook_sources.md` is the codebook-implementation reference (R&R / Das / H&K distillation — not a review). The full intake process and tagging scheme live in `docs/lit_review_workflow.md`; literature decisions are logged in `docs/lit_log.md`.
+
+**Source-of-truth rule:** Zotero (`_Fiscal Shocks` collection) owns content and PDFs; the BetterBibTeX export `references.bib` owns citation keys and is **generated, never hand-edited** (fix content at the Zotero source and re-export). The human acquires PDFs (paywalls/blocking); Claude reads them via the Zotero MCP. The MCP reads full text reliably but does **not** reliably resolve citekeys, so citekeys always come from the bib.
 
 ## {targets} Pipeline Conventions
 
