@@ -1,5 +1,6 @@
 format: 
-  html: default
+  html: 
+    toc: true
   typst:
     papersize: a4
     margin:
@@ -9,3 +10,12 @@ format:
 
 execute:
   echo: false
+  warning: false
+  message: false
+  freeze: true
+
+date: today
+date-format: long
+reference-location: margin
+fig-cap-location: margin
+tbl-cap-location: top
