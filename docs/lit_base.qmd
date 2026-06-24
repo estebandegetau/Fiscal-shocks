@@ -88,7 +88,7 @@ status <- tibble::tribble(
   "fellegi_theory_1969",      "§5", "cite-only",   "yes", "yes", "pending",
   "abramitzky_automated_2021","§5", "cite-only",   "yes", "yes", "pending",
   "binette_almost_2022",      "§5", "cite-only",   "yes", "yes", "pending",
-  "carlini_quantifying_2022", "§5", "read-deep",   "yes", "yes", "pending",
+  "carlini_quantifying_2022", "§5", "read-deep",   "yes", "yes", "full",
   "golchin_time_2024",        "§5", "cite-only",   "yes", "yes", "pending",
   "deng_unveiling_2024",      "§5", "cite-only",   "yes", "yes", "pending",
   "ahuja_mega_2023",          "§5", "cite-only",   "yes", "yes", "pending",
@@ -96,9 +96,9 @@ status <- tibble::tribble(
   "xuan_mmlu-prox_2025",      "§5", "cite-only",   "yes", "yes", "pending",
   # --- s6 generated-regressor ---
   "ludwig_large_2025",        "§6", "read-deep",   "yes", "yes", "full",
-  "battaglia_inference_2024", "§6", "read-deep",   "yes", "yes", "pending",
-  "angelopoulos_prediction-powered_2023","§6","read-deep","yes","yes","pending",
-  "egami_using_2023",         "§6", "read-deep",   "yes", "yes", "pending",
+  "battaglia_inference_2024", "§6", "read-deep",   "yes", "yes", "full",
+  "angelopoulos_prediction-powered_2023","§6","read-deep","yes","yes","full",
+  "egami_using_2023",         "§6", "read-deep",   "yes", "yes", "full",
   # --- s7 datasets ---
   "pescatori_new_2011",       "§7", "benchmark",   "yes", "yes", "pending",
   "adler_updated_2024",       "§7", "benchmark",   "yes", "yes", "pending",
@@ -661,12 +661,12 @@ tt(status)
 
 ## Carlini et al. 2022 — Quantifying Memorization Across Neural Language Models {#sec-carlini_quantifying_2022}
 
-**Citekey** `@carlini_quantifying_2022` · **Status** file ✓ · tag ✓ · §5 · consultation: pending
+**Citekey** `@carlini_quantifying_2022` · **Status** file ✓ · tag ✓ · §5 · consultation: full
 **Role** read-deep
 
-**Summary.** Measures how verbatim training-data memorization scales with model size, example duplication, and prompt context — establishing that larger LLMs reproduce more of their pretraining corpus.
+**Summary.** Measures verbatim memorization by prompting models with true training-set prefixes and checking exact-suffix reproduction under greedy decoding. Establishes three log-linear laws: extractable memorization rises with model size (≈+19 pp per 10× parameters; 2–5× across a family), with training-data duplication, and with prompt-context length — the "discoverability" effect, 33%→65% extractable from 50→450 tokens of context. A GPT-2-vs-GPT-Neo control (prompt a model on data it could *not* have seen and compare) isolates genuine memorization from generic predictive competence, and estimates ≥1% of The Pile is verbatim-extractable from a 6B model.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the mechanistic backing for our H&K **S1 memorization test** — the threat that an LLM "recognizes" a historical US fiscal act from pretraining rather than reading the supplied chunk. Pillar deep-read; distill the memorization mechanics into `docs/codebook_sources.md`. Links: [[#sec-golchin_time_2024]], [[#sec-deng_unveiling_2024]], [[#sec-halterman2025]].
+**Relation.** The mechanistic backing for our H&K **S1 memorization test**. The threat is concrete: the published 44-act R&R list and the source ERP/Treasury documents are exactly the high-value, plausibly-duplicated public text most at risk of verbatim recall, so a model could "recognize" an act by name/year rather than reason from the supplied chunk. Carlini supplies both the risk levers (larger models, duplication, long name-and-year-rich prefixes) and the control logic our S1 probe borrows — withhold or perturb the identifying surface forms (act name, P.L. number, year) and check whether the classification survives. Because memorization scales with model size, S1 must be re-run when the deployment model changes, not treated as a one-time check. Pillar deep-read distilled into `docs/codebook_sources.md` §3. Links: [[#sec-halterman2025]], [[#sec-golchin_time_2024]], [[#sec-deng_unveiling_2024]].
 
 ## Golchin & Surdeanu 2024 — Time Travel in LLMs: Tracing Data Contamination {#sec-golchin_time_2024}
 
@@ -726,30 +726,30 @@ tt(status)
 
 ## Battaglia, Christensen, Hansen & Sacher 2024 — Inference for Regression with Variables Generated from Unstructured Data {#sec-battaglia_inference_2024}
 
-**Citekey** `@battaglia_inference_2024` · **Status** file ✓ · tag ✓ · §6 · consultation: pending
+**Citekey** `@battaglia_inference_2024` · **Status** file ✓ · tag ✓ · §6 · consultation: full
 **Role** read-deep
 
-**Summary.** Bias and valid-inference corrections for regressions whose covariates are generated from unstructured data (text) by AI/ML; the directly-on-point treatment of the generated-regressor problem.
+**Summary.** Formalizes inference for the two-step strategy in which an upstream model estimates latent variables from text (e.g. topic shares) and a downstream regression treats them as observed. Proves this is a measurement-error problem whose bias scales with the average inverse information per observation (κ = lim √n · E[1/Cᵢ]): when κ > 0 the OLS estimator is consistent but its asymptotic distribution is *re-centered*, so ordinary (Eicker–Huber–White) standard errors have the right *width* but the wrong *center* and under-cover; only κ = 0 gives valid two-step inference. Their baseline correction is a "one-step" joint upstream+downstream likelihood estimated by HMC — which presumes a generative IR likelihood an LLM judge does not provide. Extends explicitly to VARs/IRFs and similarity-measure regressions.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the §6 pillar's most direct external source — names and corrects exactly the bias our LLM-measured shocks would inject downstream. Highest-priority deep read. Fills the §6 PENDING ACQUISITION slot. Links: [[#sec-ludwig_large_2025]].
+**Relation.** The most directly on-point external source for §6: our LLM-measured shocks are exactly a "variable generated from unstructured data" feeding a VAR/LP, and their VAR/IRF extension is our downstream object. Two transfer caveats: their κ formula keys the bias to document length under a topic-model likelihood (our LLM-classification error is not literally a 1/Cᵢ sampling process — the qualitative lesson transfers, the exact formula does not), and their joint-MLE fix needs a likelihood the LLM lacks (the authors flag this as the open frontier). Because we *have* a validation sample (44 US labeled acts; expert-labeled Malaysia), the operative correction for us is the labeled-subset strand they contrast against, with Battaglia supplying the bias *diagnosis*: the error mode is mis-centering, not mis-sizing, so it cannot be detected by inspecting reported standard errors. Pillar deep-read distilled into `docs/codebook_sources.md` §5.4. Links: [[#sec-ludwig_large_2025]], [[#sec-egami_using_2023]], [[#sec-angelopoulos_prediction-powered_2023]], [[#sec-mertens_reconciliation_2014]].
 
 ## Angelopoulos, Bates, Fannjiang, Jordan & Zrnic 2023 — Prediction-Powered Inference {#sec-angelopoulos_prediction-powered_2023}
 
-**Citekey** `@angelopoulos_prediction-powered_2023` · **Status** file ✓ · tag ✓ · §6 · consultation: pending
+**Citekey** `@angelopoulos_prediction-powered_2023` · **Status** file ✓ · tag ✓ · §6 · consultation: full
 **Role** read-deep
 
-**Summary.** A framework for valid confidence intervals when ML predictions substitute for some gold-standard labels, combining a labeled and a large predicted sample.
+**Summary.** Prediction-powered inference (PPI) builds provably valid confidence intervals and P-values for a population estimand from a small gold-labeled sample (n) plus a large unlabeled sample (N ≫ n) carrying ML predictions. It combines a *measure of fit* on the large imputed set with a *rectifier* — the prediction error estimated only on the gold sample — to debias the imputation; coverage holds for *any* ML algorithm and *any* data distribution, with no assumption on model quality. Intervals are strictly narrower than gold-only when predictions are decent and N is large; the framework covers means, quantiles, OLS/logistic coefficients (any convex-objective estimand), plus covariate- and label-shift variants. It offers no gain when predictions are too weak or N/n too small.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the debias-against-a-validation-sample machinery [[#sec-ludwig_large_2025]] invokes, generalized; underwrites our Phase 2 expert-labeled-subset design. Links: [[#sec-egami_using_2023]].
+**Relation.** The general, assumption-light machinery underwriting our Phase 2 design: a small expert-labeled subset (PPI's gold sample) plus a large LLM-labeled corpus (the prediction sample) is a textbook PPI instance. It converts the expert subset from a one-off agreement check into the rectifier that yields valid downstream confidence intervals over the LLM-measured shock series — even when the LLM is biased, which is exactly our cross-country, no-retraining situation. The naive "treat LLM labels as truth" path is the imputation estimator the paper shows fails to cover; expert-only is valid but underpowered; PPI is the principled middle. Its stated limitation (no gain when predictions are weak or N not large relative to n) is a live risk at SEA corpus sizes, and a `ppi-py` reference implementation exists. Links: [[#sec-egami_using_2023]], [[#sec-battaglia_inference_2024]], [[#sec-ludwig_large_2025]], [[#sec-asirvatham_gpt_2026]].
 
 ## Egami, Hinck, Stewart & Wei 2023 — Using Imperfect Surrogates for Downstream Inference {#sec-egami_using_2023}
 
-**Citekey** `@egami_using_2023` · **Status** file ✓ · tag ✓ · §6 · consultation: pending
+**Citekey** `@egami_using_2023` · **Status** file ✓ · tag ✓ · §6 · consultation: full
 **Role** read-deep
 
-**Summary.** Design-based supervised learning: how to use imperfect LLM/ML "surrogate" labels in downstream social-science inference without bias, via a design-based correction against expert labels.
+**Summary.** Design-based supervised learning (DSL) uses imperfect, possibly-biased LLM/ML "surrogate" labels as outcomes in downstream regressions while preserving valid inference. Surrogates are observed for all n documents, but expert gold labels only for a *probability-sampled* subset drawn with a known sampling probability π bounded away from zero; DSL forms a doubly-robust pseudo-outcome (cross-fitted prediction + inverse-propensity residual correction on the gold rows) and substitutes it into the downstream moment equations. Because π is known *by design*, estimates are consistent with valid confidence intervals *regardless* of how biased the surrogate is — surrogate quality affects only efficiency. Naive surrogate-only use gave ~40% coverage of nominal-95% CIs at 90% accuracy in their simulations; DSL matched gold-only bias/coverage at materially lower RMSE across 18 datasets.
 
-**Relation.** *Pending `/lit-digest`.* Seed: the social-science-facing version of the generated-regressor fix, closest in spirit to our expert-validation workflow. Links: [[#sec-angelopoulos_prediction-powered_2023]], [[#sec-battaglia_inference_2024]].
+**Relation.** The social-science-facing formalization closest to our expert-validation workflow: LLM labels over the full act corpus, expert labels on a validated subset, feeding downstream macro inference. Its load-bearing requirement reshapes our protocol — the validated subset must be *probability-sampled* with a recorded π (simple or stratified), not a convenience or borderline-acts sample — and in return the expert validation does double duty: not just agreement measurement (our ≥80%/≥70% targets) but active debiasing, with SEs that survive arbitrarily biased LLM labels. This reframes the agreement target as an *efficiency* lever rather than a validity gate. Distinct from PPI in exploiting researcher-controlled sampling (removing the nuisance-rate requirement), which our fully-controlled corpus naturally satisfies. Scope caveat: DSL targets the known-corpus outcome-regression case, so our US→Malaysia cross-country transfer sits at the edge of its domain-shift scope. Links: [[#sec-angelopoulos_prediction-powered_2023]], [[#sec-battaglia_inference_2024]], [[#sec-ludwig_large_2025]].
 
 # §7 Datasets
 

@@ -587,6 +587,24 @@ H&K used open-weight 7-12B parameter models (Mistral-7B, Llama-8B). Our project 
 - Is Claude more robust to label name reliance? (Larger models may attend better to instructions)
 - Does self-consistency sampling (already implemented) compensate for any label sensitivity?
 
+### 3.8 Memorization mechanics for the S1 memorization test (Carlini et al. 2022)
+
+*Added 2026-06-24 (lit intake, `read-deep`). The mechanistic backing for our S1 memorization test — the threat that the model "recognizes" a US fiscal act from pretraining rather than reading the supplied chunk. H&K's Tests I–VII (§3.2–3.3) do not address this; Carlini supplies both the risk model and the control design.*
+
+Carlini et al. measure verbatim memorization by prompting a model with true training-set prefixes and checking exact-suffix reproduction under greedy decoding. Three robust, log-linear laws:
+
+1. **Model size.** Extractable memorization rises ≈+19 pp per 10× parameters (2–5× across a model family). *Implication:* the recall threat **increases** as we move to larger Sonnet/Opus-class deployment models, so S1 cannot be a one-time check — re-run it whenever the deployment model changes.
+2. **Duplication.** Sequences repeated more often in training are far more extractable. *Implication:* the published 44-act R&R list and canonical fiscal-act descriptions are widely re-quoted online (plausibly high-duplication), exactly the regime where memorization is strongest — and we cannot inspect the proprietary pretraining corpus, so we must assume the US reference set *may* be memorized and test behaviorally rather than rely on absence-of-contamination claims.
+3. **Prompt context length ("discoverability").** Memorized strings stay hidden until prompted with enough context (33%→65% extractable from 50→450 tokens). *Implication:* long, verbatim chunks carrying the act name, public-law number, and year are the **highest-risk** prompts for triggering recall over reading.
+
+**The control design is the test design.** Carlini's identification strategy — prompt a model on data it could *not* have memorized (GPT-2 on The Pile) and compare against one that could (GPT-Neo) — is the template for S1:
+
+- **Perturbation probe.** Re-classify the chunk with the identifying surface forms (act name, P.L. number, year) redacted or paraphrased, holding the substantive rationale fixed. If the label survives *only* when identifiers are present, that is recall, not reading.
+- **Trivial-baseline guard.** Some correct outputs come from generic competence, not memorization (GPT-2 "hit" ~6% on boilerplate/number runs). The S1 pass bar must distinguish "got it from the text" from "any model would guess this."
+- **Regime match.** Carlini measures verbatim recall under greedy decoding (temp = 0) — the same deterministic regime we deploy — so the recall threat applies at our operating point, not only under sampling.
+
+This complements the contamination-detection angle in §5.2 (Asirvatham's staggered-cutoff test, which is infeasible for our 1945–2022 US corpus): Carlini gives the *mechanism* and the behavioral control, while staggered cutoffs would give a *detection* protocol we cannot run.
+
 ## Section 4: Cross-Paper Synthesis — Codebook Design Decisions
 
 ### 4.1 Mapping R&R Steps to Codebooks
@@ -688,7 +706,7 @@ Documents → C1 (Measure ID) → C2 (Motivation) → C3 (Timing) + C4 (Magnitud
 
 ## Section 5: Downstream Inference & Validation Robustness
 
-*Added 2026-06-24 (literature-review intake). Distilled from two `read-deep` sources that extend, rather than duplicate, Sections 1–3: `@ludwig_large_2025` (the §6 generated-regressor pillar) and `@asirvatham_gpt_2026` (the §5 validation pillar). Brief notes on two §2 country/method-scrutiny extensions (`@cloyne_discretionary_2013`, `@mertens_reconciliation_2014`) close the section. Implementation reference only — review prose lives in `docs/lit_review.qmd`.*
+*Added 2026-06-24 (literature-review intake). Distilled from `read-deep` sources that extend, rather than duplicate, Sections 1–3: `@ludwig_large_2025` (the §6 generated-regressor pillar) and `@asirvatham_gpt_2026` (the §5 validation pillar), plus the three §6 generated-regressor correction methods `@battaglia_inference_2024`, `@angelopoulos_prediction-powered_2023`, and `@egami_using_2023` (§5.4). Brief notes on two §2 country/method-scrutiny extensions (`@cloyne_discretionary_2013`, `@mertens_reconciliation_2014`) close the section. Implementation reference only — review prose lives in `docs/lit_review.qmd`.*
 
 ### 5.1 Ludwig, Mullainathan & Rambachan (2025) — the estimation/prediction split
 
@@ -727,3 +745,28 @@ Closest external template for "is the LLM output good enough to be a measurement
 
 - **`@cloyne_discretionary_2013` (UK).** Applies the R&R narrative strategy to a new country and finds "remarkably similar" magnitudes (a 1% tax cut raises GDP ~0.6% on impact, ~2.5% over three years). The only non-US tax-narrative precedent — the empirical anchor for our country-transfer claim. Captured from the detailed abstract; no codebook change implied (it validates the R&R operationalization already in Section 1).
 - **`@mertens_reconciliation_2014` (method scrutiny).** Shows pure SVARs cannot recover the tax multiplier without assuming the output-elasticity of revenue, and that narrative proxies used as instruments yield larger multipliers (~2 on impact, up to 3). Reinforces why the narrative record (not a statutory-rate or SVAR series) is the necessary input, and that measurement error in narrative series matters — links directly to §5.1's debiasing argument.
+
+### 5.4 The generated-regressor correction toolkit (Battaglia / PPI / DSL)
+
+*Added 2026-06-24 (lit intake, three `read-deep` §6 sources). §5.1 establishes the *general* "debias against a validation sample" idea; these three specialize it into the concrete inference machinery our downstream VAR/LP would actually use. All three address the same object — an LLM-measured shock entering a downstream regression — and differ in their assumptions and what they require of our design.*
+
+**`@battaglia_inference_2024` — the bias diagnosis (no labels).** Formalizes the two-step strategy (upstream model estimates latent variables from text; downstream regression treats them as observed) as a measurement-error problem whose bias scales with the average inverse information per observation (κ = lim √n · E[1/Cᵢ]).
+
+- **The error mode is mis-centering, not mis-sizing.** When κ > 0, OLS stays consistent but its asymptotic distribution is *re-centered*; ordinary (Eicker–Huber–White) standard errors remain consistent, so the confidence interval has the right *width* but the wrong *center* and under-covers **silently**. We cannot detect this bias by inspecting reported SEs — a tight, "significant" downstream coefficient is no evidence the inference is valid.
+- **Tail observations dominate.** Because bias scales with the *average inverse* information, a few poorly-measured acts (low-confidence / short-document classifications) drive the bias more than the well-measured majority. Validation effort and any down-weighting should target the worst-measured acts.
+- **Their baseline fix does not transfer cleanly.** Their one-step joint upstream+downstream likelihood (HMC) presumes a generative IR likelihood an LLM judge does not provide (the authors flag this as the open frontier). Because we *have* a validation sample, the operative correction for us is the labeled-subset strand below — Battaglia supplies the diagnosis, not our fix.
+
+**`@angelopoulos_prediction-powered_2023` — PPI, the assumption-light general machinery.** Builds provably valid CIs for a population estimand from a small gold-labeled sample (n) plus a large prediction-labeled sample (N ≫ n), via a *rectifier* (the prediction error measured only on the gold sample) that debiases the imputation.
+
+- **Distribution-free, model-free coverage.** Validity holds for *any* ML algorithm and *any* data distribution — the right frame for a classifier we cannot certify as unbiased (cross-country, no retraining).
+- **Three-way framing for downstream macro inference.** Treating LLM labels as truth = the *imputation* estimator that fails to cover; expert-only = valid but underpowered; PPI = the principled middle. Covers means, quantiles, and OLS/logistic coefficients, with covariate-/label-shift variants that are the natural hook for the Phase 2→3 transfer claim.
+- **Caveat:** no gain when predictions are weak or N/n too small — a live risk at SEA corpus sizes. Reference implementation `ppi-py` exists.
+
+**`@egami_using_2023` — DSL, the design-based version closest to our workflow.** Uses imperfect LLM "surrogate" labels as outcomes while keeping valid inference, via a doubly-robust pseudo-outcome corrected on a *probability-sampled* expert subset.
+
+- **Sampling design is the load-bearing assumption (concrete protocol change).** Guarantees require the validated acts to be drawn with a *known* sampling probability π bounded away from zero. Phase 2 should therefore **probability-sample** which acts experts validate — simple or stratified, with π *recorded* — not pick the interesting/borderline ones. This is a low-cost change that converts expert validation from an agreement check into a debiasing instrument.
+- **Surrogate quality buys efficiency, not validity.** A better codebook (higher agreement) only shrinks variance; it does not change whether the downstream estimate is unbiased. This reframes our ≥80%/≥70% agreement targets as an *efficiency* lever for any DSL-style analysis, not a validity gate.
+- **Quantified caution.** Naive surrogate-only use gave ~40% coverage of nominal-95% CIs at 90% accuracy in their sims — the baseline §6 should cite against treating LLM fiscal-shock labels as ground truth.
+- **Why DSL over vanilla PPI for us:** it exploits researcher-controlled sampling (removing the nuisance-rate requirement), which our fully-controlled corpus naturally satisfies. **Scope caveat:** DSL targets the known-corpus outcome-regression case, so the US→Malaysia cross-country transfer sits at the edge of its domain-shift scope.
+
+**Net for our design.** Battaglia tells us the bias is invisible in standard SEs; PPI and DSL tell us a small, *correctly sampled* expert set is structurally load-bearing — not optional QA — for honest downstream inference. This sharpens the §5.1 open problem (the Malaysia corpus of 20–40 acts cannot supply 125–250 random labels): DSL's efficiency-not-validity result means even a modest probability sample yields *valid* (if wider) inference, which is the more defensible claim than chasing accuracy alone.
