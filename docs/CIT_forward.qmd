@@ -1,0 +1,144 @@
+---
+title: "A Narrative CIT-Shock Database for Malaysia"
+subtitle: "Feasibility note in response to *Do Corporate Tax Cuts Still Work?*"
+author: ""
+date: today
+date-format: long
+number-sections: true
+---
+
+```{r}
+#| label: setup
+#| cache: false
+#| echo: false
+#| message: false
+
+pacman::p_load(tinytable, dplyr, here)
+
+here::i_am("docs/CIT_forward.qmd")
+source(here("R/tt_theme.R"))
+```
+
+## Bottom line up front
+
+This note answers one question before we commit to the CIT research agenda: **can the pipeline we have already built deliver the data the project needs?** The short answer is *mostly yes, with one genuine construction gap*.
+
+The decisive finding is empirical. Malaysia's document corpus **already contains the statutory corporate-income-tax (CIT) rate cuts the project rests on**, and our measure-identification step (C1) already surfaces them, with the percentage-point magnitudes and the competitiveness motivations sitting in the extracted evidence. The project is not blocked on whether the signal exists. It is a question of *retrieving* that signal cleanly and *sizing* it.
+
+Three things stand between us and the research question:
+
+1. **A retrieval reframe.** The current deployment headline keeps only the most-*discussed* acts (an 80%-of-relevance cut). That filter is correct for a general inventory but discards routine CIT rate cuts, which are individually low-volume in the documents. We need an instrument-targeted pass that retrieves CIT acts by *what they are*, not by how much ink they received.
+2. **A motivation-validation step.** The project's identification hinges on separating CIT cuts motivated by *long-run competitiveness or consolidation* (exogenous) from cuts motivated by *short-run stimulus* (endogenous). Our motivation classifier (C2) is built and validated, but on US data. This specific separation, on the Malaysia CIT cases, is the methodologically central thing to validate.
+3. **A magnitude layer.** The project needs *sized* shocks (response per percentage-point cut). The magnitude codebook (C4) is not yet built. This is the real construction work. It is also the most tractable part, because statutory rates are stated explicitly in the source text.
+
+Items 1 and 2 are reframing and validation of components we already have. Item 3 is new, but bounded. Country extension to Thailand and Vietnam is a separate, larger lift discussed in @sec-extension.
+
+## What the project needs
+
+The proposal asks for the first narrative, LLM-constructed database of **exogenous, dated, and sized CIT shocks** for Malaysia (extended to Thailand and Vietnam), in the @romer2010 tradition, with competitor cuts also classified as exogenous or endogenous. Read against our pipeline, that decomposes into five data requirements:
+
+- **Identification**: locate every statutory CIT rate change in the corpus (the *measure-identification* task).
+- **Exogeneity**: classify each as exogenous or endogenous by its stated motivation, isolating competitiveness- and consolidation-driven cuts from cyclical ones.
+- **Sign**: cut versus increase (we have this from the motivation step).
+- **Magnitude**: the size of the change, in percentage points of the statutory rate, for the local-projection design.
+- **Date**: the year (and ideally quarter) the change takes effect.
+
+The unit of analysis Végh and Vuletin use, and the unit the proposal's competitive-gap measure assumes, is the **statutory CIT rate** [@vegh_how_2015]. That is a narrower, cleaner target than the general notion of a "fiscal change," and the narrowness works in our favour: statutory rates are explicit, dated, and quotable in budget documents.
+
+## What is already working {#sec-working}
+
+### C1 surfaces Malaysia's CIT rate cuts
+
+The most important result for this note: scanning the **full** Malaysia C1 measure pool (before any relevance filtering) returns the statutory CIT rate-change episodes the project is built on. Representative surface forms drawn from the current pool:
+
+> "corporate tax rate reduction from 34 per cent in 1991 to 30 per cent in 1995"
+>
+> "Progressive reduction of corporate tax rate from 28% to 27% (2007), 26% (2008), 25% (2009)"
+>
+> "corporate income tax was reduced by two percentage points in two stages, to 27% for the 2007 assessment year and 26% for 2008"
+>
+> "Pengurangan kadar cukai pendapatan syarikat daripada 34% kepada 32%"
+>
+> "Single-tier corporate tax system"
+
+The extracted evidence already carries **both** of the hard-to-get fields. The magnitudes are present as explicit from-and-to rates and percentage-point changes. The motivations are present and, tellingly, varied: some cuts are framed as long-run competitiveness ("corporate tax rate is high compared to other countries", "attract foreign direct investment", "reduce the cost of doing business"), others as short-run stimulus ("stimulate private sector capital spending"). That variation is exactly the exogenous/endogenous split the project needs, and it confirms the signal is rich enough to classify.
+
+### C2 already reasons about exogeneity, including on the spending side
+
+The motivation codebook (C2) has passed its Halterman and Keith validation gates and is frozen as a deliverable [@halterman2025]. It applies the @romer2010 motivation taxonomy: cuts motivated by inherited deficits or long-run objectives are exogenous, while cyclical-stabilisation actions are endogenous.
+
+A useful cross-check comes from the deployment inventory's incidental spending content. Most of Malaysia's *most-discussed* acts are countercyclical spending packages (stimulus packages, cash transfers), and C2 labels them COUNTERCYCLICAL, hence endogenous. That is the correct narrative treatment, and it matches how @das_mapping_nodate extend the same @romer2010 exogeneity logic to government spending with a purpose-built prompt. Two implications follow. First, having spending shocks in the corpus is not a problem; the classifier handles them sensibly. Second, the open question is not spending but the CIT subset specifically, addressed in @sec-validate.
+
+### The deployment plumbing runs end to end
+
+The country pipeline (C1 → C0 aggregation → C2 classification) is wired and runs on the full Malaysia corpus, with the evidence retained for audit. The infrastructure that would carry a CIT-targeted pass already exists; what changes is the *selection* logic feeding it, not the machinery.
+
+## What we need to work on {#sec-todo}
+
+### Retrieval: select CIT acts by instrument, not by discussion volume
+
+The deployment headline ranks acts by a relevance proxy (evidence items × chunks) and keeps the top set accumulating 80% of relevance. That is a sound way to curate an over-identified general inventory, but it is the wrong filter here: a CIT cut from 28% to 27% is maximally relevant to this project *because it is a CIT rate change*, regardless of how briefly the budget documents discuss it. Under the relevance cut, Malaysia's chosen set contained zero CIT acts despite the corpus holding several.
+
+The fix is a parallel, instrument-targeted retrieval that (i) selects C1 measures matching the CIT-rate concept, (ii) consolidates the scattered surface forms into distinct dated rate-change *events*, and (iii) does not pass through the relevance cut. The Végh-Vuletin statutory-rate definition becomes the selection filter rather than a post-hoc label.
+
+### Motivation validation on the CIT cases {#sec-validate}
+
+The project's central identifying assumption is that we can isolate cuts orthogonal to the domestic cycle. Our evidence already shows Malaysia's CIT cuts span both motivations, so the classification is consequential, not mechanical. Before relying on C2 here, we should validate it directly against expert judgment on the CIT subset: does it correctly route competitiveness- and consolidation-motivated cuts to exogenous, and stimulus-motivated cuts to endogenous? This is a focused, roughly twenty-act validation, and it is the methodologically interesting contribution, not overhead.
+
+### Magnitude: the one real construction gap
+
+The proposal's estimation needs sized shocks (the impulse response per percentage-point cut). The magnitude codebook (C4) is **not yet built**. This is the largest single item of new work. It is, however, the most tractable: unlike a general fiscal change whose dollar magnitude must be inferred, a statutory CIT cut states its own size ("from 34% to 30%", "by two percentage points to 27%"). C4 for the CIT subset is closer to careful extraction than to estimation, and the canonical narrative CIT-shock estimation literature gives us a clear target specification [@mertens2013].
+
+### Timing: a lighter lift
+
+The project needs dated shocks; the proposal's local projections are annual. Year-level dating is largely recoverable already (from act names that carry a year and from source-document years), so a dedicated timing codebook (C3) is a smaller task than C4, and quarter-level precision is not required for the annual design.
+
+### Country extension to Thailand and Vietnam {#sec-extension}
+
+Stage 1 of the proposal is Malaysia as the deep, validated showcase, which matches our current state: Malaysia is the only deployed corpus. The competitive-gap mechanism, however, requires *competitor* cuts (Thailand, Vietnam, and China by weight), which means acquiring and verifying those corpora before Stage 2. Corpus acquisition for a new country is a defined but non-trivial workflow and should be scoped as its own milestone, not folded into the Malaysia deliverable.
+
+## Readiness summary
+
+@tbl-readiness maps each data requirement to its current state and the work remaining.
+
+```{r}
+#| label: tbl-readiness
+#| tbl-cap: "**Component readiness**. Each building block of the CIT-shock database, its current state, and the work remaining before the research question can be addressed."
+
+readiness <- tibble::tribble(
+  ~Component,                    ~`Role in the CIT database`,                              ~Status,        ~`Work remaining`,
+  "C1 — measure identification", "Locate statutory CIT rate changes in the corpus",        "Working",      "Add an instrument-targeted, recall-oriented selection path",
+  "Retrieval / selection",       "Keep CIT acts instead of discarding them at the 80% cut", "To reframe",   "Bypass the relevance cut; consolidate surface forms into dated events",
+  "C2 — exogeneity & sign",      "Separate competitiveness/consolidation cuts from cyclical","Working (US)", "Validate the exogenous/endogenous split on the Malaysia CIT cases",
+  "C4 — magnitude",              "Size each shock in percentage points of the rate",        "Not built",    "Build the codebook; sizes are explicit in the source text",
+  "C3 — timing",                 "Date each shock (annual for the LP design)",              "Not built",    "Lighter lift; year-level dates largely already available",
+  "Thailand / Vietnam corpora",  "Competitor cuts for the competitive-gap mechanism",       "Not started",  "Acquire and verify corpora (Stage 2 milestone)"
+)
+
+readiness |>
+  tt() |>
+  tt_theme_report()
+```
+
+## Proposed sequencing
+
+We recommend separating the Malaysia deliverable from the regional extension and tackling them in order.
+
+1. **Malaysia CIT seed (near term).** Run the instrument-targeted retrieval, consolidate the rate-change events by hand, and adjudicate each event's exogeneity with expert review. This produces the first validated Malaysia CIT-shock list and simultaneously serves as the C2-on-CIT validation in @sec-validate.
+2. **Sizing and dating (near term, parallel).** Build C4 against the same CIT events, reading the statutory rates already present in the evidence, and confirm year-level dates. This closes the only true construction gap and yields *sized, dated* shocks.
+3. **Regional extension (later milestone).** Acquire the Thailand and Vietnam corpora and rerun steps 1 and 2, enabling the competitor-cut variation the mechanism depends on.
+
+::: {.callout-note}
+## What we can commit to this summer
+Steps 1 and 2 deliver a validated, sized, dated Malaysia CIT-shock series. They draw on components that already exist (C1, C2) plus one bounded new codebook (C4) whose inputs are explicit in the text. This is a realistic summer deliverable and is enough to run the Malaysia-only baseline in the proposal.
+:::
+
+::: {.callout-warning}
+## What is contingent, not committed
+The full competitive-gap mechanism (Stage 2) depends on acquiring the Thailand and Vietnam corpora, which is a separate milestone with its own timeline. We should scope it explicitly rather than assume it lands in the same window as the Malaysia deliverable.
+:::
+
+## References {.unnumbered}
+
+::: {#refs}
+:::

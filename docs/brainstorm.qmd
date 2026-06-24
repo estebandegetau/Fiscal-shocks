@@ -3,13 +3,6 @@ title: "A brainstorm of where we're at and where to go next"
 author: Esteban Degetau
 date: 2026-06-14
 date-format: long
-format: 
-     typst:
-        papersize: a4
-        margin:
-            x: 0cm
-            y: 0cm
-        columns: 1
 ---
 
 ## Research questions
@@ -52,6 +45,8 @@ If experts validate (2), and we can validate (iv and v), then we can
 {{< pagebreak >}}
 
 ## Literature review: where to plant the flag
+
+*Role: the canonical positioning argument; seed of the paper's Related Work. Coverage tracked in `docs/lit_review_plan.md`; intake mechanics in `docs/lit_review_workflow.md`.*
 
 *Synthesized from the `_Fiscal Shocks` Zotero collection and related work, 2026-06-15.*
 

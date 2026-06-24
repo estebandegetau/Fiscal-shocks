@@ -88,6 +88,7 @@ if (is.null(ps)) cat("No chunk data available yet.\n") else print(ps)
 ```{r}
 #| label: tbl-scope
 #| tbl-cap: "Per-country headline tally: corpus size, surfaced and clustered fiscal measures, and exogenous acts."
+#| column: body-outset
 
 scope_tally <- compute_deployment_scope_tally(
   chunks       = chunks,

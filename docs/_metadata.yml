@@ -1,4 +1,11 @@
 format: 
   html: default
-  # academic-typst:
-  #   section-numbering: "1.1.1"
+  typst:
+    papersize: a4
+    margin:
+        x: 0cm
+        y: 0cm
+    columns: 1
+
+execute:
+  echo: false

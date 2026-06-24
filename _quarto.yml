@@ -48,16 +48,21 @@ website:
           - notebooks/verify_api_inputs.qmd
       - section: "Codebook Evaluation"
         contents:
+          - notebooks/iteration_summary.qmd
           - notebooks/c0_aggregator.qmd
           - notebooks/c1_measure_id.qmd
-      - section: "Progress Reports"
-        contents: reports/
       - section: "Deployment"
         contents: 
           - notebooks/verify_malaysia_urls.qmd
           - notebooks/malay_consistency.qmd
           - notebooks/verify_country_body.qmd
           - notebooks/deployment.qmd
+      - section: "Internal Notes"
+        contents:
+          - docs/onboarding.qmd
+          - docs/proposal.qmd
+          - docs/brainstorm.qmd
+          - docs/CIT_forward.qmd
 
 format: 
   html:
