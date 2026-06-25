@@ -3,6 +3,7 @@ project:
   output-dir: _manuscript
   render:
     - docs/*.qmd
+    - docs/codebook_sources.md
     - notebooks/*.qmd
     - reports/*.qmd
     - "!reports/20260121-model-a.qmd"
@@ -57,6 +58,7 @@ website:
           - notebooks/malay_consistency.qmd
           - notebooks/verify_country_body.qmd
           - notebooks/deployment.qmd
+          - notebooks/cit_identification.qmd
       - section: "Internal Notes"
         contents:
           - docs/onboarding.qmd
@@ -65,6 +67,7 @@ website:
           - docs/CIT_forward.qmd
           - docs/lit_review.qmd
           - docs/lit_base.qmd
+          - docs/codebook_sources.md
 
 format: 
   html:

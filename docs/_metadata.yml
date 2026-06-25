@@ -16,6 +16,3 @@ execute:
 
 date: today
 date-format: long
-reference-location: margin
-fig-cap-location: margin
-tbl-cap-location: top
