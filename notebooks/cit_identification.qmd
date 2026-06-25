@@ -24,6 +24,13 @@ cit_kw <- stringr::regex(
 )
 n_pool <- nrow(c1)
 n_cit  <- c1 |> dplyr::filter(stringr::str_detect(measure_name, cit_kw)) |> nrow()
+
+# Frozen, human-stamped CIT shock dataset (produced by the /identify-cit skill).
+# Loaded here so both the recall scorecard (@sec-recall) and the structured
+# dataset (@sec-frozen) render from the single source of truth when it exists.
+frozen_path <- here("data", "validated", "MY_CIT_shocks.qs")
+have_frozen <- file.exists(frozen_path)
+if (have_frozen) cit_frozen <- qs2::qs_read(frozen_path)
 ```
 
 ## Purpose
@@ -48,13 +55,20 @@ The sweep also found two **genuine recall misses**: headline events that sit in 
 #| label: tbl-recall
 #| tbl-cap: "**Recall scorecard**. How each headline event fared through C1 measure identification and C0 act aggregation. 'Recovered manually' marks events present in the corpus that C1 did not surface as a measure."
 
-recall <- tibble::tribble(
-  ~Stage,                         ~Outcome,
-  "C1 measure identification",    "Surfaced 6 of 8 headline rate changes (34→32 through 26→25) plus the single-tier reform",
-  "Recall miss — 2016 cut",  "25→24 (YA2016) not surfaced as a measure; recovered from Budget Speech 2015 and Economic Report 2016",
-  "Recall miss — 2022 levy", "Cukai Makmur one-off surcharge not surfaced; recovered from Budget Speech 2022 and Economic Report 2023",
-  "C0 act aggregation",           "Fragmented the CIT measures: 27 keyword measures → 27 clusters (near-all singletons); 2007–2009 phased cut split across ~10 clusters; EN/BM never bridged"
-)
+# Single source of truth: render the frozen dataset's recall scorecard once it
+# exists; otherwise fall back to the narrative scorecard below.
+recall <- if (have_frozen) {
+  cit_frozen$recall_scorecard[[1]] |>
+    dplyr::rename(Stage = stage, Outcome = outcome)
+} else {
+  tibble::tribble(
+    ~Stage,                         ~Outcome,
+    "C1 measure identification",    "Surfaced 6 of 8 headline rate changes (34→32 through 26→25) plus the single-tier reform",
+    "Recall miss — 2016 cut",  "25→24 (YA2016) not surfaced as a measure; recovered from Budget Speech 2015 and Economic Report 2016",
+    "Recall miss — 2022 levy", "Cukai Makmur one-off surcharge not surfaced; recovered from Budget Speech 2022 and Economic Report 2023",
+    "C0 act aggregation",           "Fragmented the CIT measures: 27 keyword measures → 27 clusters (near-all singletons); 2007–2009 phased cut split across ~10 clusters; EN/BM never bridged"
+  )
+}
 
 recall |>
   tt() |>
@@ -162,7 +176,17 @@ tracks |>
 
 ## Open adjudication questions {#sec-open}
 
-Three calls are genuinely the researcher's to make; they are flagged here and left open in the tables above.
+Three calls are genuinely the researcher's to make; they are flagged here and were adjudicated at the `/identify-cit` stamp (the frozen dataset in @sec-frozen encodes the decisions).
+
+::: {.callout-tip}
+## Resolved at freeze (2026-06-25)
+
+1. **Consolidation grain.** The 2007–2009 phased cut (28→27→26→25) is frozen as **three annual-effective rows** (`MY-CIT-04/05/06`) for the local-projection design; the early-1990s reduction (34→32→30) is frozen as **two rows** (`MY-CIT-01/02`), treating each step as its own budget announcement. No row carries a `phased_schedule`.
+2. **Exogeneity on the 2007–2009 steps.** Frozen as **ambiguous**, with the competitiveness quote on `MY-CIT-04` and the stimulus quote on `MY-CIT-06`, preserving the dual framing as the object of expert adjudication. These preliminary reads are carried *alongside* — never replacing — C2b's downstream label.
+3. **Scope of the single-tier reform and Cukai Makmur.** Both **kept in scope**: the 2008 single-tier reform as a `Neutral` structural row (`MY-CIT-07`, rate fields `NA`) and the 2022 Cukai Makmur as a one-off `Hike` (`MY-CIT-09`, flagged in `magnitude_note`).
+
+The narrative below is retained as the reasoning record behind these calls.
+:::
 
 ::: {.callout-note}
 ## 1. Consolidation of the 2007–2009 phased cut (H4–H6)
@@ -196,9 +220,9 @@ per-shock member-chunk manifest render below once the skill has produced it.
 #| label: frozen-load
 #| cache: false
 
-frozen_path <- here("data", "validated", "MY_CIT_shocks.qs")
-have_frozen <- file.exists(frozen_path)
-if (have_frozen) cit_frozen <- qs2::qs_read(frozen_path)
+# `frozen_path`, `have_frozen`, and `cit_frozen` are established in the setup
+# chunk so the recall scorecard (@sec-recall) can also render from the frozen
+# dataset. Nothing more to do here; the tables below consume `cit_frozen`.
 ```
 
 ::: {.content-visible when-format="html"}
