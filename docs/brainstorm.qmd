@@ -58,13 +58,13 @@ Three LLM-based narrative fiscal papers define the immediate competition, and re
 
 | Paper | Source (all secondary) | Side | Outputs | Coverage | Validation |
 |---|---|---|---|---|---|
-| @das_mapping_nodate | EIU Country Reports | Spending only | Direction only ($-1/0/+1$), **no magnitude** | 64 countries | Concordance vs benchmark |
+| @das_ai_2026 | EIU Country Reports | Spending only | Direction only ($-1/0/+1$), **no magnitude** | 64 countries | Concordance vs benchmark |
 | @bhasin_identifying_2026 | IMF Article IV reports | Austerity (contraction only) | Binary + weak %GDP ($r=0.59$), **annual** | 17 OECD | Concordance vs benchmark |
 | @fritsch_high-frequency_nodate | News wires | Both | %GDP market surprise, quarterly | US only | Concordance vs benchmark |
 
 Each reads a secondary, harmonized, English-language source precisely to avoid the cost of primary national documents, and each pays for that shortcut in the same currency: no act-level magnitude in % of GDP, no quarterly timing, no separately validated exogeneity, and no emerging-market-native coverage. Two admissions are quotable ammunition:
 
-- @das_mapping_nodate observe only the qualitative direction of each action and explicitly do not recover dollar-equivalent magnitudes.
+- @das_ai_2026 observe only the qualitative direction of each action and explicitly do not recover dollar-equivalent magnitudes.
 - @bhasin_identifying_2026 trace their entire LLM-versus-benchmark multiplier gap to "shock sizing, not event selection," conceding that magnitude (the quantity secondary sources cannot deliver) is the binding constraint on credible multipliers.
 
 A deeper flaw is common to all three: they validate by concordance against a pre-existing narrative series (@romer2010 for the US; action-based consolidation datasets for the OECD). That strategy only works where such a series already exists, so it cannot travel to the countries the method is meant to serve. The (non-LLM) monetary analog @aruoba_identifying_nodate points to the alternative: validate against forecast-error predictability and theory-consistent impulse responses rather than against an existing label set.
@@ -73,16 +73,16 @@ A deeper flaw is common to all three: they validate by concordance against a pre
 
 The open niche is the intersection none of the competitors occupy: a **tax-side**, full-richness (measure $\times$ exo/endo $\times$ sign $\times$ **%GDP magnitude** $\times$ **quarterly timing**), **emerging-market / Southeast Asia** dataset built from **primary national documents in the local language**, made credible by **ground-truth-free validation** [@halterman2025] plus expert agreement. Each wedge is defensible:
 
-- **Tax-side in EMs is uncontested.** @das_mapping_nodate defer taxes; @bhasin_identifying_2026 lump revenue into aggregate austerity; @fritsch_high-frequency_nodate do taxes but for the US only. No tax-side narrative series exists for any emerging market. Composition is first-order: @mertens2013 show personal income tax cuts are far more potent for output than corporate ones, a decomposition only the narrative record enables.
+- **Tax-side in EMs is uncontested.** @das_ai_2026 defer taxes; @bhasin_identifying_2026 lump revenue into aggregate austerity; @fritsch_high-frequency_nodate do taxes but for the US only. No tax-side narrative series exists for any emerging market. Composition is first-order: @mertens2013 show personal income tax cuts are far more potent for output than corporate ones, a decomposition only the narrative record enables.
 - **Magnitude in %GDP is the field's collective Achilles heel.** Primary budget documents report actual revenue-change estimates; a competitor has already shown sizing is what drives multiplier differences.
 - **Primary national sources plus EM data scarcity is secretly a contamination advantage** (see the credibility section): non-English, never-digitized documents are far less likely to sit in an LLM's pretraining corpus.
 - **Formal LLM validation is unclaimed**, and is the only paradigm that survives the absence of ground truth.
 
-A positioning rule follows: do **not** compete with @das_mapping_nodate on country count. Lead on depth and richness per country, and on the substantive question only this dataset can answer. The method is the enabler, not the headline.
+A positioning rule follows: do **not** compete with @das_ai_2026 on country count. Lead on depth and richness per country, and on the substantive question only this dataset can answer. The method is the enabler, not the headline.
 
 ### The flagship question, ranked
 
-The original "cross-country multipliers" goal needs upgrading, because @das_mapping_nodate already have spending multipliers for 64 countries. The frontier is the tax-side question the canonical authors say they cannot answer.
+The original "cross-country multipliers" goal needs upgrading, because @das_ai_2026 already have spending multipliers for 64 countries. The frontier is the tax-side question the canonical authors say they cannot answer.
 
 **Candidate 1 (recommended flagship): decompose the fiscal procyclicality trap.** *How much of emerging-market "when it rains it pours" is exogenous shock versus endogenous policy response, and what is the true tax multiplier across the developing world?* This is the strongest framing because:
 
@@ -123,7 +123,7 @@ One adversarial flag for the transfer claim: @gentzkow_text_2019 note that fixed
 
 Build the paper around **Candidate 1 fused with Candidate 2**, framed Burke-Hsiang style as "we built and validated the instrument that turns a US-only method into a global comparative one," with multipliers as the demonstrated payoff rather than the central inferential claim. Three calls remain mine (Agustín's and mine) to make and defend at peer review:
 
-- Spending versus tax as the flagship: ceding spending breadth to @das_mapping_nodate and winning on tax depth.
+- Spending versus tax as the flagship: ceding spending breadth to @das_ai_2026 and winning on tax depth.
 - Procyclicality decomposition (bigger, more "Science") versus clean tax-multiplier heterogeneity (cleaner, lower-risk) as the lead result.
 - How hard to push the debiased estimation given small EM corpora, which may constrain how inferential the flagship multiplier claim can be.
 
@@ -142,7 +142,7 @@ Not yet in the library, to pull in published form:
 - Riera-Crichton, Végh & Vuletin (2016), "Tax multipliers: Pitfalls in measurement and identification," *Journal of Monetary Economics*.
 - Gechert (2015), "What fiscal policy is most effective? A meta-regression analysis," *Oxford Economic Papers*.
 - Blanchard & Perotti (2002), "An Empirical Characterization of the Dynamic Effects of Changes in Government Spending and Taxes on Output," *QJE*. The SVAR baseline.
-- Adler et al. (2024), the action-based consolidation benchmark used by @das_mapping_nodate and @bhasin_identifying_2026 (track down the exact reference for positioning).
+- Adler et al. (2024), the action-based consolidation benchmark used by @das_ai_2026 and @bhasin_identifying_2026 (track down the exact reference for positioning).
 
 {{< pagebreak >}}
 

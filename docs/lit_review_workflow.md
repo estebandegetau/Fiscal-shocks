@@ -36,7 +36,7 @@ Two authorities, two different jobs. Do not collapse them.
 **MCP caveat (tested 2026-06-23):** the Zotero MCP runs in web-API mode. It reads
 metadata, abstracts, recent items, and PDF full text reliably, but it **does not
 reliably resolve BetterBibTeX citation keys** (a `search_by_citation_key` lookup
-missed `das_mapping_nodate`). So citekeys always come from `references.bib`, not
+missed `das_ai_2026`). So citekeys always come from `references.bib`, not
 from the MCP.
 
 ## Tagging scheme
@@ -104,8 +104,8 @@ the cheap status stub is `/lit-intake`, the heavy read-and-relate is `/lit-diges
 - **Human retrieves PDFs.** Claude does not fetch PDFs from the web for deep reads
   (paywall / blocking / wrong-version / contamination risk).
 - **Pin BetterBibTeX citekeys** for `_nodate` items so a re-export cannot rename
-  them. Known live risk: `das_mapping_nodate` now has a date and will silently
-  rename on the next export, breaking `@das_mapping_nodate` in `brainstorm.qmd`.
+  them. Known live risk: `das_ai_2026` now has a date and will silently
+  rename on the next export, breaking `@das_ai_2026` in `brainstorm.qmd`.
   Other `_nodate` keys (e.g. `fritsch_high-frequency_nodate`,
   `aruoba_identifying_nodate`, `latifi_fiscal_nodate`) carry the same risk.
 

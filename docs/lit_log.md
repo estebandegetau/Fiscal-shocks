@@ -121,7 +121,7 @@ acquisition shopping list from the 2026-06-24 bulk pass:
   carried over from last pass; still needs deletion at the Zotero source.
 - **Pin-risk cleared for Ramey & Zubairy:** the user fixed `ramey_government_nodate` →
   `ramey_government_2018` (pinned) before this run, so it no longer carries the
-  silent-rename risk. Other `_nodate` keys remain on the pin list (`das_mapping_nodate`,
+  silent-rename risk. Other `_nodate` keys remain on the pin list (`das_ai_2026`,
   `fritsch_high-frequency_nodate`, `aruoba_identifying_nodate`, `latifi_fiscal_nodate`,
   `romer_trouble_nodate`, `jorda_local_nodate`).
 - **No duplicates detected** in the current collection (the earlier Kaminsky dup
@@ -172,7 +172,7 @@ already-distilled R&R doctrine.
 - **Junk, left untagged:** `BBEM65RQ` ("gPT AS A MEASUREMENT TOOL - Google Search", citekey `noauthor_gpt_nodate`) — a stray Google-search webpage. Delete at the Zotero source; it should not reach `references.bib`.
 - **Duplicate:** Kaminsky-Reinhart-Végh "When It Rains" appears twice (`C375EN8P`, `QJWG8RSN`); the second is tagged `duplicate-review`. Merge at source.
 - **In `references.bib` but NOT filed in `_Fiscal Shocks`:** `@ilzetzki_how_2013`, `@frankel_graduation_2013` (both cited in `brainstorm.qmd`), and `@embedding_gemma_2025`. File them into the collection so the library stays the single source of truth. (`@ilzetzki_how_2013`/`@frankel_graduation_2013` bib entries also carry a "Verify against Zotero copy" note.)
-- **Pin `_nodate` citekeys** before the next BBT export (`das_mapping_nodate`, `fritsch_high-frequency_nodate`, `aruoba_identifying_nodate`, `latifi_fiscal_nodate`, `romer_trouble_nodate`, `jorda_local_nodate`) — dates will silently rename them.
+- **Pin `_nodate` citekeys** before the next BBT export (`das_ai_2026`, `fritsch_high-frequency_nodate`, `aruoba_identifying_nodate`, `latifi_fiscal_nodate`, `romer_trouble_nodate`, `jorda_local_nodate`) — dates will silently rename them.
 
 **Acquisition shopping list (human Acquire → Export), priority order:**
 

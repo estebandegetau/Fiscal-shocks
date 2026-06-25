@@ -67,7 +67,7 @@ The extracted evidence already carries **both** of the hard-to-get fields. The m
 
 The motivation codebook (C2) has passed its Halterman and Keith validation gates and is frozen as a deliverable [@halterman2025]. It applies the @romer2010 motivation taxonomy: cuts motivated by inherited deficits or long-run objectives are exogenous, while cyclical-stabilisation actions are endogenous.
 
-A useful cross-check comes from the deployment inventory's incidental spending content. Most of Malaysia's *most-discussed* acts are countercyclical spending packages (stimulus packages, cash transfers), and C2 labels them COUNTERCYCLICAL, hence endogenous. That is the correct narrative treatment, and it matches how @das_mapping_nodate extend the same @romer2010 exogeneity logic to government spending with a purpose-built prompt. Two implications follow. First, having spending shocks in the corpus is not a problem; the classifier handles them sensibly. Second, the open question is not spending but the CIT subset specifically, addressed in @sec-validate.
+A useful cross-check comes from the deployment inventory's incidental spending content. Most of Malaysia's *most-discussed* acts are countercyclical spending packages (stimulus packages, cash transfers), and C2 labels them COUNTERCYCLICAL, hence endogenous. That is the correct narrative treatment, and it matches how @das_ai_2026 extend the same @romer2010 exogeneity logic to government spending with a purpose-built prompt. Two implications follow. First, having spending shocks in the corpus is not a problem; the classifier handles them sensibly. Second, the open question is not spending but the CIT subset specifically, addressed in @sec-validate.
 
 ### The deployment plumbing runs end to end
 
