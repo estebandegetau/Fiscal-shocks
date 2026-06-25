@@ -1,0 +1,168 @@
+---
+title: "Malaysia Statutory Tax-Change Dataset"
+subtitle: "Identified tax shocks (CIT / PIT / consumption) with motivation and exogeneity"
+number-sections: true
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, scales)
+
+here::i_am("notebooks/tax_shocks.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/tt_theme.R"))
+source(here("R/malay_consistency.R"))  # pretty_motivation() + motivation palette
+set_theme(theme_minimal())
+
+tax_shocks <- tryCatch(tar_read(tax_shocks), error = function(e) tibble::tibble())
+have_data <- nrow(tax_shocks) > 0
+```
+
+## Purpose
+
+This is the deployment deliverable: the bound, classified dataset of **statutory
+tax changes** for Malaysia, produced by the per-instrument identification skills
+(`/identify-cit`, `/identify-pit`, `/identify-vat`) and the `/identify-tax-shocks`
+orchestrator. Each row is one narratively-announced act × tax type, carrying the
+identified rate change (Vegh & Vuletin 2015-style), plus a motivation label and an
+exogenous/endogenous read from the validated C2b codebook.
+
+The dataset is built to be sent to a human expert for validation. Following the
+project's narrative-identification discipline, the exogeneity columns are
+**preliminary inputs requiring adjudication, not findings**: the deliverable keeps
+both Claude's narrative read (`exogenous_preliminary`) and C2b's classification
+(`c2b_exogenous`) side by side, and @sec-disagree flags where they differ.
+
+::: {.content-visible when-format="html"}
+```{r}
+#| label: pending
+#| eval: !expr "!have_data"
+#| echo: false
+#| output: asis
+
+cat("::: {.callout-important}\nThe `tax_shocks` target is empty or unbuilt. Run the",
+    "`/identify-tax-shocks` orchestrator (freeze the per-instrument datasets, then",
+    "`tar_make(tax_shocks_evidence)` → `tar_make(tax_shocks_c2b)` → `tar_make(tax_shocks)`,",
+    "each gated). This notebook will then render the inventory, rate paths, and timeline.\n:::\n")
+```
+:::
+
+## Statutory tax-change inventory {#sec-inventory}
+
+```{r}
+#| label: tbl-inventory
+#| tbl-cap: "**Statutory tax-change inventory**. One row per announced act × tax type. `Δpp` is the change in the headline statutory rate; motivation and exogeneity are from the validated C2b codebook (v0.9.1). The preliminary narrative exogeneity read is shown for comparison and is pending expert adjudication."
+#| eval: !expr have_data
+
+tax_shocks |>
+  dplyr::arrange(tax_type, effective_year) |>
+  dplyr::transmute(
+    `Shock`        = shock_id,
+    `Act`          = act_label,
+    `Tax`          = tax_type,
+    `Direction`    = direction,
+    `Δpp`          = delta_pp,
+    `Effective`    = effective_year,
+    `Motivation`   = pretty_motivation(c2b_label),
+    `Exo. (C2b)`   = c2b_exogenous,
+    `Exo. (prelim)` = exogenous_preliminary
+  ) |>
+  tt() |>
+  tt_theme_report()
+```
+
+## Rate paths {#sec-rate-paths}
+
+```{r}
+#| label: fig-rate-paths
+#| fig-cap: "**Statutory rate paths by tax type**. Step path of the headline statutory rate implied by the identified rate-bearing shocks, faceted by tax type. Non-rate shocks (e.g. one-off levies, regime introductions without a standing rate) are omitted from the path."
+#| eval: !expr have_data
+
+rate_path <- tax_shocks |>
+  dplyr::filter(!is.na(rate_to), !is.na(effective_year)) |>
+  dplyr::arrange(tax_type, effective_year)
+
+if (nrow(rate_path) > 0) {
+  ggplot(rate_path, aes(effective_year, rate_to)) +
+    geom_step(direction = "hv", linewidth = 0.8, colour = "grey20") +
+    geom_point(size = 2) +
+    facet_wrap(~ tax_type, ncol = 1, scales = "free_y") +
+    scale_y_continuous(labels = scales::label_percent(scale = 1)) +
+    scale_x_continuous(breaks = scales::breaks_width(5)) +
+    labs(x = NULL, y = "Statutory rate")
+} else {
+  knitr::asis_output("_No rate-bearing shocks to plot._")
+}
+```
+
+## Timeline {#sec-timeline}
+
+```{r}
+#| label: fig-timeline
+#| fig-cap: "**Tax-change timeline**. Acts counted per year × tax type × motivation × direction as a diverging stacked bar: hikes grow the bar upward, cuts downward, neutral acts sit at the baseline. Colour = C2b motivation. Faceted by tax type."
+#| eval: !expr have_data
+
+tl <- tax_shocks |>
+  dplyr::filter(!is.na(effective_year)) |>
+  dplyr::mutate(
+    sign = dplyr::case_when(direction == "Hike" ~ "+",
+                            direction == "Cut"  ~ "-",
+                            TRUE                 ~ "0"),
+    motivation = dplyr::if_else(sign == "0", "No change",
+                                as.character(pretty_motivation(c2b_label)))
+  ) |>
+  dplyr::count(tax_type, effective_year, sign, motivation, name = "n") |>
+  dplyr::mutate(
+    signed_n   = dplyr::if_else(sign == "-", -n, n),
+    motivation = factor(motivation,
+                        levels = c(unname(.malay_motivation_labels), "No change"))
+  )
+
+if (nrow(tl) > 0) {
+  ggplot(tl, aes(effective_year, signed_n, fill = motivation)) +
+    geom_col(width = 0.7) +
+    geom_hline(yintercept = 0, linewidth = 0.3, colour = "grey40") +
+    scale_x_continuous(breaks = scales::breaks_width(5)) +
+    scale_fill_manual(values = .malay_motivation_palette, name = "Motivation",
+                      drop = FALSE) +
+    facet_wrap(~ tax_type, ncol = 1) +
+    labs(x = NULL, y = "Acts (hike ↑ / cut ↓)")
+} else {
+  knitr::asis_output("_No dated shocks to plot._")
+}
+```
+
+## Where the preliminary read and C2b disagree {#sec-disagree}
+
+The cases where Claude's preliminary narrative read and C2b's classification
+diverge are the priority for expert adjudication — they are the methodologically
+consequential calls, not noise.
+
+```{r}
+#| label: tbl-disagree
+#| tbl-cap: "**Exogeneity disagreements**. Shocks where the preliminary narrative read and the C2b exogenous/endogenous classification differ. These are the priority cases for expert adjudication."
+#| eval: !expr have_data
+
+disagree <- tax_shocks |>
+  dplyr::mutate(prelim_exo = dplyr::case_when(
+    exogenous_preliminary %in% c("TRUE", "true")   ~ TRUE,
+    exogenous_preliminary %in% c("FALSE", "false") ~ FALSE,
+    TRUE                                           ~ NA
+  )) |>
+  dplyr::filter(!is.na(prelim_exo), !is.na(c2b_exogenous), prelim_exo != c2b_exogenous)
+
+if (nrow(disagree) > 0) {
+  disagree |>
+    dplyr::transmute(
+      `Shock` = shock_id, `Act` = act_label, `Tax` = tax_type,
+      `Exo. (prelim)` = prelim_exo, `Exo. (C2b)` = c2b_exogenous,
+      `Motivation (C2b)` = pretty_motivation(c2b_label)
+    ) |>
+    tt() |>
+    tt_theme_report()
+} else {
+  knitr::asis_output("_No disagreements: the preliminary read and C2b agree on every shock._")
+}
+```

@@ -1,0 +1,247 @@
+---
+title: "Manual Identification of Malaysia's Statutory CIT-Rate Shocks"
+subtitle: "AI-assisted narrative pass over the C1 / C0 deployment evidence"
+number-sections: true
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, qs2)
+
+here::i_am("notebooks/cit_identification.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/tt_theme.R"))
+set_theme(theme_minimal())
+
+# Full Malaysia C1 measure pool (pre-relevance-cut deployment output)
+c1 <- tar_read(country_c1_measures)[[1]]
+
+cit_kw <- stringr::regex(
+  "corporat|company tax|companies tax|cukai pendapatan syarikat|cukai syarikat|single.tier|cukai korporat",
+  ignore_case = TRUE
+)
+n_pool <- nrow(c1)
+n_cit  <- c1 |> dplyr::filter(stringr::str_detect(measure_name, cit_kw)) |> nrow()
+```
+
+## Purpose
+
+This note documents a focused, **AI-assisted manual identification** of Malaysia's *statutory corporate-income-tax (CIT) rate changes*, run directly over the evidence our deployment pipeline already surfaced. It is the "Malaysia CIT seed" called for in the feasibility note's proposed sequencing, and it deliberately follows the spirit of the narrative-identification literature [@romer2010]: close reading of source documents, with the LLM pipeline as a retrieval-and-extraction aide, not as the adjudicator.
+
+The method mirrors our `/manual-analysis` protocol. The pipeline (C1 measure identification, C0 act aggregation) pre-screens candidate measures; a human reads the surfaced evidence and makes the final call on *what counts as an event*, *how scattered surface forms consolidate*, and *whether each cut is exogenous*. Claude pattern-matches against the source text; the researcher confers meaning.
+
+We do **not** drive identification from C0. As @sec-recall shows, C0 fragmented the CIT measures badly, so it cannot serve as the event layer here. We retrieve from the full C1 pool (`r n_pool` measures, pre-relevance-cut) and consolidate by hand.
+
+::: {.callout-important}
+The exogenous/endogenous column in @tbl-exogeneity is a **preliminary suggestion with its supporting quote, pending expert adjudication**. It is not a research finding. The whole point of this pass is that a human adjudicates these calls; see the open questions in @sec-open.
+:::
+
+## What C1 surfaced, and what it missed {#sec-recall}
+
+A keyword scan of the full C1 pool returns **`r n_cit` distinct CIT measures** spanning 1981–2019, in both English and Malay, each carrying explicit from-and-to rates. A broader semantic sweep over all `r n_pool` measures (reading every tax-related surface form, not just keyword hits) confirmed the headline path is present from 34% down to 25%, and surfaced the separate SME, petroleum, and sectoral-incentive tracks.
+
+The sweep also found two **genuine recall misses**: headline events that sit in the corpus with explicit rates but that C1 did not surface as measures. Both were recovered by reading the source text directly.
+
+```{r}
+#| label: tbl-recall
+#| tbl-cap: "**Recall scorecard**. How each headline event fared through C1 measure identification and C0 act aggregation. 'Recovered manually' marks events present in the corpus that C1 did not surface as a measure."
+
+recall <- tibble::tribble(
+  ~Stage,                         ~Outcome,
+  "C1 measure identification",    "Surfaced 6 of 8 headline rate changes (34→32 through 26→25) plus the single-tier reform",
+  "Recall miss — 2016 cut",  "25→24 (YA2016) not surfaced as a measure; recovered from Budget Speech 2015 and Economic Report 2016",
+  "Recall miss — 2022 levy", "Cukai Makmur one-off surcharge not surfaced; recovered from Budget Speech 2022 and Economic Report 2023",
+  "C0 act aggregation",           "Fragmented the CIT measures: 27 keyword measures → 27 clusters (near-all singletons); 2007–2009 phased cut split across ~10 clusters; EN/BM never bridged"
+)
+
+recall |>
+  tt() |>
+  tt_theme_report()
+```
+
+The retrieval lesson is the one anticipated in the feasibility note: a CIT cut is maximally relevant *because it is a rate change*, however briefly the documents discuss it, so an instrument-targeted recall pass (plus human reading) is needed rather than a discussion-volume filter or trust in C0's clustering.
+
+## The headline statutory CIT rate {#sec-headline}
+
+Reading the consolidated evidence yields a clean headline path: **34 → 32 → 30 → 28 → 27 → 26 → 25 → 24**, a structural single-tier reform in 2008, and a one-off windfall surcharge in 2022. @tbl-headline gives the identified events; @fig-headline-path traces the rate.
+
+```{r}
+#| label: tbl-headline
+#| tbl-cap: "**Headline CIT-rate events**. Identified statutory general corporate-income-tax rate changes, with the budget that announced each and the year of assessment it took effect. Effective years for the early-1990s steps are approximate, bracketed by the 'from 34 per cent in 1991 to 30 per cent in 1995' summary in the Seventh Malaysia Plan."
+
+headline <- tibble::tribble(
+  ~Event, ~`From→To`,       ~`Δpp`, ~`Effective (YA)`, ~`Announced`,            ~`Source surface form / doc`,
+  "H1",   "34% → 32%",      "−2",   "~1994",           "early-1990s Budget",    "ECON Report 1995 (BM)",
+  "H2",   "32% → 30%",      "−2",   "~1995/96",        "mid-1990s Budget",      "ECON Report 1995/96; RMK-7",
+  "H3",   "30% → 28%",      "−2",   "1998",            "1998 Budget (Oct 1997)", "BNM AR 1997",
+  "H4",   "28% → 27%",      "−1",   "2007",            "2007 Budget (Sep 2006)", "RMK-9 MTR; BNM AR 2006",
+  "H5",   "27% → 26%",      "−1",   "2008",            "2007 Budget",           "ECON Report 2008 (BM)",
+  "H6",   "26% → 25%",      "−1",   "2009",            "2008 Budget (Sep 2007)", "BNM AR 2007; ECON Report 2010",
+  "H7",   "25% → 24%",      "−1",   "2016",            "2015 Budget (Oct 2014)", "Budget Speech 2015; ECON Report 2016",
+  "H\\*",   "single-tier system", "structural", "2008 (phased)",  "2008 Budget",           "Budget Speech 2008",
+  "H8",   "Cukai Makmur +9pp\non income > RM100m", "+9 (one-off)", "2022", "2022 Budget (Oct 2021)", "Budget Speech 2022; ECON Report 2023"
+)
+
+headline |>
+  tt() |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: fig-headline-path
+#| fig-cap: "**Headline statutory CIT rate, Malaysia 1991–2023**. Step path of the general corporate-income-tax rate from the identified events. The 2022 Cukai Makmur surcharge (one-off, on chargeable income above RM100m) is marked separately and is not part of the standing-rate path."
+
+rate_path <- tibble::tribble(
+  ~year, ~rate,
+  1991,  34,
+  1994,  32,
+  1995,  30,
+  1998,  28,
+  2007,  27,
+  2008,  26,
+  2009,  25,
+  2016,  24,
+  2023,  24
+)
+
+ggplot(rate_path, aes(year, rate)) +
+  geom_step(direction = "hv", linewidth = 0.8, colour = "grey20") +
+  geom_point(data = dplyr::filter(rate_path, year != 2023), size = 2) +
+  annotate("point", x = 2022, y = 33, shape = 17, size = 3, colour = "firebrick") +
+  annotate("text", x = 2022, y = 33, label = "  Cukai Makmur\n  (one-off, >RM100m)",
+           hjust = 0, vjust = 0.5, size = 3, colour = "firebrick") +
+  scale_y_continuous(labels = scales::label_percent(scale = 1), limits = c(22, 35)) +
+  scale_x_continuous(breaks = seq(1990, 2025, 5)) +
+  labs(x = NULL, y = "Statutory CIT rate")
+```
+
+## Motivation evidence and preliminary exogeneity {#sec-exogeneity}
+
+For each headline event, the corpus carries motivation language. @tbl-exogeneity pairs each event with the most diagnostic quote and a **preliminary** exogenous/endogenous read. The central methodological observation: the **2007–2009 phased cut carries both framings** in the same corpus, which is exactly why the classification is consequential rather than mechanical.
+
+```{r}
+#| label: tbl-exogeneity
+#| tbl-cap: "**Motivation evidence, pending adjudication**. The stated rationale for each headline event and a preliminary exogenous/endogenous read. These are suggestions anchored in the quoted text, not settled classifications; the exogeneity calls are the object of expert adjudication (see @sec-open)."
+
+exo <- tibble::tribble(
+  ~Event, ~`Motivation quote (source text)`,                                                                                 ~`Preliminary read`, ~Adjudication,
+  "H3",   "\"reduce the cost of doing business and strengthen competitiveness ... reduced to 28% in 1998 compared with 30% each for Indonesia and Thailand\"", "Exogenous (competitiveness)", "PENDING",
+  "H4",   "\"complaints that the national corporate tax rate of 28 per cent is high compared with other countries\" (2003 ctx)", "Exogenous (competitiveness)", "PENDING",
+  "H5",   "phased competitiveness reduction (same act path as H4/H6)",                                                        "Exogenous (competitiveness)?", "PENDING",
+  "H6",   "\"the phased reduction in corporate income tax to 26% in 2008 and 25% in 2009 is expected to provide stimulus for private sector capital spending\"", "Endogenous (stimulus framing)?", "PENDING",
+  "H7",   "announced within the GST-introduction offset package (Budget 2015)",                                              "Exogenous (structural/GST offset)?", "PENDING",
+  "H8",   "\"one-off special windfall tax to companies that generate high income\" (post-pandemic revenue measure)",          "Endogenous? (one-off windfall)", "PENDING"
+)
+
+exo |>
+  tt() |>
+  tt_theme_report()
+```
+
+## Other corporate-rate tracks {#sec-tracks}
+
+Per the agreed scope, all corporate-rate instruments are tracked, marked separately, with the headline rate as the priority. @tbl-tracks lists the non-headline tracks for completeness; these are candidates for the same adjudication once the headline series is settled.
+
+```{r}
+#| label: tbl-tracks
+#| tbl-cap: "**Non-headline corporate-rate tracks**. SME schedule, petroleum income tax, and sectoral/special-rate regimes surfaced by C1 and the recall sweep."
+
+tracks <- tibble::tribble(
+  ~Track,        ~`Identified events`,                                                                                        ~Note,
+  "SME schedule", "28%→20% (2003 Budget, first RM100k); threshold RM100k→500k (2004); 20%→19% (2016); 19%→18% (2017); 18%→17% (2019/2020)", "Distinct small-company rate; tracks but lags the headline",
+  "Petroleum income tax", "40%→38% (1998 Budget, bundled with H3); PITA self-assessment change (2011)", "2011 change is administrative, not a rate shock",
+  "Sectoral / special-rate", "DEB equity-restructuring 5pp exemption (1981); Labuan offshore 3% / RM20k regime; biomass companies (2001); Principal Hub 10% (2019); pharma/vaccine 0–10% (2021); manufacturing-relocation 15% (2023)", "Incentive/concessionary regimes, not the standing statutory rate"
+)
+
+tracks |>
+  tt() |>
+  tt_theme_report()
+```
+
+## Open adjudication questions {#sec-open}
+
+Three calls are genuinely the researcher's to make; they are flagged here and left open in the tables above.
+
+::: {.callout-note}
+## 1. Consolidation of the 2007–2009 phased cut (H4–H6)
+Is the 28→27→26→25 reduction *one* narratively-announced phased act (Budget 2007 legislated the first steps; Budget 2008 added the 2009 step), dated at announcement with a known path? Or *three* annual-effective shocks for the local-projection design? The narrative tradition leans to one act; the estimation may want annual rows. The same question applies, more weakly, to the early-1990s 34→32→30 steps.
+:::
+
+::: {.callout-note}
+## 2. Exogenous vs endogenous on H4–H6
+The identical phased cut is framed in the corpus as **competitiveness** ("28% is high vs other countries") *and* as **stimulus** ("provide stimulus for private sector capital spending"). This is the project's central identifying separation, and it is genuinely ambiguous here. Adjudicating it is the methodologically interesting contribution, not overhead.
+:::
+
+::: {.callout-note}
+## 3. Scope calls on H7, H8, and the single-tier reform
+Is the 2016 cut exogenous because it offsets the GST introduction (a structural reform), or does the deficit-financing context pull it toward consolidation-driven (still exogenous, different reason)? Is the 2022 Cukai Makmur in scope at all as a statutory-rate shock, given it is a one-off surcharge on a subset of firms? And does the 2008 single-tier reform belong in a rate-shock series, given it changes the dividend-imputation system rather than the headline rate?
+:::
+
+## Structured frozen dataset {#sec-frozen}
+
+The narrative identification above is the human-curated content; the machine-readable
+form is frozen by the `/identify-cit` skill to `data/validated/MY_CIT_shocks.qs`,
+following the shared contract in `docs/phase_1/tax_shock_schema.md` (one row per
+announced act × tax type, with a `member_chunks` manifest linking each shock to its
+corpus chunks and a mandatory recall scorecard). That frozen file — not this
+notebook's tribbles — is the reference input the deployment pipeline binds and feeds
+to C2a/C2b for motivation and exogeneity (`tar_read(tax_shocks)`).
+
+@sec-recall above is the recall scorecard for this pass. The frozen dataset and its
+per-shock member-chunk manifest render below once the skill has produced it.
+
+```{r}
+#| label: frozen-load
+#| cache: false
+
+frozen_path <- here("data", "validated", "MY_CIT_shocks.qs")
+have_frozen <- file.exists(frozen_path)
+if (have_frozen) cit_frozen <- qs2::qs_read(frozen_path)
+```
+
+::: {.content-visible when-format="html"}
+```{r}
+#| label: frozen-pending
+#| eval: !expr "!have_frozen"
+#| echo: false
+#| output: asis
+
+cat("::: {.callout-note}\nThe frozen CIT dataset has not been produced yet. Run the",
+    "`/identify-cit` skill to identify, consolidate, and stamp the shocks; this",
+    "section will then render the structured dataset and its member-chunk manifest.\n:::\n")
+```
+:::
+
+```{r}
+#| label: tbl-frozen
+#| tbl-cap: "**Frozen CIT shock dataset**. Structured statutory CIT events as stamped by the `/identify-cit` skill (selected columns). The preliminary exogeneity read is pending expert adjudication and is carried alongside — never replaced by — C2b's downstream label."
+#| eval: !expr have_frozen
+
+cit_frozen |>
+  dplyr::select(shock_id, act_label, direction, rate_from, rate_to, `Δpp` = delta_pp,
+                `Effective` = effective_year, `Preliminary exo.` = exogenous_preliminary) |>
+  tt() |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: tbl-frozen-manifest
+#| tbl-cap: "**Member-chunk manifest**. Number of corpus chunks attributed to each shock, and how many were recovered (present in the corpus but not surfaced by C1). The recovered chunks drive the downstream C2a re-run."
+#| eval: !expr have_frozen
+
+cit_frozen |>
+  dplyr::mutate(
+    `Member chunks`    = purrr::map_int(member_chunks, nrow),
+    `Recovered chunks` = purrr::map_int(recovered_chunks, nrow)
+  ) |>
+  dplyr::select(shock_id, act_label, `Member chunks`, `Recovered chunks`) |>
+  tt() |>
+  tt_theme_report()
+```
+
+## References {.unnumbered}
+
+::: {#refs}
+:::

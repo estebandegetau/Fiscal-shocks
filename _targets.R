@@ -866,6 +866,80 @@ list(
     deployment = "main"
   ),
 
+  # ===========================================================================
+  # Statutory tax-shock deliverable (identify-cit / -pit / -vat skills -> C2b)
+  #
+  # The per-instrument identification skills + human review freeze one
+  # hand-curated reference dataset per instrument to
+  # data/validated/{ISO}_{INSTRUMENT}_shocks.qs (the data-policy carve-out for
+  # an agentic, non-pure-function pass -- see docs/phase_1/tax_shock_schema.md
+  # and docs/deltas.md 2026-06-25). This chain binds them, re-runs C2a on the
+  # corpus chunks C1 omitted, runs the validated C2b classifier (v0.9.1 frozen),
+  # and assembles the final deliverable. All targets are empty-input safe, so the
+  # chain is inert (no API calls, no error) until the first frozen file exists.
+  # ===========================================================================
+
+  # Scan data/validated/ for frozen per-instrument datasets each run (cheap);
+  # the md5 column propagates content changes downstream without format="file"
+  # (which would error before any frozen file exists).
+  tar_target(
+    tax_shock_files,
+    {
+      dir <- here::here("data", "validated")
+      f <- list.files(dir, pattern = "_(CIT|PIT|CONSUMPTION)_shocks\\.qs$",
+                      full.names = TRUE)
+      tibble::tibble(path = f, md5 = unname(tools::md5sum(f)))
+    },
+    cue = tar_cue(mode = "always"),
+    packages = c("here", "tibble", "tools")
+  ),
+
+  tar_target(
+    tax_shocks_identified,
+    bind_tax_shocks(tax_shock_files$path),
+    packages = c("tidyverse", "qs2", "purrr")
+  ),
+
+  # C2a re-run on omitted chunks only (API). country_* are list targets;
+  # bind_rows collapses the per-country branches to a flat tibble.
+  tar_target(
+    tax_shocks_evidence,
+    assemble_shock_evidence(
+      tax_shocks_identified,
+      c2a_evidence = dplyr::bind_rows(country_c2a_evidence),
+      chunks       = dplyr::bind_rows(country_chunks),
+      c2a_codebook = c2a_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2a = 16384,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    tax_shocks_c2b,
+    run_c2b_on_shocks(
+      tax_shocks_evidence,
+      c2b_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2b = 4096,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    tax_shocks,
+    assemble_tax_shock_deliverable(tax_shocks_identified, tax_shocks_c2b),
+    packages = "tidyverse"
+  ),
+
   # =============================================================================
   # Malaysia EN/BM Cross-Language Consistency Test
   # Self-contained sub-pipeline that slices country_chunks to Economic Report
