@@ -1,0 +1,251 @@
+---
+title: "Manual Identification of Malaysia's Statutory PIT-Rate Shocks"
+subtitle: "AI-assisted narrative pass over the C1 / C0 deployment evidence"
+number-sections: true
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, qs2)
+
+here::i_am("notebooks/pit_identification.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/tt_theme.R"))
+set_theme(theme_minimal())
+
+# Full Malaysia C1 measure pool (pre-relevance-cut deployment output)
+c1 <- tar_read(country_c1_measures)[[1]]
+
+pit_kw <- stringr::regex(
+  paste0("individual income tax|personal income tax|cukai pendapatan individu|",
+         "cukai pendapatan persendirian|personal tax|individual tax|top marginal|",
+         "tax bracket|chargeable income|cukai pendapatan peribadi"),
+  ignore_case = TRUE
+)
+n_pool <- nrow(c1)
+n_pit  <- c1 |> dplyr::filter(stringr::str_detect(measure_name, pit_kw)) |> nrow()
+
+# Frozen, human-stamped PIT shock dataset (produced by the /identify-pit skill).
+# Loaded here so both the recall scorecard (@sec-recall) and the structured
+# dataset (@sec-frozen) render from the single source of truth when it exists.
+frozen_path <- here("data", "validated", "MY_PIT_shocks.qs")
+have_frozen <- file.exists(frozen_path)
+if (have_frozen) pit_frozen <- qs2::qs_read(frozen_path)
+```
+
+## Purpose
+
+This note documents a focused, **AI-assisted manual identification** of Malaysia's *statutory personal/individual income-tax (PIT) rate changes*, run directly over the evidence our deployment pipeline already surfaced. It is the PIT counterpart to `notebooks/cit_identification.qmd`, and it follows the same spirit of the narrative-identification literature [@romer2010]: close reading of source documents, with the LLM pipeline as a retrieval-and-extraction aide, not as the adjudicator.
+
+The method mirrors our `/manual-analysis` protocol. The pipeline (C1 measure identification, C0 act aggregation) pre-screens candidate measures; a human reads the surfaced evidence and makes the final call on *what counts as an event*, *how scattered surface forms consolidate*, and *whether each change is exogenous*. Claude pattern-matches against the source text; the researcher confers meaning.
+
+PIT differs from CIT in one structural respect: it is a **progressive schedule, not a single rate**. We track the **top marginal resident rate** as the headline series and record bracket/threshold changes as detail. Two of the nine identified acts move brackets without moving the top rate, and are flagged as such.
+
+::: {.callout-important}
+The exogenous/endogenous column in @tbl-exogeneity is a **preliminary suggestion with its supporting quote, pending expert adjudication**. It is not a research finding. The whole point of this pass is that a human adjudicates these calls; see the open questions in @sec-open.
+:::
+
+## What C1 surfaced, and what it missed {#sec-recall}
+
+A keyword scan of the full C1 pool returns **`r n_pit` distinct PIT measures** spanning 1999–2023, in both English and Malay. A broader semantic sweep over all `r n_pool` measures (reading every income-tax surface form, not just keyword hits) confirms the top-marginal-rate path runs **30 → 29 → 28 → 27 → 26 → 25**, then reverses upward to **28** (2016) and **30** (2020).
+
+The sweep also found two **genuine recall misses**: headline events that sit in the corpus with explicit rates but that C1 did not surface as measures. Both were recovered by reading the source text directly.
+
+```{r}
+#| label: tbl-recall
+#| tbl-cap: "**Recall scorecard**. How each headline event fared through C1 measure identification and C0 act aggregation. 'Recovered manually' marks events present in the corpus that C1 did not surface as a measure."
+
+recall <- if (have_frozen) {
+  pit_frozen$recall_scorecard[[1]] |>
+    dplyr::rename(Stage = stage, Outcome = outcome)
+} else {
+  tibble::tribble(
+    ~Stage, ~Outcome,
+    "C1 measure identification", "Surfaced 7 of 9 announced PIT acts; missed the 2009 (28->27) and 2016 (25->28) events",
+    "Recall miss - Budget 2009", "28->27 (YA2009) recovered from Budget Speech 2009 (BM) and Budget Speech 2010",
+    "Recall miss - Budget 2016", "25->28 high-earner hike recovered from Budget Speech 2016 Appendix 1",
+    "C0 act aggregation", "Fragmented the PIT measures (near-all singletons; EN/BM never bridged); not used as the event layer"
+  )
+}
+
+recall |>
+  tt() |>
+  tt_theme_report()
+```
+
+The retrieval lesson is the same one the CIT pass surfaced: a statutory rate change is maximally relevant *because it is a rate change*, however briefly the documents discuss it, so an instrument-targeted recall pass (plus human reading) is needed rather than trust in C0's clustering. Both PIT recall misses are top-of-schedule moves (one cut, one hike) that the broad measure-identification pass passed over.
+
+## The headline statutory top PIT rate {#sec-headline}
+
+Reading the consolidated evidence yields a clean headline path for the **top marginal resident rate**: **30 → 29 → 28 → 27 → 26 → 25 → 28 → 30**. @tbl-headline gives the rate-moving events; @fig-headline-path traces the rate. Two further acts (a 2018 middle-band cut and the 2023 M40/T20 restructure) change the schedule without moving the top rate and are noted below the figure.
+
+```{r}
+#| label: tbl-headline
+#| tbl-cap: "**Headline top-PIT-rate events**. Identified statutory changes in the top marginal resident income-tax rate, with the budget that announced each and the year of assessment it took effect. Acts that move only lower brackets (P7, P9) are excluded here and discussed in @sec-tracks."
+
+if (have_frozen) {
+  pit_frozen |>
+    dplyr::filter(!is.na(rate_from)) |>
+    dplyr::transmute(
+      Event = shock_id,
+      `From->To` = sprintf("%g%% -> %g%%", rate_from, rate_to),
+      `Dpp` = sprintf("%+d", as.integer(delta_pp)),
+      Direction = direction,
+      `Effective (YA)` = effective_year,
+      Announced = announced_year
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
+
+```{r}
+#| label: fig-headline-path
+#| fig-cap: "**Headline top marginal PIT rate, Malaysia 1999-2023**. Step path of the top resident individual income-tax rate from the identified events. The 2016 and 2020 steps are high-earner band introductions (>RM1m, >RM2m) that raised the statutory top rate; the 2018 middle-band cut and the 2023 M40/T20 restructure (top rate unchanged) are not part of this path."
+
+rate_path <- tibble::tribble(
+  ~year, ~rate,
+  1999,  30,
+  2000,  29,
+  2002,  28,
+  2009,  27,
+  2010,  26,
+  2015,  25,
+  2016,  28,
+  2020,  30,
+  2023,  30
+)
+
+ggplot(rate_path, aes(year, rate)) +
+  geom_step(direction = "hv", linewidth = 0.8, colour = "grey20") +
+  geom_point(data = dplyr::filter(rate_path, year != 2023), size = 2) +
+  scale_y_continuous(labels = scales::label_percent(scale = 1), limits = c(24, 31)) +
+  scale_x_continuous(breaks = seq(2000, 2025, 5)) +
+  labs(x = NULL, y = "Top marginal PIT rate")
+```
+
+The path is not monotone: a long sequence of competitiveness-driven cuts (2000–2015) is followed by two high-earner hikes (2016, 2020) that reintroduced rates above the prior 25% floor for the very top of the distribution. This non-monotonicity, and the mix of cut and hike framings, is exactly what makes the exogeneity adjudication consequential rather than mechanical.
+
+## Motivation evidence and preliminary exogeneity {#sec-exogeneity}
+
+For each act, the corpus carries motivation language. @tbl-exogeneity pairs each event with the most diagnostic quote and a **preliminary** exogenous/endogenous read. The cuts of 2009 and 2010 carry explicit competitiveness/brain-drain framing; the 2000 cut sits inside the post-crisis demand-recovery package; the high-earner hikes and the 2023 restructure carry progressivity framing amid fiscal pressure.
+
+```{r}
+#| label: tbl-exogeneity
+#| tbl-cap: "**Motivation evidence, pending adjudication**. The stated rationale for each act and a preliminary exogenous/endogenous read. These are suggestions anchored in the quoted text, not settled classifications; the exogeneity calls are the object of expert adjudication (see @sec-open)."
+
+if (have_frozen) {
+  pit_frozen |>
+    dplyr::transmute(
+      Event = shock_id,
+      `Motivation quote (source text)` = stringr::str_trunc(exogeneity_quote, 180),
+      `Preliminary read` = exogenous_preliminary
+    ) |>
+    tt() |>
+    tt_theme_report()
+}
+```
+
+## Bracket-only acts and non-rate tracks {#sec-tracks}
+
+Per the PIT scope, the top marginal rate is the headline series; sub-top changes are recorded as detail. @tbl-tracks lists the two acts that change the schedule without moving the top rate, plus the relief/rebate/threshold tracks surfaced by C1 that are not rate shocks.
+
+```{r}
+#| label: tbl-tracks
+#| tbl-cap: "**Bracket-only acts and non-rate tracks**. The 2018 middle-band cut and the 2023 M40/T20 restructure leave the top rate unchanged and are flagged as bracket changes. Reliefs, rebates and threshold moves are tracked as magnitude detail, not headline rows."
+
+tracks <- tibble::tribble(
+  ~Track, ~`Identified events`, ~Note,
+  "Middle-band cut (P7)", "Budget 2018: 2pp cut on RM20k-70k bands (5->3, 10->8, 16->14%)", "Top marginal rate unchanged at 28%; kept as a row, rate fields NA",
+  "M40/T20 restructure (P9)", "Budget 2023: M40 -2pp (RM35k-100k); T20 +0.5-2pp (RM100k-1m)", "Top rate unchanged at 30%; direction Neutral, split in magnitude_note",
+  "Reliefs / rebates", "2001/2002 rebates; personal relief raised RM8k->RM9k (2010); tuition/parental/SOCSO reliefs (2016)", "Base-narrowing, not statutory-rate shocks",
+  "Threshold / structure", "Chargeable-income band regrading (2002, 2015)", "Recorded in magnitude_note for the parent rate event"
+)
+
+tracks |>
+  tt() |>
+  tt_theme_report()
+```
+
+## Open adjudication questions {#sec-open}
+
+Four calls are genuinely the researcher's to make; they were adjudicated at the `/identify-pit` stamp (the frozen dataset in @sec-frozen encodes the decisions).
+
+::: {.callout-tip}
+## Resolved at freeze (2026-06-25)
+
+1. **Mid-band-only acts kept as rows.** P7 (Budget 2018) and P9 (Budget 2023) are kept as one row per narratively-announced act, flagged in `magnitude_note` and `id_reasoning` as bracket changes that do not move the top marginal rate (P7 carries `NA` rate fields; P9 is `Neutral` with `delta_pp = 0`).
+2. **P5 (YA2015 GST-offset cut) frozen as `ambiguous`**, its own PIT row (not merged with the GST act), mirroring the CIT GST-offset call (`MY-CIT-08`).
+3. **P9 direction `Neutral`.** The mixed M40-cut / T20-hike restructure leaves the top rate unchanged; the split is preserved in `magnitude_note` as the object of adjudication.
+4. **P1 top from/to `30 -> 29`.** Inferred from the documented "across-the-board 1pp" cut plus the 29% pre-2002 top rate; flagged in `id_reasoning`.
+
+The narrative above is retained as the reasoning record behind these calls.
+:::
+
+::: {.callout-note}
+## 1. Exogenous vs endogenous across the cut sequence
+The 2009 and 2010 cuts carry explicit competitiveness/brain-drain framing (preliminary exogenous); the 2000 cut sits in the post-crisis recovery package (preliminary endogenous); the 2002 cut blends competitiveness with a recovery budget (ambiguous). The same identifying separation that drives the CIT pass applies here.
+:::
+
+::: {.callout-note}
+## 2. The high-earner hikes
+The 2016 (>RM1m, 25->28) and 2020 (>RM2m, 28->30) hikes are framed as progressivity but landed amid fiscal pressure (low oil/commodity revenue). Progressivity (long-run, exogenous) or deficit-driven (still exogenous, different reason)? Both are frozen `ambiguous`.
+:::
+
+::: {.callout-note}
+## 3. The 2023 restructure
+A simultaneous M40 cut and T20 hike with the top rate unchanged: a single redistributive act, or two conceptual legs? Frozen as one `Neutral` row, pending adjudication.
+:::
+
+## Structured frozen dataset {#sec-frozen}
+
+The narrative identification above is the human-curated content; the machine-readable form is frozen by the `/identify-pit` skill to `data/validated/MY_PIT_shocks.qs`, following the shared contract in `docs/phase_1/tax_shock_schema.md` (one row per announced act × tax type, with a `member_chunks` manifest linking each shock to its corpus chunks and a mandatory recall scorecard). That frozen file — not this notebook's tribbles — is the reference input the deployment pipeline binds and feeds to C2a/C2b for motivation and exogeneity (`tar_read(tax_shocks)`).
+
+@sec-recall above is the recall scorecard for this pass. The frozen dataset and its per-shock member-chunk manifest render below once the skill has produced it.
+
+::: {.content-visible when-format="html"}
+```{r}
+#| label: frozen-pending
+#| eval: !expr "!have_frozen"
+#| echo: false
+#| output: asis
+
+cat("::: {.callout-note}\nThe frozen PIT dataset has not been produced yet. Run the",
+    "`/identify-pit` skill to identify, consolidate, and stamp the shocks; this",
+    "section will then render the structured dataset and its member-chunk manifest.\n:::\n")
+```
+:::
+
+```{r}
+#| label: tbl-frozen
+#| tbl-cap: "**Frozen PIT shock dataset**. Structured statutory PIT events as stamped by the `/identify-pit` skill (selected columns). The preliminary exogeneity read is pending expert adjudication and is carried alongside — never replaced by — C2b's downstream label."
+#| eval: !expr have_frozen
+
+pit_frozen |>
+  dplyr::select(shock_id, act_label, direction, rate_from, rate_to, `Dpp` = delta_pp,
+                `Effective` = effective_year, `Preliminary exo.` = exogenous_preliminary) |>
+  tt() |>
+  tt_theme_report()
+```
+
+```{r}
+#| label: tbl-frozen-manifest
+#| tbl-cap: "**Member-chunk manifest**. Number of corpus chunks attributed to each shock, and how many were recovered (present in the corpus but not surfaced by C1). The recovered chunks drive the downstream C2a re-run."
+#| eval: !expr have_frozen
+
+pit_frozen |>
+  dplyr::mutate(
+    `Member chunks`    = purrr::map_int(member_chunks, nrow),
+    `Recovered chunks` = purrr::map_int(recovered_chunks, nrow)
+  ) |>
+  dplyr::select(shock_id, act_label, `Member chunks`, `Recovered chunks`) |>
+  tt() |>
+  tt_theme_report()
+```
+
+## References {.unnumbered}
+
+::: {#refs}
+:::

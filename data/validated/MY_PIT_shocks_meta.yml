@@ -1,0 +1,8 @@
+instrument: PIT
+country_iso: MY
+skill: identify-pit
+n_shocks: 9
+n_recovered_events: 2
+frozen_at: 2026-06-25 22:40:14
+git_hash: 2907f22
+reviewer: Esteban Degetau
