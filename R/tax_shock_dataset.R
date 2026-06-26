@@ -309,6 +309,7 @@ assemble_tax_shock_deliverable <- function(shocks, c2b_out) {
       c2b_label      = pred_label,
       c2b_exogenous  = pred_exogenous,
       c2b_sign       = pred_sign,
+      c2b_sign_raw   = pred_sign_raw,
       c2b_enacted    = enacted,
       c2b_confidence = confidence,
       c2b_reasoning  = reasoning,
@@ -318,7 +319,7 @@ assemble_tax_shock_deliverable <- function(shocks, c2b_out) {
 
   shocks |>
     dplyr::left_join(c2b_cols, by = "shock_id") |>
-    dplyr::relocate(c2b_label, c2b_exogenous, c2b_sign, c2b_enacted,
+    dplyr::relocate(c2b_label, c2b_exogenous, c2b_sign, c2b_sign_raw, c2b_enacted,
                     c2b_confidence, c2b_reasoning, c2b_stop_reason,
                     .after = exogeneity_quote)
 }

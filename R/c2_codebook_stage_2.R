@@ -515,6 +515,32 @@ run_c2b_classification <- function(c2b_codebook,
       }
     }
 
+    # Graceful sign degradation: if the ONLY invalid field is an out-of-enum
+    # `sign` (e.g. "mixed" for an omnibus budget act bundling a cut + rises), keep
+    # the classification and let the canonical mapping below resolve sign -> NA.
+    # Everything else (label, enacted, confidence, reasoning) is preserved, and
+    # pred_sign_raw retains the raw value for transparency. The strict
+    # validate_c2b_output (the S1 behavioral-test gate) is intentionally untouched;
+    # gracefulness lives only at this production-classification layer.
+    if (!c2b_valid && !is.null(c2b_result$parsed)) {
+      p <- c2b_result$parsed
+      other_ok <- is.null(p$error) &&
+        is.character(p$label) && length(p$label) == 1L && nzchar(p$label) &&
+        !is.null(p$enacted) && is.logical(p$enacted) &&
+        is.character(p$confidence) && p$confidence %in% c("low", "medium", "high") &&
+        is.character(p$reasoning)
+      sign_bad <- is.null(p$sign) || !is.character(p$sign) ||
+        !(p$sign %in% c("increase", "decrease", "no_change"))
+      if (other_ok && sign_bad) {
+        c2b_parsed <- p
+        c2b_valid  <- TRUE
+        message(sprintf(
+          "  C2b [%s]: out-of-enum sign '%s' -> c2b_sign NA, rest kept",
+          act$act_name, p$sign %||% "NULL"
+        ))
+      }
+    }
+
     if (!c2b_valid) {
       warning(sprintf(
         "C2b validation failed for [%s] after %d attempts: %s",
