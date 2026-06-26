@@ -187,6 +187,8 @@ C2 v0.9.1's iter-47 freeze numbers (exogenous precision 0.833, sign accuracy 0.9
 - Expert agreement ≥70% on C2 outputs — exogeneity, sign, and implementation quarter
 - Correctly identified ≥3 known major acts (e.g., 1997 crisis measures)
 
+**Deliverable (2026-06, evolving).** The Malaysia output is a *composite fiscal-events dataset* — exogeneity-tagged, corpus-linked events — assembled in components: tax-side statutory (CIT/PIT/VAT, 22 events frozen, underway) → spending-side (next) → fiscal incentives/holidays (later). The relevance-curated C0/C2 inventory is exploratory raw material, not the deliverable. The agreement criteria above apply to the component datasets submitted for regional-expert approval, not the full raw inventory.
+
 **Secondary**:
 
 - False positive rate ≤10% on expert review (precision critical)
