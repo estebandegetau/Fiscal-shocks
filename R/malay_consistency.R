@@ -348,6 +348,7 @@ run_malay_er_c2b <- function(act_inputs,
       pred_label = character(0), pred_exogenous = logical(0),
       pred_sign = character(0), confidence = character(0),
       reasoning = character(0), c2b_raw_response = character(0),
+      c2b_stop_reason = character(0),
       side = character(0), doc_language = character(0),
       canonical_name = character(0),
       act_name_year = integer(0), doc_year_modal = integer(0)

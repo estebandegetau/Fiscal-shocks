@@ -925,7 +925,11 @@ list(
       tax_shocks_evidence,
       c2b_codebook,
       model = "claude-haiku-4-5-20251001",
-      max_tokens_c2b = 4096,
+      # 8192 (was 4096): one statutory-shock act (MY-CIT-03) bundles a single
+      # macro-overview chunk whose conflicting-motivation evidence overflowed the
+      # 4096 reasoning budget -> truncated JSON -> NA label. S2/S3 stay at their
+      # validated 4096 (they passed); only this deployment path is raised.
+      max_tokens_c2b = 8192,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")

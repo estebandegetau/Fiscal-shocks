@@ -568,7 +568,12 @@ run_c2b_classification <- function(c2b_codebook,
       evidence_raw = list(all_evidence),
       enacted_signals_raw = list(all_enacted),
       timing_signals_raw = list(all_timing),
-      c2b_raw_response = if (c2b_valid) c2b_parsed$raw_response else NA_character_,
+      # Retain the raw response + stop_reason even on failure (c2b_valid == FALSE):
+      # after the loop, c2b_result holds the LAST attempt, whose parsed object carries
+      # the (possibly truncated) text and stop_reason. NULL only on an API error.
+      # For valid rows these equal the prior c2b_parsed values (byte-identical).
+      c2b_raw_response = (c2b_result$parsed %||% list())$raw_response %||% NA_character_,
+      c2b_stop_reason = (c2b_result$parsed %||% list())$stop_reason %||% NA_character_,
       reasoning = reasoning,
       n_chunks = act$n_chunks,
       n_evidence_items = length(all_evidence),
