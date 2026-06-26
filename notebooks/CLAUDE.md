@@ -183,6 +183,25 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - **Headline — act inventory timeline:** a single diverging-stacked-bar figure (`fig-timeline`, increases up, decreases down, no-change at baseline, colour = motivation, faceted by country), dated by the single act-level `year` (`timing = "year"` in `plot_deployment_act_timeline`). The earlier dual doc-year/act-name timelines and `fig-act-years` were collapsed/removed (2026-06-11). All year-x figures use 5-year axis breaks (numeric year axis).
 - **Decision:** Deployment deliverable / expert-review starting point. Comparable structure across countries (similar merge rate, plausible motivation marginals, no degenerate years) is the signal that the country-agnostic codebooks transferred. Uses tinytable + `pacman::p_load()`.
 
+### `cit_identification.qmd`, `pit_identification.qmd`, `vat_identification.qmd` -- Statutory Tax-Shock Identification (per instrument)
+
+**Purpose:** Provenance notebooks for the per-instrument statutory tax-shock datasets, one per instrument — corporate income tax (CIT), personal income tax (PIT), and broad consumption tax (CONSUMPTION = VAT/GST/SST). Each documents an **AI-assisted manual identification** pass (produced by the `/identify-cit`, `/identify-pit`, `/identify-vat` skills, duplicated by design) run directly over the deployment evidence the C1/C0 pipeline surfaced. The method mirrors `/manual-analysis`: keyword scan of the full C1 pool → semantic sweep → **recall recovery by reading `country_body` source documents directly** → consolidation at the announced-act grain → mandatory recall scorecard → human stamp. C0 is **not** used as the event layer (it fragments tight instrument tracks and never bridges EN/BM).
+
+**Key tests and decisions:**
+
+- Each notebook renders its recall scorecard and structured table from the single source of truth — the frozen `data/validated/{ISO}_{INSTRUMENT}_shocks.qs` — once the skill has stamped it (shared column contract in `docs/phase_1/tax_shock_schema.md`, one row per announced act × tax type).
+- **Malaysia frozen (2026-06):** CIT 9 events (headline path 34%→24% + single-tier reform + 2022 Cukai Makmur; 2 recall misses recovered), PIT 9 events, CONSUMPTION 4 events (service tax 5%→6% 2011; GST introduction at 6% 2015; GST abolition 2018; SST reinstatement 2018).
+- Preliminary exogeneity is a **suggestion with its supporting quote, pending expert adjudication** — carried alongside, never replacing, C2b's downstream label.
+- **Decision:** Hand-curated reference inputs (analogous to `data/raw/us_shocks.csv`), the data-policy carve-out for the non-pure agentic pass; read back into the pipeline via the `tax_shock_files` target. Human-stamped, not auto-generated.
+
+### `tax_shocks.qmd` -- Statutory Tax-Shock Deliverable
+
+**Purpose:** The cross-instrument statutory tax-change deliverable. Binds the frozen per-instrument datasets (`bind_tax_shocks()` over `tax_shock_files`), re-runs C2a **only on the corpus chunks C1 omitted** (reusing existing `country_c2a_evidence` for the rest), runs the frozen C2b v0.9.1 classifier, and assembles the final table keeping **both** the preliminary narrative exogeneity read and C2b's `pred_exogenous`/`pred_sign`/reasoning. Pipeline tail in `R/tax_shock_dataset.R`.
+
+**Key tests and decisions:**
+
+- **Decision:** The C2a re-run and C2b classification are **API-gated** and run via the `/identify-tax-shocks` orchestrator with explicit user approval; the binding/assembly targets are empty-input safe (inert until the first frozen file exists). Candidate Phase 2 expert-validation artifact (open question logged in `docs/deltas.md` 2026-06-25).
+
 ## Archived Notebooks
 
 Located in `notebooks/unused/` unless noted otherwise. These are from earlier exploratory phases and are no longer active:
@@ -208,6 +227,7 @@ Located in `notebooks/unused/` unless noted otherwise. These are from earlier ex
 8. `c0_aggregator.qmd` -- See the C0 act-aggregator method comparison (RR-mapped eval; not H&K S0-S3)
 9. `malay_consistency.qmd` -- See the Malaysia EN/BM cross-language consistency test (Phase 2 BM-only readiness diagnostic)
 10. `deployment.qmd` -- See the cross-country deployment headline (C1 → C0 → C2 act inventory per country)
+11. `cit_identification.qmd` / `pit_identification.qmd` / `vat_identification.qmd` → `tax_shocks.qmd` -- See the statutory tax-shock identification layer (per-instrument frozen datasets → bound deliverable with C2a/C2b enrichment)
 
 ## Conventions
 

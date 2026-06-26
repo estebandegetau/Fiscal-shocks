@@ -9,6 +9,14 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-06-26: Malaysia statutory tax-shock datasets frozen (CIT 9 + PIT 9 + CONSUMPTION 4) — identification skills now executed, not just built
+
+**Type:** status-change
+**Affects:** `docs/phase_1/malaysia_strategy.md` > Phase 2 expert-review scope (the tax-change dataset flagged in the 2026-06-25 entry now has real Malaysia content — 22 events — so its candidate role as the expert-validation artifact is live, not hypothetical); `docs/strategy.md` (the agentic-identification deliverable layer is now demonstrated end-to-end for one country).
+**Detail:** The three per-instrument identification skills (previously described as "inert until the first frozen file exists") have been run for Malaysia and stamped: `data/validated/MY_CIT_shocks.qs` (9 events, commit 2907f22), `MY_PIT_shocks.qs` (9 events, d16b896), and `MY_CONSUMPTION_shocks.qs` (4 events, 1b5c853) — 22 statutory tax-change events total, each human-stamped (reviewer Esteban Degetau) with a mandatory recall scorecard. CONSUMPTION captures Malaysia's regime-changing broad consumption tax: service tax 5%→6% (2011), GST introduction at 6% (2015, replacing SST), GST abolition/zero-rating (2018), SST reinstatement (2018); the two regime swaps are treated asymmetrically (2015 SST→GST as one row, 2018 GST→SST as two) per the corpus's own dating. Consumption-tax recall was better than CIT/PIT — C1 surfaced all four events; only SST rate detail and a BNM-2010 corroboration needed manual recovery. The `tax_shock_files` target globs all three instruments, so `bind_tax_shocks()` now binds 22 events; the C2a/C2b enrichment (`tax_shocks.qmd`) remains API-gated and unrun.
+**Open questions for the human:** The three open questions from the 2026-06-25 entry are unchanged and now actionable: (1) is this 22-event dataset the Phase 2 expert-validation artifact (vs/with the relevance-curated C0/C2 inventory)? (2) magnitude/timing fields are agentically extracted, not H&K-validated; (3) the asymmetric regime-replacement grain (consumption tax) is a per-instrument adjudication the experts should see.
+**Suggested edit:** Review needed (folds into the 2026-06-25 entry's resolution). When that entry is reconciled into `docs/strategy.md` / `docs/phase_1/malaysia_strategy.md`, record that Malaysia is the worked example with 22 frozen events across three instruments.
+
 ## 2026-06-25: Statutory tax-shock dataset via per-instrument agentic identification skills (data-policy carve-out)
 
 **Type:** new-method
