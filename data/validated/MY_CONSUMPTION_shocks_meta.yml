@@ -1,0 +1,9 @@
+instrument: CONSUMPTION
+country_iso: MY
+country: malaysia
+skill: identify-vat
+n_shocks: 4
+n_recovered_chunks: 3
+frozen_at: 2026-06-26 01:54:02
+git_hash: d16b896
+reviewer: Esteban Degetau
