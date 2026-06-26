@@ -925,11 +925,12 @@ list(
       tax_shocks_evidence,
       c2b_codebook,
       model = "claude-haiku-4-5-20251001",
-      # 8192 (was 4096): one statutory-shock act (MY-CIT-03) bundles a single
-      # macro-overview chunk whose conflicting-motivation evidence overflowed the
-      # 4096 reasoning budget -> truncated JSON -> NA label. S2/S3 stay at their
-      # validated 4096 (they passed); only this deployment path is raised.
-      max_tokens_c2b = 8192,
+      # NB: MY-CIT-03 lands at NA not from a token-budget issue (responses
+      # complete at ~1.1k chars, stop_reason=end_turn) but because the model
+      # emits an out-of-enum sign ("mixed") for that omnibus 1998-Budget act
+      # (CIT cut + import-duty rises + incentives), which validate_c2b_output
+      # rejects. Left NA as a flagged schema-fit case; see docs/deltas.md 2026-06-26.
+      max_tokens_c2b = 4096,
       provider = "anthropic",
       base_url = "https://api.anthropic.com/v1",
       api_key = Sys.getenv("ANTHROPIC_API_KEY")
