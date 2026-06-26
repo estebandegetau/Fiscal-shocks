@@ -9,6 +9,19 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-06-26: `tax_shocks` NA rate fields (rate_from / rate_to / delta_pp) are by-design, sourced from the frozen inputs — not a pipeline defect
+
+**Type:** diagnostic / no-change finding (investigation only — nothing changed)
+**Affects:** none of the human-authored strategy docs. Confirms the existing `docs/phase_1/tax_shock_schema.md` contract behaves as written; logged so the NAs are not re-investigated as a bug.
+**Detail:** Investigation prompted by NA values in `tax_shocks`' `rate_from` / `rate_to` / `delta_pp`. Conclusion: these three columns are **carried through untouched** from the frozen human-curated `data/validated/MY_{CIT,PIT,CONSUMPTION}_shocks.qs` — nothing in `R/tax_shock_dataset.R` computes or modifies them (`bind_tax_shocks()` only row-binds + adds `cluster_id`; the C2a/C2b enrichment never touches rate columns). So every NA is one a human stamped into the source dataset, per the schema rule that these fields track the **single headline statutory rate** and are `NA` "if not a rate change" (`docs/phase_1/tax_shock_schema.md:50-52`). Exactly **4 of 22** shocks are NA, each documented in its own `magnitude_note`:
+- **MY-CIT-07** (Neutral) — structural reform (dividend-imputation → single-tier); no headline-rate change → all three NA. `magnitude_note` says so explicitly.
+- **MY-PIT-07** (Cut) — sub-bracket-only change (5→3, 10→8, 16→14% on three middle bands); the **top/headline marginal rate is unchanged at 28%**, so the headline fields are NA while `direction = Cut` captures the band cuts qualitatively.
+- **MY-CONSUMPTION-04** (Hike) — SST reinstatement, a **multi-rate regime** (Sales 5%/10%, Service 6%) with no single scalar headline `rate_to`; `rate_from = 0` is carried from the post-GST-abolition zero state (the one asymmetry: `rate_from` populated, `rate_to`/`delta_pp` NA).
+
+Downstream consumers already handle this correctly: `notebooks/tax_shocks.qmd` `fig-rate-paths` filters `!is.na(rate_to)` (non-rate shocks omitted from the rate path); `tbl-inventory` renders Δpp as NA; `fig-timeline` keys on `direction` not `delta_pp`, so PIT-07/CONSUMPTION-04 still appear and CIT-07 (Neutral) sits at baseline.
+**Open questions for the human (research-definition calls, not bugs):** (1) **MY-PIT-07** — should a band-level cut carry a `delta_pp` (e.g. the −2pp of the affected bands) rather than NA? A headline-rate vs. any-band definition choice. (2) **MY-CONSUMPTION-04** — leave `rate_from = 0` with `rate_to` NA, or null both for consistency?
+**Suggested edit:** None to strategy docs. Resolve/delete once the two definition questions are adjudicated (or immediately if the schema's headline-rate convention stands as-is).
+
 ## 2026-06-26: C2b failures now self-diagnosing (retain raw + stop_reason) — revealed MY-CIT-03's NA is an out-of-enum "mixed" sign, not truncation
 
 **Type:** bugfix / diagnostic-infra + codebook-limitation finding
