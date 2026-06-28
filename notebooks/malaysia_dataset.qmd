@@ -1,0 +1,201 @@
+---
+title: "The Malaysia Statutory Tax-Change Dataset"
+subtitle: "An LLM-assisted, expert-validated dataset of corporate, personal, and consumption tax changes (1990–2023)"
+number-sections: true
+---
+
+```{r}
+#| label: setup
+#| cache: false
+#| message: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, scales)
+
+here::i_am("notebooks/malaysia_dataset.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/tt_theme.R"))
+source(here("R/malay_consistency.R"))   # pretty_motivation() + motivation palette
+source(here("R/tax_shock_report.R"))
+set_theme(theme_minimal())
+
+tax_shocks <- tryCatch(tar_read(tax_shocks), error = function(e) tibble::tibble())
+have_data  <- nrow(tax_shocks) > 0
+```
+
+This page accompanies the dataset of **statutory tax changes for Malaysia** built
+for *"Scaling Narrative Fiscal Shock Identification with LLMs"* (Degetau & Samano,
+World Bank). It is written for the reviewer: it shows the headline picture, lets
+you download the data, walks two acts in full, and explains how the dataset was
+produced.
+
+Each row is **one narratively-announced act × tax type** — a corporate income tax
+(CIT), personal income tax (PIT), or broad consumption tax (CONSUMPTION =
+VAT/GST/SST) change — carrying the statutory rate change, a motivation label, and
+an exogenous/endogenous read produced with the validated C2b codebook. The unit of
+observation and the motivation taxonomy follow the narrative approach of
+@romer2010; the LLM pipeline that produces them is validated with the framework of
+@halterman2025.
+
+::: {.callout-important}
+**Exogeneity here is a preliminary input, not a finding.** The exogenous/endogenous
+classification is the LLM's read of the narrative record and is provided to *assist*
+an expert, not to replace one. It is pending expert adjudication. Throughout the
+project we keep the human in the loop: the model proposes, the expert disposes. The
+two worked examples below were both chosen because the model's read and the
+preliminary narrative read disagree — exactly the cases an expert must settle.
+:::
+
+```{r}
+#| label: pending
+#| eval: !expr "!have_data"
+#| echo: false
+#| output: asis
+
+cat("::: {.callout-warning}\nThe `tax_shocks` target is empty or unbuilt, so the",
+    "figures, download, and exhibits below cannot render. Build the deliverable",
+    "(see the pipeline notebooks) and re-render this page.\n:::\n")
+```
+
+## The dataset at a glance {#sec-inventory}
+
+```{r}
+#| label: tbl-inventory
+#| tbl-cap: "**Statutory tax-change inventory.** One row per announced act × tax type. Δpp is the change in the headline statutory rate; motivation and the exogenous/endogenous read are from the validated C2b codebook (v0.9.1)."
+#| eval: !expr have_data
+
+tax_inventory_table(tax_shocks)
+```
+
+```{r}
+#| label: fig-rate-paths
+#| fig-cap: "**Statutory rate paths by tax type.** Step path of the headline statutory rate implied by the rate-bearing acts. Non-rate acts (one-off levies, regime introductions without a standing rate) are omitted from the path."
+#| eval: !expr have_data
+
+plot_tax_rate_paths(tax_shocks)
+```
+
+```{r}
+#| label: fig-timeline
+#| fig-cap: "**Tax-change timeline.** Acts per year × tax type as a diverging stacked bar: hikes grow the bar upward, cuts downward. Colour denotes the C2b motivation. Faceted by tax type."
+#| eval: !expr have_data
+
+plot_tax_timeline(tax_shocks)
+```
+
+## Download the dataset {#sec-download}
+
+A clean, flat version of the dataset (one row per act × tax type, no nested
+provenance columns) is available in three formats. The Stata file carries variable
+labels; the Excel workbook includes a second sheet with the data dictionary
+reproduced below.
+
+```{r}
+#| label: download-check
+#| echo: false
+#| eval: !expr have_data
+#| output: asis
+
+# The files are written reproducibly by the `tax_shocks_clean_files` target
+# (R/tax_shock_report.R). We only assert they exist; the links below are
+# relative paths the published site resolves.
+ok <- tryCatch(all(file.exists(tar_read(tax_shocks_clean_files))),
+               error = function(e) FALSE)
+if (!ok) cat("::: {.callout-warning}\nDownload files not found —",
+             "run `tar_make(tax_shocks_clean_files)`.\n:::\n")
+```
+
+- [Download CSV](../data/validated/MY_tax_shocks_clean.csv)
+- [Download Excel (.xlsx, with data dictionary)](../data/validated/MY_tax_shocks_clean.xlsx)
+- [Download Stata (.dta, labelled)](../data/validated/MY_tax_shocks_clean.dta)
+
+```{r}
+#| label: tbl-dictionary
+#| tbl-cap: "**Data dictionary.** Columns of the downloadable dataset."
+
+tax_export_dictionary_table()
+```
+
+## Two acts in full {#sec-exhibits}
+
+To show how the dataset is built act-by-act, we reproduce two narrative summaries
+in the style of @romer2010 (their Exhibits 1 and 2, p. 772): a header with the
+classification, the identification and motivation reasoning, the most diagnostic
+source quotation, and links to the source documents. We deliberately picked two
+acts where the model's classification and the preliminary narrative read **diverge**
+— the methodologically consequential cases.
+
+### An endogenous act: the 1998 corporate tax cut {#sec-exhibit-cit}
+
+The Budget 1998 corporate tax cut (30% → 28%, announced October 1997) is an
+**omnibus** budget act: alongside the headline CIT cut it bundled import-duty
+changes and productivity incentives. Asked for the sign of the effect on tax
+liabilities, the model returned `"mixed"` — a value outside the permitted
+`{increase, decrease, no_change}` set, because the package has no single sign. The
+pipeline degrades gracefully: it keeps the otherwise-valid classification
+(countercyclical, endogenous) and records the signed effect as `NA`, preserving the
+raw `"mixed"` for the audit trail. The act also illustrates the preliminary-vs-model
+tension: read narrowly, the rate cut reads as a long-run competitiveness move
+(exogenous); read in its Asian-crisis context, the budget reads as cyclical
+stabilization (endogenous). This is the kind of call we hand to an expert.
+
+```{r}
+#| label: exhibit-cit
+#| echo: false
+#| eval: !expr have_data
+#| output: asis
+
+tax_exhibit(tax_shocks, "MY-CIT-03", exhibit_label = "Exhibit 1")
+```
+
+### An exogenous act: the 2000 personal income tax cut {#sec-exhibit-pit}
+
+The Budget 2000 across-the-board one-percentage-point cut to personal income tax
+illustrates the opposite tension. Coming shortly after the 1997–98 crisis, the
+preliminary narrative read flags it as part of a demand-recovery package
+(endogenous). The model, weighing the budget's stated rationale — global
+competition (WTO, AFTA), R&D, human-capital and competitiveness — classifies it as
+a long-run, exogenous change. Again, the two reads are kept side by side for the
+expert.
+
+```{r}
+#| label: exhibit-pit
+#| echo: false
+#| eval: !expr have_data
+#| output: asis
+
+tax_exhibit(tax_shocks, "MY-PIT-01", exhibit_label = "Exhibit 2")
+```
+
+## How the dataset was built {#sec-process}
+
+The dataset is the tail of a validated, country-agnostic pipeline. Each stage has
+its own notebook documenting its construction and validation:
+
+1. **Corpus.** Primary-source fiscal documents (Economic Reports, Budget Speeches,
+   Bank Negara annual reports, 1990–2023) are extracted and quality-checked
+   ([corpus verification](verify_country_body.qmd)).
+2. **Measure identification (C1).** An LLM codebook surfaces candidate fiscal
+   measures from each document chunk, validated against US ground truth with the
+   @halterman2025 framework ([C1 evaluation](c1_measure_id.qmd)).
+3. **Act aggregation (C0).** Surface forms of the same act, scattered across
+   documents and languages, are collapsed into canonical acts
+   ([C0 method comparison](c0_aggregator.qmd)).
+4. **Motivation & exogeneity (C2).** A two-stage codebook extracts motivation
+   evidence (C2a) and classifies each act's motivation and exogeneity (C2b), using
+   the @romer2010 taxonomy (spending-driven, countercyclical, deficit-driven,
+   long-run) ([cross-country deployment](deployment.qmd)).
+5. **Statutory tax-shock identification.** For each instrument, an AI-assisted
+   narrative pass reads the surfaced evidence and the source documents directly,
+   recovers misses, and consolidates events at the announced-act grain, with a
+   recall scorecard and a human stamp
+   ([CIT](cit_identification.qmd) · [PIT](pit_identification.qmd) ·
+   [consumption](vat_identification.qmd)).
+6. **Binding & enrichment.** The frozen per-instrument datasets are bound and each
+   act is enriched with the C2b motivation and exogeneity classification
+   ([deliverable assembly](tax_shocks.qmd)).
+
+The result is the dataset on this page: a transparent, reproducible starting point
+for expert validation, not a finished verdict. Reviewer disagreements — especially
+on the exogeneity column — are the intended next input, in keeping with the
+narrative tradition of @romer2010, where every classification is documented so
+others can check it.

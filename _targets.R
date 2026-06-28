@@ -946,6 +946,16 @@ list(
     packages = "tidyverse"
   ),
 
+  # Clean, variable-labelled downloads for the reviewer-facing dataset page
+  # (notebooks/malaysia_dataset.qmd). Writes CSV / XLSX (data + dictionary
+  # sheets) / DTA and returns the three paths. No API. See R/tax_shock_report.R.
+  tar_target(
+    tax_shocks_clean_files,
+    write_tax_shocks_exports(tax_shocks),
+    format = "file",
+    packages = c("writexl", "haven", "labelled", "readr")
+  ),
+
   # =============================================================================
   # Malaysia EN/BM Cross-Language Consistency Test
   # Self-contained sub-pipeline that slices country_chunks to Economic Report

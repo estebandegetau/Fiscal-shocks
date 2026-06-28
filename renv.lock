@@ -6533,6 +6533,11 @@
       "Maintainer": "Lionel Henry <lionel@posit.co>",
       "Repository": "CRAN"
     },
+    "writexl": {
+      "Package": "writexl",
+      "Version": "1.5.4",
+      "Source": "Repository"
+    },
     "xfun": {
       "Package": "xfun",
       "Version": "0.54",

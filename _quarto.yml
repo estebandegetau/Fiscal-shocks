@@ -1,6 +1,12 @@
 project:
   type: website
   output-dir: _manuscript
+  resources:
+    # Downloadable clean dataset (linked from notebooks/malaysia_dataset.qmd);
+    # written by the tax_shocks_clean_files target. Copied verbatim into the site.
+    - data/validated/MY_tax_shocks_clean.csv
+    - data/validated/MY_tax_shocks_clean.xlsx
+    - data/validated/MY_tax_shocks_clean.dta
   render:
     - docs/*.qmd
     - docs/codebook_sources.md
@@ -33,6 +39,9 @@ website:
     title: "Scaling Narrative Identification"
     contents:
       - index.qmd
+      - section: "Tax-Change Dataset"
+        contents:
+          - notebooks/malaysia_dataset.qmd
       - section: "Data Foundation"
         contents:
           - notebooks/review_data.qmd
@@ -58,9 +67,12 @@ website:
           - notebooks/malay_consistency.qmd
           - notebooks/verify_country_body.qmd
           - notebooks/deployment.qmd
-          - notebooks/cit_identification.qmd
-          - notebooks/pit_identification.qmd
-          - notebooks/vat_identification.qmd
+          - section: "Tax changes"
+            contents:
+            - notebooks/cit_identification.qmd
+            - notebooks/pit_identification.qmd
+            - notebooks/vat_identification.qmd
+            - notebooks/tax_shocks.qmd
       - section: "Internal Notes"
         contents:
           - docs/onboarding.qmd
