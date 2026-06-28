@@ -1,0 +1,2300 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Esteban Degetau">
+<meta name="author" content="Agustín Samano">
+<meta name="dcterms.date" content="2026-06-28">
+<meta name="keywords" content="Fiscal policy, AI for social science">
+
+<title>codebook_sources</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-eea6484ff4744853cd2c770488481bc3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/onboarding.html">Internal Notes</a></li><li class="breadcrumb-item"><a href="../docs/codebook_sources.html">Codebook Sources: Implementation-Critical Details for Codebook Design</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/onboarding.html">Internal Notes</a></li><li class="breadcrumb-item"><a href="../docs/codebook_sources.html">Codebook Sources: Implementation-Critical Details for Codebook Design</a></li></ol></nav>
+      
+                      </div>
+  </div>
+    
+  <div class="quarto-title-meta-author">
+    <div class="quarto-title-meta-heading">Authors</div>
+    <div class="quarto-title-meta-heading">Affiliation</div>
+    
+      <div class="quarto-title-meta-contents">
+      <p class="author">Esteban Degetau <a href="mailto:estebandegetau@gmail.com" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+    </div>
+    <div class="quarto-title-meta-contents">
+          <p class="affiliation">
+              World Bank
+            </p>
+        </div>
+      <div class="quarto-title-meta-contents">
+      <p class="author">Agustín Samano <a href="mailto:asamanopenaloza@worldbank.org" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+    </div>
+    <div class="quarto-title-meta-contents">
+          <p class="affiliation">
+              World Bank
+            </p>
+        </div>
+    </div>
+
+  <div class="quarto-title-meta">
+
+        
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">June 28, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+
+  <div>
+    <div class="keywords">
+      <div class="block-title">Keywords</div>
+      <p>Fiscal policy, AI for social science</p>
+    </div>
+  </div>
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">Scaling Narrative Identification</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scaling the Narrative Identification of Fiscal Changes using LLMs</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tax-Change Dataset</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/malaysia_dataset.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Malaysia Statutory Tax-Change Dataset</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Data Foundation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/review_data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training Data Audit</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_body.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Document Extraction Verification: <code>r params$country</code></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/data_overview.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training Data Overview</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_c2_inputs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C2 Input Verification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Data Quality</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/test_text_extraction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PDF Extraction Quality Test</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Pipeline Design</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/identifying_known_acts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Identifying Known Acts in Document Chunks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_chunk_tiers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Chunk Tier Verification</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_api_inputs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Pre-Flight API Input Verification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Codebook Evaluation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/iteration_summary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Codebook Development History</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/c0_aggregator.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C0 Act Aggregator — Method Comparison</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/c1_measure_id.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C1: Measure Identification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true">
+ <span class="menu-text">Deployment</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_malaysia_urls.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia PDF URL Manifest: Human Verification Dashboard</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/malay_consistency.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia EN/BM Cross-Language Consistency Test</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_country_body.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Deployment Corpus Verification</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/deployment.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Deployment Headline: Cross-Country Fiscal-Shock Inventory</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">Tax changes</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/cit_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory CIT-Rate Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/pit_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory PIT-Rate Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/vat_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory Consumption-Tax Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/tax_shocks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia Statutory Tax-Change Dataset</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true">
+ <span class="menu-text">Internal Notes</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/onboarding.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Working with Claude Code in This Project</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/proposal.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scaling Narrative Fiscal Shock Identification with LLMs</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/brainstorm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">A brainstorm of where we’re at and where to go next</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/CIT_forward.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">A Narrative CIT-Shock Database for Malaysia</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/lit_review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Literature review</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/lit_base.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Literature base</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/codebook_sources.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Codebook Sources: Implementation-Critical Details for Codebook Design</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#codebook-sources-implementation-critical-details-for-codebook-design" id="toc-codebook-sources-implementation-critical-details-for-codebook-design" class="nav-link active" data-scroll-target="#codebook-sources-implementation-critical-details-for-codebook-design">Codebook Sources: Implementation-Critical Details for Codebook Design</a>
+  <ul class="collapse">
+  <li><a href="#section-1-rr-methodology-implementation-details" id="toc-section-1-rr-methodology-implementation-details" class="nav-link" data-scroll-target="#section-1-rr-methodology-implementation-details">Section 1: R&amp;R Methodology — Implementation Details</a>
+  <ul class="collapse">
+  <li><a href="#source-hierarchy" id="toc-source-hierarchy" class="nav-link" data-scroll-target="#source-hierarchy">1.1 Source Hierarchy</a></li>
+  <li><a href="#the-significant-mention-rule" id="toc-the-significant-mention-rule" class="nav-link" data-scroll-target="#the-significant-mention-rule">1.2 The “Significant Mention” Rule</a></li>
+  <li><a href="#motivation-classification" id="toc-motivation-classification" class="nav-link" data-scroll-target="#motivation-classification">1.3 Motivation Classification</a></li>
+  <li><a href="#revenue-estimation" id="toc-revenue-estimation" class="nav-link" data-scroll-target="#revenue-estimation">1.4 Revenue Estimation</a></li>
+  <li><a href="#timing-rules" id="toc-timing-rules" class="nav-link" data-scroll-target="#timing-rules">1.5 Timing Rules</a></li>
+  <li><a href="#act-by-act-reference-index" id="toc-act-by-act-reference-index" class="nav-link" data-scroll-target="#act-by-act-reference-index">1.6 Act-by-Act Reference Index</a></li>
+  </ul></li>
+  <li><a href="#section-2-das-et-al.-2026-llm-based-narrative-identification-at-scale" id="toc-section-2-das-et-al.-2026-llm-based-narrative-identification-at-scale" class="nav-link" data-scroll-target="#section-2-das-et-al.-2026-llm-based-narrative-identification-at-scale">Section 2: Das et al.&nbsp;(2026) — LLM-Based Narrative Identification at Scale</a>
+  <ul class="collapse">
+  <li><a href="#methodological-framework-romer-romer-2023s-four-requirements" id="toc-methodological-framework-romer-romer-2023s-four-requirements" class="nav-link" data-scroll-target="#methodological-framework-romer-romer-2023s-four-requirements">2.1 Methodological Framework: Romer &amp; Romer (2023)’s Four Requirements</a></li>
+  <li><a href="#source-selection" id="toc-source-selection" class="nav-link" data-scroll-target="#source-selection">2.2 Source Selection</a></li>
+  <li><a href="#information-sought-two-condition-exogeneity-test" id="toc-information-sought-two-condition-exogeneity-test" class="nav-link" data-scroll-target="#information-sought-two-condition-exogeneity-test">2.3 Information Sought: Two-Condition Exogeneity Test</a></li>
+  <li><a href="#the-fixed-prompt-specification" id="toc-the-fixed-prompt-specification" class="nav-link" data-scroll-target="#the-fixed-prompt-specification">2.4 The Fixed Prompt Specification</a></li>
+  <li><a href="#construction-of-the-quarterly-shock-series" id="toc-construction-of-the-quarterly-shock-series" class="nav-link" data-scroll-target="#construction-of-the-quarterly-shock-series">2.5 Construction of the Quarterly Shock Series</a></li>
+  <li><a href="#validation-strategy-four-complementary-exercises" id="toc-validation-strategy-four-complementary-exercises" class="nav-link" data-scroll-target="#validation-strategy-four-complementary-exercises">2.6 Validation Strategy — Four Complementary Exercises</a></li>
+  <li><a href="#predictability-orthogonality-check" id="toc-predictability-orthogonality-check" class="nav-link" data-scroll-target="#predictability-orthogonality-check">2.7 Predictability / Orthogonality Check</a></li>
+  <li><a href="#stylized-facts-on-the-resulting-database" id="toc-stylized-facts-on-the-resulting-database" class="nav-link" data-scroll-target="#stylized-facts-on-the-resulting-database">2.8 Stylized Facts on the Resulting Database</a></li>
+  <li><a href="#adaptations-and-inheritance-for-our-project" id="toc-adaptations-and-inheritance-for-our-project" class="nav-link" data-scroll-target="#adaptations-and-inheritance-for-our-project">2.9 Adaptations and Inheritance for Our Project</a></li>
+  </ul></li>
+  <li><a href="#section-3-hk-framework-implementation-specifications" id="toc-section-3-hk-framework-implementation-specifications" class="nav-link" data-scroll-target="#section-3-hk-framework-implementation-specifications">Section 3: H&amp;K Framework — Implementation Specifications</a>
+  <ul class="collapse">
+  <li><a href="#codebook-format-specification" id="toc-codebook-format-specification" class="nav-link" data-scroll-target="#codebook-format-specification">3.1 Codebook Format Specification</a></li>
+  <li><a href="#behavioral-tests-i-iv-label-free" id="toc-behavioral-tests-i-iv-label-free" class="nav-link" data-scroll-target="#behavioral-tests-i-iv-label-free">3.2 Behavioral Tests I-IV (Label-Free)</a></li>
+  <li><a href="#behavioral-tests-v-vii-labels-required" id="toc-behavioral-tests-v-vii-labels-required" class="nav-link" data-scroll-target="#behavioral-tests-v-vii-labels-required">3.3 Behavioral Tests V-VII (Labels-Required)</a></li>
+  <li><a href="#ablation-methodology" id="toc-ablation-methodology" class="nav-link" data-scroll-target="#ablation-methodology">3.4 Ablation Methodology</a></li>
+  <li><a href="#manual-error-analysis" id="toc-manual-error-analysis" class="nav-link" data-scroll-target="#manual-error-analysis">3.5 Manual Error Analysis</a></li>
+  <li><a href="#evaluation-metrics" id="toc-evaluation-metrics" class="nav-link" data-scroll-target="#evaluation-metrics">3.6 Evaluation Metrics</a></li>
+  <li><a href="#key-adaptations-for-our-project" id="toc-key-adaptations-for-our-project" class="nav-link" data-scroll-target="#key-adaptations-for-our-project">3.7 Key Adaptations for Our Project</a></li>
+  <li><a href="#memorization-mechanics-for-the-s1-memorization-test-carlini-et-al.-2022" id="toc-memorization-mechanics-for-the-s1-memorization-test-carlini-et-al.-2022" class="nav-link" data-scroll-target="#memorization-mechanics-for-the-s1-memorization-test-carlini-et-al.-2022">3.8 Memorization mechanics for the S1 memorization test (Carlini et al.&nbsp;2022)</a></li>
+  </ul></li>
+  <li><a href="#section-4-cross-paper-synthesis-codebook-design-decisions" id="toc-section-4-cross-paper-synthesis-codebook-design-decisions" class="nav-link" data-scroll-target="#section-4-cross-paper-synthesis-codebook-design-decisions">Section 4: Cross-Paper Synthesis — Codebook Design Decisions</a>
+  <ul class="collapse">
+  <li><a href="#mapping-rr-steps-to-codebooks" id="toc-mapping-rr-steps-to-codebooks" class="nav-link" data-scroll-target="#mapping-rr-steps-to-codebooks">4.1 Mapping R&amp;R Steps to Codebooks</a></li>
+  <li><a href="#country-agnostic-language-mapping" id="toc-country-agnostic-language-mapping" class="nav-link" data-scroll-target="#country-agnostic-language-mapping">4.2 Country-Agnostic Language Mapping</a></li>
+  <li><a href="#anticipated-llm-challenges" id="toc-anticipated-llm-challenges" class="nav-link" data-scroll-target="#anticipated-llm-challenges">4.3 Anticipated LLM Challenges</a></li>
+  <li><a href="#codebook-development-sequence" id="toc-codebook-development-sequence" class="nav-link" data-scroll-target="#codebook-development-sequence">4.4 Codebook Development Sequence</a></li>
+  </ul></li>
+  <li><a href="#section-5-downstream-inference-validation-robustness" id="toc-section-5-downstream-inference-validation-robustness" class="nav-link" data-scroll-target="#section-5-downstream-inference-validation-robustness">Section 5: Downstream Inference &amp; Validation Robustness</a>
+  <ul class="collapse">
+  <li><a href="#ludwig-mullainathan-rambachan-2025-the-estimationprediction-split" id="toc-ludwig-mullainathan-rambachan-2025-the-estimationprediction-split" class="nav-link" data-scroll-target="#ludwig-mullainathan-rambachan-2025-the-estimationprediction-split">5.1 Ludwig, Mullainathan &amp; Rambachan (2025) — the estimation/prediction split</a></li>
+  <li><a href="#asirvatham-mokski-shleifer-2026-validating-gpt-as-measurement-gabriel" id="toc-asirvatham-mokski-shleifer-2026-validating-gpt-as-measurement-gabriel" class="nav-link" data-scroll-target="#asirvatham-mokski-shleifer-2026-validating-gpt-as-measurement-gabriel">5.2 Asirvatham, Mokski &amp; Shleifer (2026) — validating GPT-as-measurement (GABRIEL)</a></li>
+  <li><a href="#country-method-scrutiny-extensions-abstract-depth" id="toc-country-method-scrutiny-extensions-abstract-depth" class="nav-link" data-scroll-target="#country-method-scrutiny-extensions-abstract-depth">5.3 §2 country / method-scrutiny extensions (abstract-depth)</a></li>
+  <li><a href="#the-generated-regressor-correction-toolkit-battaglia-ppi-dsl" id="toc-the-generated-regressor-correction-toolkit-battaglia-ppi-dsl" class="nav-link" data-scroll-target="#the-generated-regressor-correction-toolkit-battaglia-ppi-dsl">5.4 The generated-regressor correction toolkit (Battaglia / PPI / DSL)</a></li>
+  </ul></li>
+  </ul></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="codebook_sources.pdf"><i class="bi bi-file-pdf"></i>Typst</a></li></ul></div><div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+
+<section id="codebook-sources-implementation-critical-details-for-codebook-design" class="level1">
+<h1>Codebook Sources: Implementation-Critical Details for Codebook Design</h1>
+<p><em>Role: a <strong>codebook-implementation reference</strong> distilling R&amp;R, Das et al., and H&amp;K into design decisions for the C1-C4 codebooks. This is <strong>not</strong> the project’s literature review — for that see <code>docs/lit_review_plan.md</code> (coverage map), <code>docs/brainstorm.qmd</code> (positioning), and <code>docs/lit_review_workflow.md</code> (how sources flow into the paper).</em></p>
+<p>This document distills implementation-relevant details from the source papers into a practical reference for codebook development. It is organized as “what we need to know before writing each codebook,” not as a traditional literature survey.</p>
+<section id="section-1-rr-methodology-implementation-details" class="level2">
+<h2 class="anchored" data-anchor-id="section-1-rr-methodology-implementation-details">Section 1: R&amp;R Methodology — Implementation Details</h2>
+<p><strong>Source papers:</strong></p>
+<ul>
+<li>Romer and Romer (2010), “The Macroeconomic Effects of Tax Changes,” <em>AER</em> 100(3): 763-801</li>
+<li>Romer and Romer (2009), “A Narrative Analysis of Postwar Tax Changes,” companion paper (95 pp)</li>
+</ul>
+<section id="source-hierarchy" class="level3">
+<h3 class="anchored" data-anchor-id="source-hierarchy">1.1 Source Hierarchy</h3>
+<p>R&amp;R use contemporaneous primary documents from executive and legislative branches (companion paper, Section I.A, pp.&nbsp;3-5):</p>
+<p><strong>Executive sources (ranked by usefulness):</strong></p>
+<ol type="1">
+<li><strong>Economic Report of the President (ERP)</strong>: Released each January; best source for motivation of major tax changes. Discusses motivation, revenue effects, and nature of changes in the previous calendar year.</li>
+<li><strong>Treasury Annual Report</strong>: Covers a fiscal year; useful for systematic account of all tax law changes and revenue estimates. Detailed reports stopped after 1981.</li>
+<li><strong>Budget of the United States</strong>: For a fiscal year, prepared ~January before the fiscal year begins. Contains information about tax actions roughly two calendar years earlier.</li>
+<li><strong>Presidential speeches and statements</strong>: State of the Union, Annual Budget Message, speeches announcing proposals, signing statements, nominating convention acceptance speeches. Rich sources of motivation.</li>
+</ol>
+<p><strong>Legislative sources:</strong></p>
+<ol start="5" type="1">
+<li><strong>House Ways and Means Committee reports</strong>: Typically include motivation and revenue estimates.</li>
+<li><strong>Senate Finance Committee reports</strong>: Used when House report covers a version very different from the final bill.</li>
+<li><strong>Congressional Record</strong>: Floor debate; used when reports don’t cover fundamental amendments.</li>
+<li><strong>Conference reports</strong>: Final bill version; typically no motivation discussion, but detailed revenue estimates.</li>
+<li><strong>Joint Committee on Internal Revenue Taxation</strong> (post-1975: Joint Committee on Taxation): Summaries with timing and revenue details.</li>
+<li><strong>Congressional Budget Office</strong> (post-1974): Revenue estimates via Budget and Economic Outlook reports.</li>
+</ol>
+<p><strong>Specialized sources (Social Security):</strong></p>
+<ol start="11" type="1">
+<li><strong>Social Security Bulletin</strong>: One or two articles on any Social Security tax change; discusses both motivation and revenue effects.</li>
+<li><strong>Annual Report of the Board of Trustees</strong> of the Federal Old-Age and Survivors Insurance Trust Fund: Abbreviated version of Social Security Bulletin material.</li>
+</ol>
+<p><strong>Key insight for codebook design</strong>: ERP is best for motivation classification (C2); Conference reports and Joint Committee summaries are best for revenue estimates (C4). Multiple sources should agree on motivation for confident classification.</p>
+</section>
+<section id="the-significant-mention-rule" class="level3">
+<h3 class="anchored" data-anchor-id="the-significant-mention-rule">1.2 The “Significant Mention” Rule</h3>
+<p>From R&amp;R companion paper, Section I.B (pp.&nbsp;4-5) and main paper, Section II.B (pp.&nbsp;768-769):</p>
+<p><strong>Operationalization:</strong></p>
+<ul>
+<li>An action is “significant” if it receives more than incidental reference in the primary sources</li>
+<li>Measures referred to only in passing or discussed only in lists of all measures that affected revenues are excluded</li>
+<li>Even very small tax changes often receive detailed discussion, so this rule captures all economically meaningful actions</li>
+</ul>
+<p><strong>Inclusion criteria:</strong></p>
+<ul>
+<li>All legislated changes that actually change tax liabilities from one quarter to the next</li>
+<li>Executive actions that substantially changed depreciation guidelines</li>
+<li>Changes in personal and corporate income taxes, payroll taxes, excise taxes, and investment incentives</li>
+</ul>
+<p><strong>Exclusion criteria:</strong></p>
+<ul>
+<li>Laws that merely extend an existing tax (no change in liabilities)</li>
+<li>Executive actions that merely change withholding timing without changing total liabilities</li>
+<li>Renewals of excise taxes that are virtually automatic (minimal news value)</li>
+<li>Non-policy revenue changes (stock prices, inflation, income distribution effects on revenues)</li>
+</ul>
+<p><strong>Total count</strong>: R&amp;R identify 50 significant federal tax actions in the postwar era (1945-2007). A few involve multiple measures (e.g., a legislated change and an executive action that are hard to disentangle). Many lead to changes in multiple quarters due to phased implementation.</p>
+</section>
+<section id="motivation-classification" class="level3">
+<h3 class="anchored" data-anchor-id="motivation-classification">1.3 Motivation Classification</h3>
+<p>From R&amp;R companion paper, Section I.C (pp.&nbsp;5-8) and main paper, Section II.C-E (pp.&nbsp;769-774).</p>
+<p><strong>Note on C2 codebook scope (2026-05-01).</strong> The 4-class taxonomy below is <strong>diagnostic context, not codebook content</strong> under C2 v0.7.0. The C2b codebook outputs a binary exogenous flag plus a sign of effect on fiscal liabilities, following the proxy convention of Das et al.&nbsp;(2026, IMF WP/26/43); see Section 2 of this document for the full methodological treatment. The 4-class R&amp;R categories remain the authoritative ground-truth source on <code>aligned_data</code> (used to derive <code>true_exogenous</code> and to group acts in error analysis), and the boundary cases below remain the conceptual basis for what counts as exogenous. They are no longer encoded as decision rules in the prompt because (a) iter 35 diagnosed a structural ceiling under any v0.5–v0.6.x rule density and (b) iter 36’s evidence-shuffle leakage diagnostic showed the dense rules were overfit to F-cluster US edge cases (F–A median-stability gap = −0.333). See <code>docs/strategy.md</code> C2 Blueprint for the v0.7.0 design.</p>
+<p><strong>The four categories (diagnostic context):</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 20%">
+<col style="width: 22%">
+<col style="width: 38%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>Definition</th>
+<th>Exogeneity</th>
+<th>Key Evidence Phrases</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Spending-driven</strong></td>
+<td>Tax change motivated by a change in government spending</td>
+<td>Endogenous</td>
+<td>War financing, new social programs (Medicare), defense buildup, “pay for increased spending,” “finance the defense effort”</td>
+</tr>
+<tr class="even">
+<td><strong>Countercyclical</strong></td>
+<td>Tax change designed to return output growth to normal</td>
+<td>Endogenous</td>
+<td>“Stimulate economy,” “check downward slide,” “return growth to normal,” responding to recession forecasts, unemployment predicted to rise</td>
+</tr>
+<tr class="odd">
+<td><strong>Deficit-driven</strong></td>
+<td>Tax increase to reduce an inherited budget deficit</td>
+<td>Exogenous</td>
+<td>“Inherited deficit,” “past decisions,” “prudent fiscal policy,” “actuarial soundness,” Social Security trust fund solvency</td>
+</tr>
+<tr class="even">
+<td><strong>Long-run</strong></td>
+<td>Tax change aimed at raising long-run growth or other structural goals</td>
+<td>Exogenous</td>
+<td>“Fairness,” “efficiency,” “smaller government,” “improved incentives,” “long-run growth,” “raise potential output”</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical boundary cases:</strong></p>
+<ol type="1">
+<li><strong>Countercyclical vs.&nbsp;Long-run</strong> (the most important distinction for our pipeline):
+<ul>
+<li>Key test: Is the goal to “return growth to normal” (countercyclical) or “raise growth above normal” (long-run)?</li>
+<li>If unemployment is predicted to rise, growth is below normal, so action is countercyclical</li>
+<li>If unemployment is predicted to fall or remain stable, growth is at or above normal, so action is long-run</li>
+<li>If the action was proposed when the economy was growing normally but motivated by a desire for faster growth, it is long-run even if the economy weakened by the time of passage</li>
+<li>R&amp;R take policymakers’ statements at face value regarding what they consider “normal growth”</li>
+</ul></li>
+<li><strong>Spending-driven vs.&nbsp;Deficit-driven</strong> (temporal boundary):
+<ul>
+<li>Tax increase to pay for a contemporaneous spending increase: spending-driven</li>
+<li>Tax increase to pay for a past spending increase: deficit-driven if &gt;1 year after the spending increase</li>
+<li>Specific rule: “A tax increase to pay for a past spending increase is classified as spending-driven if it occurs within a year of the spending increase, and as deficit-driven if it occurs more than a year after” (companion paper, p.&nbsp;7)</li>
+<li>Six observations are reclassified from deficit-driven to spending-driven in the present-value series because the news of the tax change occurred simultaneously with the spending increase</li>
+</ul></li>
+<li><strong>Mixed motivations</strong> (uncommon but important):
+<ul>
+<li>Most acts have a single dominant motivation consistently cited across sources</li>
+<li>When sources suggest conflicting motivations: use the most frequently cited motivation</li>
+<li>When motivation changes over time during deliberations: use prevailing motivation at time of passage</li>
+<li>When multiple motivations are genuinely present: apportion revenue effects among motivations</li>
+<li>Example: EGTRRA 2001 — rebate component (retroactive to Jan 2001) classified as countercyclical; rate reductions effective 2002+ classified as long-run</li>
+</ul></li>
+<li><strong>Offsetting exogenous changes</strong>:
+<ul>
+<li>When policymakers cut taxes to counteract a previous exogenous tax increase because the economy is weakening, the offsetting cut is classified with the same motivation as the original change (not as countercyclical)</li>
+<li>Rationale: Avoids identifying two tax changes of different motivations in a quarter when liabilities did not actually change</li>
+</ul></li>
+</ol>
+</section>
+<section id="revenue-estimation" class="level3">
+<h3 class="anchored" data-anchor-id="revenue-estimation">1.4 Revenue Estimation</h3>
+<p>From R&amp;R companion paper, Section I.D (pp.&nbsp;7-10) and main paper, Section II.D (pp.&nbsp;771-772):</p>
+<p><strong>Measure</strong>: Impact when implemented on current tax liabilities at prevailing GDP level. This is consistent with evidence that consumers respond to changes in current disposable income.</p>
+<p><strong>Source priority (fallback hierarchy for C4):</strong></p>
+<ol type="1">
+<li>Expected revenue effect at implementation quarter from ERP (preferred; especially good in 1960s-1970s)</li>
+<li>First full calendar year estimate (from Conference reports, Joint Committee summaries)</li>
+<li>First full fiscal year estimate</li>
+<li>Conference report or Joint Committee estimates for any available period</li>
+</ol>
+<p><strong>Key conventions:</strong></p>
+<ul>
+<li>All revenue estimates expressed at <strong>annual rate</strong></li>
+<li>Use <strong>expected</strong> (real-time) revenue effects, not retrospective figures</li>
+<li>Whenever possible, derive a <strong>consensus estimate from multiple sources</strong></li>
+<li>If projected revenue effects increase over time due to economic growth (not further law changes), exclude the growth-driven portion</li>
+<li>Policymakers focus on effects at a given level of income, which is what we want</li>
+</ul>
+<p><strong>Present-value alternative series:</strong></p>
+<ul>
+<li>Discounts all future tax changes in a bill back to the quarter of passage</li>
+<li>Uses the three-year Treasury bond rate for discounting</li>
+<li>Assigns the full present value to the passage quarter (rather than spreading across implementation quarters)</li>
+<li>Six deficit-driven observations reclassified as spending-driven in this series (because news of the tax change was contemporaneous with the spending increase)</li>
+</ul>
+</section>
+<section id="timing-rules" class="level3">
+<h3 class="anchored" data-anchor-id="timing-rules">1.5 Timing Rules</h3>
+<p>From R&amp;R companion paper, Section I.D (pp.&nbsp;7-10) and main paper, Section II.D (pp.&nbsp;771-772):</p>
+<p><strong>Assignment rule</strong>: Date to the quarter in which tax liabilities actually changed, NOT the date of legislation.</p>
+<p><strong>Midpoint rule</strong>: If a tax change takes effect before the midpoint of a quarter, assign it to that quarter. If after the midpoint, assign it to the next quarter.</p>
+<p><strong>Phased changes</strong>: If a law implements changes in steps, record each step as a separate revenue effect in its respective implementation quarter.</p>
+<p><strong>Retroactive components (two series):</strong></p>
+<ol type="1">
+<li><strong>Standard series</strong> (excludes retroactive): Simply ignores retroactive features for cleaner analysis</li>
+<li><strong>Adjusted series</strong> (includes retroactive): Treats retroactive component as a one-time levy or rebate in the quarter to which the bill is assigned</li>
+</ol>
+<p><strong>Retroactive calculation example</strong> (Excess Profits Tax Act of 1950):</p>
+<ul>
+<li>Tax imposed retroactive to July 1950, signed January 1951</li>
+<li>Ongoing effect: $3.5B annual rate starting 1951Q1</li>
+<li>Retroactive component: covers 2 quarters (July 1950 to Dec 1950), so one-time levy = 2 × ($3.5B / 4) = $1.75B per quarter, or $7B at annual rate</li>
+<li>Combined 1951Q1: $3.5B + $7B = $10.5B (annual rate)</li>
+<li>1951Q2: $3.5B (annual rate), with a change of -$7B from Q1</li>
+</ul>
+</section>
+<section id="act-by-act-reference-index" class="level3">
+<h3 class="anchored" data-anchor-id="act-by-act-reference-index">1.6 Act-by-Act Reference Index</h3>
+<p>The companion paper (pp.&nbsp;16-95) contains detailed documentation for each of the 50 acts. Each entry follows a consistent template:</p>
+<p><strong>Template structure:</strong></p>
+<ul>
+<li>Act name and date signed</li>
+<li>Change in liabilities: quarter, amount (billions), motivation category for each implementation quarter</li>
+<li>Present value: quarter, amount, motivation category</li>
+<li>Narrative: 1-3 pages of analysis with quotations from primary sources</li>
+<li>Nature and permanence: brief characterization of the type of tax change</li>
+</ul>
+<p><strong>Page index for key acts</strong> (companion paper line numbers in extracted text):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Act</th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Revenue Act of 1945</td>
+<td>~3889</td>
+</tr>
+<tr class="even">
+<td>Social Security Amendments of 1947</td>
+<td>~3979</td>
+</tr>
+<tr class="odd">
+<td>Revenue Act of 1948</td>
+<td>~4009</td>
+</tr>
+<tr class="even">
+<td>Social Security Amendments of 1950</td>
+<td>~4096</td>
+</tr>
+<tr class="odd">
+<td>Revenue Act of 1950</td>
+<td>~4162</td>
+</tr>
+<tr class="even">
+<td>Excess Profits Tax Act of 1950</td>
+<td>~4227</td>
+</tr>
+<tr class="odd">
+<td>Revenue Act of 1951</td>
+<td>~4276</td>
+</tr>
+<tr class="even">
+<td>Expiration of Excess Profits Tax</td>
+<td>~4325</td>
+</tr>
+<tr class="odd">
+<td>Excise Tax Reduction Act of 1954</td>
+<td>~4400</td>
+</tr>
+<tr class="even">
+<td>Internal Revenue Code of 1954</td>
+<td>~4460</td>
+</tr>
+<tr class="odd">
+<td>Social Security Amendments of 1954</td>
+<td>~4550</td>
+</tr>
+<tr class="even">
+<td>Federal-Aid Highway Act of 1956</td>
+<td>~4586</td>
+</tr>
+<tr class="odd">
+<td>Social Security Amendments of 1956</td>
+<td>~4641</td>
+</tr>
+<tr class="even">
+<td>Tax Rate Extension Act of 1958</td>
+<td>~4659</td>
+</tr>
+<tr class="odd">
+<td>Social Security Amendments of 1958</td>
+<td>~4723</td>
+</tr>
+<tr class="even">
+<td>Federal-Aid Highway Act of 1959</td>
+<td>~4765</td>
+</tr>
+<tr class="odd">
+<td>Social Security Amendments of 1961</td>
+<td>~4827</td>
+</tr>
+<tr class="even">
+<td>Depreciation Guidelines / Revenue Act of 1962</td>
+<td>~4862</td>
+</tr>
+<tr class="odd">
+<td>Revenue Act of 1964</td>
+<td>~4943</td>
+</tr>
+</tbody>
+</table>
+<p>Acts from 1965 onward follow sequentially. Use <code>grep</code> on <code>docs/articles/Romer and Romer - A NARRATIVE ANALYSIS OF POSTWAR TAX CHANGES.pdf</code> (extracted to text) for specific act lookups.</p>
+</section>
+</section>
+<section id="section-2-das-et-al.-2026-llm-based-narrative-identification-at-scale" class="level2">
+<h2 class="anchored" data-anchor-id="section-2-das-et-al.-2026-llm-based-narrative-identification-at-scale">Section 2: Das et al.&nbsp;(2026) — LLM-Based Narrative Identification at Scale</h2>
+<p><strong>Source paper</strong>: Das, Furceri, Patel, and Peralta-Alva (2026), “AI Meets Fiscal Policy: Mapping Government Spending Actions Across 64 Countries,” IMF Working Paper WP/26/43 (89 pp)</p>
+<p>This paper is the methodological precedent closest to ours: it is the first study to operationalize the Romer &amp; Romer narrative method at scale using an off-the-shelf LLM, producing a quarterly cross-country dataset of exogenous <em>spending</em> shocks for 64 countries from 1952Q1 to 2023Q4. It governs three concrete design choices in our C2 codebook (v0.7.0): the binary exogenous flag plus sign-of-effect output schema; the “critical clarifier” prompt language; and the conservative aggregation rule for mixed-action passages.</p>
+<section id="methodological-framework-romer-romer-2023s-four-requirements" class="level3">
+<h3 class="anchored" data-anchor-id="methodological-framework-romer-romer-2023s-four-requirements">2.1 Methodological Framework: Romer &amp; Romer (2023)’s Four Requirements</h3>
+<p>Das et al.&nbsp;organize their construction around the four “requirements” Romer &amp; Romer (2023) lay out for any narrative-identification exercise. These are useful as a checklist for our project as well:</p>
+<ol type="1">
+<li><strong>A reliable narrative source</strong> (Section 2.2 below)</li>
+<li><strong>A clear idea of the information sought in the source</strong> (Section 2.3)</li>
+<li><strong>A dispassionate and consistent approach to the source</strong> (Section 2.4 — the LLM prompt)</li>
+<li><strong>Careful documentation of the narrative evidence</strong> (verbatim excerpts retained alongside coded series)</li>
+</ol>
+<p>Our project inherits this framing: ERP/Budget/Treasury reports are our “reliable source”; the C1-C4 codebooks operationalize “the information sought”; the fixed YAML prompt + temperature settings provide “a dispassionate and consistent approach”; and the chunk-level evidence excerpts retained in pipeline outputs satisfy the documentation requirement.</p>
+</section>
+<section id="source-selection" class="level3">
+<h3 class="anchored" data-anchor-id="source-selection">2.2 Source Selection</h3>
+<p><strong>Primary source</strong>: Economist Intelligence Unit (EIU) Country Reports.</p>
+<p><strong>Why EIU over alternatives:</strong></p>
+<ul>
+<li>Standardized, centralized editorial workflow (country analyst draft → specialist review → published) promotes comparability across countries and time</li>
+<li>Quarterly frequency for a broad cross-section (later monthly for some countries), with coverage extending back to the 1950s for many countries</li>
+<li>Reports describe fiscal measures <em>and</em> the motivations emphasized at the time, which makes them well suited for narrative identification</li>
+<li>Higher-frequency and longer historical coverage than OECD or IMF country reports</li>
+</ul>
+<p><strong>Quarterly aggregation rule</strong>: One report per country–quarter (March/June/September/December calendar). When multiple reports exist within a quarter (e.g., 2000–2007 short “Updaters” + longer “Main Reports”), retain the chronologically last comprehensive “Main Report” — overlapping coverage provides limited incremental information on fiscal policy actions.</p>
+<p><strong>Coverage</strong>: 64 advanced and developing economies (subset of EIU’s ~140-country archive selected by macro-data availability), 16,029 country-quarter observations, 8,636 nonzero (53.9%) — 50.6% expansions / 49.4% contractions. Low-income countries account for 22.2% of nonzero quarters.</p>
+</section>
+<section id="information-sought-two-condition-exogeneity-test" class="level3">
+<h3 class="anchored" data-anchor-id="information-sought-two-condition-exogeneity-test">2.3 Information Sought: Two-Condition Exogeneity Test</h3>
+<p>Das et al.&nbsp;(Section 2.2) operationalize R&amp;R’s exogeneity criterion as a <strong>conjunction of two conditions</strong> that must simultaneously hold for an action to count as exogenous:</p>
+<ol type="1">
+<li>The stated motive is unrelated to near-term macroeconomic conditions; AND</li>
+<li>The narrative does <em>not</em> cite contemporaneous growth, inflation, unemployment, interest-rate movements, exchange-rate pressure, or financing stress as the rationale.</li>
+</ol>
+<p>Failing either condition → action is endogenous and excluded from the exogenous series.</p>
+<p><strong>Two non-cyclical motive families</strong> (per R&amp;R 2010): (i) measures addressing inherited fiscal imbalances; (ii) measures reflecting long-run objectives for size/composition of the public sector (growth, fairness, institutional design). These are the only motivations Das et al.&nbsp;retain as exogenous — collapsing R&amp;R’s 4-category taxonomy to a binary flag.</p>
+<p><strong>Critical clarifier</strong> (verbatim, p.&nbsp;9): <em>“Acknowledging current conditions does not by itself imply endogeneity if the stated motive is explicitly non-cyclical.”</em></p>
+<p>This clarifier is load-bearing because it corrects a natural LLM failure mode: passages where text describes both current conditions <em>and</em> a non-cyclical motive often get misclassified as endogenous on the basis of the cyclical context alone. Our C2b v0.7.0 codebook adopts this clarifier verbatim.</p>
+</section>
+<section id="the-fixed-prompt-specification" class="level3">
+<h3 class="anchored" data-anchor-id="the-fixed-prompt-specification">2.4 The Fixed Prompt Specification</h3>
+<p>Das et al.&nbsp;use a single fixed GPT-4.1 prompt held invariant across all 64 countries and ~16,000 country-quarters. <strong>No fine-tuning, no in-context examples, no task-specific training, no sample-specific tailoring.</strong> The fixed-prompt design serves three purposes: (a) prevents look-ahead bias and overfitting to particular country contexts; (b) enables replication by other researchers; (c) ensures the coding rubric is identical across the panel.</p>
+<p><strong>Prompt structure</strong> (paraphrased from pp.&nbsp;9-10):</p>
+<ul>
+<li><strong>Task</strong>: “Read the EIU country report excerpt for country C and quarter Q. Identify exogenous government spending actions in Q based on the stated motivations in the text, and summarize their net directional impact on spending.”</li>
+<li><strong>Definition of exogenous action</strong>: enumerates the two-condition test above plus the critical clarifier</li>
+<li><strong>Outputs</strong>: structured 5-field schema (see below)</li>
+<li><strong>Notes</strong>: “Base the classification strictly on the provided text; do not infer unstated motives. If net direction is not supported by the text, return NEUTRAL or UNCLEAR.”</li>
+</ul>
+<p><strong>Output schema (5 fields):</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 30%">
+<col style="width: 35%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>EXOG_NET_SPENDING</code></td>
+<td>{EXP_, CON_, NEUTRAL, UNCLEAR}</td>
+<td>Optional small/large suffix when intensity cue present</td>
+</tr>
+<tr class="even">
+<td><code>MOTIVATION</code></td>
+<td>free text</td>
+<td>Brief phrase citing the stated motive(s)</td>
+</tr>
+<tr class="odd">
+<td><code>COMPONENT</code></td>
+<td>free text (optional)</td>
+<td>Spending component(s) referenced</td>
+</tr>
+<tr class="even">
+<td><code>INTENSITY_ORDINAL</code></td>
+<td>integer in [-10, +10] (optional)</td>
+<td>Directional intensity</td>
+</tr>
+<tr class="odd">
+<td><code>CONFIDENCE</code></td>
+<td>self-assessment (optional)</td>
+<td>Brief classification confidence</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note on announcement vs.&nbsp;implementation</strong>: The prompt records whether identified measures are implemented in the current quarter or announced for future quarters, but the baseline shock series does <em>not</em> perform an announcement/implementation split at the classification stage. They explicitly defer this to future work, treating the indicator as “a qualitative proxy for discretionary spending actions as recorded in real time, which may reflect a mixture of announcement and implementation elements.”</p>
+</section>
+<section id="construction-of-the-quarterly-shock-series" class="level3">
+<h3 class="anchored" data-anchor-id="construction-of-the-quarterly-shock-series">2.5 Construction of the Quarterly Shock Series</h3>
+<p>Report-level outputs are aggregated into a country–quarter proxy:</p>
+<pre><code>z_{i,t} ∈ {-1, 0, +1}
+       = +1 if EXOG_NET_SPENDING = EXP_
+       = -1 if EXOG_NET_SPENDING = CON_
+       =  0 if EXOG_NET_SPENDING ∈ {NEUTRAL, UNCLEAR}</code></pre>
+<p><strong>Conservative aggregation</strong>: Whenever the stated motive is not explicitly non-cyclical — or the report links the action to contemporaneous macro conditions — the prompt classifies the action as non-exogenous and it does not contribute to the net effect. This conservative rule matters for mixed-action passages where multiple measures with different signs co-occur: the model extracts each individually, but the net stance is conservatively coded NEUTRAL when relative magnitudes are not explicitly stated.</p>
+<p><strong>Use in econometrics</strong>: <code>z_{i,t}</code> is used as an <em>internal instrument</em> for innovations to realized government spending in country-by-country Bayesian VARs (following Plagborg-Møller and Wolf 2021; Li et al.&nbsp;2024). Because the contemporaneous response of measured G pins the scale of the structural innovation, the qualitative nature of the proxy (no magnitude information) is non-critical for identification.</p>
+</section>
+<section id="validation-strategy-four-complementary-exercises" class="level3">
+<h3 class="anchored" data-anchor-id="validation-strategy-four-complementary-exercises">2.6 Validation Strategy — Four Complementary Exercises</h3>
+<p>This is the most important section for our purposes: Das et al.&nbsp;design four orthogonal validation exercises, each testing a different aspect of the AI-narrative pipeline.</p>
+<p><strong>Validation 1: Benchmark against expert human coding (Romer &amp; Romer 2019, “RR19”)</strong></p>
+<ul>
+<li>RR19 examined 200 EIU reports across 19 OECD countries (1980-2017) using expert coders to classify fiscal stance + motivations during financial-distress episodes</li>
+<li>Das et al.&nbsp;apply a <em>separate</em>, RR19-mirroring fixed prompt to the same 200 reports and compare cell-by-cell</li>
+<li><strong>Expansions</strong>: stance match 14/16 (87.5%); motivation match 32/34 (94.1%)</li>
+<li><strong>Contractions</strong>: stance match 18/19 (95%); motivation match 44/45 (97.8%)</li>
+<li>Footnote 3 (p.&nbsp;21) discloses that 4 boundary cases (Finland 1993Q1, Sweden 1993Q2, Greece 2009M7, Ireland 2009M7) are excluded from the baseline because RR19 codes them as net expansions on the basis of large financial-rescue measures while EIU describes concurrent contraction; including them lowers the stance match to 14/20 (70%). The authors interpret this as a difference in aggregation rule, not interpretation failure.</li>
+<li>The <em>headline</em> “exceeds 93% accuracy” claim aggregates stance + motivation matches across both panels.</li>
+</ul>
+<p><strong>Critical methodological insight</strong>: They distinguish stance disagreement from motivation disagreement and score them independently — a report can show a stance disagreement (because the conservative aggregation rule yields a different net direction) but still match motivation. This separation is directly analogous to the {exogenous, sign} decomposition our C2b v0.7.0 outputs.</p>
+<p><strong>Validation 2: Replicability across reruns</strong></p>
+<ul>
+<li>Re-ran the prompt <strong>51 times</strong> on a subset of 20 reports under identical fixed prompt</li>
+<li>For each (report, field), they compute the <strong>modal share</strong> = fraction of runs in which the most frequent value was returned (1 = perfect replicability)</li>
+<li>ECDFs of modal shares across the 20 reports show:
+<ul>
+<li><strong>Direction</strong>: perfectly stable (modal share = 1 for all 20 reports — every run assigned the same sign)</li>
+<li><strong>Motivation</strong>: high but not perfect (multi-category construct with multiple plausible motives)</li>
+<li><strong>Confidence and Intensity</strong>: lower replicability (finer quantitative judgments more sensitive to phrasing)</li>
+</ul></li>
+<li>Interpretation: coarse binary classifications are robust; fine-grained ordinal/quantitative outputs are more sensitive to sampling.</li>
+</ul>
+<p>This methodology is directly relevant to our pipeline’s evidence-shuffle / order-invariance diagnostics (Test IV in H&amp;K) and to the multi-run consistency checks our self-consistency sampling already performs.</p>
+<p><strong>Validation 3: AI shocks predict realized government spending</strong></p>
+<p>Local-projection regression of log G on shock indicators, country and time FEs, 4 lags of G, Y, and the shock:</p>
+<ul>
+<li>At impact, contractions (z = -1) reduce log G by ~-0.005 (0.5% level); expansions (z = +1) raise log G by ~+0.002 one quarter later</li>
+<li>Cumulatively at h = 8: contractions reach ~-0.06, expansions reach ~+0.04</li>
+<li>Confirms the narrative shocks have economic content beyond noise</li>
+</ul>
+<p><strong>Validation 4: External alignment with Adler et al.&nbsp;(2024)</strong></p>
+<p>Adler et al.&nbsp;(2024) provide an annual <em>quantitative</em> dataset of action-based fiscal consolidation packages (size in % of GDP) for 31 countries since 1978. Das et al.&nbsp;show:</p>
+<ul>
+<li><strong>Extensive margin</strong>: Of 138 country-years that Adler codes as ≥0.5% GDP spending consolidation, 96.4% have at least one consolidation quarter in Das et al.’s database; 100% match for ≥2.0% GDP packages</li>
+<li><strong>Probability model</strong>: Conditional on country FE, observing a consolidation quarter is associated with a 12.6 pp higher probability of being in Adler’s “sizable consolidation” set</li>
+<li><strong>Intensity alignment</strong>: The annual net stance index (consol_quarters − expand_quarters)/4 has a coefficient of 0.263 (s.e. 0.044) when regressed on Adler’s spend size — moving from purely expansionary year to purely consolidation year corresponds to ~0.5 pp of GDP additional consolidation in Adler’s dataset</li>
+</ul>
+</section>
+<section id="predictability-orthogonality-check" class="level3">
+<h3 class="anchored" data-anchor-id="predictability-orthogonality-check">2.7 Predictability / Orthogonality Check</h3>
+<p>A complementary validation: are the shocks orthogonal to lagged macro conditions? This addresses the Jordà–Taylor (2015) critique that earlier narrative-shock series (Guajardo et al.&nbsp;2014) were forecastable from standard macro indicators.</p>
+<p>Panel regression of <code>z_{i,t}</code> on lagged debt/GDP, output gap, GDP growth, and <code>z_{i,t-1}</code> with country FE:</p>
+<ul>
+<li>Across all three samples (full / Guajardo subset / Adler subset), only the lagged shock is significant; macro lags are insignificant</li>
+<li>R² ≤ 0.10 — limited explanatory power</li>
+<li><em>When aggregated to annual frequency</em>, predictability emerges (R² up to 0.31 for Adler shocks, with significant lagged GDP growth)</li>
+<li>Interpretation: quarterly frequency is itself an exogeneity-protective design choice; annual aggregation contaminates with predictable within-year cyclical responses.</li>
+</ul>
+<p><strong>Implication for our pipeline</strong>: We work at sub-quarterly chunk granularity and aggregate to act-level, but the same logic suggests a predictability/orthogonality check on our final shock series should be part of Phase 1 validation.</p>
+</section>
+<section id="stylized-facts-on-the-resulting-database" class="level3">
+<h3 class="anchored" data-anchor-id="stylized-facts-on-the-resulting-database">2.8 Stylized Facts on the Resulting Database</h3>
+<ul>
+<li>8,636 nonzero quarters across 64 countries; 50.6% expansions / 49.4% contractions</li>
+<li>LICs disproportionately represented (22.2% of nonzero quarters) — narrative coverage that did not previously exist for this group</li>
+<li><strong>Asymmetry by country group</strong>:
+<ul>
+<li>Advanced: 45.8% expansion share (more contractions, possibly reflecting fiscal rules)</li>
+<li>Emerging: 49.5% expansion share (near-balanced)</li>
+<li>LIC: 60.7% expansion share (majority expansionary)</li>
+</ul></li>
+<li><strong>Asymmetry by motive type</strong> (text-dictionary classification of a random subsample):
+<ul>
+<li>Expansions: ~60% are public investment / infrastructure / capital projects</li>
+<li>Contractions: &gt;2/3 are explicit consolidation / deficit-reduction measures</li>
+<li>Suggests fiscal expansions and consolidations are <em>not</em> mirror images of each other</li>
+</ul></li>
+</ul>
+</section>
+<section id="adaptations-and-inheritance-for-our-project" class="level3">
+<h3 class="anchored" data-anchor-id="adaptations-and-inheritance-for-our-project">2.9 Adaptations and Inheritance for Our Project</h3>
+<p><strong>What our C2 codebook v0.7.0 inherits directly:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 56%">
+<col style="width: 43%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Das et al.&nbsp;design choice</th>
+<th>C2b v0.7.0 adoption</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Binary exogenous flag (collapsing R&amp;R’s 4 motive classes)</td>
+<td>Yes — primary output is <code>exogenous ∈ {true, false}</code></td>
+</tr>
+<tr class="even">
+<td>Sign of net effect on spending: {-1, 0, +1}</td>
+<td>Adapted to <code>sign ∈ {increase, decrease, no_change}</code> for fiscal liabilities</td>
+</tr>
+<tr class="odd">
+<td>Critical clarifier (“Acknowledging current conditions…”)</td>
+<td>Yes — verbatim in C2b prompt</td>
+</tr>
+<tr class="even">
+<td>Conservative aggregation: NEUTRAL/UNCLEAR → 0</td>
+<td>Yes — when sign is ambiguous or evidence is mixed, return <code>unclear</code> rather than guess</td>
+</tr>
+<tr class="odd">
+<td>Fixed prompt across all examples (no per-act tailoring)</td>
+<td>Yes — reinforced by iter 36 leakage diagnostic showing v0.6.x rules were overfit</td>
+</tr>
+<tr class="even">
+<td>No in-context few-shot examples in production prompt</td>
+<td>Yes — v0.7.0 removes the dense decision rules and class definitions</td>
+</tr>
+<tr class="odd">
+<td>Explicit confidence field as auxiliary diagnostic</td>
+<td>Yes — <code>confidence</code> retained in C2b output schema</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What is genuinely different about our setting:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 33%">
+<col style="width: 36%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Dimension</th>
+<th>Das et al.</th>
+<th>Our project</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Source</td>
+<td>EIU Country Reports (curated, analyst-edited, summary-style)</td>
+<td>ERP / Budget / Treasury reports (official, primary, longer, more legalistic)</td>
+</tr>
+<tr class="even">
+<td>Unit of analysis</td>
+<td>One report per country–quarter (~3-15 pages)</td>
+<td>Sub-document chunks pre-filtered by C1 (typically 1-3 paragraphs)</td>
+</tr>
+<tr class="odd">
+<td>Granularity of measure</td>
+<td>Net stance per country–quarter</td>
+<td>Per-act, with C3/C4 separating implementation quarters</td>
+</tr>
+<tr class="even">
+<td>Ground truth</td>
+<td>RR19 (200 reports, 19 countries) — non-public expert codings</td>
+<td>R&amp;R (2010) + companion paper — 50 acts US-only, public, fully documented</td>
+</tr>
+<tr class="odd">
+<td>LLM</td>
+<td>GPT-4.1 (closed-weight, OpenAI)</td>
+<td>Claude (closed-weight, Anthropic) — currently Haiku for cost; Sonnet for headline runs</td>
+</tr>
+<tr class="even">
+<td>Scope of fiscal action</td>
+<td>Spending only</td>
+<td>Tax/revenue (R&amp;R 2010 corpus) — mirrors Romer &amp; Romer (2010), not (2019)</td>
+</tr>
+<tr class="odd">
+<td>Validation against quantitative external dataset</td>
+<td>Adler et al.&nbsp;(2024) annual consolidation sizes</td>
+<td><code>us_shocks.csv</code> (R&amp;R 2010 series, quarterly, US-only) — Phase 1 validation target</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methodology gaps we still need to fill</strong> (Phase 1 / Phase 2 work):</p>
+<ul>
+<li>A predictability/orthogonality check on our final aggregated shock series (R² of <code>z_{i,t}</code> on lagged macro controls)</li>
+<li>A multi-run replicability ECDF on a held-out subset (analogous to Das et al.’s 51-rerun exercise)</li>
+<li>An external alignment exercise once Phase 2 (Malaysia) data exists — likely against IMF Article IV report-based codings or the Adler et al.&nbsp;(2024) panel where overlap exists</li>
+</ul>
+</section>
+</section>
+<section id="section-3-hk-framework-implementation-specifications" class="level2">
+<h2 class="anchored" data-anchor-id="section-3-hk-framework-implementation-specifications">Section 3: H&amp;K Framework — Implementation Specifications</h2>
+<p><strong>Source paper</strong>: Halterman and Keith (2025), “Codebook LLMs: Evaluating LLMs as Measurement Tools for Political Science Concepts,” arXiv:2407.10747v2 (53 pp)</p>
+<section id="codebook-format-specification" class="level3">
+<h3 class="anchored" data-anchor-id="codebook-format-specification">3.1 Codebook Format Specification</h3>
+<p>From H&amp;K Section 5, Figure 1 (pp.&nbsp;7-9):</p>
+<p>The semi-structured format consists of:</p>
+<pre><code>Instructions: [overall task description, role, valid label reminder]
+Classes:
+  Label: [exact string to return — UPPER_CASE recommended]
+  Definition: [single sentence, succinct]
+  Clarification: [inclusion criteria, can be multi-item]
+  Negative Clarification: [exclusion criteria, addresses confusion cases]
+  Positive Example: [document text + explanation of why it fits]
+  Negative Example: [document text + explanation of why it does not fit]
+  ...repeat for each class...
+Document: [text to classify]
+Output reminder: [enumerate valid labels, specify format]</code></pre>
+<p><strong>Key empirical finding</strong>: Semi-structured format outperforms original codebook format across datasets (Table 3: +0.02 to +0.13 weighted F1). The improvement comes from explicit separation of components enabling the LLM to attend to each part.</p>
+<p><strong>Format design principles:</strong></p>
+<ul>
+<li>Separating components enables ablation testing (removing one component at a time)</li>
+<li>Each component serves a distinct purpose: definition for core meaning, clarification for boundary cases, examples for in-context learning</li>
+<li>Output reminder is critical for ensuring legal label output</li>
+</ul>
+</section>
+<section id="behavioral-tests-i-iv-label-free" class="level3">
+<h3 class="anchored" data-anchor-id="behavioral-tests-i-iv-label-free">3.2 Behavioral Tests I-IV (Label-Free)</h3>
+<p>From H&amp;K Section 6, Table 2, Figure 3 (pp.&nbsp;10-13):</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 31%">
+<col style="width: 29%">
+<col style="width: 27%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Test</th>
+<th>What It Measures</th>
+<th>Implementation</th>
+<th>Pass Criteria</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>I: Legal Labels</strong></td>
+<td>LLM returns only valid labels</td>
+<td>Run on N documents, check if output matches valid label set</td>
+<td>100% valid labels</td>
+</tr>
+<tr class="even">
+<td><strong>II: Definition Recovery</strong></td>
+<td>LLM can match definition to label</td>
+<td>Provide verbatim class definition as “document,” check if correct label returned</td>
+<td>100% correct</td>
+</tr>
+<tr class="odd">
+<td><strong>III: In-Context Examples</strong></td>
+<td>LLM can match examples to labels</td>
+<td>Provide verbatim positive/negative examples as “documents”</td>
+<td>100% correct</td>
+</tr>
+<tr class="even">
+<td><strong>IV: Order Invariance</strong></td>
+<td>Labels unchanged by category order</td>
+<td>Run with original, reversed, and shuffled codebook order; measure consistency</td>
+<td>Fleiss’s kappa &gt; 0.8 (near-perfect); &lt;5% label changes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation details for Test IV:</strong></p>
+<ul>
+<li>Create three versions of the codebook: original order, reversed order, randomly shuffled</li>
+<li>Run all N documents through each version</li>
+<li>Calculate: (a) percentage of labels that remain the same between original and each variant; (b) Fleiss’s kappa across all three versions</li>
+<li>Use Landis &amp; Koch (1977) interpretation: &lt;0.20 poor, 0.21-0.40 fair, 0.41-0.60 moderate, 0.61-0.80 substantial, 0.81-1.00 near-perfect</li>
+</ul>
+<p><strong>H&amp;K empirical findings:</strong></p>
+<ul>
+<li>Mistral-7B, Llama-8B performed well on Tests I-III (near 100%)</li>
+<li>All models showed sensitivity to category order (Test IV), suggesting attention issues with long prompts</li>
+<li>OLMo-7B performed so poorly it was dropped from later stages</li>
+<li>Test IV is the most informative label-free test for our use case, since our codebooks will have semantically loaded category names</li>
+</ul>
+</section>
+<section id="behavioral-tests-v-vii-labels-required" class="level3">
+<h3 class="anchored" data-anchor-id="behavioral-tests-v-vii-labels-required">3.3 Behavioral Tests V-VII (Labels-Required)</h3>
+<p>From H&amp;K Section 8.1, Table 2, Figure 4 (pp.&nbsp;14-16):</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 43%">
+<col style="width: 41%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Test</th>
+<th>What It Measures</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>V: Exclusion Criteria</strong></td>
+<td>LLM follows specific exclusion rules</td>
+<td>Add trigger word (“elephant”) to document + exclusion criterion to codebook; test all 4 combinations: (normal/modified doc) × (normal/modified codebook). LLM must respond correctly to all 4 to pass.</td>
+</tr>
+<tr class="even">
+<td><strong>VI: Generic Label Accuracy</strong></td>
+<td>LLM doesn’t rely on label names</td>
+<td>Replace all labels with non-informative names (LABEL_1, LABEL_2, etc.); measure F1 on labeled dataset</td>
+</tr>
+<tr class="odd">
+<td><strong>VII: Swapped Label Accuracy</strong></td>
+<td>LLM follows definitions over names</td>
+<td>Permute labels across definitions (each label paired with wrong definition); measure F1 on labeled dataset</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Test V detail</strong> (from H&amp;K footnote 2, p.&nbsp;15):</p>
+<p>The four test conditions are: 1. Normal codebook + normal document → should classify correctly 2. Normal codebook + modified document (contains “elephant”) → should classify correctly (no exclusion rule exists) 3. Modified codebook (has elephant exclusion) + normal document → should classify correctly (trigger not present) 4. Modified codebook + modified document → should apply exclusion rule</p>
+<p>An LLM passes only if all four conditions are handled correctly for each example.</p>
+<p><strong>Critical H&amp;K finding for our project:</strong></p>
+<p>Tests VI and VII show that LLMs rely heavily on label names rather than definitions. When labels are replaced with generic terms (LABEL_1, etc.), F1 drops significantly. When labels are swapped across definitions, models follow the label name rather than the definition.</p>
+<p><strong>Implication for C2 (Motivation)</strong>: Our category names are semantically loaded (“deficit-driven,” “countercyclical”). The model may classify a passage as “deficit-driven” simply because it mentions the word “deficit,” even if the R&amp;R operationalization says otherwise. Tests VI and VII will reveal whether this is happening.</p>
+</section>
+<section id="ablation-methodology" class="level3">
+<h3 class="anchored" data-anchor-id="ablation-methodology">3.4 Ablation Methodology</h3>
+<p>From H&amp;K Section 8.2, Table 4 (pp.&nbsp;16-17):</p>
+<p><strong>Procedure</strong>: Systematically remove codebook components one at a time, measure impact on weighted F1.</p>
+<p><strong>Components to ablate</strong> (from Table 4, tested on BFRS with Mistral-7B):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Ablated Component</th>
+<th>Dev F1</th>
+<th>Change from Full</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>None (full codebook)</td>
+<td>0.53</td>
+<td>baseline</td>
+</tr>
+<tr class="even">
+<td>Negative Example</td>
+<td>0.42</td>
+<td>-0.11</td>
+</tr>
+<tr class="odd">
+<td>Positive Example</td>
+<td>0.46</td>
+<td>-0.07</td>
+</tr>
+<tr class="even">
+<td>Negative Clarification</td>
+<td>0.43</td>
+<td>-0.10</td>
+</tr>
+<tr class="odd">
+<td>Clarification + Neg. Clarification + Examples</td>
+<td>0.20</td>
+<td>-0.33</td>
+</tr>
+<tr class="even">
+<td>Definition (labels only)</td>
+<td>0.29</td>
+<td>-0.24</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key findings:</strong></p>
+<ul>
+<li>All components contribute to performance; removing any single component decreases F1</li>
+<li>Removing negative examples had the largest single-component impact (-0.11)</li>
+<li>Surprisingly, removing the definition (leaving only labels) yielded F1 = 0.29, suggesting the model derives some accuracy purely from label names</li>
+<li>The full codebook with all components yielded the best performance, but the margin was not always large</li>
+</ul>
+<p><strong>Our ablation plan for each codebook:</strong></p>
+<ol type="1">
+<li>Remove clarifications only</li>
+<li>Remove negative clarifications only</li>
+<li>Remove positive examples only</li>
+<li>Remove negative examples only</li>
+<li>Remove output reminder only</li>
+<li>Remove definition (labels only)</li>
+<li>Remove all examples + clarifications (definition + label only)</li>
+</ol>
+</section>
+<section id="manual-error-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="manual-error-analysis">3.5 Manual Error Analysis</h3>
+<p>From H&amp;K Section 8.3, Table 5 (pp.&nbsp;17-18):</p>
+<p><strong>Six error categories for classifying model outputs:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 40%">
+<col style="width: 26%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>Description</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>A. LLM correct</td>
+<td>LLM prediction matches gold standard</td>
+<td>No action</td>
+</tr>
+<tr class="even">
+<td>B. Incorrect gold standard</td>
+<td>Human label was wrong</td>
+<td>Review and potentially correct gold label</td>
+</tr>
+<tr class="odd">
+<td>C. Document error</td>
+<td>Scraping artifact, missing context, truncation</td>
+<td>Fix document processing</td>
+</tr>
+<tr class="even">
+<td>D. LLM non-compliance</td>
+<td>Invalid output (wrong format, hallucinated label, multiple labels)</td>
+<td>Improve output instructions</td>
+</tr>
+<tr class="odd">
+<td>E. LLM semantics/reasoning</td>
+<td>LLM applied wrong definition or used heuristic</td>
+<td>Improve codebook clarifications</td>
+</tr>
+<tr class="even">
+<td>F. Other</td>
+<td>Uncategorizable</td>
+<td>Case-by-case analysis</td>
+</tr>
+</tbody>
+</table>
+<p><strong>H&amp;K findings on error patterns:</strong></p>
+<ul>
+<li>Non-compliance rates varied dramatically: 0% (BFRS) to 45% (Manifestos)</li>
+<li>Evidence of <strong>lexical overlap heuristics</strong>: models select labels whose words appear in the text, even when incorrect. Example: word “rally” in text leads to prediction of “rally” label even when the codebook definition of “demonstration” fits better.</li>
+<li>Evidence of <strong>background concept reliance</strong>: model predicts based on pretraining knowledge rather than codebook operationalization. Example: education funding passage labeled “WELFARE POSITIVE” despite codebook explicitly stating “This category excludes education.”</li>
+</ul>
+<p><strong>Implications for our project:</strong></p>
+<ul>
+<li>Category E errors (semantics/reasoning) are most critical for C2 Motivation. A passage mentioning “deficit” might trigger “DEFICIT_DRIVEN” even when the R&amp;R operationalization says it’s “SPENDING_DRIVEN” (because the tax increase pays for contemporaneous spending).</li>
+<li>Category B errors (incorrect gold standard) are possible since our 44-act dataset derives from R&amp;R’s own judgments, which may have borderline cases.</li>
+<li>Category D errors (non-compliance) should be minimal with Claude, which generally follows format instructions well.</li>
+</ul>
+</section>
+<section id="evaluation-metrics" class="level3">
+<h3 class="anchored" data-anchor-id="evaluation-metrics">3.6 Evaluation Metrics</h3>
+<p>From H&amp;K Section 7 (pp.&nbsp;11-14):</p>
+<p><strong>Primary metric</strong>: Weighted F1 score</p>
+<ul>
+<li>Weighted average of per-class F1 scores, weighted by sample size</li>
+<li>Accounts for class imbalance</li>
+<li>Implementation: <code>sklearn.metrics.f1_score(y_true, y_pred, average='weighted')</code> or R equivalent via <code>yardstick</code></li>
+</ul>
+<p><strong>Bootstrap confidence intervals:</strong></p>
+<ul>
+<li>500 resamples of (predicted, true) pairs</li>
+<li>95% confidence intervals</li>
+<li>Report as: <code>0.57 [0.55-0.58]</code></li>
+</ul>
+<p><strong>Inter-coder agreement</strong> (for Test IV order sensitivity):</p>
+<ul>
+<li>Fleiss’s kappa across original, reversed, and shuffled codebook predictions</li>
+<li>Landis &amp; Koch interpretation scale</li>
+<li>Implementation via R <code>irr</code> package</li>
+</ul>
+<p><strong>Per-class metrics:</strong></p>
+<ul>
+<li>F1, precision, recall per category</li>
+<li>Confusion matrix for detailed error patterns</li>
+<li>Particularly important for our project: exogenous precision (C2) and recall (C1)</li>
+</ul>
+<p><strong>Adaptations for our project:</strong></p>
+<ul>
+<li>LOOCV instead of train/test split (44 acts is too small for reliable splitting)</li>
+<li>Cohen’s kappa for pairwise agreement (2 coders: LLM vs.&nbsp;R&amp;R ground truth)</li>
+<li>Bootstrap with 500-1000 resamples for all primary metrics</li>
+</ul>
+</section>
+<section id="key-adaptations-for-our-project" class="level3">
+<h3 class="anchored" data-anchor-id="key-adaptations-for-our-project">3.7 Key Adaptations for Our Project</h3>
+<p>H&amp;K used open-weight 7-12B parameter models (Mistral-7B, Llama-8B). Our project uses Claude (closed-weight, much larger). Key implications:</p>
+<p><strong>Advantages:</strong></p>
+<ul>
+<li>Likely much better zero-shot performance (Claude significantly outperforms 7-12B models on instruction following)</li>
+<li>Better long-context handling (200K token context vs.&nbsp;4K-128K for H&amp;K models)</li>
+<li>Lower non-compliance rates expected (Claude follows format instructions reliably)</li>
+<li>S4 fine-tuning even less likely to be needed</li>
+</ul>
+<p><strong>Constraints:</strong></p>
+<ul>
+<li>Cannot do parameter-efficient fine-tuning (LoRA/QLoRA) on Claude; API-only access</li>
+<li>Must rely on prompt engineering (S0 codebook quality) rather than weight updates</li>
+<li>If S4 is needed, would require fine-tuning an open-weight model, losing Claude’s advantages</li>
+</ul>
+<p><strong>Dataset size differences:</strong></p>
+<ul>
+<li>H&amp;K: 4,000-20,000 training examples per dataset</li>
+<li>Our project: 44 labeled acts total</li>
+<li>Consequence: LOOCV is the appropriate evaluation strategy (each act serves as test once)</li>
+<li>Bootstrap CIs will be wider due to small N</li>
+</ul>
+<p><strong>Model behavior differences to test:</strong></p>
+<ul>
+<li>Does Claude follow codebook definitions over background knowledge? (Tests VI/VII will reveal)</li>
+<li>Is Claude more robust to label name reliance? (Larger models may attend better to instructions)</li>
+<li>Does self-consistency sampling (already implemented) compensate for any label sensitivity?</li>
+</ul>
+</section>
+<section id="memorization-mechanics-for-the-s1-memorization-test-carlini-et-al.-2022" class="level3">
+<h3 class="anchored" data-anchor-id="memorization-mechanics-for-the-s1-memorization-test-carlini-et-al.-2022">3.8 Memorization mechanics for the S1 memorization test (Carlini et al.&nbsp;2022)</h3>
+<p><em>Added 2026-06-24 (lit intake, <code>read-deep</code>). The mechanistic backing for our S1 memorization test — the threat that the model “recognizes” a US fiscal act from pretraining rather than reading the supplied chunk. H&amp;K’s Tests I–VII (§3.2–3.3) do not address this; Carlini supplies both the risk model and the control design.</em></p>
+<p>Carlini et al.&nbsp;measure verbatim memorization by prompting a model with true training-set prefixes and checking exact-suffix reproduction under greedy decoding. Three robust, log-linear laws:</p>
+<ol type="1">
+<li><strong>Model size.</strong> Extractable memorization rises ≈+19 pp per 10× parameters (2–5× across a model family). <em>Implication:</em> the recall threat <strong>increases</strong> as we move to larger Sonnet/Opus-class deployment models, so S1 cannot be a one-time check — re-run it whenever the deployment model changes.</li>
+<li><strong>Duplication.</strong> Sequences repeated more often in training are far more extractable. <em>Implication:</em> the published 44-act R&amp;R list and canonical fiscal-act descriptions are widely re-quoted online (plausibly high-duplication), exactly the regime where memorization is strongest — and we cannot inspect the proprietary pretraining corpus, so we must assume the US reference set <em>may</em> be memorized and test behaviorally rather than rely on absence-of-contamination claims.</li>
+<li><strong>Prompt context length (“discoverability”).</strong> Memorized strings stay hidden until prompted with enough context (33%→65% extractable from 50→450 tokens). <em>Implication:</em> long, verbatim chunks carrying the act name, public-law number, and year are the <strong>highest-risk</strong> prompts for triggering recall over reading.</li>
+</ol>
+<p><strong>The control design is the test design.</strong> Carlini’s identification strategy — prompt a model on data it could <em>not</em> have memorized (GPT-2 on The Pile) and compare against one that could (GPT-Neo) — is the template for S1:</p>
+<ul>
+<li><strong>Perturbation probe.</strong> Re-classify the chunk with the identifying surface forms (act name, P.L. number, year) redacted or paraphrased, holding the substantive rationale fixed. If the label survives <em>only</em> when identifiers are present, that is recall, not reading.</li>
+<li><strong>Trivial-baseline guard.</strong> Some correct outputs come from generic competence, not memorization (GPT-2 “hit” ~6% on boilerplate/number runs). The S1 pass bar must distinguish “got it from the text” from “any model would guess this.”</li>
+<li><strong>Regime match.</strong> Carlini measures verbatim recall under greedy decoding (temp = 0) — the same deterministic regime we deploy — so the recall threat applies at our operating point, not only under sampling.</li>
+</ul>
+<p>This complements the contamination-detection angle in §5.2 (Asirvatham’s staggered-cutoff test, which is infeasible for our 1945–2022 US corpus): Carlini gives the <em>mechanism</em> and the behavioral control, while staggered cutoffs would give a <em>detection</em> protocol we cannot run.</p>
+</section>
+</section>
+<section id="section-4-cross-paper-synthesis-codebook-design-decisions" class="level2">
+<h2 class="anchored" data-anchor-id="section-4-cross-paper-synthesis-codebook-design-decisions">Section 4: Cross-Paper Synthesis — Codebook Design Decisions</h2>
+<section id="mapping-rr-steps-to-codebooks" class="level3">
+<h3 class="anchored" data-anchor-id="mapping-rr-steps-to-codebooks">4.1 Mapping R&amp;R Steps to Codebooks</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 10%">
+<col style="width: 11%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Codebook</th>
+<th>R&amp;R Step</th>
+<th>Input</th>
+<th>Output</th>
+<th>Key R&amp;R Concepts to Operationalize</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>C1: Measure ID</strong></td>
+<td>RR2 (Identifying measures)</td>
+<td>Document passage</td>
+<td>Binary (fiscal measure or not) + extracted text</td>
+<td>“Significant mention” rule; actual liability change requirement; exclusion of extensions, withholding-only changes, automatic renewals</td>
+</tr>
+<tr class="even">
+<td><strong>C2: Motivation</strong></td>
+<td>RR5 (Motivation classification)</td>
+<td>Identified measure passage</td>
+<td>4-class motivation + exogenous flag</td>
+<td>All 4 categories with boundary rules; spending-driven vs.&nbsp;deficit-driven temporal boundary; countercyclical vs.&nbsp;long-run “return to normal” test; mixed motivation apportionment; source agreement weighting</td>
+</tr>
+<tr class="odd">
+<td><strong>C3: Timing</strong></td>
+<td>RR4 (Timing assignment)</td>
+<td>Identified measure passage</td>
+<td>List of (quarter, amount) tuples</td>
+<td>Midpoint rule; phased changes as separate entries; retroactive handling (standard vs.&nbsp;adjusted); implementation date vs.&nbsp;passage date</td>
+</tr>
+<tr class="even">
+<td><strong>C4: Magnitude</strong></td>
+<td>RR3 (Revenue estimation)</td>
+<td>Identified measure passage</td>
+<td>Revenue effect in domestic currency, billions</td>
+<td>Fallback hierarchy (ERP &gt; calendar year &gt; fiscal year &gt; Conference report); annual rate convention; exclude growth-driven revenue increases; present-value alternative</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="country-agnostic-language-mapping" class="level3">
+<h3 class="anchored" data-anchor-id="country-agnostic-language-mapping">4.2 Country-Agnostic Language Mapping</h3>
+<p>For each R&amp;R concept, what needs to be generalized for cross-country transfer:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 43%">
+<col style="width: 45%">
+<col style="width: 11%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>R&amp;R US-Specific Concept</th>
+<th>Country-Agnostic Equivalent</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>“Tax liabilities”</td>
+<td>“Fiscal liabilities or obligations”</td>
+<td>Broader to include non-tax fiscal measures</td>
+</tr>
+<tr class="even">
+<td>“Ways and Means Committee”</td>
+<td>“Relevant legislative committee”</td>
+<td>Country-specific committees vary</td>
+</tr>
+<tr class="odd">
+<td>“Economic Report of the President”</td>
+<td>“Official economic outlook documents”</td>
+<td>May be central bank reports, ministry white papers, budget speeches</td>
+</tr>
+<tr class="even">
+<td>“Congressional Record”</td>
+<td>“Legislative debate records”</td>
+<td>Hansard in Commonwealth, Diario Oficial in Latin America</td>
+</tr>
+<tr class="odd">
+<td>“Revenue in billions USD”</td>
+<td>“Revenue in domestic currency, billions”</td>
+<td>Magnitude should be in local currency</td>
+</tr>
+<tr class="even">
+<td>“GDP normalization”</td>
+<td>Same (universal concept)</td>
+<td>No change needed</td>
+</tr>
+<tr class="odd">
+<td>“Quarter assignment”</td>
+<td>Same (calendar quarters)</td>
+<td>Universal, though fiscal years differ</td>
+</tr>
+<tr class="even">
+<td>“Social Security trust fund”</td>
+<td>“Social insurance/pension fund”</td>
+<td>Specific program names vary</td>
+</tr>
+<tr class="odd">
+<td>“Excise taxes”</td>
+<td>“Indirect taxes / consumption taxes”</td>
+<td>Terminology varies (VAT, GST, excise)</td>
+</tr>
+<tr class="even">
+<td>“Executive actions”</td>
+<td>“Executive/administrative orders”</td>
+<td>Presidential decrees, ministerial orders</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="anticipated-llm-challenges" class="level3">
+<h3 class="anchored" data-anchor-id="anticipated-llm-challenges">4.3 Anticipated LLM Challenges</h3>
+<p>Based on H&amp;K error analysis findings and our knowledge of the R&amp;R domain:</p>
+<p><strong>1. Label name reliance (Tests VI/VII)</strong></p>
+<p>“Deficit-driven” and “countercyclical” are semantically loaded labels. A model may classify a passage as “deficit-driven” whenever it encounters the word “deficit,” even when the R&amp;R operationalization says the change is actually “spending-driven” (because the deficit resulted from a recent spending increase, making the tax change within the 1-year spending-driven window).</p>
+<p><em>Mitigation</em>: Strong negative clarifications in C2 codebook; test with generic labels; consider using less semantically loaded labels (e.g., CATEGORY_A vs DEFICIT_DRIVEN) as a robustness check.</p>
+<p><strong>2. Lexical overlap heuristics</strong></p>
+<p>Passages mentioning “stimulate growth” might be classified as “long-run” even when the full context makes clear the goal is to return growth to normal (countercyclical). The key phrases “stimulate” and “growth” overlap with the long-run label.</p>
+<p><em>Mitigation</em>: Negative examples in C2 must include near-miss passages with overlapping vocabulary; clarifications must emphasize the “return to normal vs.&nbsp;raise above normal” distinction.</p>
+<p><strong>3. Long-context attention</strong></p>
+<p>Full codebook + long passage + examples may challenge effective attention, especially for C2 where four class definitions with multiple clarifications and examples could exceed several thousand tokens.</p>
+<p><em>Mitigation</em>: Claude handles 200K tokens, so context length is less of a concern than for H&amp;K’s 7B models. However, codebook conciseness is still important for attention quality.</p>
+<p><strong>4. Mixed motivations</strong></p>
+<p>R&amp;R’s apportionment logic for mixed-motivation acts is complex (e.g., EGTRRA 2001 splits into countercyclical for 2001 rebates and long-run for 2002+ rate reductions). LLMs may struggle to apply this nuanced rule.</p>
+<p><em>Mitigation</em>: C2 codebook should include a mixed-motivation handling instruction; EGTRRA 2001 serves as a prime positive example of mixed motivation; consider allowing the model to output multiple motivations with apportionment rationale.</p>
+<p><strong>5. Temporal reasoning</strong></p>
+<p>The midpoint rule and phased changes (C3) require precise date reasoning. The spending-driven vs.&nbsp;deficit-driven boundary (C2) requires reasoning about whether a tax change occurs within 1 year of the associated spending change.</p>
+<p><em>Mitigation</em>: Provide explicit date arithmetic examples; C3 codebook should include worked examples of the midpoint calculation and phased change decomposition.</p>
+<p><strong>6. R&amp;R background knowledge</strong></p>
+<p>Claude likely has knowledge of R&amp;R’s work from pretraining. This creates a risk that the model classifies acts based on memorized R&amp;R classifications rather than following the codebook operationalization applied to the passage text.</p>
+<p><em>Mitigation</em>: Test with fictional country-agnostic examples; Tests VI/VII will reveal reliance on background knowledge; LOOCV inherently tests generalization since the held-out act’s classification must come from codebook application, not memorization.</p>
+</section>
+<section id="codebook-development-sequence" class="level3">
+<h3 class="anchored" data-anchor-id="codebook-development-sequence">4.4 Codebook Development Sequence</h3>
+<p><strong>Order</strong>: C1 → C2 → C3 → C4</p>
+<p><strong>Rationale</strong>: In production, C1 output feeds C2, which feeds C3/C4:</p>
+<pre><code>Documents → C1 (Measure ID) → C2 (Motivation) → C3 (Timing) + C4 (Magnitude) → Aggregation</code></pre>
+<p><strong>Per-codebook development cycle</strong> (H&amp;K stages):</p>
+<ol type="1">
+<li><strong>S0</strong>: Draft codebook YAML following <code>codebook-yaml</code> skill conventions</li>
+<li><strong>S1</strong>: Run behavioral tests I-IV (label-free); iterate on S0 if tests fail</li>
+<li><strong>S2</strong>: Run LOOCV on 44 US acts with primary metrics</li>
+<li><strong>S3</strong>: Run Tests V-VII, ablation studies, manual error analysis; iterate on S0 if patterns emerge</li>
+<li><strong>S4</strong>: Only if S3 shows unacceptable patterns AND codebook improvements exhausted</li>
+</ol>
+<p><strong>Success criteria</strong> (from <code>docs/strategy.md</code>):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Codebook</th>
+<th>Primary Metric</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>C1</td>
+<td>Recall</td>
+<td>≥90%</td>
+</tr>
+<tr class="even">
+<td>C1</td>
+<td>Precision</td>
+<td>≥80%</td>
+</tr>
+<tr class="odd">
+<td>C2</td>
+<td>Weighted F1</td>
+<td>≥70%</td>
+</tr>
+<tr class="even">
+<td>C2</td>
+<td>Exogenous Precision</td>
+<td>≥85%</td>
+</tr>
+<tr class="odd">
+<td>C3</td>
+<td>Exact Quarter</td>
+<td>≥85%</td>
+</tr>
+<tr class="even">
+<td>C3</td>
+<td>±1 Quarter</td>
+<td>≥95%</td>
+</tr>
+<tr class="odd">
+<td>C4</td>
+<td>MAPE</td>
+<td>&lt;30%</td>
+</tr>
+<tr class="even">
+<td>C4</td>
+<td>Sign Accuracy</td>
+<td>≥95%</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="section-5-downstream-inference-validation-robustness" class="level2">
+<h2 class="anchored" data-anchor-id="section-5-downstream-inference-validation-robustness">Section 5: Downstream Inference &amp; Validation Robustness</h2>
+<p><em>Added 2026-06-24 (literature-review intake). Distilled from <code>read-deep</code> sources that extend, rather than duplicate, Sections 1–3: <code>@ludwig_large_2025</code> (the §6 generated-regressor pillar) and <code>@asirvatham_gpt_2026</code> (the §5 validation pillar), plus the three §6 generated-regressor correction methods <code>@battaglia_inference_2024</code>, <code>@angelopoulos_prediction-powered_2023</code>, and <code>@egami_using_2023</code> (§5.4). Brief notes on two §2 country/method-scrutiny extensions (<code>@cloyne_discretionary_2013</code>, <code>@mertens_reconciliation_2014</code>) close the section. Implementation reference only — review prose lives in <code>docs/lit_review.qmd</code>.</em></p>
+<section id="ludwig-mullainathan-rambachan-2025-the-estimationprediction-split" class="level3">
+<h3 class="anchored" data-anchor-id="ludwig-mullainathan-rambachan-2025-the-estimationprediction-split">5.1 Ludwig, Mullainathan &amp; Rambachan (2025) — the estimation/prediction split</h3>
+<p>The single most consequential framing for how our outputs may be <em>used</em>. They treat the LLM as a black box and split empirical uses into two problems with different validity requirements:</p>
+<ul>
+<li><strong>Prediction problem</strong> (forecast an outcome from text): valid iff <strong>no training leakage</strong> between the LLM’s training data and the researcher’s sample.</li>
+<li><strong>Estimation/measurement problem</strong> (automate measurement of a concept that then feeds a downstream parameter): valid downstream inference requires <strong>combining LLM outputs with a small labeled validation sample</strong>.</li>
+</ul>
+<p><strong>Our pipeline is squarely the estimation case.</strong> LLM-classified fiscal shocks (<span class="math inline">\(\hat{V}_r\)</span>) become regressors in VARs / local projections, so the binding requirement is a validation sample, not behavioral-test accuracy.</p>
+<p><strong>Key results to honor:</strong></p>
+<ol type="1">
+<li><strong>Accuracy is not validity (Lemma 3).</strong> Even a uniformly <span class="math inline">\(\delta\)</span>-accurate model can yield estimation error <span class="math inline">\(\geq G\cdot\sum|\delta(r)|\cdot q_{D_r}\)</span>, because LLM errors can correlate with economic variables. Plug-in validity holds across all contexts <em>iff</em> measurement error is exactly zero (Prop. 2). High S1–S3 accuracy does <strong>not</strong> license raw plug-in use downstream.</li>
+<li><strong>The dangerous error is correlated error.</strong> Plug-in bias <span class="math inline">\(\beta = \beta^* + \lambda_{\Delta|W}\)</span>, where <span class="math inline">\(\lambda_{\Delta|W}\)</span> is the regression of the LLM error <span class="math inline">\(\Delta_r = \hat{V}_r - V_r\)</span> on covariates <span class="math inline">\(W_r\)</span>. For us the dangerous <span class="math inline">\(W\)</span> is the business cycle — the exact axis exogeneity hinges on. We must show mislabeling is uncorrelated with the cycle.</li>
+<li><strong>Debias against a random validation sample (Eq. 14).</strong> <span class="math inline">\(\hat\beta_{debiased} = \hat\beta + \hat\lambda_{\Delta|W}\)</span>: regress <span class="math inline">\(\hat{V}_r\)</span> on <span class="math inline">\(W_r\)</span> in the primary sample, regress <span class="math inline">\(\Delta_r\)</span> on <span class="math inline">\(W_r\)</span> in the validation sample, subtract; bootstrap both for inference. Properly done, “LLM outputs amplify rather than replace existing measurements” and can give <em>tighter</em> SEs than the validation sample alone (precision-gain condition Eq. 16). Simulations: validation samples of <strong>125–250 items</strong> already help materially.</li>
+<li><strong>Specification-search risk.</strong> Without debiasing, “seemingly innocuous choices — which LLM, which prompt — lead to dramatically different parameter estimates” (varying in magnitude, sign, significance). Lock the estimand to expert R&amp;R labels <span class="math inline">\(f^*\)</span>, not to “what Sonnet outputs.” Directly implicates our Haiku→Sonnet C0 swap and any codebook iteration as downstream-inference risks unless debiasing absorbs them.</li>
+<li><strong>Leakage enforcement is design, not prompting.</strong> “Ignore information after date <span class="math inline">\(\tau\)</span>” prompts failed empirically and sometimes <em>worsened</em> leakage. They advise against closed models (Anthropic/OpenAI) for the prediction case because training data is undisclosed. For the <em>measurement</em> case, leakage is mechanically zero under random sampling or full-population coverage — so our dominant US threat is measurement error (fix: validation sample), with contamination a separate concern for the prediction-framed contamination probe.</li>
+</ol>
+<p><strong>Project implication:</strong> the Malaysia corpus (20–40 acts) cannot supply 125–250 random expert labels, so the honest options are fraction-of-corpus validation, pooled-regional validation, or scope-limiting the inferential multiplier claim. This is an open design decision flagged in <code>brainstorm.qmd</code>, not a solved problem.</p>
+</section>
+<section id="asirvatham-mokski-shleifer-2026-validating-gpt-as-measurement-gabriel" class="level3">
+<h3 class="anchored" data-anchor-id="asirvatham-mokski-shleifer-2026-validating-gpt-as-measurement-gabriel">5.2 Asirvatham, Mokski &amp; Shleifer (2026) — validating GPT-as-measurement (GABRIEL)</h3>
+<p>Closest external template for “is the LLM output good enough to be a measurement,” built on two pillars — <strong>accuracy</strong> (agreement with benchmarks) and <strong>directness</strong> (the measurement comes from the text, not from a proxy). Validates OpenAI GPT models; the <em>framing</em> transfers to Claude, the exact correlations do not.</p>
+<p><strong>Borrowable methods:</strong></p>
+<ol type="1">
+<li><strong>Contamination via staggered cutoffs.</strong> Date each dataset by first-posting date; compare a model’s accuracy on pre- vs.&nbsp;post-training-cutoff data. They find “no statistically significant difference in mean accuracy before versus after” cutoffs — no contamination <em>use</em>, even where memorization is possible. <strong>Hard for us:</strong> US fiscal documents (1945–2022) and the R&amp;R label set are deep in pretraining and we cannot date past a cutoff. Borrow the <em>directness logic</em> instead (next point).</li>
+<li><strong>Directness / shortcut-inference test (signal stripping).</strong> Remove the signal (e.g., all environmental content) holding everything else fixed; a direct measure collapses toward zero. They report a <strong>98% reduction</strong> in the stripped attribute while the proxy attribute barely moves. <strong>High-value, low-cost addition for C2:</strong> mask the stated motivation sentences and re-classify exogenous/endogenous — if the call survives, the model is inferring from act name / era / party (a construct-validity failure), not reading the rationale.</li>
+<li><strong>Human-parity, not raw accuracy (MH vs.&nbsp;leave-one-out HH).</strong> Compare model-vs-consensus correlation to human-vs-consensus; “disagreement with human annotations does not necessarily mean GPT error.” This is exactly the right frame for our no-ground-truth Phase 2 expert-agreement gates (≥80% / ≥70%): report expert-vs-expert agreement as the ceiling.</li>
+<li><strong>No-cherry-picking benchmark + held-out discipline.</strong> They test against 1000+ tasks (not hand-picked positive cases) and prescribe doing all tuning on a random training subsample with a held-out test set — endorsing our stage-independence (S2/S3 split) convention against the “you tuned on the test set” critique.</li>
+<li><strong>Prompt-robustness with a caveat.</strong> 100 prompt variants and 100 attribute-definition variants give near-identical ratings (“not due to our specific prompt, but a general capability”), but <em>leading</em> wording still biases. Supports not over-engineering codebook prose and the deferred re-validations after cosmetic edits (e.g., the C1 <code>{country}</code> token) — while warning that exogeneity-criterion phrasing must stay neutral.</li>
+</ol>
+<p><strong>Caution:</strong> their “manual validation often unnecessary” claim is hedged (“similar enough to the broad range of comprehension tasks we demonstrate”). Fiscal-exogeneity classification is narrower and more adversarial than generic comprehension, so our small-N manual S3 audit gate is justified, not redundant.</p>
+</section>
+<section id="country-method-scrutiny-extensions-abstract-depth" class="level3">
+<h3 class="anchored" data-anchor-id="country-method-scrutiny-extensions-abstract-depth">5.3 §2 country / method-scrutiny extensions (abstract-depth)</h3>
+<ul>
+<li><strong><code>@cloyne_discretionary_2013</code> (UK).</strong> Applies the R&amp;R narrative strategy to a new country and finds “remarkably similar” magnitudes (a 1% tax cut raises GDP ~0.6% on impact, ~2.5% over three years). The only non-US tax-narrative precedent — the empirical anchor for our country-transfer claim. Captured from the detailed abstract; no codebook change implied (it validates the R&amp;R operationalization already in Section 1).</li>
+<li><strong><code>@mertens_reconciliation_2014</code> (method scrutiny).</strong> Shows pure SVARs cannot recover the tax multiplier without assuming the output-elasticity of revenue, and that narrative proxies used as instruments yield larger multipliers (~2 on impact, up to 3). Reinforces why the narrative record (not a statutory-rate or SVAR series) is the necessary input, and that measurement error in narrative series matters — links directly to §5.1’s debiasing argument.</li>
+</ul>
+</section>
+<section id="the-generated-regressor-correction-toolkit-battaglia-ppi-dsl" class="level3">
+<h3 class="anchored" data-anchor-id="the-generated-regressor-correction-toolkit-battaglia-ppi-dsl">5.4 The generated-regressor correction toolkit (Battaglia / PPI / DSL)</h3>
+<p><em>Added 2026-06-24 (lit intake, three <code>read-deep</code> §6 sources). §5.1 establishes the </em>general* “debias against a validation sample” idea; these three specialize it into the concrete inference machinery our downstream VAR/LP would actually use. All three address the same object — an LLM-measured shock entering a downstream regression — and differ in their assumptions and what they require of our design.*</p>
+<p><strong><code>@battaglia_inference_2024</code> — the bias diagnosis (no labels).</strong> Formalizes the two-step strategy (upstream model estimates latent variables from text; downstream regression treats them as observed) as a measurement-error problem whose bias scales with the average inverse information per observation (κ = lim √n · E[1/Cᵢ]).</p>
+<ul>
+<li><strong>The error mode is mis-centering, not mis-sizing.</strong> When κ &gt; 0, OLS stays consistent but its asymptotic distribution is <em>re-centered</em>; ordinary (Eicker–Huber–White) standard errors remain consistent, so the confidence interval has the right <em>width</em> but the wrong <em>center</em> and under-covers <strong>silently</strong>. We cannot detect this bias by inspecting reported SEs — a tight, “significant” downstream coefficient is no evidence the inference is valid.</li>
+<li><strong>Tail observations dominate.</strong> Because bias scales with the <em>average inverse</em> information, a few poorly-measured acts (low-confidence / short-document classifications) drive the bias more than the well-measured majority. Validation effort and any down-weighting should target the worst-measured acts.</li>
+<li><strong>Their baseline fix does not transfer cleanly.</strong> Their one-step joint upstream+downstream likelihood (HMC) presumes a generative IR likelihood an LLM judge does not provide (the authors flag this as the open frontier). Because we <em>have</em> a validation sample, the operative correction for us is the labeled-subset strand below — Battaglia supplies the diagnosis, not our fix.</li>
+</ul>
+<p><strong><code>@angelopoulos_prediction-powered_2023</code> — PPI, the assumption-light general machinery.</strong> Builds provably valid CIs for a population estimand from a small gold-labeled sample (n) plus a large prediction-labeled sample (N ≫ n), via a <em>rectifier</em> (the prediction error measured only on the gold sample) that debiases the imputation.</p>
+<ul>
+<li><strong>Distribution-free, model-free coverage.</strong> Validity holds for <em>any</em> ML algorithm and <em>any</em> data distribution — the right frame for a classifier we cannot certify as unbiased (cross-country, no retraining).</li>
+<li><strong>Three-way framing for downstream macro inference.</strong> Treating LLM labels as truth = the <em>imputation</em> estimator that fails to cover; expert-only = valid but underpowered; PPI = the principled middle. Covers means, quantiles, and OLS/logistic coefficients, with covariate-/label-shift variants that are the natural hook for the Phase 2→3 transfer claim.</li>
+<li><strong>Caveat:</strong> no gain when predictions are weak or N/n too small — a live risk at SEA corpus sizes. Reference implementation <code>ppi-py</code> exists.</li>
+</ul>
+<p><strong><code>@egami_using_2023</code> — DSL, the design-based version closest to our workflow.</strong> Uses imperfect LLM “surrogate” labels as outcomes while keeping valid inference, via a doubly-robust pseudo-outcome corrected on a <em>probability-sampled</em> expert subset.</p>
+<ul>
+<li><strong>Sampling design is the load-bearing assumption (concrete protocol change).</strong> Guarantees require the validated acts to be drawn with a <em>known</em> sampling probability π bounded away from zero. Phase 2 should therefore <strong>probability-sample</strong> which acts experts validate — simple or stratified, with π <em>recorded</em> — not pick the interesting/borderline ones. This is a low-cost change that converts expert validation from an agreement check into a debiasing instrument.</li>
+<li><strong>Surrogate quality buys efficiency, not validity.</strong> A better codebook (higher agreement) only shrinks variance; it does not change whether the downstream estimate is unbiased. This reframes our ≥80%/≥70% agreement targets as an <em>efficiency</em> lever for any DSL-style analysis, not a validity gate.</li>
+<li><strong>Quantified caution.</strong> Naive surrogate-only use gave ~40% coverage of nominal-95% CIs at 90% accuracy in their sims — the baseline §6 should cite against treating LLM fiscal-shock labels as ground truth.</li>
+<li><strong>Why DSL over vanilla PPI for us:</strong> it exploits researcher-controlled sampling (removing the nuisance-rate requirement), which our fully-controlled corpus naturally satisfies. <strong>Scope caveat:</strong> DSL targets the known-corpus outcome-regression case, so the US→Malaysia cross-country transfer sits at the edge of its domain-shift scope.</li>
+</ul>
+<p><strong>Net for our design.</strong> Battaglia tells us the bias is invisible in standard SEs; PPI and DSL tell us a small, <em>correctly sampled</em> expert set is structurally load-bearing — not optional QA — for honest downstream inference. This sharpens the §5.1 open problem (the Malaysia corpus of 20–40 acts cannot supply 125–250 random labels): DSL’s efficiency-not-validity result means even a modest probability sample yields <em>valid</em> (if wider) inference, which is the more defensible claim than chasing accuracy alone.</p>
+
+
+</section>
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/estebandegetau\.github\.io\/Fiscal-shocks\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

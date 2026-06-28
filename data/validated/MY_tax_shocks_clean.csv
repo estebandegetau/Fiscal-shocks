@@ -1,0 +1,23 @@
+shock_id,act_label,tax_type,direction,rate_from,rate_to,delta_pp,announced_year,effective_year,effective_quarter,motivation,exogenous
+MY-CIT-01,Corporate income tax rate reduction 34% to 32% (early-1990s Budget),CIT,Cut,34,32,-2,1993,1994,NA,Long-run,TRUE
+MY-CIT-02,Corporate income tax rate reduction 32% to 30% (mid-1990s Budget),CIT,Cut,32,30,-2,1995,1995,NA,Long-run,TRUE
+MY-CIT-03,Corporate income tax rate reduction 30% to 28% (Budget 1998),CIT,Cut,30,28,-2,1997,1998,NA,Countercyclical,FALSE
+MY-CIT-04,Corporate income tax rate reduction 28% to 27% (Budget 2007),CIT,Cut,28,27,-1,2006,2007,NA,Long-run,TRUE
+MY-CIT-05,Corporate income tax rate reduction 27% to 26% (Budget 2007),CIT,Cut,27,26,-1,2006,2008,NA,Long-run,TRUE
+MY-CIT-07,Single-tier corporate tax system (Budget 2008),CIT,Neutral,NA,NA,NA,2007,2008,NA,Long-run,TRUE
+MY-CIT-06,Corporate income tax rate reduction 26% to 25% (Budget 2008),CIT,Cut,26,25,-1,2007,2009,NA,Long-run,TRUE
+MY-CIT-08,Corporate income tax rate reduction 25% to 24% (Budget 2015),CIT,Cut,25,24,-1,2014,2016,NA,Deficit-driven,TRUE
+MY-CIT-09,Cukai Makmur one-off prosperity tax surcharge (Budget 2022),CIT,Hike,24,33,9,2021,2022,NA,Deficit-driven,TRUE
+MY-CONSUMPTION-01,Service tax rate increase 5% to 6% (Budget 2011),CONSUMPTION,Hike,5,6,1,2010,2011,2011Q1,Deficit-driven,TRUE
+MY-CONSUMPTION-02,Goods and Services Tax (GST) introduction at 6% (Budget 2014),CONSUMPTION,Hike,0,6,6,2013,2015,2015Q2,Deficit-driven,TRUE
+MY-CONSUMPTION-03,"GST abolition / zero-rating 6% to 0% (Pakatan Harapan reform, 2018)",CONSUMPTION,Cut,6,0,-6,2018,2018,2018Q2,Countercyclical,FALSE
+MY-CONSUMPTION-04,Sales and Service Tax (SST) reintroduction (2018),CONSUMPTION,Hike,0,NA,NA,2018,2018,2018Q3,Countercyclical,FALSE
+MY-PIT-01,Across-the-board individual income tax cut 1pp (Budget 2000),PIT,Cut,30,29,-1,1999,2000,NA,Long-run,TRUE
+MY-PIT-02,Top individual income tax rate reduction 29% to 28% (Budget 2002),PIT,Cut,29,28,-1,2001,2002,NA,Countercyclical,FALSE
+MY-PIT-03,Top individual income tax rate reduction 28% to 27% (Budget 2009),PIT,Cut,28,27,-1,2008,2009,NA,Long-run,TRUE
+MY-PIT-04,Top individual income tax rate reduction 27% to 26% (Budget 2010),PIT,Cut,27,26,-1,2009,2010,NA,Long-run,TRUE
+MY-PIT-05,"Individual income tax restructure, top rate 26% to 25% (Budget 2014, GST-offset)",PIT,Cut,26,25,-1,2013,2015,NA,Long-run,TRUE
+MY-PIT-06,High-earner individual income tax hike 25% to 28% above RM1m (Budget 2016),PIT,Hike,25,28,3,2015,2016,NA,Deficit-driven,TRUE
+MY-PIT-07,"Middle-band individual income tax cut 2pp, RM20k-70k (Budget 2018)",PIT,Cut,NA,NA,NA,2017,2018,NA,Long-run,TRUE
+MY-PIT-08,"New 30% top band above RM2m, 28% to 30% (Budget 2020)",PIT,Hike,28,30,2,2019,2020,NA,Long-run,TRUE
+MY-PIT-09,Individual income tax restructure: M40 cut / T20 hike (Budget 2023),PIT,Neutral,30,30,0,2023,2023,NA,Countercyclical,FALSE

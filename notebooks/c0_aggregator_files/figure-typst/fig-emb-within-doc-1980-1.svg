@@ -280,7 +280,6 @@
 </defs>
 <rect x="-86.4" y="-64.8" width="1036.8" height="777.6" fill="rgb(100%, 100%, 100%)" fill-opacity="1"/>
 <rect x="-86.4" y="-64.8" width="1036.8" height="777.6" fill="rgb(100%, 100%, 100%)" fill-opacity="1"/>
-<path fill="none" stroke-width="1.066978" stroke-linecap="round" stroke-linejoin="round" stroke="rgb(100%, 100%, 100%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0 648 L 864 648 L 864 0 L 0 0 Z M 0 648 "/>
 <g clip-path="url(#clip-0)">
 <path fill-rule="nonzero" fill="rgb(100%, 100%, 100%)" fill-opacity="1" d="M 5.480469 642.519531 L 404.625 642.519531 L 404.625 23.957031 L 5.480469 23.957031 Z M 5.480469 642.519531 "/>
 </g>

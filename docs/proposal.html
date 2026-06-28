@@ -8,7 +8,7 @@
 
 <meta name="author" content="Esteban Degetau">
 <meta name="author" content="Agustín Samano">
-<meta name="dcterms.date" content="2026-05-30">
+<meta name="dcterms.date" content="2026-06-28">
 <meta name="keywords" content="Fiscal policy, AI for social science">
 
 <title>Scaling Narrative Fiscal Shock Identification with LLMs</title>
@@ -101,7 +101,7 @@ div.csl-indent {
 
 </head>
 
-<body class="quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+<body class="nav-sidebar floating quarto-light"><script id="quarto-html-before-body" type="application/javascript">
     const toggleBodyColorMode = (bsSheetEl) => {
       const mode = bsSheetEl.getAttribute("data-mode");
       const bodyEl = window.document.querySelector("body");
@@ -266,10 +266,25 @@ div.csl-indent {
   </script>
 
 <div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/onboarding.html">Internal Notes</a></li><li class="breadcrumb-item"><a href="../docs/proposal.html">Scaling Narrative Fiscal Shock Identification with LLMs</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
 <!-- content -->
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
-    <div class="quarto-title column-body">
+    <div class="quarto-title column-body"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/onboarding.html">Internal Notes</a></li><li class="breadcrumb-item"><a href="../docs/proposal.html">Scaling Narrative Fiscal Shock Identification with LLMs</a></li></ol></nav>
       <h1 class="title">Scaling Narrative Fiscal Shock Identification with LLMs</h1>
             <p class="subtitle lead">Concept Note</p>
                       </div>
@@ -303,7 +318,7 @@ div.csl-indent {
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">May 30, 2026</p>
+        <p class="date">June 28, 2026</p>
       </div>
     </div>
     
@@ -320,10 +335,328 @@ div.csl-indent {
   
   </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
 <!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">Scaling Narrative Identification</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scaling the Narrative Identification of Fiscal Changes using LLMs</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tax-Change Dataset</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/malaysia_dataset.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Malaysia Statutory Tax-Change Dataset</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Data Foundation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/review_data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training Data Audit</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_body.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Document Extraction Verification: <code>r params$country</code></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/data_overview.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training Data Overview</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_c2_inputs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C2 Input Verification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Data Quality</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/test_text_extraction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PDF Extraction Quality Test</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Pipeline Design</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/identifying_known_acts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Identifying Known Acts in Document Chunks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_chunk_tiers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Chunk Tier Verification</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_api_inputs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Pre-Flight API Input Verification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Codebook Evaluation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/iteration_summary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Codebook Development History</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/c0_aggregator.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C0 Act Aggregator — Method Comparison</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/c1_measure_id.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C1: Measure Identification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true">
+ <span class="menu-text">Deployment</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_malaysia_urls.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia PDF URL Manifest: Human Verification Dashboard</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/malay_consistency.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia EN/BM Cross-Language Consistency Test</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_country_body.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Deployment Corpus Verification</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/deployment.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Deployment Headline: Cross-Country Fiscal-Shock Inventory</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">Tax changes</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/cit_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory CIT-Rate Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/pit_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory PIT-Rate Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/vat_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory Consumption-Tax Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/tax_shocks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia Statutory Tax-Change Dataset</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true">
+ <span class="menu-text">Internal Notes</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/onboarding.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Working with Claude Code in This Project</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/proposal.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Scaling Narrative Fiscal Shock Identification with LLMs</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/brainstorm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">A brainstorm of where we’re at and where to go next</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/CIT_forward.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">A Narrative CIT-Shock Database for Malaysia</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/lit_review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Literature review</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/lit_base.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Literature base</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/codebook_sources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Codebook Sources: Implementation-Critical Details for Codebook Design</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
-    <div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></div>
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction-and-motivation" id="toc-introduction-and-motivation" class="nav-link active" data-scroll-target="#introduction-and-motivation"><span class="header-section-number">1</span> Introduction and Motivation</a></li>
+  <li><a href="#research-questions" id="toc-research-questions" class="nav-link" data-scroll-target="#research-questions"><span class="header-section-number">2</span> Research Questions</a></li>
+  <li><a href="#proposed-approach" id="toc-proposed-approach" class="nav-link" data-scroll-target="#proposed-approach"><span class="header-section-number">3</span> Proposed Approach</a>
+  <ul class="collapse">
+  <li><a href="#phase-0-us-codebook-development-and-benchmarking-january-2026" id="toc-phase-0-us-codebook-development-and-benchmarking-january-2026" class="nav-link" data-scroll-target="#phase-0-us-codebook-development-and-benchmarking-january-2026">Phase 0: US Codebook Development and Benchmarking (January 2026)</a></li>
+  <li><a href="#phase-1-malaysia-pilot-february-2026" id="toc-phase-1-malaysia-pilot-february-2026" class="nav-link" data-scroll-target="#phase-1-malaysia-pilot-february-2026">Phase 1: Malaysia Pilot (February 2026)</a></li>
+  <li><a href="#narrative-identification-strategy" id="toc-narrative-identification-strategy" class="nav-link" data-scroll-target="#narrative-identification-strategy">Narrative Identification Strategy</a></li>
+  <li><a href="#codebook-pipeline-human-in-the-loop" id="toc-codebook-pipeline-human-in-the-loop" class="nav-link" data-scroll-target="#codebook-pipeline-human-in-the-loop">Codebook Pipeline (Human-in-the-Loop)</a></li>
+  <li><a href="#phase-2-extension-to-indonesia-thailand-the-philippines-vietnam-june-2026" id="toc-phase-2-extension-to-indonesia-thailand-the-philippines-vietnam-june-2026" class="nav-link" data-scroll-target="#phase-2-extension-to-indonesia-thailand-the-philippines-vietnam-june-2026">Phase 2: Extension to Indonesia, Thailand, the Philippines, Vietnam (June 2026)</a></li>
+  </ul></li>
+  <li><a href="#validation" id="toc-validation" class="nav-link" data-scroll-target="#validation"><span class="header-section-number">4</span> Validation</a>
+  <ul class="collapse">
+  <li><a href="#us-benchmark-validation-hk-framework" id="toc-us-benchmark-validation-hk-framework" class="nav-link" data-scroll-target="#us-benchmark-validation-hk-framework">1. US Benchmark Validation (H&amp;K Framework)</a></li>
+  <li><a href="#expert-review-in-sea-hk-s3-error-analysis" id="toc-expert-review-in-sea-hk-s3-error-analysis" class="nav-link" data-scroll-target="#expert-review-in-sea-hk-s3-error-analysis">2. Expert Review in SEA (H&amp;K S3 Error Analysis)</a></li>
+  <li><a href="#news-based-cross-validation" id="toc-news-based-cross-validation" class="nav-link" data-scroll-target="#news-based-cross-validation">3. News-Based Cross-Validation</a></li>
+  <li><a href="#internal-consistency-checks" id="toc-internal-consistency-checks" class="nav-link" data-scroll-target="#internal-consistency-checks">4. Internal Consistency Checks</a></li>
+  </ul></li>
+  <li><a href="#empirical-analysis" id="toc-empirical-analysis" class="nav-link" data-scroll-target="#empirical-analysis"><span class="header-section-number">5</span> Empirical Analysis</a>
+  <ul class="collapse">
+  <li><a href="#macro-level-effects" id="toc-macro-level-effects" class="nav-link" data-scroll-target="#macro-level-effects">1. Macro-Level Effects</a></li>
+  <li><a href="#firm-level-effects" id="toc-firm-level-effects" class="nav-link" data-scroll-target="#firm-level-effects">2. Firm-Level Effects</a></li>
+  </ul></li>
+  <li><a href="#outputs-and-deliverables" id="toc-outputs-and-deliverables" class="nav-link" data-scroll-target="#outputs-and-deliverables"><span class="header-section-number">6</span> Outputs and Deliverables</a>
+  <ul class="collapse">
+  <li><a href="#by-january-2026-us-benchmark" id="toc-by-january-2026-us-benchmark" class="nav-link" data-scroll-target="#by-january-2026-us-benchmark">By January 2026 (US Benchmark)</a></li>
+  <li><a href="#by-february-2026-malaysia-pilot-completion" id="toc-by-february-2026-malaysia-pilot-completion" class="nav-link" data-scroll-target="#by-february-2026-malaysia-pilot-completion">By February 2026 (Malaysia Pilot Completion)</a></li>
+  <li><a href="#by-june-2026-core-dataset-completion" id="toc-by-june-2026-core-dataset-completion" class="nav-link" data-scroll-target="#by-june-2026-core-dataset-completion">By June 2026 (Core Dataset Completion)</a></li>
+  <li><a href="#post-2026-analytical-outputs" id="toc-post-2026-analytical-outputs" class="nav-link" data-scroll-target="#post-2026-analytical-outputs">Post-2026 (Analytical Outputs)</a></li>
+  </ul></li>
+  <li><a href="#risks-and-mitigation" id="toc-risks-and-mitigation" class="nav-link" data-scroll-target="#risks-and-mitigation"><span class="header-section-number">7</span> Risks and Mitigation</a></li>
+  <li><a href="#policy-relevance-and-value-added-to-the-world-bank" id="toc-policy-relevance-and-value-added-to-the-world-bank" class="nav-link" data-scroll-target="#policy-relevance-and-value-added-to-the-world-bank"><span class="header-section-number">8</span> Policy Relevance and Value Added to the World Bank</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="proposal.pdf"><i class="bi bi-file-pdf"></i>Typst</a></li></ul></div><div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></nav>
+    </div>
 <!-- main -->
 <main class="content quarto-banner-title-block" id="quarto-document-content">
 

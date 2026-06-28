@@ -8,7 +8,7 @@
 
 <meta name="author" content="Esteban Degetau">
 <meta name="author" content="Agustín Samano">
-<meta name="dcterms.date" content="2026-05-30">
+<meta name="dcterms.date" content="2026-06-28">
 <meta name="keywords" content="Fiscal policy, AI for social science">
 
 <title>Working with Claude Code in This Project</title>
@@ -117,7 +117,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 </head>
 
-<body class="quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+<body class="nav-sidebar floating quarto-light"><script id="quarto-html-before-body" type="application/javascript">
     const toggleBodyColorMode = (bsSheetEl) => {
       const mode = bsSheetEl.getAttribute("data-mode");
       const bodyEl = window.document.querySelector("body");
@@ -282,10 +282,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 
 <div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/onboarding.html">Internal Notes</a></li><li class="breadcrumb-item"><a href="../docs/onboarding.html">Working with Claude Code in This Project</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
 <!-- content -->
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
-    <div class="quarto-title column-body">
+    <div class="quarto-title column-body"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/onboarding.html">Internal Notes</a></li><li class="breadcrumb-item"><a href="../docs/onboarding.html">Working with Claude Code in This Project</a></li></ol></nav>
       <h1 class="title">Working with Claude Code in This Project</h1>
             <p class="subtitle lead">An onboarding guide for human researchers</p>
                       </div>
@@ -319,7 +334,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">May 30, 2026</p>
+        <p class="date">June 28, 2026</p>
       </div>
     </div>
     
@@ -336,10 +351,325 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   
   </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
 <!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">Scaling Narrative Identification</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scaling the Narrative Identification of Fiscal Changes using LLMs</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tax-Change Dataset</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/malaysia_dataset.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Malaysia Statutory Tax-Change Dataset</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Data Foundation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/review_data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training Data Audit</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_body.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Document Extraction Verification: <code>r params$country</code></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/data_overview.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training Data Overview</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_c2_inputs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C2 Input Verification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Data Quality</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/test_text_extraction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PDF Extraction Quality Test</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Pipeline Design</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/identifying_known_acts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Identifying Known Acts in Document Chunks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_chunk_tiers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Chunk Tier Verification</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_api_inputs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Pre-Flight API Input Verification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Codebook Evaluation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/iteration_summary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Codebook Development History</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/c0_aggregator.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C0 Act Aggregator — Method Comparison</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/c1_measure_id.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C1: Measure Identification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true">
+ <span class="menu-text">Deployment</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_malaysia_urls.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia PDF URL Manifest: Human Verification Dashboard</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/malay_consistency.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia EN/BM Cross-Language Consistency Test</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_country_body.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Deployment Corpus Verification</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/deployment.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Deployment Headline: Cross-Country Fiscal-Shock Inventory</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">Tax changes</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/cit_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory CIT-Rate Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/pit_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory PIT-Rate Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/vat_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory Consumption-Tax Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/tax_shocks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia Statutory Tax-Change Dataset</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true">
+ <span class="menu-text">Internal Notes</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/onboarding.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Working with Claude Code in This Project</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/proposal.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scaling Narrative Fiscal Shock Identification with LLMs</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/brainstorm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">A brainstorm of where we’re at and where to go next</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/CIT_forward.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">A Narrative CIT-Shock Database for Malaysia</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/lit_review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Literature review</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/lit_base.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Literature base</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/codebook_sources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Codebook Sources: Implementation-Critical Details for Codebook Design</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
-    <div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></div>
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#why-this-document-exists" id="toc-why-this-document-exists" class="nav-link active" data-scroll-target="#why-this-document-exists">Why this document exists</a></li>
+  <li><a href="#sec-principles" id="toc-sec-principles" class="nav-link" data-scroll-target="#sec-principles">Part 1: Principles</a>
+  <ul class="collapse">
+  <li><a href="#the-chain-of-human-ownership" id="toc-the-chain-of-human-ownership" class="nav-link" data-scroll-target="#the-chain-of-human-ownership">The chain of human ownership</a></li>
+  <li><a href="#the-core-heuristic" id="toc-the-core-heuristic" class="nav-link" data-scroll-target="#the-core-heuristic">The core heuristic</a></li>
+  <li><a href="#what-honest-research-with-ai-looks-like" id="toc-what-honest-research-with-ai-looks-like" class="nav-link" data-scroll-target="#what-honest-research-with-ai-looks-like">What honest research with AI looks like</a></li>
+  </ul></li>
+  <li><a href="#sec-architecture" id="toc-sec-architecture" class="nav-link" data-scroll-target="#sec-architecture">Part 2: Architecture</a>
+  <ul class="collapse">
+  <li><a href="#the-strategy-document-as-constitution" id="toc-the-strategy-document-as-constitution" class="nav-link" data-scroll-target="#the-strategy-document-as-constitution">The strategy document as constitution</a></li>
+  <li><a href="#the-agent-system" id="toc-the-agent-system" class="nav-link" data-scroll-target="#the-agent-system">The agent system</a></li>
+  <li><a href="#the-skill-system" id="toc-the-skill-system" class="nav-link" data-scroll-target="#the-skill-system">The skill system</a></li>
+  <li><a href="#the-pipeline" id="toc-the-pipeline" class="nav-link" data-scroll-target="#the-pipeline">The pipeline</a></li>
+  </ul></li>
+  <li><a href="#sec-iteration" id="toc-sec-iteration" class="nav-link" data-scroll-target="#sec-iteration">Part 3: The Iteration Cycle</a>
+  <ul class="collapse">
+  <li><a href="#the-daily-workflow" id="toc-the-daily-workflow" class="nav-link" data-scroll-target="#the-daily-workflow">The daily workflow</a></li>
+  <li><a href="#the-documentation-lifecycle" id="toc-the-documentation-lifecycle" class="nav-link" data-scroll-target="#the-documentation-lifecycle">The documentation lifecycle</a></li>
+  <li><a href="#exploration-vs.-production-runs" id="toc-exploration-vs.-production-runs" class="nav-link" data-scroll-target="#exploration-vs.-production-runs">Exploration vs.&nbsp;production runs</a></li>
+  <li><a href="#the-10-workflow-conventions" id="toc-the-10-workflow-conventions" class="nav-link" data-scroll-target="#the-10-workflow-conventions">The 10 workflow conventions</a></li>
+  <li><a href="#multi-agent-workflow-patterns" id="toc-multi-agent-workflow-patterns" class="nav-link" data-scroll-target="#multi-agent-workflow-patterns">Multi-agent workflow patterns</a></li>
+  </ul></li>
+  <li><a href="#sec-reference" id="toc-sec-reference" class="nav-link" data-scroll-target="#sec-reference">Part 4: Reference</a>
+  <ul class="collapse">
+  <li><a href="#key-file-locations" id="toc-key-file-locations" class="nav-link" data-scroll-target="#key-file-locations">Key file locations</a></li>
+  <li><a href="#common-commands" id="toc-common-commands" class="nav-link" data-scroll-target="#common-commands">Common commands</a></li>
+  <li><a href="#skill-quick-reference" id="toc-skill-quick-reference" class="nav-link" data-scroll-target="#skill-quick-reference">Skill quick reference</a></li>
+  <li><a href="#the-iteration-log-schema" id="toc-the-iteration-log-schema" class="nav-link" data-scroll-target="#the-iteration-log-schema">The iteration log schema</a></li>
+  </ul></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="onboarding.pdf"><i class="bi bi-file-pdf"></i>Typst</a></li></ul></div><div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></nav>
+    </div>
 <!-- main -->
 <main class="content quarto-banner-title-block" id="quarto-document-content">
 

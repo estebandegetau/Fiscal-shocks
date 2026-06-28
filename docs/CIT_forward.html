@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="">
+<meta name="dcterms.date" content="2026-06-28">
+<meta name="keywords" content="Fiscal policy, AI for social science">
+
+<title>A Narrative CIT-Shock Database for Malaysia</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-d0ae9245876894da5ac7e18953ecc5cc.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-eea6484ff4744853cd2c770488481bc3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-3b14db489edd1b23964a3c50cd29f1d1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating slimcontent quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/onboarding.html">Internal Notes</a></li><li class="breadcrumb-item"><a href="../docs/CIT_forward.html">A Narrative CIT-Shock Database for Malaysia</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../docs/onboarding.html">Internal Notes</a></li><li class="breadcrumb-item"><a href="../docs/CIT_forward.html">A Narrative CIT-Shock Database for Malaysia</a></li></ol></nav>
+      <h1 class="title">A Narrative CIT-Shock Database for Malaysia</h1>
+            <p class="subtitle lead">Feasibility note in response to <em>Do Corporate Tax Cuts Still Work?</em></p>
+                      </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">June 28, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+
+  <div>
+    <div class="keywords">
+      <div class="block-title">Keywords</div>
+      <p>Fiscal policy, AI for social science</p>
+    </div>
+  </div>
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">Scaling Narrative Identification</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scaling the Narrative Identification of Fiscal Changes using LLMs</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tax-Change Dataset</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/malaysia_dataset.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Malaysia Statutory Tax-Change Dataset</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Data Foundation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/review_data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training Data Audit</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_body.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Document Extraction Verification: <code>r params$country</code></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/data_overview.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Training Data Overview</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_c2_inputs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C2 Input Verification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Data Quality</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/test_text_extraction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PDF Extraction Quality Test</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Pipeline Design</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/identifying_known_acts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Identifying Known Acts in Document Chunks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_chunk_tiers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Chunk Tier Verification</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_api_inputs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Pre-Flight API Input Verification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Codebook Evaluation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/iteration_summary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Codebook Development History</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/c0_aggregator.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C0 Act Aggregator — Method Comparison</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/c1_measure_id.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">C1: Measure Identification</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true">
+ <span class="menu-text">Deployment</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_malaysia_urls.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia PDF URL Manifest: Human Verification Dashboard</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/malay_consistency.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia EN/BM Cross-Language Consistency Test</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/verify_country_body.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Deployment Corpus Verification</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/deployment.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Deployment Headline: Cross-Country Fiscal-Shock Inventory</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">Tax changes</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/cit_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory CIT-Rate Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/pit_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory PIT-Rate Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/vat_identification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Manual Identification of Malaysia’s Statutory Consumption-Tax Shocks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../notebooks/tax_shocks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Malaysia Statutory Tax-Change Dataset</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true">
+ <span class="menu-text">Internal Notes</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/onboarding.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Working with Claude Code in This Project</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/proposal.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scaling Narrative Fiscal Shock Identification with LLMs</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/brainstorm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">A brainstorm of where we’re at and where to go next</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/CIT_forward.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">A Narrative CIT-Shock Database for Malaysia</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/lit_review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Literature review</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/lit_base.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Literature base</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../docs/codebook_sources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Codebook Sources: Implementation-Critical Details for Codebook Design</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#bottom-line-up-front" id="toc-bottom-line-up-front" class="nav-link active" data-scroll-target="#bottom-line-up-front"><span class="header-section-number">1</span> Bottom line up front</a></li>
+  <li><a href="#what-the-project-needs" id="toc-what-the-project-needs" class="nav-link" data-scroll-target="#what-the-project-needs"><span class="header-section-number">2</span> What the project needs</a></li>
+  <li><a href="#sec-working" id="toc-sec-working" class="nav-link" data-scroll-target="#sec-working"><span class="header-section-number">3</span> What is already working</a>
+  <ul class="collapse">
+  <li><a href="#c1-surfaces-malaysias-cit-rate-cuts" id="toc-c1-surfaces-malaysias-cit-rate-cuts" class="nav-link" data-scroll-target="#c1-surfaces-malaysias-cit-rate-cuts"><span class="header-section-number">3.1</span> C1 surfaces Malaysia’s CIT rate cuts</a></li>
+  <li><a href="#c2-already-reasons-about-exogeneity-including-on-the-spending-side" id="toc-c2-already-reasons-about-exogeneity-including-on-the-spending-side" class="nav-link" data-scroll-target="#c2-already-reasons-about-exogeneity-including-on-the-spending-side"><span class="header-section-number">3.2</span> C2 already reasons about exogeneity, including on the spending side</a></li>
+  <li><a href="#the-deployment-plumbing-runs-end-to-end" id="toc-the-deployment-plumbing-runs-end-to-end" class="nav-link" data-scroll-target="#the-deployment-plumbing-runs-end-to-end"><span class="header-section-number">3.3</span> The deployment plumbing runs end to end</a></li>
+  </ul></li>
+  <li><a href="#sec-todo" id="toc-sec-todo" class="nav-link" data-scroll-target="#sec-todo"><span class="header-section-number">4</span> What we need to work on</a>
+  <ul class="collapse">
+  <li><a href="#retrieval-select-cit-acts-by-instrument-not-by-discussion-volume" id="toc-retrieval-select-cit-acts-by-instrument-not-by-discussion-volume" class="nav-link" data-scroll-target="#retrieval-select-cit-acts-by-instrument-not-by-discussion-volume"><span class="header-section-number">4.1</span> Retrieval: select CIT acts by instrument, not by discussion volume</a></li>
+  <li><a href="#sec-validate" id="toc-sec-validate" class="nav-link" data-scroll-target="#sec-validate"><span class="header-section-number">4.2</span> Motivation validation on the CIT cases</a></li>
+  <li><a href="#magnitude-the-one-real-construction-gap" id="toc-magnitude-the-one-real-construction-gap" class="nav-link" data-scroll-target="#magnitude-the-one-real-construction-gap"><span class="header-section-number">4.3</span> Magnitude: the one real construction gap</a></li>
+  <li><a href="#timing-a-lighter-lift" id="toc-timing-a-lighter-lift" class="nav-link" data-scroll-target="#timing-a-lighter-lift"><span class="header-section-number">4.4</span> Timing: a lighter lift</a></li>
+  <li><a href="#sec-extension" id="toc-sec-extension" class="nav-link" data-scroll-target="#sec-extension"><span class="header-section-number">4.5</span> Country extension to Thailand and Vietnam</a></li>
+  </ul></li>
+  <li><a href="#readiness-summary" id="toc-readiness-summary" class="nav-link" data-scroll-target="#readiness-summary"><span class="header-section-number">5</span> Readiness summary</a></li>
+  <li><a href="#proposed-sequencing" id="toc-proposed-sequencing" class="nav-link" data-scroll-target="#proposed-sequencing"><span class="header-section-number">6</span> Proposed sequencing</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="CIT_forward.pdf"><i class="bi bi-file-pdf"></i>Typst</a></li></ul></div><div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/estebandegetau/Fiscal-shocks/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block page-columns page-full" id="quarto-document-content">
+
+
+
+
+
+
+<section id="bottom-line-up-front" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="bottom-line-up-front"><span class="header-section-number">1</span> Bottom line up front</h2>
+<p>This note answers one question before we commit to the CIT research agenda: <strong>can the pipeline we have already built deliver the data the project needs?</strong> The short answer is <em>mostly yes, with one genuine construction gap</em>.</p>
+<p>The decisive finding is empirical. Malaysia’s document corpus <strong>already contains the statutory corporate-income-tax (CIT) rate cuts the project rests on</strong>, and our measure-identification step (C1) already surfaces them, with the percentage-point magnitudes and the competitiveness motivations sitting in the extracted evidence. The project is not blocked on whether the signal exists. It is a question of <em>retrieving</em> that signal cleanly and <em>sizing</em> it.</p>
+<p>Three things stand between us and the research question:</p>
+<ol type="1">
+<li><strong>A retrieval reframe.</strong> The current deployment headline keeps only the most-<em>discussed</em> acts (an 80%-of-relevance cut). That filter is correct for a general inventory but discards routine CIT rate cuts, which are individually low-volume in the documents. We need an instrument-targeted pass that retrieves CIT acts by <em>what they are</em>, not by how much ink they received.</li>
+<li><strong>A motivation-validation step.</strong> The project’s identification hinges on separating CIT cuts motivated by <em>long-run competitiveness or consolidation</em> (exogenous) from cuts motivated by <em>short-run stimulus</em> (endogenous). Our motivation classifier (C2) is built and validated, but on US data. This specific separation, on the Malaysia CIT cases, is the methodologically central thing to validate.</li>
+<li><strong>A magnitude layer.</strong> The project needs <em>sized</em> shocks (response per percentage-point cut). The magnitude codebook (C4) is not yet built. This is the real construction work. It is also the most tractable part, because statutory rates are stated explicitly in the source text.</li>
+</ol>
+<p>Items 1 and 2 are reframing and validation of components we already have. Item 3 is new, but bounded. Country extension to Thailand and Vietnam is a separate, larger lift discussed in <a href="#sec-extension" class="quarto-xref">Section&nbsp;4.5</a>.</p>
+</section>
+<section id="what-the-project-needs" class="level2 page-columns page-full" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="what-the-project-needs"><span class="header-section-number">2</span> What the project needs</h2>
+<p>The proposal asks for the first narrative, LLM-constructed database of <strong>exogenous, dated, and sized CIT shocks</strong> for Malaysia (extended to Thailand and Vietnam), in the <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span> tradition, with competitor cuts also classified as exogenous or endogenous. Read against our pipeline, that decomposes into five data requirements:</p>
+<ul>
+<li><strong>Identification</strong>: locate every statutory CIT rate change in the corpus (the <em>measure-identification</em> task).</li>
+<li><strong>Exogeneity</strong>: classify each as exogenous or endogenous by its stated motivation, isolating competitiveness- and consolidation-driven cuts from cyclical ones.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></li>
+<li><strong>Sign</strong>: cut versus increase (we have this from the motivation step).</li>
+<li><strong>Magnitude</strong>: the size of the change, in percentage points of the statutory rate, for the local-projection design.</li>
+<li><strong>Date</strong>: the year (and ideally quarter) the change takes effect.</li>
+</ul>
+<div class="no-row-height column-margin column-container"><div id="fn1"><p><sup>1</sup>&nbsp;<span class="citation" data-cites="das_ai_2026">Das et al. (<a href="#ref-das_ai_2026" role="doc-biblioref">2026</a>)</span> use a more lenient codebook (prompt) to assess the exogeneity of fiscal shocks more broadly defined than in <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span>; including spending changes.</p></div></div><p>The unit of analysis Végh and Vuletin use, and the unit the proposal’s competitive-gap measure assumes, is the <strong>statutory CIT rate</strong> <span class="citation" data-cites="vegh_how_2015">(<a href="#ref-vegh_how_2015" role="doc-biblioref">Vegh and Vuletin 2015</a>)</span>. That is a narrower, cleaner target than the general notion of a “fiscal change,” and the narrowness works in our favour: statutory rates are explicit, dated, and quotable in budget documents.</p>
+</section>
+<section id="sec-working" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="sec-working"><span class="header-section-number">3</span> What is already working</h2>
+<section id="c1-surfaces-malaysias-cit-rate-cuts" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="c1-surfaces-malaysias-cit-rate-cuts"><span class="header-section-number">3.1</span> C1 surfaces Malaysia’s CIT rate cuts</h3>
+<p>The most important result for this note: scanning the <strong>full</strong> Malaysia C1 measure pool (before any relevance filtering) returns the statutory CIT rate-change episodes the project is built on. Representative surface forms drawn from the current pool:</p>
+<blockquote class="blockquote">
+<p>“corporate tax rate reduction from 34 per cent in 1991 to 30 per cent in 1995”</p>
+<p>“Progressive reduction of corporate tax rate from 28% to 27% (2007), 26% (2008), 25% (2009)”</p>
+<p>“corporate income tax was reduced by two percentage points in two stages, to 27% for the 2007 assessment year and 26% for 2008”</p>
+<p>“Pengurangan kadar cukai pendapatan syarikat daripada 34% kepada 32%”</p>
+<p>“Single-tier corporate tax system”</p>
+</blockquote>
+<p>The extracted evidence already carries <strong>both</strong> of the hard-to-get fields. The magnitudes are present as explicit from-and-to rates and percentage-point changes. The motivations are present and, tellingly, varied: some cuts are framed as long-run competitiveness (“corporate tax rate is high compared to other countries”, “attract foreign direct investment”, “reduce the cost of doing business”), others as short-run stimulus (“stimulate private sector capital spending”). That variation is exactly the exogenous/endogenous split the project needs, and it confirms the signal is rich enough to classify.</p>
+</section>
+<section id="c2-already-reasons-about-exogeneity-including-on-the-spending-side" class="level3" data-number="3.2">
+<h3 data-number="3.2" class="anchored" data-anchor-id="c2-already-reasons-about-exogeneity-including-on-the-spending-side"><span class="header-section-number">3.2</span> C2 already reasons about exogeneity, including on the spending side</h3>
+<p>The motivation codebook (C2) has passed its Halterman and Keith validation gates and is frozen as a deliverable <span class="citation" data-cites="halterman2025">(<a href="#ref-halterman2025" role="doc-biblioref">Halterman and Keith 2025</a>)</span>. It applies the <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span> motivation taxonomy: cuts motivated by inherited deficits or long-run objectives are exogenous, while cyclical-stabilisation actions are endogenous.</p>
+<p>A useful cross-check comes from the deployment inventory’s incidental spending content. Most of Malaysia’s <em>most-discussed</em> acts are countercyclical spending packages (stimulus packages, cash transfers), and C2 labels them COUNTERCYCLICAL, hence endogenous. That is the correct narrative treatment, and it matches how <span class="citation" data-cites="das_ai_2026">Das et al. (<a href="#ref-das_ai_2026" role="doc-biblioref">2026</a>)</span> extend the same <span class="citation" data-cites="romer2010">Romer and Romer (<a href="#ref-romer2010" role="doc-biblioref">2010</a>)</span> exogeneity logic to government spending with a purpose-built prompt. Two implications follow. First, having spending shocks in the corpus is not a problem; the classifier handles them sensibly. Second, the open question is not spending but the CIT subset specifically, addressed in <a href="#sec-validate" class="quarto-xref">Section&nbsp;4.2</a>.</p>
+</section>
+<section id="the-deployment-plumbing-runs-end-to-end" class="level3" data-number="3.3">
+<h3 data-number="3.3" class="anchored" data-anchor-id="the-deployment-plumbing-runs-end-to-end"><span class="header-section-number">3.3</span> The deployment plumbing runs end to end</h3>
+<p>The country pipeline (C1 → C0 aggregation → C2 classification) is wired and runs on the full Malaysia corpus, with the evidence retained for audit. The infrastructure that would carry a CIT-targeted pass already exists; what changes is the <em>selection</em> logic feeding it, not the machinery.</p>
+</section>
+</section>
+<section id="sec-todo" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="sec-todo"><span class="header-section-number">4</span> What we need to work on</h2>
+<section id="retrieval-select-cit-acts-by-instrument-not-by-discussion-volume" class="level3" data-number="4.1">
+<h3 data-number="4.1" class="anchored" data-anchor-id="retrieval-select-cit-acts-by-instrument-not-by-discussion-volume"><span class="header-section-number">4.1</span> Retrieval: select CIT acts by instrument, not by discussion volume</h3>
+<p>The deployment headline ranks acts by a relevance proxy (evidence items × chunks) and keeps the top set accumulating 80% of relevance. That is a sound way to curate an over-identified general inventory, but it is the wrong filter here: a CIT cut from 28% to 27% is maximally relevant to this project <em>because it is a CIT rate change</em>, regardless of how briefly the budget documents discuss it. Under the relevance cut, Malaysia’s chosen set contained zero CIT acts despite the corpus holding several.</p>
+<p>The fix is a parallel, instrument-targeted retrieval that (i) selects C1 measures matching the CIT-rate concept, (ii) consolidates the scattered surface forms into distinct dated rate-change <em>events</em>, and (iii) does not pass through the relevance cut. The Végh-Vuletin statutory-rate definition becomes the selection filter rather than a post-hoc label.</p>
+</section>
+<section id="sec-validate" class="level3" data-number="4.2">
+<h3 data-number="4.2" class="anchored" data-anchor-id="sec-validate"><span class="header-section-number">4.2</span> Motivation validation on the CIT cases</h3>
+<p>The project’s central identifying assumption is that we can isolate cuts orthogonal to the domestic cycle. Our evidence already shows Malaysia’s CIT cuts span both motivations, so the classification is consequential, not mechanical. Before relying on C2 here, we should validate it directly against expert judgment on the CIT subset: does it correctly route competitiveness- and consolidation-motivated cuts to exogenous, and stimulus-motivated cuts to endogenous? This is a focused, roughly twenty-act validation, and it is the methodologically interesting contribution, not overhead.</p>
+</section>
+<section id="magnitude-the-one-real-construction-gap" class="level3" data-number="4.3">
+<h3 data-number="4.3" class="anchored" data-anchor-id="magnitude-the-one-real-construction-gap"><span class="header-section-number">4.3</span> Magnitude: the one real construction gap</h3>
+<p>The proposal’s estimation needs sized shocks (the impulse response per percentage-point cut). The magnitude codebook (C4) is <strong>not yet built</strong>. This is the largest single item of new work. It is, however, the most tractable: unlike a general fiscal change whose dollar magnitude must be inferred, a statutory CIT cut states its own size (“from 34% to 30%”, “by two percentage points to 27%”). C4 for the CIT subset is closer to careful extraction than to estimation, and the canonical narrative CIT-shock estimation literature gives us a clear target specification <span class="citation" data-cites="mertens2013">(<a href="#ref-mertens2013" role="doc-biblioref">Mertens and Ravn 2013</a>)</span>.</p>
+</section>
+<section id="timing-a-lighter-lift" class="level3" data-number="4.4">
+<h3 data-number="4.4" class="anchored" data-anchor-id="timing-a-lighter-lift"><span class="header-section-number">4.4</span> Timing: a lighter lift</h3>
+<p>The project needs dated shocks; the proposal’s local projections are annual. Year-level dating is largely recoverable already (from act names that carry a year and from source-document years), so a dedicated timing codebook (C3) is a smaller task than C4, and quarter-level precision is not required for the annual design.</p>
+</section>
+<section id="sec-extension" class="level3" data-number="4.5">
+<h3 data-number="4.5" class="anchored" data-anchor-id="sec-extension"><span class="header-section-number">4.5</span> Country extension to Thailand and Vietnam</h3>
+<p>Stage 1 of the proposal is Malaysia as the deep, validated showcase, which matches our current state: Malaysia is the only deployed corpus. The competitive-gap mechanism, however, requires <em>competitor</em> cuts (Thailand, Vietnam, and China by weight), which means acquiring and verifying those corpora before Stage 2. Corpus acquisition for a new country is a defined but non-trivial workflow and should be scoped as its own milestone, not folded into the Malaysia deliverable.</p>
+</section>
+</section>
+<section id="readiness-summary" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="readiness-summary"><span class="header-section-number">5</span> Readiness summary</h2>
+<p><a href="#tbl-readiness" class="quarto-xref">Table&nbsp;1</a> maps each data requirement to its current state and the work remaining.</p>
+<div class="cell">
+<div id="tbl-readiness" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-readiness-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: <strong>Component readiness</strong>. Each building block of the CIT-shock database, its current state, and the work remaining before the research question can be addressed.
+</figcaption>
+<div aria-describedby="tbl-readiness-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_p7auzxpk61oth2geose3 = TinyTable.createTableFunctions("tinytable_p7auzxpk61oth2geose3");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '6', j: 1 }, { i: '6', j: 2 }, { i: '6', j: 3 }, { i: '6', j: 4 } ], css_id: 'tinytable_css_11bivdm1zc2ehpk1kmgf',}, 
+          { positions: [ { i: '1', j: 1 }, { i: '2', j: 1 }, { i: '3', j: 1 }, { i: '4', j: 1 }, { i: '5', j: 1 }, { i: '1', j: 2 }, { i: '2', j: 2 }, { i: '3', j: 2 }, { i: '4', j: 2 }, { i: '5', j: 2 }, { i: '1', j: 3 }, { i: '2', j: 3 }, { i: '3', j: 3 }, { i: '4', j: 3 }, { i: '5', j: 3 }, { i: '1', j: 4 }, { i: '2', j: 4 }, { i: '3', j: 4 }, { i: '4', j: 4 }, { i: '5', j: 4 } ], css_id: 'tinytable_css_p8aibpu41mhsvybjpwdx',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 } ], css_id: 'tinytable_css_iezlnk2hl4jgbtiqlydr',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_p7auzxpk61oth2geose3.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_p7auzxpk61oth2geose3 td.tinytable_css_11bivdm1zc2ehpk1kmgf, #tinytable_p7auzxpk61oth2geose3 th.tinytable_css_11bivdm1zc2ehpk1kmgf {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.1em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%; ; text-align: center }
+    #tinytable_p7auzxpk61oth2geose3 td.tinytable_css_p8aibpu41mhsvybjpwdx, #tinytable_p7auzxpk61oth2geose3 th.tinytable_css_p8aibpu41mhsvybjpwdx { text-align: center }
+    #tinytable_p7auzxpk61oth2geose3 td.tinytable_css_iezlnk2hl4jgbtiqlydr, #tinytable_p7auzxpk61oth2geose3 th.tinytable_css_iezlnk2hl4jgbtiqlydr {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.1em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%; ; text-align: center }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_p7auzxpk61oth2geose3" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Component</th>
+                <th scope="col" data-row="0" data-col="2">Role in the CIT database</th>
+                <th scope="col" data-row="0" data-col="3">Status</th>
+                <th scope="col" data-row="0" data-col="4">Work remaining</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">C1 — measure identification</td>
+                  <td data-row="1" data-col="2">Locate statutory CIT rate changes in the corpus</td>
+                  <td data-row="1" data-col="3">Working</td>
+                  <td data-row="1" data-col="4">Add an instrument-targeted, recall-oriented selection path</td>
+                </tr>
+                <tr>
+                  <td data-row="2" data-col="1">Retrieval / selection</td>
+                  <td data-row="2" data-col="2">Keep CIT acts instead of discarding them at the 80% cut</td>
+                  <td data-row="2" data-col="3">To reframe</td>
+                  <td data-row="2" data-col="4">Bypass the relevance cut; consolidate surface forms into dated events</td>
+                </tr>
+                <tr>
+                  <td data-row="3" data-col="1">C2 — exogeneity &amp; sign</td>
+                  <td data-row="3" data-col="2">Separate competitiveness/consolidation cuts from cyclical</td>
+                  <td data-row="3" data-col="3">Working (US)</td>
+                  <td data-row="3" data-col="4">Validate the exogenous/endogenous split on the Malaysia CIT cases</td>
+                </tr>
+                <tr>
+                  <td data-row="4" data-col="1">C4 — magnitude</td>
+                  <td data-row="4" data-col="2">Size each shock in percentage points of the rate</td>
+                  <td data-row="4" data-col="3">Not built</td>
+                  <td data-row="4" data-col="4">Build the codebook; sizes are explicit in the source text</td>
+                </tr>
+                <tr>
+                  <td data-row="5" data-col="1">C3 — timing</td>
+                  <td data-row="5" data-col="2">Date each shock (annual for the LP design)</td>
+                  <td data-row="5" data-col="3">Not built</td>
+                  <td data-row="5" data-col="4">Lighter lift; year-level dates largely already available</td>
+                </tr>
+                <tr>
+                  <td data-row="6" data-col="1">Thailand / Vietnam corpora</td>
+                  <td data-row="6" data-col="2">Competitor cuts for the competitive-gap mechanism</td>
+                  <td data-row="6" data-col="3">Not started</td>
+                  <td data-row="6" data-col="4">Acquire and verify corpora (Stage 2 milestone)</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="proposed-sequencing" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="proposed-sequencing"><span class="header-section-number">6</span> Proposed sequencing</h2>
+<p>We recommend separating the Malaysia deliverable from the regional extension and tackling them in order.</p>
+<ol type="1">
+<li><strong>Malaysia CIT seed (near term).</strong> Run the instrument-targeted retrieval, consolidate the rate-change events by hand, and adjudicate each event’s exogeneity with expert review. This produces the first validated Malaysia CIT-shock list and simultaneously serves as the C2-on-CIT validation in <a href="#sec-validate" class="quarto-xref">Section&nbsp;4.2</a>.</li>
+<li><strong>Sizing and dating (near term, parallel).</strong> Build C4 against the same CIT events, reading the statutory rates already present in the evidence, and confirm year-level dates. This closes the only true construction gap and yields <em>sized, dated</em> shocks.</li>
+<li><strong>Regional extension (later milestone).</strong> Acquire the Thailand and Vietnam corpora and rerun steps 1 and 2, enabling the competitor-cut variation the mechanism depends on.</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>What we can commit to this summer
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Steps 1 and 2 deliver a validated, sized, dated Malaysia CIT-shock series. They draw on components that already exist (C1, C2) plus one bounded new codebook (C4) whose inputs are explicit in the text. This is a realistic summer deliverable and is enough to run the Malaysia-only baseline in the proposal.</p>
+</div>
+</div>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>What is contingent, not committed
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The full competitive-gap mechanism (Stage 2) depends on acquiring the Thailand and Vietnam corpora, which is a separate milestone with its own timeline. We should scope it explicitly rather than assume it lands in the same window as the Malaysia deliverable.</p>
+</div>
+</div>
+</section>
+<section id="references" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="references">References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-das_ai_2026" class="csl-entry" role="listitem">
+Das, Shuvam, Davide Furceri, Nikhil Patel, and Adrian Peralta-Alva. 2026. <em><a href="https://doi.org/10.5089/9798229041560.001"><span>AI</span> <span>Meets</span> <span>Fiscal</span> <span>Policy</span></a></em>. {SSRN} {Scholarly} {Paper}. Rochester, NY: Social Science Research Network.
+</div>
+<div id="ref-halterman2025" class="csl-entry" role="listitem">
+Halterman, Andrew, and Katherine A. Keith. 2025. <span>“<a href="https://doi.org/10.1017/pan.2025.10017">Codebook <span>LLMs</span>: <span>Evaluating</span> <span>LLMs</span> as <span>Measurement</span> <span>Tools</span> for <span>Political</span> <span>Science</span> <span>Concepts</span></a>.”</span> <em>Political Analysis</em>, September, 1–17.
+</div>
+<div id="ref-mertens2013" class="csl-entry" role="listitem">
+Mertens, Karel, and Morten O. Ravn. 2013. <span>“<a href="https://doi.org/10.1257/aer.103.4.1212">The Dynamic Effects of Personal and Corporate Income Tax Changes in the United States</a>.”</span> <em>American Economic Review</em> 103 (4): 1212–47.
+</div>
+<div id="ref-romer2010" class="csl-entry" role="listitem">
+Romer, Christina D., and David H. Romer. 2010. <span>“<a href="https://doi.org/10.1257/aer.100.3.763">The Macroeconomic Effects of Tax Changes: Estimates Based on a New Measure of Fiscal Shocks</a>.”</span> <em>American Economic Review</em> 100 (3): 763–801.
+</div>
+<div id="ref-vegh_how_2015" class="csl-entry" role="listitem">
+Vegh, Carlos A., and Guillermo Vuletin. 2015. <span>“<a href="https://doi.org/10.1257/pol.20120218">How <span>Is</span> <span>Tax</span> <span>Policy</span> <span>Conducted</span> over the <span>Business</span> <span>Cycle</span>?</a>”</span> <em>American Economic Journal: Economic Policy</em> 7 (3): 327–70.
+</div>
+</div>
+
+
+</section>
+
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/estebandegetau\.github\.io\/Fiscal-shocks\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
