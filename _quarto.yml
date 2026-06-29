@@ -73,6 +73,9 @@ website:
             - notebooks/pit_identification.qmd
             - notebooks/vat_identification.qmd
             - notebooks/tax_shocks.qmd
+          - section: "Spending"
+            contents: 
+            - notebooks/spending_identification.qmd
       - section: "Internal Notes"
         contents:
           - docs/onboarding.qmd
