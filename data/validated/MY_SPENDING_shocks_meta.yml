@@ -1,0 +1,8 @@
+instrument: SPENDING
+country_iso: MY
+country: malaysia
+skill: identify-spending
+n_shocks: 14
+frozen_at: 2026-06-29 22:11:13
+git_hash: ab59fc2
+reviewer: Esteban Degetau
