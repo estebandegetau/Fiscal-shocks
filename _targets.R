@@ -946,6 +946,81 @@ list(
     packages = "tidyverse"
   ),
 
+  # ===========================================================================
+  # Government spending-shock deliverable (identify-spending skill -> C2b)
+  #
+  # Spending-side analogue of the tax-shock chain above. The /identify-spending
+  # skill + human review freeze one hand-curated reference dataset per country to
+  # data/validated/{ISO}_SPENDING_shocks.qs (parallel contract --
+  # docs/phase_1/spending_shock_schema.md; same data-policy carve-out). Only the
+  # bind differs (bind_spending_shocks, R/spending_shock_dataset.R); the rest of
+  # the tail -- assemble_shock_evidence / run_c2b_on_shocks /
+  # assemble_tax_shock_deliverable -- is REUSED UNCHANGED from R/tax_shock_dataset.R
+  # (those are generic over the contract; C2a/C2b pass spending acts through
+  # untouched, and the frozen C2b assigns the final motivation/sign label). The
+  # _SPENDING_shocks.qs glob is disjoint from the tax glob, so spending rows never
+  # mix into tax_shocks. All targets empty-input safe -> inert until the first
+  # frozen file exists.
+  # ===========================================================================
+  tar_target(
+    spending_shock_files,
+    {
+      dir <- here::here("data", "validated")
+      f <- list.files(dir, pattern = "_SPENDING_shocks\\.qs$",
+                      full.names = TRUE)
+      tibble::tibble(path = f, md5 = unname(tools::md5sum(f)))
+    },
+    cue = tar_cue(mode = "always"),
+    packages = c("here", "tibble", "tools")
+  ),
+
+  tar_target(
+    spending_shocks_identified,
+    bind_spending_shocks(spending_shock_files$path),
+    packages = c("tidyverse", "qs2", "purrr")
+  ),
+
+  # C2a re-run on omitted chunks only (API). For spending, expect most member
+  # chunks to be omitted (C1 is tax-scoped). Reuses assemble_shock_evidence()
+  # unchanged.
+  tar_target(
+    spending_shocks_evidence,
+    assemble_shock_evidence(
+      spending_shocks_identified,
+      c2a_evidence = dplyr::bind_rows(country_c2a_evidence),
+      chunks       = dplyr::bind_rows(country_chunks),
+      c2a_codebook = c2a_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2a = 16384,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    spending_shocks_c2b,
+    run_c2b_on_shocks(
+      spending_shocks_evidence,
+      c2b_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2b = 4096,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    spending_shocks,
+    assemble_tax_shock_deliverable(spending_shocks_identified, spending_shocks_c2b),
+    packages = "tidyverse"
+  ),
+
   # Clean, variable-labelled downloads for the reviewer-facing dataset page
   # (notebooks/malaysia_dataset.qmd). Writes CSV / XLSX (data + dictionary
   # sheets) / DTA and returns the three paths. No API. See R/tax_shock_report.R.

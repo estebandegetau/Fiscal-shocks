@@ -202,6 +202,16 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 
 - **Decision:** The C2a re-run and C2b classification are **API-gated** and run via the `/identify-tax-shocks` orchestrator with explicit user approval; the binding/assembly targets are empty-input safe (inert until the first frozen file exists). Candidate Phase 2 expert-validation artifact (open question logged in `docs/deltas.md` 2026-06-25).
 
+### `spending_identification.qmd` -- Government Spending-Shock Identification
+
+**Purpose:** Provenance notebook for the spending-side component of the composite fiscal-events deliverable — the analogue of the per-instrument tax notebooks, for *discretionary government spending changes* (major programs & policy changes: stimulus/relief packages, subsidy-policy changes, large allocations, Five-Year Plan launches). Produced by the `/identify-spending` skill. Unlike the tax notebooks, **C1 does not pre-screen spending** (C1 is tax-scoped), so the method is **direct reading of `country_body` / `country_chunks`** rather than a C1-pool scan; the near-empty C1 floor is itself logged in the recall scorecard. Preliminary exogeneity uses the **Das et al. (2026) two-condition screen**.
+
+**Key tests and decisions:**
+
+- Renders its recall scorecard and structured table from the single source of truth — the frozen `data/validated/{ISO}_SPENDING_shocks.qs` — once the skill has stamped it (**parallel** contract `docs/phase_1/spending_shock_schema.md`: identical to the tax contract except `instrument_type = "Expenditure"`, `tax_type = NA`, rate fields `NA`, `direction ∈ {Increase, Decrease, Neutral}`, plus a `spending_category` enum from the Das component families). Empty-safe: renders a "pending" callout before the first freeze.
+- Malaysia recall checkpoints: NERP 1998 / 2009 GFC stimulus / 2020 PRIHATIN-PENJANA-PEMERKASA.
+- **Decision:** Hand-curated reference input (same data-policy carve-out as the tax datasets); read back via the `spending_shock_files` target. The spending pipeline (`spending_shock_files` → `spending_shocks_identified` → `spending_shocks_evidence` → `spending_shocks_c2b` → `spending_shocks` in `_targets.R`) reuses `assemble_shock_evidence()` / `run_c2b_on_shocks()` / `assemble_tax_shock_deliverable()` unchanged; only `bind_spending_shocks()` (`R/spending_shock_dataset.R`) is new. The frozen **tax-validated C2b** assigns the final motivation/sign label (deferred a Das-style spending codebook). A dedicated cross-instrument `spending_shocks.qmd` deliverable notebook is deferred until the first enrichment run.
+
 ## Archived Notebooks
 
 Located in `notebooks/unused/` unless noted otherwise. These are from earlier exploratory phases and are no longer active:
