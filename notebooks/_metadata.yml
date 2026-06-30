@@ -9,6 +9,11 @@ format:
     execute:
       echo: true
   typst:
+    papersize: a4
+    margin:
+        x: 0cm
+        y: 0cm
+    columns: 1
     execute:
       echo: false
 
@@ -19,6 +24,6 @@ execute:
 
 date: today
 date-format: long
-reference-location: margin
-fig-cap-location: margin
+# reference-location: margin
+fig-cap-location: top
 tbl-cap-location: top
