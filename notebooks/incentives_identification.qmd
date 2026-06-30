@@ -37,11 +37,15 @@ the narrative-identification literature [@romer2010; @klemm_empirical_2012]: clo
 source documents, with the LLM pipeline as a retrieval-and-extraction aide, not as
 the adjudicator.
 
-The method mirrors our `/manual-analysis` protocol. Like the spending side and
-**unlike** the statutory-rate side, **C1 does not pre-screen incentives** (C1 is
-scoped to standing tax rates/liabilities), so identification is driven by **direct
-reading of the corpus** (`country_body` / `country_chunks`), not the C1 measure
-pool. The seed of the dataset is the set of concessionary regimes the
+The method mirrors our `/manual-analysis` protocol and centres on **direct reading
+of the corpus** (`country_body` / `country_chunks`). The skill anticipated a
+near-empty C1 floor (C1 is scoped to standing tax rates/liabilities), but in fact
+**C1 surfaced 151 incentive measures** — Malaysia's Budget Speeches, Economic
+Reports, Bank Negara Annual Reports and Five-Year Plans discuss incentives heavily
+alongside tax, exactly as they do spending (the spending pass saw the same
+deviation). C1 therefore served as a rich first-pass scan, and direct reading served
+to *consolidate and rate* the surface forms rather than to *recover* missing ones.
+The seed of the dataset is the set of concessionary regimes the
 `/identify-cit` pass deliberately set aside. A human reads the surfaced evidence and
 makes the final call on *what counts as an incentive change*, *how scattered surface
 forms consolidate*, *whether the event belongs here or in the tax/spending sets*,
@@ -68,12 +72,13 @@ replacing — C2b's downstream label.
 
 ## What the corpus surfaced, and what C1 missed {#sec-recall}
 
-Because C1 is tax-rate-scoped, the keyword scan of the C1 pool is expected to
-surface almost no incentive events — that is itself a finding. The events below are
-recovered by **reading the anchor documents directly** (Budget Speeches' incentive
-announcements, Economic Reports, MIDA / investment-authority materials, the
-Promotion of Investments Act and Income Tax Act incentive schedules). The mandatory
-recall scorecard records what was searched and missed.
+The skill anticipated a near-empty C1 floor, but the incentive keyword scan in fact
+matched **151 of 1,036 C1 measures** (1981–2023, EN+BM) — a deviation logged in the
+scorecard. The events below were consolidated and rated by **reading the anchor
+documents directly** (Budget Speeches' incentive announcements, Economic Reports,
+the Promotion of Investments Act and Income Tax Act incentive schedules). Because C1
+surfaced the incentives directly, `recovered_chunks` is ~empty for every act. The
+mandatory recall scorecard records what was searched and missed.
 
 ```{r}
 #| label: tbl-recall
@@ -163,7 +168,7 @@ motivation and exogeneity (`tar_read(incentive_shocks)`).
 
 ```{r}
 #| label: tbl-frozen-manifest
-#| tbl-cap: "**Member-chunk manifest**. Number of corpus chunks attributed to each incentive change, and how many were recovered (present in the corpus but not surfaced by C1 — for incentives, expected to be most). The recovered chunks drive the downstream C2a re-run."
+#| tbl-cap: "**Member-chunk manifest**. Number of corpus chunks attributed to each incentive change, and how many were recovered (present in the corpus but not surfaced by C1). Because C1 surfaced Malaysia's incentives directly, recovery was rarely needed (≈0 here). The recovered chunks drive the downstream C2a re-run."
 #| eval: !expr have_frozen
 
 inc_frozen |>

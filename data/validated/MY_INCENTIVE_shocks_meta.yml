@@ -1,0 +1,11 @@
+instrument: INCENTIVE
+country_iso: MY
+skill: identify-incentives
+frozen_at: 2026-06-30 15:50:20
+git_hash: 89b41ca
+reviewer: Esteban Degetau
+n_events: 15
+note: Core seed-anchored regimes (DEB, PIA1986, Labuan, RA, MSC, biomass, Principal
+  Hub, pharma/vaccine, relocation) + major named regimes (Iskandar, GBI, KLIFD, angel/VC,
+  EV) per reviewer breadth decision (~15 rows). DEB encoded as effective-rate 40->35;
+  relocation split into 2020 introduction + 2023 extension.
