@@ -1,6 +1,6 @@
 ---
 title: "The Malaysia Statutory Fiscal-Change Dataset"
-subtitle: "An LLM-assisted, expert-validated dataset of corporate, personal, and consumption tax changes and discretionary government spending shocks (1990–2023)"
+subtitle: "An LLM-assisted, expert-validated dataset of corporate, personal, and consumption tax changes, discretionary government spending shocks, and tax-incentive changes (1990–2023)"
 number-sections: true
 ---
 
@@ -16,13 +16,16 @@ tar_config_set(store = here("_targets"))
 source(here("R/tt_theme.R"))
 source(here("R/malay_consistency.R"))   # pretty_motivation() + motivation palette
 source(here("R/tax_shock_report.R"))
-source(here("R/spending_shock_report.R"))  # reuses the tax helpers' internals
+source(here("R/spending_shock_report.R"))   # reuses the tax helpers' internals
+source(here("R/incentive_shock_report.R"))  # reuses the tax helpers' internals
 set_theme(theme_minimal())
 
-tax_shocks      <- tryCatch(tar_read(tax_shocks), error = function(e) tibble::tibble())
-have_data       <- nrow(tax_shocks) > 0
-spending_shocks <- tryCatch(tar_read(spending_shocks), error = function(e) tibble::tibble())
-have_spending   <- nrow(spending_shocks) > 0
+tax_shocks       <- tryCatch(tar_read(tax_shocks), error = function(e) tibble::tibble())
+have_data        <- nrow(tax_shocks) > 0
+spending_shocks  <- tryCatch(tar_read(spending_shocks), error = function(e) tibble::tibble())
+have_spending    <- nrow(spending_shocks) > 0
+incentive_shocks <- tryCatch(tar_read(incentive_shocks), error = function(e) tibble::tibble())
+have_incentives  <- nrow(incentive_shocks) > 0
 ```
 
 This page accompanies the dataset of **statutory fiscal changes for Malaysia**
@@ -205,7 +208,7 @@ cat("::: {.callout-warning}\nThe `spending_shocks` target is empty or unbuilt, s
 
 ```{r}
 #| label: tbl-spending-inventory
-#| tbl-cap: "**Government spending-shock inventory.** One row per announced spending act. Magnitude is shown compactly here (full text appears in the exhibit and downloads); motivation and the exogenous/endogenous read are from the validated C2b codebook (v0.9.1)."
+#| tbl-cap: "**Government spending-shock inventory.** One row per announced spending act. The exogenous/endogenous read is from the validated C2b codebook (v0.9.1); category, magnitude, and motivation appear in the exhibit and downloads."
 #| eval: !expr have_spending
 
 spending_inventory_table(spending_shocks)
@@ -213,11 +216,12 @@ spending_inventory_table(spending_shocks)
 
 ```{r}
 #| label: fig-spending-timeline
-#| fig-cap: "**Spending-shock timeline.** Acts per year as a diverging stacked bar: spending increases grow the bar upward, decreases downward. Colour denotes the C2b motivation. A single panel (no per-category facet): the spending mix is dominated by crisis-response packages."
+#| fig-cap: "**Spending-shock timeline.** Acts per year as a diverging stacked bar: spending increases grow the bar upward, decreases downward. Colour denotes the C2b exogenous/endogenous classification. A single panel (no per-category facet): the spending mix is dominated by crisis-response packages."
 #| eval: !expr have_spending
 
 plot_spending_timeline(spending_shocks)
 ```
+
 
 ## Download the spending dataset {#sec-spending-download}
 
@@ -273,6 +277,99 @@ side for the expert.
 spending_exhibit(spending_shocks, "MY-SPEND-04", exhibit_label = "Exhibit 3")
 ```
 
+# Tax incentives and holidays
+
+The dataset also covers **changes to tax incentives and holidays**: tax holidays
+(Pioneer Status), investment and reinvestment allowances, concessionary investor
+rates (Labuan, Principal Hub, sectoral special rates), free/export/enterprise zones,
+and consumption- and personal-side reliefs. These differ from a statutory rate
+change in being *targeted* (conditional on investor, sector, region, or activity),
+often *time-bounded*, and frequently operating through the tax base or a carve-out
+rate rather than the standing rate — so each event lives here rather than in the
+tax tables (ownership-by-mechanism). The unit is one row per legislative *change*;
+the standing existence of a long-running scheme is not a shock. The motivation and
+the exogenous/endogenous read again come from the validated C2b codebook; a
+preliminary read is carried alongside. Incentives skew exogenous — FDI-attraction,
+industrial policy, and structural competitiveness are long-run motives.
+
+```{r}
+#| label: pending-incentives
+#| eval: !expr "!have_incentives"
+#| echo: false
+#| output: asis
+
+cat("::: {.callout-warning}\nThe `incentive_shocks` target is empty or unbuilt, so",
+    "the incentive figures, download, and exhibit below cannot render. Build the",
+    "deliverable and re-render this page.\n:::\n")
+```
+
+## Incentive changes at a glance {#sec-incentive-inventory}
+
+```{r}
+#| label: tbl-incentive-inventory
+#| tbl-cap: "**Tax-incentive shock inventory.** One row per announced incentive change. The exogenous/endogenous read is from the validated C2b codebook (v0.9.1); direction, rate detail, magnitude, and motivation appear in the exhibit and downloads."
+#| eval: !expr have_incentives
+
+incentive_inventory_table(incentive_shocks)
+```
+
+```{r}
+#| label: fig-incentive-timeline
+#| fig-cap: "**Incentive-shock timeline.** Acts per year as a diverging stacked bar: new or expanded incentives grow the bar downward, repeals/scale-backs upward. Colour denotes the C2b exogenous/endogenous classification. A single panel (no per-base facet): incentives are dominated by the corporate base."
+#| eval: !expr have_incentives
+
+plot_incentive_timeline(incentive_shocks)
+```
+
+
+## Download the incentive dataset {#sec-incentive-download}
+
+The incentive dataset is available in the same three formats as the tax and spending
+datasets (one row per incentive change, no nested provenance columns). The Stata file
+carries variable labels; the Excel workbook includes a second sheet with the data
+dictionary reproduced below.
+
+```{r}
+#| label: incentive-download-check
+#| echo: false
+#| eval: !expr have_incentives
+#| output: asis
+
+# Written reproducibly by the `incentive_shocks_clean_files` target
+# (R/incentive_shock_report.R). We only assert they exist; the links below are
+# relative paths the published site resolves.
+ok <- tryCatch(all(file.exists(tar_read(incentive_shocks_clean_files))),
+               error = function(e) FALSE)
+if (!ok) cat("::: {.callout-warning}\nDownload files not found —",
+             "run `tar_make(incentive_shocks_clean_files)`.\n:::\n")
+```
+
+- [Download CSV](../data/validated/MY_incentive_shocks_clean.csv)
+- [Download Excel (.xlsx, with data dictionary)](../data/validated/MY_incentive_shocks_clean.xlsx)
+- [Download Stata (.dta, labelled)](../data/validated/MY_incentive_shocks_clean.dta)
+
+```{r}
+#| label: tbl-incentive-dictionary
+#| tbl-cap: "**Incentive data dictionary.** Columns of the downloadable incentive dataset."
+
+incentive_export_dictionary_table()
+```
+
+## An incentive change in full {#sec-incentive-exhibit}
+
+As on the tax and spending sides, we reproduce one incentive change in full once the
+dataset is stamped, again favouring a case where the model's classification and the
+preliminary narrative read can be compared side by side for the expert.
+
+```{r}
+#| label: incentive-exhibit
+#| echo: false
+#| eval: !expr have_incentives
+#| output: asis
+
+incentive_exhibit(incentive_shocks, "MY-INCENT-01", exhibit_label = "Exhibit 4")
+```
+
 # How the dataset was built {#sec-process}
 
 The dataset is the tail of a validated, country-agnostic pipeline. Each stage has
@@ -302,8 +399,14 @@ its own notebook documenting its construction and validation:
    consolidated the same way with a recall scorecard and a human stamp; preliminary
    exogeneity uses the @das_ai_2026 two-condition screen
    ([spending identification](spending_identification.qmd)).
-7. **Binding & enrichment.** The frozen per-instrument (and spending) datasets are
-   bound and each act is enriched with the C2b motivation and exogeneity
+7. **Tax-incentive identification.** Changes to selective tax-relief instruments
+   (holidays, allowances, concessionary rates, zones, reliefs) are likewise
+   identified by reading the corpus directly, consolidated at the legislative-change
+   grain with a recall scorecard and a human stamp; each event is kept disjoint from
+   the statutory-rate and spending sets (ownership-by-mechanism)
+   ([incentive identification](incentives_identification.qmd)).
+8. **Binding & enrichment.** The frozen per-instrument, spending, and incentive
+   datasets are bound and each act is enriched with the C2b motivation and exogeneity
    classification ([tax deliverable assembly](tax_shocks.qmd)).
 
 The result is the dataset on this page: a transparent, reproducible starting point
@@ -311,3 +414,5 @@ for expert validation, not a finished verdict. Reviewer disagreements — especi
 on the exogeneity column — are the intended next input, in keeping with the
 narrative tradition of @romer2010, where every classification is documented so
 others can check it.
+
+### References 

@@ -1,0 +1,182 @@
+---
+title: "Manual Identification of Malaysia's Tax-Incentive Shocks"
+subtitle: "AI-assisted narrative pass over the deployment corpus (Klemm & Van Parys 2012-style incentive side)"
+number-sections: true
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, qs2)
+
+here::i_am("notebooks/incentives_identification.qmd")
+tar_config_set(store = here("_targets"))
+source(here("R/tt_theme.R"))
+set_theme(theme_minimal())
+
+# Frozen, human-stamped incentive shock dataset (produced by the
+# /identify-incentives skill). Loaded here so both the recall scorecard
+# (@sec-recall) and the structured dataset (@sec-frozen) render from the single
+# source of truth when it exists.
+frozen_path <- here("data", "validated", "MY_INCENTIVE_shocks.qs")
+have_frozen <- file.exists(frozen_path)
+if (have_frozen) inc_frozen <- qs2::qs_read(frozen_path)
+```
+
+## Purpose
+
+This note documents a focused, **AI-assisted manual identification** of changes to
+Malaysia's *tax incentives and holidays* — tax holidays (Pioneer Status), investment
+and reinvestment allowances, concessionary investor rates (Labuan, Principal Hub,
+sectoral special rates), free/export/enterprise zones, sectoral and R&D incentives,
+consumption-side holidays, and personal-income reliefs — run directly over the
+deployment corpus. It is the incentive-side analogue of
+`notebooks/spending_identification.qmd`, and it deliberately follows the spirit of
+the narrative-identification literature [@romer2010; @klemm_empirical_2012]: close reading of
+source documents, with the LLM pipeline as a retrieval-and-extraction aide, not as
+the adjudicator.
+
+The method mirrors our `/manual-analysis` protocol. Like the spending side and
+**unlike** the statutory-rate side, **C1 does not pre-screen incentives** (C1 is
+scoped to standing tax rates/liabilities), so identification is driven by **direct
+reading of the corpus** (`country_body` / `country_chunks`), not the C1 measure
+pool. The seed of the dataset is the set of concessionary regimes the
+`/identify-cit` pass deliberately set aside. A human reads the surfaced evidence and
+makes the final call on *what counts as an incentive change*, *how scattered surface
+forms consolidate*, *whether the event belongs here or in the tax/spending sets*,
+and *whether each change is exogenous*. Claude pattern-matches against the source
+text; the researcher confers meaning.
+
+::: {.callout-important}
+The unit is one row per **legislative change** to an incentive (a new scheme, a
+rate/duration change, a sectoral extension, a repeal) — the standing existence of a
+long-running scheme is not a row. Each event lives in exactly one dataset:
+incentives are *targeted, time-bounded, or base/carve-out-rate* measures; universal,
+permanent statutory-rate changes belong to the CIT/PIT/consumption sets
+(ownership-by-mechanism).
+:::
+
+::: {.callout-important}
+The exogenous/endogenous column in @tbl-exogeneity is a **preliminary suggestion
+with its supporting quote, pending expert adjudication**. Incentives skew exogenous
+(FDI-attraction / industrial-policy / structural-competitiveness motives are
+long-run, non-cyclical); only an explicit cyclical/crisis rationale reads as
+endogenous. It is not a research finding, and it is carried *alongside* — never
+replacing — C2b's downstream label.
+:::
+
+## What the corpus surfaced, and what C1 missed {#sec-recall}
+
+Because C1 is tax-rate-scoped, the keyword scan of the C1 pool is expected to
+surface almost no incentive events — that is itself a finding. The events below are
+recovered by **reading the anchor documents directly** (Budget Speeches' incentive
+announcements, Economic Reports, MIDA / investment-authority materials, the
+Promotion of Investments Act and Income Tax Act incentive schedules). The mandatory
+recall scorecard records what was searched and missed.
+
+```{r}
+#| label: tbl-recall
+#| tbl-cap: "**Recall scorecard**. How each headline incentive change fared through the identification pass. The near-empty C1 floor is logged as a finding; 'Recovered manually' marks events recovered by direct reading."
+
+recall <- if (have_frozen) {
+  inc_frozen$recall_scorecard[[1]] |>
+    dplyr::rename(Stage = stage, Outcome = outcome)
+} else {
+  tibble::tribble(
+    ~Stage,                          ~Outcome,
+    "C1 keyword scan",               "Expected near-empty: C1 is scoped to standing tax rates, surfaces ~0 incentive measures",
+    "Direct corpus sweep",           "Primary method — read Budget Speech incentive announcements / Economic Report / MIDA / PIA sections directly",
+    "Seed list (CIT carve-outs)",    "Labuan 3%; Principal Hub 10% (2019); biomass (2001); pharma/vaccine 0–10% (2021); manufacturing-relocation 15% (2023); DEB 5pp (1981)",
+    "Recall checkpoint — PIA 1986",  "Promotion of Investments Act 1986 (Pioneer Status / ITA framework) — recovered from source",
+    "Recall checkpoint — zones",     "MSC / Multimedia Super Corridor and Labuan offshore regime changes — recovered from source"
+  )
+}
+
+recall |>
+  tt() |>
+  tt_theme_report()
+```
+
+## Headline incentive changes {#sec-headline}
+
+```{r}
+#| label: tbl-headline
+#| tbl-cap: "**Headline incentive changes**. Identified changes to tax incentives, with mechanism category, underlying base, direction, rate (where applicable), magnitude, and the budget/statute that announced each. Renders from the frozen dataset once the /identify-incentives skill has stamped it."
+#| eval: !expr have_frozen
+
+inc_frozen |>
+  dplyr::select(shock_id, act_label,
+                Category = incentive_category, Base = tax_type,
+                Direction = direction,
+                `Δpp` = delta_pp, Magnitude = magnitude_note,
+                Announced = announced_year, Effective = effective_year) |>
+  tt() |>
+  tt_theme_report()
+```
+
+::: {.content-visible when-format="html"}
+```{r}
+#| label: headline-pending
+#| eval: !expr "!have_frozen"
+#| echo: false
+#| output: asis
+
+cat("::: {.callout-note}\nThe frozen incentive dataset has not been produced yet.",
+    "Run the `/identify-incentives` skill to identify, consolidate, and stamp the",
+    "incentive changes; this section will then render the headline table.\n:::\n")
+```
+:::
+
+## Motivation evidence and preliminary exogeneity {#sec-exogeneity}
+
+For each incentive change the corpus carries motivation language. @tbl-exogeneity
+pairs each act with the most diagnostic quote and a **preliminary**
+exogenous/endogenous read. The default prior is exogenous (FDI-attraction,
+industrial policy, structural competitiveness, or tax-competition reactivity are all
+non-cyclical); only an explicit cyclical/crisis rationale reads as endogenous
+("acknowledgment ≠ endogeneity").
+
+```{r}
+#| label: tbl-exogeneity
+#| tbl-cap: "**Motivation evidence, pending adjudication**. The stated rationale for each incentive change and a preliminary exogenous/endogenous read. Suggestions anchored in quoted text, not settled classifications; the exogeneity calls are the object of expert adjudication, and C2b assigns the downstream label."
+#| eval: !expr have_frozen
+
+inc_frozen |>
+  dplyr::select(shock_id,
+                `Preliminary read` = exogenous_preliminary,
+                `Motivation quote (source text)` = exogeneity_quote) |>
+  tt() |>
+  tt_theme_report()
+```
+
+## Structured frozen dataset {#sec-frozen}
+
+The narrative identification above is the human-curated content; the
+machine-readable form is frozen by the `/identify-incentives` skill to
+`data/validated/MY_INCENTIVE_shocks.qs`, following the contract in
+`docs/phase_1/incentive_shock_schema.md` (one row per announced incentive change,
+with a `member_chunks` manifest linking each shock to its corpus chunks and a
+mandatory recall scorecard). That frozen file — not this notebook's tribbles — is
+the reference input the incentive pipeline binds and feeds to the frozen C2a/C2b for
+motivation and exogeneity (`tar_read(incentive_shocks)`).
+
+```{r}
+#| label: tbl-frozen-manifest
+#| tbl-cap: "**Member-chunk manifest**. Number of corpus chunks attributed to each incentive change, and how many were recovered (present in the corpus but not surfaced by C1 — for incentives, expected to be most). The recovered chunks drive the downstream C2a re-run."
+#| eval: !expr have_frozen
+
+inc_frozen |>
+  dplyr::mutate(
+    `Member chunks`    = purrr::map_int(member_chunks, nrow),
+    `Recovered chunks` = purrr::map_int(recovered_chunks, nrow)
+  ) |>
+  dplyr::select(shock_id, act_label, `Member chunks`, `Recovered chunks`) |>
+  tt() |>
+  tt_theme_report()
+```
+
+## References {.unnumbered}
+
+::: {#refs}
+:::

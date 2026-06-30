@@ -7,6 +7,14 @@ project:
     - data/validated/MY_tax_shocks_clean.csv
     - data/validated/MY_tax_shocks_clean.xlsx
     - data/validated/MY_tax_shocks_clean.dta
+
+    - data/validated/MY_spending_shocks_clean.csv
+    - data/validated/MY_spending_shocks_clean.xlsx
+    - data/validated/MY_spending_shocks_clean.dta
+
+    - data/validated/MY_incentive_shocks_clean.csv
+    - data/validated/MY_incentive_shocks_clean.xlsx
+    - data/validated/MY_incentive_shocks_clean.dta
   render:
     - docs/*.qmd
     - docs/codebook_sources.md
@@ -74,8 +82,11 @@ website:
             - notebooks/vat_identification.qmd
             - notebooks/tax_shocks.qmd
           - section: "Spending"
-            contents: 
+            contents:
             - notebooks/spending_identification.qmd
+          - section: "Incentives"
+            contents:
+            - notebooks/incentives_identification.qmd
       - section: "Internal Notes"
         contents:
           - docs/onboarding.qmd

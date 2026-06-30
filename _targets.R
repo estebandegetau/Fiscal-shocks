@@ -1042,6 +1042,95 @@ list(
     packages = c("writexl", "haven", "labelled", "readr")
   ),
 
+  # ===========================================================================
+  # Tax-incentive / holiday shock deliverable (identify-incentives skill -> C2b)
+  #
+  # Incentive-side analogue of the tax- and spending-shock chains above. The
+  # /identify-incentives skill + human review freeze one hand-curated reference
+  # dataset per country to data/validated/{ISO}_INCENTIVE_shocks.qs (hybrid
+  # contract -- docs/phase_1/incentive_shock_schema.md: the tax contract plus
+  # `incentive_category`, with rate fields meaningful for preferential-rate
+  # incentives; same data-policy carve-out). Only the bind differs
+  # (bind_incentive_shocks, R/incentive_shock_dataset.R); the rest of the tail --
+  # assemble_shock_evidence / run_c2b_on_shocks / assemble_tax_shock_deliverable --
+  # is REUSED UNCHANGED from R/tax_shock_dataset.R (those are generic over the
+  # contract; C2a/C2b pass incentive acts through untouched, and the frozen C2b
+  # assigns the final motivation/sign label). The _INCENTIVE_shocks.qs glob is
+  # disjoint from the tax and spending globs, so incentive rows never mix into
+  # tax_shocks or spending_shocks. All targets empty-input safe -> inert until the
+  # first frozen file exists.
+  # ===========================================================================
+  tar_target(
+    incentive_shock_files,
+    {
+      dir <- here::here("data", "validated")
+      f <- list.files(dir, pattern = "_INCENTIVE_shocks\\.qs$",
+                      full.names = TRUE)
+      tibble::tibble(path = f, md5 = unname(tools::md5sum(f)))
+    },
+    cue = tar_cue(mode = "always"),
+    packages = c("here", "tibble", "tools")
+  ),
+
+  tar_target(
+    incentive_shocks_identified,
+    bind_incentive_shocks(incentive_shock_files$path),
+    packages = c("tidyverse", "qs2", "purrr")
+  ),
+
+  # C2a re-run on omitted chunks only (API). For incentives, expect most member
+  # chunks to be omitted (C1 is tax-rate-scoped, not incentive-scoped). Reuses
+  # assemble_shock_evidence() unchanged.
+  tar_target(
+    incentive_shocks_evidence,
+    assemble_shock_evidence(
+      incentive_shocks_identified,
+      c2a_evidence = dplyr::bind_rows(country_c2a_evidence),
+      chunks       = dplyr::bind_rows(country_chunks),
+      c2a_codebook = c2a_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2a = 16384,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    incentive_shocks_c2b,
+    run_c2b_on_shocks(
+      incentive_shocks_evidence,
+      c2b_codebook,
+      model = "claude-haiku-4-5-20251001",
+      max_tokens_c2b = 4096,
+      provider = "anthropic",
+      base_url = "https://api.anthropic.com/v1",
+      api_key = Sys.getenv("ANTHROPIC_API_KEY")
+    ),
+    packages = c("tidyverse", "httr2", "jsonlite"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    incentive_shocks,
+    assemble_tax_shock_deliverable(incentive_shocks_identified, incentive_shocks_c2b),
+    packages = "tidyverse"
+  ),
+
+  # Clean, variable-labelled downloads for the incentive-shock side of the
+  # reviewer-facing dataset page. Same writer contract as the tax/spending
+  # exports; keeps rate fields (meaningful for preferential-rate incentives),
+  # `incentive_category` typology, `tax_type` base. No API.
+  # See R/incentive_shock_report.R.
+  tar_target(
+    incentive_shocks_clean_files,
+    write_incentive_shocks_exports(incentive_shocks),
+    format = "file",
+    packages = c("writexl", "haven", "labelled", "readr")
+  ),
+
   # =============================================================================
   # Malaysia EN/BM Cross-Language Consistency Test
   # Self-contained sub-pipeline that slices country_chunks to Economic Report
