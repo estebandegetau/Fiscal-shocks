@@ -9,7 +9,9 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
-## 2026-06-30: Incentive-side fiscal-changes component scaffolded + frozen (`/identify-incentives` skill + parallel `incentive_*` pipeline)
+## ~~2026-06-30: Incentive-side fiscal-changes component scaffolded + frozen (`/identify-incentives` skill + parallel `incentive_*` pipeline)~~ RESOLVED
+
+**Resolved (2026-06-30 /strategy-sync, Theme A):** Incorporated into `docs/strategy.md` §Deliverable shape (rewritten so all three components — tax 22 / spending 14 / incentive 15, 51 total — are "scaffolded and Malaysia-frozen", with a new Validation paragraph and an inline Known-limitations block) and `docs/phase_1/malaysia_strategy.md` Deliverable paragraph. Rationale (user): all 51 events have been submitted to regional fiscal-policy experts — the primary validation for the whole pipeline and especially the agentic carve-out — complemented by component-specific statistical validation (@das_ai_2026 for spending, @klemm_empirical_2012 for incentives) for the methodological paper; C1 is now characterized as a validated, genuinely rich first-pass scan feeding all three components. The incentive/tax/spending disjoint-set boundary is **acknowledged inline** as a per-event reviewer adjudication pending expert + statistical validation (limitation iii); the fix is deferred. Grouped with the 2026-06-29 spending delta as the two states of the same composite-deliverable promotion.
 
 **Type:** new-feature / status-change
 **Affects:** `docs/strategy.md` (the "Deliverable shape" composite fiscal-events passage, which names tax → spending → incentives/holidays as successive components); `docs/phase_1/malaysia_strategy.md` (composite fiscal-events dataset).
@@ -22,7 +24,9 @@ source documents. Delete entries after they have been addressed.
 **Open question carried forward:** the incentive/tax/spending de-dup boundary (which dataset a borderline measure belongs to) is a per-event reviewer adjudication — flag for Phase 2 expert review alongside the spending component's `SPENDING_DRIVEN`-label caveat.
 **Suggested edit:** In `docs/strategy.md`, promote the "(3) incentives/holidays" component from *future* to *scaffolded + Malaysia-frozen (2026-06)*, parallel to how the spending component is now documented; the composite deliverable now has all three components present for Malaysia (22 tax + 14 spending + 15 incentive events).
 
-## 2026-06-29: Spending-side fiscal-changes component scaffolded (`/identify-spending` skill + parallel `spending_*` pipeline)
+## ~~2026-06-29: Spending-side fiscal-changes component scaffolded (`/identify-spending` skill + parallel `spending_*` pipeline)~~ RESOLVED
+
+**Resolved (2026-06-30 /strategy-sync, Theme A):** Incorporated into `docs/strategy.md` §Deliverable shape + `docs/phase_1/malaysia_strategy.md` Deliverable paragraph (same edit pass as the 2026-06-30 incentive delta). Rationale (user): spending is promoted from *next* to scaffolded + Malaysia-frozen (14 events). The C2b `SPENDING_DRIVEN` transfer caveat is **acknowledged inline** (limitation ii) — C2b performs well on spending acts empirically, but R&R's label is theoretically defined for tax actions financing spending, so the proper fix is a @das_ai_2026-style spending-motivation prompt, **deferred** (on the to-do list). The C1-floor-not-empty deviation is folded into the new "validated, genuinely rich C1 first-pass scan feeds all three components" characterization. Spending-leg statistical validation follows @das_ai_2026 procedures.
 
 **Type:** new-feature / status-change
 **Affects:** `docs/strategy.md` (line ~538, the "Deliverable shape" passage, which already names "(2) spending-side fiscal changes — *next*"); `docs/phase_1/malaysia_strategy.md` (composite fiscal-events dataset).
@@ -34,7 +38,9 @@ source documents. Delete entries after they have been addressed.
 **Key decisions (user, 2026-06-29):** (1) **parallel** spending contract, not a shared/extended tax one; (2) **defer** a Das-style spending *codebook* — the frozen **tax-validated C2b (v0.9.1)** is used for the final spending motivation/sign label (C2a/C2b pass spending acts through unchanged), carried *alongside* the preliminary Das read; (3) grain = major programs (one row per announced act); (4) skill stops at freeze, API enrichment runs separately via the gated `spending_*` targets. **Caveat to revisit at expert validation:** C2b's R&R `SPENDING_DRIVEN` label is defined for *tax* actions financing spending, not for spending actions themselves — using it to classify spending acts rests on the user's standing judgment that it transfers; flag for Phase 2 expert review.
 **Suggested edit:** Promote `docs/strategy.md`'s "(2) spending-side fiscal changes — *next*" from *next* to *underway / scaffolded (2026-06)*, and add the spending contract + skill to the component-(2) description, parallel to how the tax component is documented.
 
-## 2026-06-26: `tax_shocks` NA rate fields (rate_from / rate_to / delta_pp) are by-design, sourced from the frozen inputs — not a pipeline defect
+## ~~2026-06-26: `tax_shocks` NA rate fields (rate_from / rate_to / delta_pp) are by-design, sourced from the frozen inputs — not a pipeline defect~~ RESOLVED
+
+**Resolved (2026-06-30 /strategy-sync, Theme B — Acknowledge):** No strategy edit needed. Rationale (user): the NAs are confirmed by-design (carried through untouched from the human-curated frozen inputs per the `tax_shock_schema.md` headline-rate convention), so there is nothing to reconcile in the Tier-2 strategy docs. The two open research-definition calls — (1) whether MY-PIT-07's band-only cut should carry a `delta_pp` rather than NA, (2) whether MY-CONSUMPTION-04 keeps `rate_from=0 / rate_to=NA` or nulls both — are **acknowledged as deferred future work on the C2b / tax-shock contract**, tracked via this audit-trail entry, `docs/phase_1/tax_shock_schema.md`, and the provenance notebooks rather than a standing open delta.
 
 **Type:** diagnostic / no-change finding (investigation only — nothing changed)
 **Affects:** none of the human-authored strategy docs. Confirms the existing `docs/phase_1/tax_shock_schema.md` contract behaves as written; logged so the NAs are not re-investigated as a bug.
@@ -47,7 +53,9 @@ Downstream consumers already handle this correctly: `notebooks/tax_shocks.qmd` `
 **Open questions for the human (research-definition calls, not bugs):** (1) **MY-PIT-07** — should a band-level cut carry a `delta_pp` (e.g. the −2pp of the affected bands) rather than NA? A headline-rate vs. any-band definition choice. (2) **MY-CONSUMPTION-04** — leave `rate_from = 0` with `rate_to` NA, or null both for consistency?
 **Suggested edit:** None to strategy docs. Resolve/delete once the two definition questions are adjudicated (or immediately if the schema's headline-rate convention stands as-is).
 
-## 2026-06-26: C2b failures now self-diagnosing (retain raw + stop_reason) — revealed MY-CIT-03's NA is an out-of-enum "mixed" sign, not truncation
+## ~~2026-06-26: C2b failures now self-diagnosing (retain raw + stop_reason) — revealed MY-CIT-03's NA is an out-of-enum "mixed" sign, not truncation~~ RESOLVED
+
+**Resolved (2026-06-30 /strategy-sync, Theme B — Acknowledge):** No strategy edit needed. Rationale (user): the diagnostic-infra change (retain raw + `stop_reason`; graceful out-of-enum-sign degradation to `c2b_sign=NA`) is a failure-path-only + additive-column edit that leaves validated S2/S3 metrics unaffected, so the C2 Blueprint is unchanged. The two carried-forward findings — (1) C2b's single-sign schema NAs omnibus budget-package acts (the deployment-side analogue of the dev-side B-category "evaluation-framework gap" already documented in the C2 Blueprint), and (2) MY-CIT-03's off-target lone `member_chunks` curation — are **acknowledged as deferred future work on C2b**, carried by `prompts/iterations/c2b.yml` and this audit-trail entry rather than a standing open delta. The omnibus-sign limitation will recur for budget-package acts at deployment scale; revisit if frequency warrants a C2b codebook revision.
 
 **Type:** bugfix / diagnostic-infra + codebook-limitation finding
 **Affects:** none of the human-authored strategy docs directly — implementation note + two carried-forward research findings (C2b schema fit for omnibus acts; `member_chunks` curation). Touches the C2b output schema (additive column) and a deferred S2/S3 re-validation question.
