@@ -415,4 +415,4 @@ on the exogeneity column — are the intended next input, in keeping with the
 narrative tradition of @romer2010, where every classification is documented so
 others can check it.
 
-### References 
+### References {.unnumbered}
