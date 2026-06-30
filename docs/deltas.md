@@ -9,6 +9,19 @@ source documents. Delete entries after they have been addressed.
 
 ---
 
+## 2026-06-30: Incentive-side fiscal-changes component scaffolded + frozen (`/identify-incentives` skill + parallel `incentive_*` pipeline)
+
+**Type:** new-feature / status-change
+**Affects:** `docs/strategy.md` (the "Deliverable shape" composite fiscal-events passage, which names tax → spending → incentives/holidays as successive components); `docs/phase_1/malaysia_strategy.md` (composite fiscal-events dataset).
+**Detail:** Built the **third** component of the composite fiscal-events deliverable — the incentive side, the analogue of the statutory-tax and spending layers. New artifacts:
+- **Skill** `.claude/skills/identify-incentives/SKILL.md` — agentic narrative identification of changes to *tax incentives and holidays* (tax holidays / Pioneer Status, investment & reinvestment allowances, concessionary investor rates, free/export/enterprise zones, sectoral & R&D incentives, consumption-side holidays, personal-income reliefs). Incentive-side analogue of `/identify-spending`; **seeded by the concessionary regimes the `/identify-cit` pass deliberately set aside**. Unit = one row per *legislative change* to an incentive (new scheme, rate/duration change, sectoral extension, repeal); the standing existence of a long-running scheme is not a row. Disjoint-set rule: each event lives in exactly one dataset (incentives vs. statutory CIT/PIT/consumption vs. spending). Stops at freeze.
+- **Hybrid contract** `docs/phase_1/incentive_shock_schema.md` — the tax contract plus an incentive-specific column set. Frozen to `data/validated/{ISO}_INCENTIVE_shocks.qs`; the `_INCENTIVE_shocks.qs` glob is disjoint from the tax and spending globs, so incentive rows never mix into `tax_shocks` / `spending_shocks`.
+- **Pipeline** `R/incentive_shock_dataset.R` adds **only** `bind_incentive_shocks()`; the C2a/C2b enrichment tail (`assemble_shock_evidence()` / `run_c2b_on_shocks()` / `assemble_tax_shock_deliverable()`) is reused unchanged. 5 new `_targets.R` targets (`incentive_shock_files` → `incentive_shocks_identified` → `incentive_shocks_evidence` → `incentive_shocks_c2b` → `incentive_shocks`), all empty-input safe.
+- **Provenance notebook** `notebooks/incentives_identification.qmd`; reviewer-facing landing page `notebooks/malaysia_dataset.qmd` now binds all three components (tax + spending + incentive).
+**Malaysia frozen (2026-06-30, commit 0674484):** **15 events** — core seed-anchored regimes (DEB, PIA 1986, Labuan, Reinvestment Allowance, MSC, biomass, Principal Hub, pharma/vaccine, relocation) + major named regimes (Iskandar, GBI, KLIFD, angel/VC, EV) per the reviewer's breadth decision; DEB encoded as effective-rate 40→35; relocation split into 2020 introduction + 2023 extension. **C1 floor was NOT near-empty (151 incentive measures surfaced)** — same deviation as the spending pass; C1 served as a rich first-pass scan, direct reading consolidated/rated rather than recovered (logged in the recall scorecard).
+**Open question carried forward:** the incentive/tax/spending de-dup boundary (which dataset a borderline measure belongs to) is a per-event reviewer adjudication — flag for Phase 2 expert review alongside the spending component's `SPENDING_DRIVEN`-label caveat.
+**Suggested edit:** In `docs/strategy.md`, promote the "(3) incentives/holidays" component from *future* to *scaffolded + Malaysia-frozen (2026-06)*, parallel to how the spending component is now documented; the composite deliverable now has all three components present for Malaysia (22 tax + 14 spending + 15 incentive events).
+
 ## 2026-06-29: Spending-side fiscal-changes component scaffolded (`/identify-spending` skill + parallel `spending_*` pipeline)
 
 **Type:** new-feature / status-change

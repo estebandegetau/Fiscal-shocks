@@ -213,6 +213,28 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 - **Malaysia frozen (2026-06-29):** 14 events. Crisis stimulus per-package (reviewer grain decision): NERP 1998; 2001 pre-emptive RM3bn + additional RM4.3bn; First (RM7bn) + Second (RM60bn, mini-budget) GFC ESPs; COVID PRIHATIN/PENJANA/PERMAI/PEMERKASA/PEMERKASA+/PEMULIH (RM530bn+, 8 packages, KITA PRIHATIN/SME+ folded into PRIHATIN). Structural: subsidy rationalisation 2010– (exogenous), 2008 fuel-subsidy restructuring kept separate (endogenous, oil-price-driven), 1Malaysia/Keluarga cash-transfer programme BR1M→BKM 2012– (ambiguous). RMK Five-Year Plans **excluded** as baseline development-expenditure framework. Preliminary Das split: 12 endogenous / 1 exogenous / 1 ambiguous. **C1 floor was NOT near-empty (189 spending-regex hits)** — BNM/ER/Budget docs discuss stimulus + subsidy alongside tax, so `recovered_chunks` is ~empty for every act (recorded in the scorecard as a deviation from the skill's expectation).
 - **Decision:** Hand-curated reference input (same data-policy carve-out as the tax datasets); read back via the `spending_shock_files` target. The spending pipeline (`spending_shock_files` → `spending_shocks_identified` → `spending_shocks_evidence` → `spending_shocks_c2b` → `spending_shocks` in `_targets.R`) reuses `assemble_shock_evidence()` / `run_c2b_on_shocks()` / `assemble_tax_shock_deliverable()` unchanged; only `bind_spending_shocks()` (`R/spending_shock_dataset.R`) is new. The frozen **tax-validated C2b** assigns the final motivation/sign label (deferred a Das-style spending codebook). A dedicated cross-instrument `spending_shocks.qmd` deliverable notebook is deferred until the first enrichment run.
 
+### `incentives_identification.qmd` -- Tax-Incentive Shock Identification
+
+**Purpose:** Provenance notebook for the *incentive-side* component of the composite fiscal-events deliverable — the analogue of the tax/spending notebooks, for changes to *tax incentives and holidays* (tax holidays / Pioneer Status, investment & reinvestment allowances, concessionary investor rates, free/export/enterprise zones, sectoral & R&D incentives, consumption-side holidays, personal-income reliefs). Produced by the `/identify-incentives` skill; seeded by the concessionary regimes the `/identify-cit` pass deliberately set aside. The unit is one row per **legislative change** to an incentive; the standing existence of a long-running scheme is not a row. Each event lives in exactly one dataset (incentives vs. statutory CIT/PIT/consumption vs. spending).
+
+**Key tests and decisions:**
+
+- Renders its recall scorecard and structured table from the single source of truth — the frozen `data/validated/MY_INCENTIVE_shocks.qs` — once the skill has stamped it (**hybrid** contract `docs/phase_1/incentive_shock_schema.md`: the tax contract plus an incentive-specific column set).
+- **C1 floor was NOT near-empty (151 incentive measures surfaced)** — like spending, Malaysia's Budget Speeches, Economic Reports, BNM Annual Reports and Five-Year Plans discuss incentives heavily alongside tax, so C1 served as a rich first-pass scan and direct reading served to *consolidate and rate* surface forms rather than *recover* missing ones (recorded in the scorecard as a deviation from the skill's near-empty expectation).
+- **Malaysia frozen (2026-06-30):** 15 events — core seed-anchored regimes (DEB, PIA 1986, Labuan, Reinvestment Allowance, MSC, biomass, Principal Hub, pharma/vaccine, relocation) + major named regimes (Iskandar, GBI, KLIFD, angel/VC, EV) per reviewer breadth decision; DEB encoded as effective-rate 40→35; relocation split into 2020 introduction + 2023 extension.
+- Preliminary exogeneity is a **suggestion with its supporting quote, pending expert adjudication** — carried alongside, never replacing, C2b's downstream label.
+- **Decision:** Hand-curated reference input (same data-policy carve-out as the tax/spending datasets); read back via the `incentive_shock_files` target. The incentive pipeline (`incentive_shock_files` → `incentive_shocks_identified` → `incentive_shocks_evidence` → `incentive_shocks_c2b` → `incentive_shocks` in `_targets.R`) reuses the generic tax tail unchanged; only `bind_incentive_shocks()` (`R/incentive_shock_dataset.R`) is new.
+
+### `malaysia_dataset.qmd` -- Reviewer-Facing Malaysia Fiscal-Change Dataset
+
+**Purpose:** The reviewer-facing landing page for the **Malaysia statutory fiscal-change dataset** (1990–2023): headline picture, data downloads, walked worked examples, and a how-it-was-produced explainer. Covers both sides of the budget — statutory tax changes (CIT/PIT/CONSUMPTION) and discretionary spending shocks — each row one narratively-announced act × instrument, carrying a motivation label and an exogenous/endogenous read from the validated C2b codebook (spending additionally carries the @das_ai_2026 two-condition preliminary screen).
+
+**Key tests and decisions:**
+
+- Reads the bound deliverables (`tax_shocks`, `spending_shocks`, `incentive_shocks`) via `tar_read()` with empty-safe `tryCatch`; renders a "pending / unbuilt" callout when a target is empty. Reuses report helpers from `R/tax_shock_report.R`, `R/spending_shock_report.R`, `R/incentive_shock_report.R` and `pretty_motivation()` + the motivation palette from `R/malay_consistency.R`.
+- Worked examples are chosen where the C2b read and the preliminary narrative read **disagree** — the cases an expert must settle.
+- **Decision:** The audience-facing presentation layer over the frozen datasets + API-gated enrichment; not a validity test. Foregrounds the human-in-the-loop framing ("the model proposes, the expert disposes"); exogeneity is a preliminary input pending expert adjudication, not a finding.
+
 ## Archived Notebooks
 
 Located in `notebooks/unused/` unless noted otherwise. These are from earlier exploratory phases and are no longer active:
@@ -239,6 +261,8 @@ Located in `notebooks/unused/` unless noted otherwise. These are from earlier ex
 9. `malay_consistency.qmd` -- See the Malaysia EN/BM cross-language consistency test (Phase 2 BM-only readiness diagnostic)
 10. `deployment.qmd` -- See the cross-country deployment headline (C1 → C0 → C2 act inventory per country)
 11. `cit_identification.qmd` / `pit_identification.qmd` / `vat_identification.qmd` → `tax_shocks.qmd` -- See the statutory tax-shock identification layer (per-instrument frozen datasets → bound deliverable with C2a/C2b enrichment)
+12. `spending_identification.qmd` / `incentives_identification.qmd` -- See the spending-side and incentive-side components of the composite fiscal-events deliverable
+13. `malaysia_dataset.qmd` -- See the reviewer-facing Malaysia fiscal-change dataset landing page
 
 ## Conventions
 
