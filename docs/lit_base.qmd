@@ -62,7 +62,7 @@ status <- tibble::tribble(
   "ramey_government_2018",    "§3", "cite-only",   "yes", "yes", "abstract",
   "dabla-norris_macroeconomic_2023","§3","cite-only","yes","yes","abstract",
   # --- s4 llm text-as-data ---
-  "agarwal_consumption_2017", "§3", "cite-only", "yes", "yes", "pending",
+  "agarwal_consumption_2017", "§3", "cite-only", "yes", "yes", "abstract",
   "das_ai_2026",       "§4", "competitor",  "yes", "yes", "full",
   "bhasin_identifying_2026",  "§4", "competitor",  "yes", "yes", "full",
   "fritsch_high-frequency_nodate","§4","competitor","yes","yes", "full",
@@ -105,7 +105,7 @@ status <- tibble::tribble(
   "adler_updated_2024",       "§7", "benchmark",   "yes", "yes", "abstract",
   "guajardo_expansionary_2014","§7","benchmark",   "yes", "yes", "abstract",
   "romer_replication_2019",   "§7", "benchmark",   "yes", "yes", "abstract",
-  "klemm_empirical_2012",     "§7", "benchmark",   "yes", "yes", "pending"
+  "klemm_empirical_2012",     "§7", "benchmark",   "yes", "yes", "abstract"
 )
 
 tt(status)
@@ -434,12 +434,12 @@ tt(status)
 
 ## Agarwal, Marwell & McGranahan 2017 — Consumption Responses to Temporary Tax Incentives: State Sales Tax Holidays {#sec-agarwal_consumption_2017}
 
-**Citekey** `@agarwal_consumption_2017` · Zotero `HYU4XB2C` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Citekey** `@agarwal_consumption_2017` · Zotero `HYU4XB2C` · **Status** file ✓ · tag ✓ · §3 · consultation: abstract
 **Role** cite-only
 
-**Summary.** *Pending /lit-digest.* Seed: Agarwal, Marwell & McGranahan (2017) use a difference-in-differences design on the Consumer Expenditure Survey diary and a credit-card transaction dataset to estimate the spending response to state sales tax holidays (STHs), finding substantial increases in spending on covered goods during the holidays that are not offset by inter-temporal shifting before or after.
+**Summary.** Agarwal, Marwell & McGranahan (2017, *AEJ: Economic Policy* 9(4):1–27, "Consumption Responses to Temporary Tax Incentives: Evidence from State Sales Tax Holidays") estimate the spending response to state sales tax holidays (STHs) — temporary exemptions for items like clothing, shoes, and school supplies — using two datasets, the Diary portion of the Consumer Expenditure Survey and a credit-card transaction dataset. A difference-in-differences design finds substantial increases in spending on covered goods during the holidays that are not offset by declines in spending before or after.
 
-**Relation.** *Pending /lit-digest.* Seed: an effects-of-tax-incentive micro study supporting the consumption-holiday sub-scope of the incentive component — evidence that temporary consumption-tax holidays move household behavior, motivating their inclusion as identifiable incentive events. Links: [[#sec-klemm_empirical_2012]], [[#sec-dabla-norris_macroeconomic_2023]].
+**Relation.** An effects-of-tax-incentive micro study supporting the consumption-holiday sub-scope of the incentive component — evidence that temporary consumption-tax holidays move household behavior, motivating their inclusion as identifiable incentive events. Sits alongside the cross-country incentive-effectiveness benchmark [[#sec-klemm_empirical_2012]] (micro/US complement to its macro/EM panel) and the rate-vs-base consumption-tax effects in [[#sec-dabla-norris_macroeconomic_2023]]. Links: [[#sec-klemm_empirical_2012]], [[#sec-dabla-norris_macroeconomic_2023]].
 
 # §4 LLMs as measurement tools
 
@@ -802,12 +802,12 @@ tt(status)
 
 ## Klemm & Van Parys 2012 — Empirical Evidence on the Effects of Tax Incentives {#sec-klemm_empirical_2012}
 
-**Citekey** `@klemm_empirical_2012` · Zotero `Z9MQ9NVB` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Citekey** `@klemm_empirical_2012` · Zotero `Z9MQ9NVB` · **Status** file ✓ · tag ✓ · §7 · consultation: abstract
 **Role** benchmark
 
-**Summary.** *Pending /lit-digest.* Seed: Klemm & Van Parys (2012) assemble a new dataset of tax incentives (tax holidays, investment allowances, tax credits, CIT rates) for 40+ Latin American, Caribbean and African countries over 1985–2004 and ask two questions — whether incentives are used as tax-competition tools and how effective they are at attracting investment. Spatial-panel evidence shows strategic interaction in tax holidays (and over CIT rates) but not over allowances/credits; dynamic-panel evidence finds lower CIT rates and longer tax holidays attract FDI in Latin America and the Caribbean but not in Africa, and no incentive boosts gross private fixed capital formation.
+**Summary.** Klemm & Van Parys (2012, *International Tax and Public Finance* 19(3):393–423, "Empirical evidence on the effects of tax incentives") assemble a new dataset of tax incentives (tax holidays, investment allowances, tax credits, CIT rates) for 40+ Latin American, Caribbean and African countries over 1985–2004 and ask two questions — whether incentives are used as tools of tax competition and how effective they are at attracting investment. Spatial-panel evidence shows strategic interaction in tax holidays (and the well-known competition over CIT rates) but not over investment allowances or tax credits; dynamic-panel evidence finds lower CIT rates and longer tax holidays attract FDI in Latin America and the Caribbean but not in Africa, and no incentive boosts gross private fixed capital formation.
 
-**Relation.** *Pending /lit-digest.* Seed: the **incentive-leg statistical-validation comparator** for the methodological paper — the incentive analog of [[#sec-das_ai_2026]] for spending (per `docs/deltas.md` 2026-06-30) — supplying a cross-country tax-incentive dataset and effectiveness benchmark against which our agentically-identified incentive events are positioned. **Dual-fit:** filed §7 (datasets/comparator) but defensibly §1 (motivation — why measuring incentives matters in EMs) or §3 (effects of incentives) — revisit at synthesis. Links: [[#sec-agarwal_consumption_2017]], [[#sec-das_ai_2026]], [[#sec-crispolti_cross-country_2022]].
+**Relation.** The **incentive-leg statistical-validation comparator** for the methodological paper — the incentive analog of [[#sec-das_ai_2026]] for spending (per `docs/deltas.md` 2026-06-30) — supplying a cross-country tax-incentive dataset and effectiveness benchmark against which our agentically-identified incentive events are positioned. **Dual-fit:** filed §7 (datasets/comparator) but defensibly §1 (motivation — why measuring incentives matters in EMs) or §3 (effects of incentives) — revisit at synthesis. Links: [[#sec-agarwal_consumption_2017]], [[#sec-das_ai_2026]], [[#sec-crispolti_cross-country_2022]].
 
 # References
 
