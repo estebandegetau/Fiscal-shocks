@@ -49,11 +49,11 @@ pretty_spending_category <- function(x) {
 
 #' Government spending-shock inventory as a styled tinytable
 #'
-#' Trimmed for an external audience: one row per shock, the headline columns
-#' plus the C2b motivation + exogeneity verdict. The preliminary narrative read
-#' is intentionally omitted here (it lives in the exhibit and the internal
-#' provenance notebook). Magnitude is a compact form of `magnitude_note`; the
-#' full text appears in the exhibit.
+#' Trimmed for an external audience: one row per shock, the act, its effective
+#' year, and the C2b exogeneity verdict. Category, direction, magnitude,
+#' motivation, the shock id, and the preliminary narrative read are
+#' intentionally omitted here (they live in the exhibit and the internal
+#' provenance notebook).
 #'
 #' @param spending_shocks The `spending_shocks` deliverable tibble.
 #' @return A tinytable, or NULL if `spending_shocks` is empty.
@@ -63,14 +63,9 @@ spending_inventory_table <- function(spending_shocks) {
   spending_shocks |>
     dplyr::arrange(effective_year) |>
     dplyr::transmute(
-      Shock        = shock_id,
-      Act          = act_label,
-      Category     = pretty_spending_category(spending_category),
-      Direction    = direction,
-      Magnitude    = .spending_truncate(magnitude_note),
-      Effective    = effective_year,
-      Motivation   = as.character(pretty_motivation(c2b_label)),
-      `Exogenous (C2b)` = c2b_exogenous
+      Act       = act_label,
+      Effective = effective_year,
+      Exogenous = as.character(pretty_exogenous(c2b_exogenous))
     ) |>
     tinytable::tt() |>
     tt_theme_report()
@@ -78,13 +73,13 @@ spending_inventory_table <- function(spending_shocks) {
 
 # ---- Headline figure -------------------------------------------------------
 
-#' Spending-shock timeline as signed motivation counts
+#' Spending-shock timeline as signed exogeneity counts
 #'
-#' Acts counted per year × motivation × direction as a diverging stacked bar:
+#' Acts counted per year × exogeneity × direction as a diverging stacked bar:
 #' spending increases grow the bar upward, decreases downward, neutral acts sit
-#' at the baseline. Colour = C2b motivation. A single panel (unlike the tax
-#' timeline's per-instrument facets): the spending-category mix is dominated by
-#' one family, so faceting would be lopsided.
+#' at the baseline. Colour = C2b exogenous/endogenous classification. A single
+#' panel (unlike the tax timeline's per-instrument facets): the spending-category
+#' mix is dominated by one family, so faceting would be lopsided.
 #'
 #' @param spending_shocks The `spending_shocks` deliverable tibble.
 #' @return A ggplot, or NULL if no shocks carry a year.
@@ -97,23 +92,18 @@ plot_spending_timeline <- function(spending_shocks) {
       sign = dplyr::case_when(direction == "Increase" ~ "+",
                               direction == "Decrease" ~ "-",
                               TRUE                     ~ "0"),
-      motivation = dplyr::if_else(sign == "0", "No change",
-                                  as.character(pretty_motivation(c2b_label)))
+      exogeneity = pretty_exogenous(c2b_exogenous)
     ) |>
-    dplyr::count(effective_year, sign, motivation, name = "n") |>
-    dplyr::mutate(
-      signed_n   = dplyr::if_else(sign == "-", -n, n),
-      motivation = factor(motivation,
-                          levels = c(unname(.malay_motivation_labels), "No change"))
-    )
+    dplyr::count(effective_year, sign, exogeneity, name = "n") |>
+    dplyr::mutate(signed_n = dplyr::if_else(sign == "-", -n, n))
   if (nrow(tl) == 0L) return(NULL)
 
-  ggplot2::ggplot(tl, ggplot2::aes(effective_year, signed_n, fill = motivation)) +
+  ggplot2::ggplot(tl, ggplot2::aes(effective_year, signed_n, fill = exogeneity)) +
     ggplot2::geom_col(width = 0.7) +
     ggplot2::geom_hline(yintercept = 0, linewidth = 0.3, colour = "grey40") +
     ggplot2::scale_x_continuous(breaks = scales::breaks_width(5)) +
-    ggplot2::scale_fill_manual(values = .malay_motivation_palette, name = "Motivation",
-                               drop = FALSE) +
+    ggplot2::scale_fill_manual(values = .exo_palette, name = "Exogeneity",
+                               na.value = "grey70", drop = FALSE) +
     ggplot2::labs(x = NULL, y = "Acts (increase ↑ / decrease ↓)") +
     .tax_shock_theme()
 }

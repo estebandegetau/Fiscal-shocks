@@ -12,13 +12,32 @@
 # writer is the command behind the `tax_shocks_clean_files` file target; it
 # writes the files and returns their paths (project file-target convention).
 
+# ---- Pretty exogeneity label (shared with the spending layer) --------------
+
+#' Human-readable C2b exogeneity label
+#'
+#' @param x Logical vector (`c2b_exogenous`): TRUE = exogenous, FALSE =
+#'   endogenous, NA otherwise.
+#' @return A factor with levels c("Exogenous", "Endogenous"); NA passes through.
+#' @export
+pretty_exogenous <- function(x) {
+  lab <- dplyr::case_when(x %in% TRUE  ~ "Exogenous",
+                          x %in% FALSE ~ "Endogenous",
+                          TRUE         ~ NA_character_)
+  factor(lab, levels = c("Exogenous", "Endogenous"))
+}
+
+# Fill palette for the exogeneity legend (spending timeline).
+.exo_palette <- c(Exogenous = "#4477AA", Endogenous = "#EE6677")
+
 # ---- Clean inventory table (external reader) -------------------------------
 
 #' Statutory tax-change inventory as a styled tinytable
 #'
 #' Trimmed for an external audience: one row per shock, the headline analytic
-#' columns plus the C2b motivation + exogeneity verdict. The preliminary
-#' narrative read is intentionally omitted here (it lives in the exhibits and
+#' columns (act, effective year, tax type, rate change) plus the C2b motivation
+#' and exogeneity verdict. The shock id, direction, and the preliminary
+#' narrative read are intentionally omitted here (they live in the exhibits and
 #' the internal notebook).
 #'
 #' @param tax_shocks The `tax_shocks` deliverable tibble.
@@ -29,14 +48,12 @@ tax_inventory_table <- function(tax_shocks) {
   tax_shocks |>
     dplyr::arrange(tax_type, effective_year) |>
     dplyr::transmute(
-      Shock        = shock_id,
-      Act          = act_label,
-      Tax          = tax_type,
-      Direction    = direction,
-      `Δpp`        = delta_pp,
-      Effective    = effective_year,
-      Motivation   = as.character(pretty_motivation(c2b_label)),
-      `Exogenous (C2b)` = c2b_exogenous
+      Act        = act_label,
+      Effective  = effective_year,
+      Tax        = tax_type,
+      `Δpp`      = delta_pp,
+      Motivation = as.character(pretty_motivation(c2b_label)),
+      Exogenous  = as.character(pretty_exogenous(c2b_exogenous))
     ) |>
     tinytable::tt() |>
     tt_theme_report()
