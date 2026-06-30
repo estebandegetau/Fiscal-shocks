@@ -1031,6 +1031,17 @@ list(
     packages = c("writexl", "haven", "labelled", "readr")
   ),
 
+  # Clean, variable-labelled downloads for the spending-shock side of the
+  # reviewer-facing dataset page. Same writer contract as the tax exports; no
+  # rate fields, `spending_category` in place of `tax_type`. No API.
+  # See R/spending_shock_report.R.
+  tar_target(
+    spending_shocks_clean_files,
+    write_spending_shocks_exports(spending_shocks),
+    format = "file",
+    packages = c("writexl", "haven", "labelled", "readr")
+  ),
+
   # =============================================================================
   # Malaysia EN/BM Cross-Language Consistency Test
   # Self-contained sub-pipeline that slices country_chunks to Economic Report

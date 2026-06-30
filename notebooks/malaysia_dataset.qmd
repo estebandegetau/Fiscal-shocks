@@ -1,6 +1,6 @@
 ---
-title: "The Malaysia Statutory Tax-Change Dataset"
-subtitle: "An LLM-assisted, expert-validated dataset of corporate, personal, and consumption tax changes (1990–2023)"
+title: "The Malaysia Statutory Fiscal-Change Dataset"
+subtitle: "An LLM-assisted, expert-validated dataset of corporate, personal, and consumption tax changes and discretionary government spending shocks (1990–2023)"
 number-sections: true
 ---
 
@@ -16,25 +16,34 @@ tar_config_set(store = here("_targets"))
 source(here("R/tt_theme.R"))
 source(here("R/malay_consistency.R"))   # pretty_motivation() + motivation palette
 source(here("R/tax_shock_report.R"))
+source(here("R/spending_shock_report.R"))  # reuses the tax helpers' internals
 set_theme(theme_minimal())
 
-tax_shocks <- tryCatch(tar_read(tax_shocks), error = function(e) tibble::tibble())
-have_data  <- nrow(tax_shocks) > 0
+tax_shocks      <- tryCatch(tar_read(tax_shocks), error = function(e) tibble::tibble())
+have_data       <- nrow(tax_shocks) > 0
+spending_shocks <- tryCatch(tar_read(spending_shocks), error = function(e) tibble::tibble())
+have_spending   <- nrow(spending_shocks) > 0
 ```
 
-This page accompanies the dataset of **statutory tax changes for Malaysia** built
-for *"Scaling Narrative Fiscal Shock Identification with LLMs"* (Degetau & Samano,
-World Bank). It is written for the reviewer: it shows the headline picture, lets
-you download the data, walks two acts in full, and explains how the dataset was
-produced.
+This page accompanies the dataset of **statutory fiscal changes for Malaysia**
+built for *"Scaling Narrative Fiscal Shock Identification with LLMs"* (Degetau &
+Samano, World Bank). It is written for the reviewer: it shows the headline picture,
+lets you download the data, walks several acts in full, and explains how the
+dataset was produced. It covers both sides of the budget: **statutory tax changes**
+and **discretionary government spending shocks**.
 
-Each row is **one narratively-announced act × tax type** — a corporate income tax
-(CIT), personal income tax (PIT), or broad consumption tax (CONSUMPTION =
-VAT/GST/SST) change — carrying the statutory rate change, a motivation label, and
-an exogenous/endogenous read produced with the validated C2b codebook. The unit of
-observation and the motivation taxonomy follow the narrative approach of
+Each row is **one narratively-announced act × instrument**. On the tax side an
+instrument is a corporate income tax (CIT), personal income tax (PIT), or broad
+consumption tax (CONSUMPTION = VAT/GST/SST) change, carrying the statutory rate
+change. On the spending side it is a discretionary expenditure measure — a
+stimulus or relief package, a subsidy-policy change, or a large allocation —
+carrying a magnitude in ringgit rather than a rate. Both carry a motivation label
+and an exogenous/endogenous read produced with the validated C2b codebook. The
+unit of observation and the motivation taxonomy follow the narrative approach of
 @romer2010; the LLM pipeline that produces them is validated with the framework of
-@halterman2025.
+@halterman2025. Spending exogeneity additionally carries a preliminary read from
+the two-condition screen of @das_ai_2026 (non-cyclical motive and no contemporaneous
+macro rationale), kept alongside the C2b verdict.
 
 ::: {.callout-important}
 **Exogeneity here is a preliminary input, not a finding.** The exogenous/endogenous
@@ -56,7 +65,9 @@ cat("::: {.callout-warning}\nThe `tax_shocks` target is empty or unbuilt, so the
     "(see the pipeline notebooks) and re-render this page.\n:::\n")
 ```
 
-## The dataset at a glance {#sec-inventory}
+# Statutory tax changes
+
+## Tax changes at a glance {#sec-inventory}
 
 ```{r}
 #| label: tbl-inventory
@@ -82,7 +93,7 @@ plot_tax_rate_paths(tax_shocks)
 plot_tax_timeline(tax_shocks)
 ```
 
-## Download the dataset {#sec-download}
+## Download the tax dataset {#sec-download}
 
 A clean, flat version of the dataset (one row per act × tax type, no nested
 provenance columns) is available in three formats. The Stata file carries variable
@@ -115,7 +126,7 @@ if (!ok) cat("::: {.callout-warning}\nDownload files not found —",
 tax_export_dictionary_table()
 ```
 
-## Two acts in full {#sec-exhibits}
+## Two tax acts in full {#sec-exhibits}
 
 To show how the dataset is built act-by-act, we reproduce two narrative summaries
 in the style of @romer2010 (their Exhibits 1 and 2, p. 772): a header with the
@@ -166,7 +177,103 @@ expert.
 tax_exhibit(tax_shocks, "MY-PIT-01", exhibit_label = "Exhibit 2")
 ```
 
-## How the dataset was built {#sec-process}
+# Government spending shocks
+
+The dataset also covers **discretionary government spending shocks**: major
+spending actions announced in budgets and crisis responses — stimulus and relief
+packages, subsidy-policy changes, and large allocations. Unlike a tax change there
+is no statutory rate, so the magnitude is recorded in ringgit (or as a share of
+expenditure) as free text rather than as a rate change, and the direction is an
+increase or decrease in spending. The motivation and the exogenous/endogenous read
+again come from the validated C2b codebook; a preliminary read from the
+@das_ai_2026 two-condition screen is carried alongside. Routine baseline
+development expenditure (for example the standing Five-Year Plan framework) is
+deliberately excluded — only discretionary changes count as shocks.
+
+```{r}
+#| label: pending-spending
+#| eval: !expr "!have_spending"
+#| echo: false
+#| output: asis
+
+cat("::: {.callout-warning}\nThe `spending_shocks` target is empty or unbuilt, so",
+    "the spending figures, download, and exhibit below cannot render. Build the",
+    "deliverable and re-render this page.\n:::\n")
+```
+
+## Spending shocks at a glance {#sec-spending-inventory}
+
+```{r}
+#| label: tbl-spending-inventory
+#| tbl-cap: "**Government spending-shock inventory.** One row per announced spending act. Magnitude is shown compactly here (full text appears in the exhibit and downloads); motivation and the exogenous/endogenous read are from the validated C2b codebook (v0.9.1)."
+#| eval: !expr have_spending
+
+spending_inventory_table(spending_shocks)
+```
+
+```{r}
+#| label: fig-spending-timeline
+#| fig-cap: "**Spending-shock timeline.** Acts per year as a diverging stacked bar: spending increases grow the bar upward, decreases downward. Colour denotes the C2b motivation. A single panel (no per-category facet): the spending mix is dominated by crisis-response packages."
+#| eval: !expr have_spending
+
+plot_spending_timeline(spending_shocks)
+```
+
+## Download the spending dataset {#sec-spending-download}
+
+The spending dataset is available in the same three formats as the tax dataset
+(one row per spending act, no nested provenance columns). The Stata file carries
+variable labels; the Excel workbook includes a second sheet with the data
+dictionary reproduced below.
+
+```{r}
+#| label: spending-download-check
+#| echo: false
+#| eval: !expr have_spending
+#| output: asis
+
+# Written reproducibly by the `spending_shocks_clean_files` target
+# (R/spending_shock_report.R). We only assert they exist; the links below are
+# relative paths the published site resolves.
+ok <- tryCatch(all(file.exists(tar_read(spending_shocks_clean_files))),
+               error = function(e) FALSE)
+if (!ok) cat("::: {.callout-warning}\nDownload files not found —",
+             "run `tar_make(spending_shocks_clean_files)`.\n:::\n")
+```
+
+- [Download CSV](../data/validated/MY_spending_shocks_clean.csv)
+- [Download Excel (.xlsx, with data dictionary)](../data/validated/MY_spending_shocks_clean.xlsx)
+- [Download Stata (.dta, labelled)](../data/validated/MY_spending_shocks_clean.dta)
+
+```{r}
+#| label: tbl-spending-dictionary
+#| tbl-cap: "**Spending data dictionary.** Columns of the downloadable spending dataset."
+
+spending_export_dictionary_table()
+```
+
+## A spending act in full {#sec-spending-exhibit}
+
+As on the tax side, we reproduce one spending act in full, again choosing a case
+where the model's classification and the preliminary narrative read **diverge**.
+
+The June 2008 fuel-subsidy restructuring cut a major subsidy in response to a
+global crude-oil price spike that had made the subsidy bill fiscally
+unsustainable. The preliminary @das_ai_2026 screen, seeing a contemporaneous macro
+trigger, reads it as endogenous; the C2b model, weighing the deficit-reduction
+rationale, reads it as exogenous and deficit-driven. The two reads are kept side by
+side for the expert.
+
+```{r}
+#| label: spending-exhibit
+#| echo: false
+#| eval: !expr have_spending
+#| output: asis
+
+spending_exhibit(spending_shocks, "MY-SPEND-04", exhibit_label = "Exhibit 3")
+```
+
+# How the dataset was built {#sec-process}
 
 The dataset is the tail of a validated, country-agnostic pipeline. Each stage has
 its own notebook documenting its construction and validation:
@@ -184,15 +291,20 @@ its own notebook documenting its construction and validation:
    evidence (C2a) and classifies each act's motivation and exogeneity (C2b), using
    the @romer2010 taxonomy (spending-driven, countercyclical, deficit-driven,
    long-run) ([cross-country deployment](deployment.qmd)).
-5. **Statutory tax-shock identification.** For each instrument, an AI-assisted
+5. **Statutory tax-shock identification.** For each tax instrument, an AI-assisted
    narrative pass reads the surfaced evidence and the source documents directly,
    recovers misses, and consolidates events at the announced-act grain, with a
    recall scorecard and a human stamp
    ([CIT](cit_identification.qmd) · [PIT](pit_identification.qmd) ·
    [consumption](vat_identification.qmd)).
-6. **Binding & enrichment.** The frozen per-instrument datasets are bound and each
-   act is enriched with the C2b motivation and exogeneity classification
-   ([deliverable assembly](tax_shocks.qmd)).
+6. **Spending-shock identification.** Because C1 is tax-scoped, the spending side
+   is identified by reading the corpus directly for discretionary spending actions,
+   consolidated the same way with a recall scorecard and a human stamp; preliminary
+   exogeneity uses the @das_ai_2026 two-condition screen
+   ([spending identification](spending_identification.qmd)).
+7. **Binding & enrichment.** The frozen per-instrument (and spending) datasets are
+   bound and each act is enriched with the C2b motivation and exogeneity
+   classification ([tax deliverable assembly](tax_shocks.qmd)).
 
 The result is the dataset on this page: a transparent, reproducible starting point
 for expert validation, not a finished verdict. Reviewer disagreements — especially
