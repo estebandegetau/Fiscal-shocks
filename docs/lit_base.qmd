@@ -62,6 +62,7 @@ status <- tibble::tribble(
   "ramey_government_2018",    "§3", "cite-only",   "yes", "yes", "abstract",
   "dabla-norris_macroeconomic_2023","§3","cite-only","yes","yes","abstract",
   # --- s4 llm text-as-data ---
+  "agarwal_consumption_2017", "§3", "cite-only", "yes", "yes", "pending",
   "das_ai_2026",       "§4", "competitor",  "yes", "yes", "full",
   "bhasin_identifying_2026",  "§4", "competitor",  "yes", "yes", "full",
   "fritsch_high-frequency_nodate","§4","competitor","yes","yes", "full",
@@ -103,7 +104,8 @@ status <- tibble::tribble(
   "pescatori_new_2011",       "§7", "benchmark",   "yes", "yes", "abstract",
   "adler_updated_2024",       "§7", "benchmark",   "yes", "yes", "abstract",
   "guajardo_expansionary_2014","§7","benchmark",   "yes", "yes", "abstract",
-  "romer_replication_2019",   "§7", "benchmark",   "yes", "yes", "abstract"
+  "romer_replication_2019",   "§7", "benchmark",   "yes", "yes", "abstract",
+  "klemm_empirical_2012",     "§7", "benchmark",   "yes", "yes", "pending"
 )
 
 tt(status)
@@ -430,11 +432,20 @@ tt(status)
 
 **Relation.** An effects-of-tax-changes study whose action-based narrative coding (yield, motivation, dates) closely parallels our pipeline's extraction targets, and whose rate-vs-base decomposition speaks directly to our magnitude/composition schema. **Dual-fit:** filed §3 (effects) but defensibly §7 (built on the action-based consolidation dataset lineage) — revisit at synthesis. Links: [[#sec-mertens2013]], [[#sec-crispolti_cross-country_2022]], [[#sec-pescatori_new_2011]].
 
+## Agarwal, Marwell & McGranahan 2017 — Consumption Responses to Temporary Tax Incentives: State Sales Tax Holidays {#sec-agarwal_consumption_2017}
+
+**Citekey** `@agarwal_consumption_2017` · Zotero `HYU4XB2C` · **Status** file ✓ · tag ✓ · §3 · consultation: pending
+**Role** cite-only
+
+**Summary.** *Pending /lit-digest.* Seed: Agarwal, Marwell & McGranahan (2017) use a difference-in-differences design on the Consumer Expenditure Survey diary and a credit-card transaction dataset to estimate the spending response to state sales tax holidays (STHs), finding substantial increases in spending on covered goods during the holidays that are not offset by inter-temporal shifting before or after.
+
+**Relation.** *Pending /lit-digest.* Seed: an effects-of-tax-incentive micro study supporting the consumption-holiday sub-scope of the incentive component — evidence that temporary consumption-tax holidays move household behavior, motivating their inclusion as identifiable incentive events. Links: [[#sec-klemm_empirical_2012]], [[#sec-dabla-norris_macroeconomic_2023]].
+
 # §4 LLMs as measurement tools
 
 ## Das et al. 2026 — Mapping Government Spending Actions Across 64 Countries {#sec-das_ai_2026}
 
-**Citekey** `@das_ai_2026` · Zotero `WBYNNC32` · **Status** file ✓ · tag ✓ · §4 · consultation: full
+**Citekey** `@das_ai_2026` · Zotero `VHHJLLXL` · **Status** file ✓ · tag ✓ · §4 · consultation: full
 **Role** competitor
 
 **Summary.** Das, Furceri, Patel & Peralta-Alva (2026, IMF WP/26/43) build the first global *quarterly* narrative database of discretionary government-spending actions by applying a fixed, zero-shot GPT-4.1 prompt to Economist Intelligence Unit Country Reports (64 countries, 1952–2023; 8,636 episodes). The prompt screens R&R-style for *exogenous* spending actions, but the production output is a discrete direction proxy z ∈ {−1, 0, +1} — spending-only, no tax side, no %GDP magnitude (an optional intensity field is excluded from the econometrics). Validation is fourfold: replicating R&R (2019) expert coding (>93%), a 51-run replicability test, local-projection prediction of realized spending, and ≥96% alignment with Adler et al. (2024) %GDP consolidations. Headline: a median cumulative spending multiplier ~0.7, larger in less-open economies, under fixed exchange rates, in downturns, and at the ZLB, identified via country-level Bayesian proxy-SVAR.
@@ -788,6 +799,15 @@ tt(status)
 **Summary.** Romer & Romer (2019) ICPSR/openICPSR replication archive for the 2010 tax-shock measure — the act-by-act narrative classification and constructed exogenous tax-change series underlying "The Macroeconomic Effects of Tax Changes."
 
 **Relation.** The US reference series (`us_shocks.csv` lineage) our pipeline replicates and validates against end-to-end in Phase 1, and the source the §4 LLM competitors (Das, Fritsch) benchmark their recovery against. Links: [[#sec-romer2010]].
+
+## Klemm & Van Parys 2012 — Empirical Evidence on the Effects of Tax Incentives {#sec-klemm_empirical_2012}
+
+**Citekey** `@klemm_empirical_2012` · Zotero `Z9MQ9NVB` · **Status** file ✓ · tag ✓ · §7 · consultation: pending
+**Role** benchmark
+
+**Summary.** *Pending /lit-digest.* Seed: Klemm & Van Parys (2012) assemble a new dataset of tax incentives (tax holidays, investment allowances, tax credits, CIT rates) for 40+ Latin American, Caribbean and African countries over 1985–2004 and ask two questions — whether incentives are used as tax-competition tools and how effective they are at attracting investment. Spatial-panel evidence shows strategic interaction in tax holidays (and over CIT rates) but not over allowances/credits; dynamic-panel evidence finds lower CIT rates and longer tax holidays attract FDI in Latin America and the Caribbean but not in Africa, and no incentive boosts gross private fixed capital formation.
+
+**Relation.** *Pending /lit-digest.* Seed: the **incentive-leg statistical-validation comparator** for the methodological paper — the incentive analog of [[#sec-das_ai_2026]] for spending (per `docs/deltas.md` 2026-06-30) — supplying a cross-country tax-incentive dataset and effectiveness benchmark against which our agentically-identified incentive events are positioned. **Dual-fit:** filed §7 (datasets/comparator) but defensibly §1 (motivation — why measuring incentives matters in EMs) or §3 (effects of incentives) — revisit at synthesis. Links: [[#sec-agarwal_consumption_2017]], [[#sec-das_ai_2026]], [[#sec-crispolti_cross-country_2022]].
 
 # References
 

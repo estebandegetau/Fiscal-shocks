@@ -20,6 +20,56 @@ credibility tracks involvement).
 
 ---
 
+## 2026-06-30: Intake of 2 incentive-component cites + 1 Das re-tag (§3, §7, §4)
+
+Fourth intake-loop run against `_Fiscal Shocks` (now 76 items). **Decision:** tag the 2
+genuinely new arrivals acquired to support the just-frozen incentive component, re-tag the
+Das paper (re-imported under a new Zotero key, lost its tags), write `lit_base.qmd` status
+stubs at `consultation: pending`, and reconcile. Tags applied by Claude via the Zotero MCP
+on user confirmation; all 3 citekeys resolve in `references.bib`.
+
+**Outcome.** 3 tag operations applied (one section + one role each):
+
+- **§7 datasets — incentive comparator.** Klemm & Van Parys 2012 (`@klemm_empirical_2012`,
+  Zotero `Z9MQ9NVB`) → `s7-datasets` + `benchmark`. A cross-country tax-incentive dataset
+  (40+ LAC/Africa countries, 1985–2004) named in `docs/deltas.md` (2026-06-30) as the
+  **incentive-leg statistical-validation source** — the incentive analog of `@das_ai_2026`
+  for spending. **Dual-fit** flagged §1/§3 in `lit_base.qmd`.
+- **§3 effects — consumption-holiday support.** Agarwal, Marwell & McGranahan 2017
+  (`@agarwal_consumption_2017`, Zotero `HYU4XB2C`) → `s3-effects` + `cite-only`. A
+  DiD micro study of the spending response to state sales-tax holidays, supporting the
+  consumption-holiday sub-scope of the incentive component.
+- **§4 — Das re-tag.** Das et al. 2026 (`@das_ai_2026`) → `s4-llm-text` + `competitor`
+  re-applied to the surviving copy (see flag).
+
+**Flags for the human (source-side):**
+
+- **Das re-imported under a new key.** The previously-tagged `WBYNNC32` recorded in
+  `lit_base.qmd` is gone from the collection; Das now appears once, untagged, under
+  `VHHJLLXL`. Re-tagged it and updated the Zotero key in `lit_base.qmd` (`WBYNNC32` →
+  `VHHJLLXL`). If `WBYNNC32` is in the Zotero Trash, empty it so it cannot resurface on a
+  future export.
+- **Pin `das_ai_2026` before the next BBT export** — it has a date and will silently
+  rename, breaking `@das_ai_2026` across `brainstorm.qmd`, `lit_review.qmd`,
+  `CIT_forward.qmd`, and `deltas.md`. Still on the pin list with the other `_nodate` keys.
+- **Junk still in bib.** `noauthor_gpt_nodate` ("gPT AS A MEASUREMENT TOOL — Google Search")
+  remains in `references.bib` but not in the collection — delete at source and re-export.
+- **Carried-over duplicates** (Ramey & Zubairy PDF vs no-PDF copy; Aruoba two copies) —
+  unchanged; merge at source when convenient.
+
+**Reconciliation.** All 3 new/re-tagged keys resolve in `references.bib`; no live dangling
+`@`-citations across `docs/*.qmd`/`*.md` (the lone `embedding_gemma_2025` mention is prose
+inside a prior log entry, not a citation).
+
+**Coverage note.** The two new cites give the **incentive component** its first literature
+support; the §1–§7 plan has no dedicated incentive section, so they slot into existing
+§3/§7 homes. Remaining named gaps unchanged and minor: **§2** Hayo & Uhl (Germany Bundestag
+textual analysis); **§7** the Giavazzi expansionary-austerity extension.
+
+**Next steps.** Human pins `das_ai_2026` and re-exports `references.bib` (dropping the junk
+entry); then run `/lit-digest` to read the 2 new `consultation: pending` entries and fill
+their Summary/Relation.
+
 ## 2026-06-24: Intake of 14 new arrivals — §5 contamination + cross-lingual cores, §4 meta layer (all sections)
 
 Third intake-loop run against `_Fiscal Shocks` (now 75 items). **Decision:** tag the 14
