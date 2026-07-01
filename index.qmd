@@ -2,7 +2,18 @@
 title: "Scaling the Narrative Identification of Fiscal Changes using LLMs"
 date: last-modified
 date-format: long
-abstract: Abstract goes here.
+abstract: |
+  *Draft abstract (second-pass prose pending).* We build and validate an
+  LLM-assisted pipeline that transfers the Romer & Romer (2010) narrative approach
+  to fiscal-shock identification from the United States to emerging markets. Four
+  country-agnostic codebooks are validated on 44 labelled US acts under the
+  Halterman & Keith (2025) framework, then deployed to Malaysia (1990–2023), where
+  an agentic component layer produces an expert-ready inventory of statutory tax,
+  spending, and tax-incentive changes — each carrying a motivation and a
+  preliminary exogeneity read. We demonstrate the dataset with a first
+  procyclicality decomposition.
+number-sections: true
+section-numbering: "1.1.1"
 format:
   html:
     toc: true
@@ -11,7 +22,486 @@ format:
   docx: default
   jats: default
   academic-typst: default
-section-numbering: "1.1.1"
+execute:
+  echo: false
+  warning: false
+  cache: true
+  freeze: auto
 ---
 
-Article text goes here.
+```{r}
+#| label: setup
+#| cache: false
+#| message: false
+#| warning: false
+
+pacman::p_load(targets, tidyverse, tinytable, here, scales, patchwork)
+
+here::i_am("index.qmd")
+tar_config_set(store = here("_targets"))
+
+source(here("R/tt_theme.R"))
+source(here("R/malay_consistency.R"))     # pretty_motivation() + palette
+source(here("R/tax_shock_report.R"))
+source(here("R/spending_shock_report.R"))
+source(here("R/incentive_shock_report.R"))
+source(here("R/iteration_reporting.R"))   # H&K S1–S3 figure/table helpers
+theme_set(theme_minimal())
+
+# ---- Empty-safe reads (rendering is read-only: tar_read only, never tar_make) --
+# Malaysia deliverables (API-gated enrichment tails — may be unbuilt)
+tax_shocks       <- tryCatch(tar_read(tax_shocks),       error = \(e) tibble())
+spending_shocks  <- tryCatch(tar_read(spending_shocks),  error = \(e) tibble())
+incentive_shocks <- tryCatch(tar_read(incentive_shocks), error = \(e) tibble())
+have_tax        <- nrow(tax_shocks) > 0
+have_spending   <- nrow(spending_shocks) > 0
+have_incentives <- nrow(incentive_shocks) > 0
+
+# H&K validation logs (API-free; parsed from prompts/iterations/*.yml)
+il      <- tryCatch(tar_read(iteration_logs), error = \(e) NULL)
+have_il <- !is.null(il)
+
+# Select the latest formal (Claude) iteration of a codebook within a parsed log.
+latest <- function(tbl, cb) {
+  tbl |>
+    dplyr::filter(codebook == cb, grepl("claude", model)) |>
+    dplyr::filter(iteration == max(iteration))
+}
+
+# Malaysia EN/BM consistency targets (precomputed; may be unbuilt)
+malay_er_c1_measures <- tryCatch(tar_read(malay_er_c1_measures), error = \(e) tibble())
+malay_metrics        <- tryCatch(tar_read(malay_er_consistency_metrics), error = \(e) NULL)
+malay_inv            <- if (is.null(malay_metrics)) tibble() else malay_metrics$inventory
+have_malay           <- nrow(malay_inv) > 0
+```
+
+::: {.callout-note}
+**Draft status.** This is the *structure-and-figures* pass of the manuscript: the
+seven sections, their figures, and one-paragraph statements of intent are in place;
+full section prose is a deliberate second pass. Figures whose upstream targets are
+API-gated and not yet built render as a "pending" note rather than an error.
+:::
+
+# Introduction
+
+*Intent: the "why" and the "what is new." For most emerging markets we lack
+consistent, comparable measures of exogenous fiscal shocks — the input credible
+fiscal analysis needs [@vegh_how_2015; @romer2010]. LLMs make the narrative
+approach scalable for the first time. Our contribution is a **method plus a
+demonstration dataset**: country-agnostic codebooks, validated on the US and
+deployed to Malaysia, that hand an expert an audit-ready inventory of fiscal-change
+events. We position against the three LLM-narrative competitors
+[@das_ai_2026; @bhasin_identifying_2026; @fritsch_high-frequency_nodate] on four
+wedges they each cede — primary national documents, the tax side, full-richness
+rows (measure × exo/endo × sign), and ground-truth-free validation. Prose sources:
+`docs/brainstorm.qmd`, `docs/lit_review.qmd` §1/§4/§7.*
+
+# The narrative specification and the validation philosophy
+
+*Intent: two ideas the rest of the paper depends on. (1) The **specification** —
+Romer & Romer's narrative method reads documents to recover, per act, the fiscal
+*measure*, its *motivation* (the 4-way taxonomy), the *exogenous* filter, the
+*sign*, and — in full — *timing* and *magnitude* [@romer2010; @romer_presidential_2023].
+(2) The **discipline** — Halterman & Keith's five-stage framework treats codebook
+conceptualisation as a first-order concern and shows off-the-shelf LLMs follow real
+codebooks imperfectly zero-shot, so every codebook must pass behavioural tests,
+zero-shot evaluation, and error analysis before it is trusted [@halterman2025].
+Prose sources: `docs/lit_review.qmd` §2/§5, `docs/strategy.md`,
+`docs/codebook_sources.md`.*
+
+# The pipeline and what it produces {#sec-pipeline}
+
+*Intent: the architecture, "what is one row," and the reconciliation of the two
+production paths — then the headline Malaysia figures so the reader sees the output
+of the method. **Path A** is the H&K-validated codebook chain (C1 measure ID → C0
+act aggregation → C2a/C2b motivation, sign, and exogeneity), validated on 44 US
+Romer–Romer acts; this is where classification credibility lives. **Path B** is the
+agentic `identify-*` component layer that froze the Malaysia rows by reading the
+corpus directly per instrument, then reused the validated C2a/C2b for the
+motivation/exogeneity enrichment. Framing: the validated codebooks* certify the
+classification; *the agentic component skills do measure discovery and structured
+extraction under a shared output contract
+(`docs/phase_1/{tax,spending,incentive}_shock_schema.md`).*
+
+## Pipeline stages
+
+```{r}
+#| label: tbl-pipeline
+#| tbl-cap: "**Pipeline stages.** Path A is the H&K-validated codebook chain (validated on US ground truth); Path B is the agentic component layer that freezes the country deliverable and reuses Path A's C2a/C2b for enrichment."
+
+tibble::tribble(
+  ~Stage,                    ~Component,                         ~Path, ~Output,
+  "Corpus (RR1)",            "Primary-source extraction + QA",   "—",   "Document corpus",
+  "Measure ID (RR2)",        "C1 codebook (LLM)",                "A",   "Candidate fiscal measures",
+  "Act aggregation (RR6)",   "C0 canonical clustering (LLM)",    "A",   "Canonical acts",
+  "Motivation (RR5)",        "C2a evidence → C2b class (LLM)",   "A",   "4-way label + exo/endo + sign",
+  "Component identification", "identify-{cit,pit,vat,spending,incentives}", "B", "Frozen per-instrument acts",
+  "Bind + enrich",           "reuse C2a/C2b on frozen acts",     "A+B", "Deliverable inventory"
+) |>
+  tt() |>
+  tt_theme_report()
+```
+
+## What is one row
+
+```{r}
+#| label: tbl-one-row
+#| tbl-cap: "**Unit of observation.** One row per narratively-announced act × instrument, carrying a magnitude (statutory rate for tax; ringgit for spending), a motivation label, and a preliminary exogeneity read pending expert adjudication."
+
+tibble::tribble(
+  ~Field,            ~Meaning,
+  "act",             "One narratively-announced fiscal act (phased steps collapse to one row)",
+  "instrument",      "CIT / PIT / CONSUMPTION (tax), Expenditure (spending), or incentive category",
+  "year",            "Announced / effective year (quarterly timing is deferred to C3)",
+  "magnitude",       "Δpp statutory rate (tax/rate-bearing incentive) or ringgit amount (spending)",
+  "sign",            "Direction of the effect on fiscal liabilities (increase / decrease / no change)",
+  "motivation",      "R&R 4-way label from the validated C2b codebook",
+  "exogenous",       "Preliminary exogenous/endogenous read — an input for the expert, not a finding"
+) |>
+  tt() |>
+  tt_theme_report()
+```
+
+## What the pipeline produces: the Malaysia inventory
+
+The figures below are the headline output of the pipeline, for Malaysia
+(1990–2023). Downloads, data dictionaries, and the full worked exhibits live on the
+reviewer-facing dataset page, [malaysia_dataset.qmd](notebooks/malaysia_dataset.qmd).
+
+```{r}
+#| label: pending-tax
+#| eval: !expr "!have_tax"
+#| echo: false
+#| output: asis
+cat("::: {.callout-warning}\nThe `tax_shocks` deliverable target is empty or",
+    "unbuilt (its C2a/C2b enrichment is API-gated). The tax figures below render",
+    "once it is built.\n:::\n")
+```
+
+### Statutory tax changes
+
+```{r}
+#| label: tbl-tax-inventory
+#| tbl-cap: "**Statutory tax-change inventory.** One row per announced act × tax type; Δpp is the headline-rate change; motivation and exogeneity from the validated C2b codebook (v0.9.1)."
+#| eval: !expr have_tax
+tax_inventory_table(tax_shocks)
+```
+
+```{r}
+#| label: fig-tax-rate-paths
+#| fig-cap: "**Statutory rate paths by tax type.** Step path of the headline statutory rate implied by the rate-bearing acts."
+#| eval: !expr have_tax
+plot_tax_rate_paths(tax_shocks)
+```
+
+```{r}
+#| label: fig-tax-timeline
+#| fig-cap: "**Tax-change timeline.** Acts per year × tax type as a diverging stacked bar (hikes up, cuts down); colour denotes the C2b motivation."
+#| eval: !expr have_tax
+plot_tax_timeline(tax_shocks)
+```
+
+### Government spending shocks
+
+```{r}
+#| label: pending-spending
+#| eval: !expr "!have_spending"
+#| echo: false
+#| output: asis
+cat("::: {.callout-warning}\nThe `spending_shocks` deliverable target is empty or",
+    "unbuilt. The spending figures below render once it is built.\n:::\n")
+```
+
+```{r}
+#| label: tbl-spending-inventory
+#| tbl-cap: "**Government spending-shock inventory.** One row per announced spending act; exogeneity from the validated C2b codebook, alongside the @das_ai_2026 two-condition preliminary screen."
+#| eval: !expr have_spending
+spending_inventory_table(spending_shocks)
+```
+
+```{r}
+#| label: fig-spending-timeline
+#| fig-cap: "**Spending-shock timeline.** Acts per year as a diverging stacked bar (increases up, decreases down); colour denotes the C2b exogenous/endogenous read."
+#| eval: !expr have_spending
+plot_spending_timeline(spending_shocks)
+```
+
+### Tax incentives and holidays
+
+```{r}
+#| label: pending-incentives
+#| eval: !expr "!have_incentives"
+#| echo: false
+#| output: asis
+cat("::: {.callout-warning}\nThe `incentive_shocks` deliverable target is empty or",
+    "unbuilt. The incentive figures below render once it is built.\n:::\n")
+```
+
+```{r}
+#| label: tbl-incentive-inventory
+#| tbl-cap: "**Tax-incentive shock inventory.** One row per announced incentive change; exogeneity from the validated C2b codebook (v0.9.1)."
+#| eval: !expr have_incentives
+incentive_inventory_table(incentive_shocks)
+```
+
+```{r}
+#| label: fig-incentive-timeline
+#| fig-cap: "**Incentive-shock timeline.** Acts per year as a diverging stacked bar (new/expanded down, repeals up); colour denotes the C2b exogenous/endogenous read."
+#| eval: !expr have_incentives
+plot_incentive_timeline(incentive_shocks)
+```
+
+# Validation I — the US benchmark {#sec-us-validation}
+
+*Intent: the codebook credibility pillar. We validate each codebook on the 44
+labelled US Romer–Romer acts under H&K S1–S3 (behavioural tests → zero-shot
+evaluation → error analysis). Because the published R&R shock list and the US
+source documents are almost certainly in pretraining, strong US agreement is
+**consistent with memorisation** [@carlini_quantifying_2022]: the S1 memorisation
+test (Test II below) and the contamination argument put the burden of proof on the
+in-language Malaysia results in @sec-my-validation, where the documents are far
+less likely to have been seen. Prose sources: `notebooks/c1_measure_id.qmd`,
+`notebooks/c0_aggregator.qmd`, C2 iteration logs.*
+
+```{r}
+#| label: pending-il
+#| eval: !expr "!have_il"
+#| echo: false
+#| output: asis
+cat("::: {.callout-warning}\nThe `iteration_logs` target is unbuilt, so the H&K",
+    "validation battery cannot render. Build it (API-free) and re-render.\n:::\n")
+```
+
+## C1 — Measure identification
+
+```{r}
+#| label: fig-c1-s1
+#| fig-cap: "C1 v0.7.0 S1 behavioural tests. Tests I/II as percent correct (Test II is the memorisation/contamination probe); Test IV as Fleiss' kappa."
+#| fig-height: 5
+#| eval: !expr have_il
+plot_s1_behavioral(latest(il$s1, "c1"))
+```
+
+```{r}
+#| label: tbl-c1-s2
+#| tbl-cap: "C1 v0.7.0 S2 zero-shot metrics with 95% bootstrap CIs."
+#| eval: !expr have_il
+tt_s2_metrics_table(latest(il$s2, "c1"))
+```
+
+```{r}
+#| label: fig-c1-s3
+#| fig-cap: "C1 v0.7.0 S3 behavioural tests (Tests V–VII) against the full-codebook baseline F1."
+#| fig-height: 5
+#| eval: !expr have_il
+plot_s3_behavioral(latest(il$s3, "c1"), latest(il$s3_ablation, "c1"))
+```
+
+```{r}
+#| label: tbl-c1-manual
+#| tbl-cap: "C1 v0.7.0 manual error-analysis distribution (H&K six-category framework)."
+#| eval: !expr have_il
+tt_manual_analysis_table(latest(il$s3_manual, "c1"))
+```
+
+```{r}
+#| label: tbl-c1-biascorrected
+#| tbl-cap: "C1 v0.7.0 bias-corrected gate metrics (Category B, incorrect gold, excluded)."
+#| eval: !expr have_il
+tt_bias_corrected_table(latest(il$s3_manual_bias_corrected, "c1"))
+```
+
+## C2 — Motivation and exogeneity
+
+```{r}
+#| label: fig-c2-s1
+#| fig-cap: "C2b S1 behavioural tests. Test II is the memorisation/contamination probe for the classification codebook."
+#| fig-height: 5
+#| eval: !expr have_il
+plot_s1_behavioral(latest(il$s1, "c2b"))
+```
+
+```{r}
+#| label: tbl-c2-s2
+#| tbl-cap: "C2b S2 zero-shot metrics with 95% bootstrap CIs."
+#| eval: !expr have_il
+tt_s2_metrics_table(latest(il$s2, "c2b"))
+```
+
+```{r}
+#| label: fig-c2-s3
+#| fig-cap: "C2b S3 behavioural tests (Tests V–VII) against the full-codebook baseline."
+#| fig-height: 5
+#| eval: !expr have_il
+plot_s3_behavioral(latest(il$s3, "c2b"), latest(il$s3_ablation, "c2b"))
+```
+
+```{r}
+#| label: tbl-c2-manual
+#| tbl-cap: "C2b manual error-analysis distribution (H&K six-category framework)."
+#| eval: !expr have_il
+tt_manual_analysis_table(latest(il$s3_manual, "c2b"))
+```
+
+## C0 — Act aggregation
+
+*Intent: C0 is a record-linkage step, scored not by H&K S0–S3 but by recovery of
+the 49 Romer–Romer reference acts (coverage, spurious rate, fragmentation, year
+alignment). The full five-method comparison lives in
+[c0_aggregator.qmd](notebooks/c0_aggregator.qmd); the headline of the leading
+method (M5, LLM canonical clustering) is reproduced below.*
+
+```{r}
+#| label: tbl-c0-m5
+#| tbl-cap: "C0 Method 5 (LLM canonical clustering) RR-recovery metrics under the keyword name gate. Full method comparison in c0_aggregator.qmd."
+#| echo: false
+res <- tryCatch({
+  suppressWarnings(suppressMessages(source(here("R/c0_aggregator.R"))))
+  m5 <- tar_read(c0_m5_rr_metrics)
+  format_rr_method_ladder(m5, gate = "keyword") |> tt() |> tt_theme_report()
+}, error = function(e) NULL)
+if (is.null(res)) {
+  cat("::: {.callout-warning}\nC0 RR-metrics unavailable (target unbuilt or helper",
+      "not loaded); see c0_aggregator.qmd.\n:::\n")
+} else {
+  res
+}
+```
+
+# Validation II — Malaysia {#sec-my-validation}
+
+*Intent: the credibility pillar in the deployment country, where no ground truth
+exists. Three legs: (1) an **EN/BM cross-language consistency test** — the pipeline
+should reason equivalently regardless of input language
+[@ahuja_mega_2023; @rathje_gpt_2024]; (2) **worked disagreement exhibits** —
+Romer–Romer-style act write-ups chosen where the model's read and the preliminary
+narrative read diverge, the cases an expert must settle; and (3) the
+**ground-truth-free expert-agreement protocol**, framed as human-parity
+(model-vs-consensus against leave-one-out human-vs-consensus) rather than agreement
+with absolute truth [@asirvatham_gpt_2026]. Prose sources:
+`notebooks/malay_consistency.qmd`, `docs/phase_1/expert_review_protocol.md`.*
+
+## Cross-language (EN/BM) consistency
+
+```{r}
+#| label: pending-malay
+#| eval: !expr "!have_malay"
+#| echo: false
+#| output: asis
+cat("::: {.callout-warning}\nThe Malaysia EN/BM consistency targets are unbuilt, so",
+    "the cross-language figures cannot render. See malay_consistency.qmd.\n:::\n")
+```
+
+```{r}
+#| label: fig-malay-c1
+#| fig-cap: "Distinct C1 fiscal measures per Economic Report year, by language (EN vs BM). Comparable counts indicate the extraction step is language-robust."
+#| fig-height: 4
+#| eval: !expr "nrow(malay_er_c1_measures) > 0"
+p <- plot_malay_c1_comparability(malay_er_c1_measures)
+if (is.null(p)) cat("No C1 measure data available.\n") else p
+```
+
+```{r}
+#| label: fig-malay-timeline
+#| fig-cap: "Act inventory by year and motivation, faceted by language. Comparable structure across EN and BM is the signal that the codebooks reason consistently across languages."
+#| fig-height: 5
+#| eval: !expr have_malay
+p <- plot_malay_act_timeline(malay_inv, timing = "act_name")
+if (is.null(p)) cat("No act inventory available.\n") else p
+```
+
+## Worked acts (disagreement cases)
+
+We reproduce four acts in full — one per component — each chosen where the model's
+classification and the preliminary narrative read **diverge**, in the style of
+@romer2010 (their Exhibits 1–2). These are the methodologically consequential cases
+an expert must adjudicate.
+
+```{r}
+#| label: exhibit-cit
+#| echo: false
+#| output: asis
+#| eval: !expr have_tax
+tax_exhibit(tax_shocks, "MY-CIT-03", exhibit_label = "Exhibit 1")
+```
+
+```{r}
+#| label: exhibit-pit
+#| echo: false
+#| output: asis
+#| eval: !expr have_tax
+tax_exhibit(tax_shocks, "MY-PIT-01", exhibit_label = "Exhibit 2")
+```
+
+```{r}
+#| label: exhibit-spending
+#| echo: false
+#| output: asis
+#| eval: !expr have_spending
+spending_exhibit(spending_shocks, "MY-SPEND-04", exhibit_label = "Exhibit 3")
+```
+
+```{r}
+#| label: exhibit-incentive
+#| echo: false
+#| output: asis
+#| eval: !expr have_incentives
+incentive_exhibit(incentive_shocks, "MY-INCENT-01", exhibit_label = "Exhibit 4")
+```
+
+## The expert-agreement protocol
+
+*Intent: prose describing the ground-truth-free validation design — probability-
+sampled acts for expert coding, the ≥80% (C1) / ≥70% (C2) agreement targets read as
+parity with an individual expert (not with truth), and expert-vs-expert agreement
+reported as the ceiling. Source: `docs/phase_1/expert_review_protocol.md`.*
+
+# A first use case: procyclicality decomposition {#sec-usecase}
+
+::: {.callout-note}
+**Section stub.** The figure for this section is deferred: it needs an annual
+Malaysia real-GDP-growth (business-cycle) series added via a `{targets}` target +
+`R/procyclicality.R`, a data decision not yet taken. The framing and caveats below
+stand; the estimate does not yet.
+:::
+
+*Intent: a demonstration, not an inferential claim. Using the exogenous/endogenous
+split against the annual business cycle, decompose how much of Malaysia's
+tax-policy procyclicality was exogenous all along — the decomposition
+@vegh_how_2015 name as the missing input and could not perform with a statutory-rate
+series. The value added of the paper is the dataset and the method; this is one use
+case.*
+
+*Generated-regressor caveat (load-bearing here): once an estimate is built on the
+labels, valid inference is a measurement-error problem, not a classification-accuracy
+one [@ludwig_large_2025; @battaglia_inference_2024]. The bias equals the correlation
+of label error with the regressor, and the dangerous regressor is the business cycle
+— the exact axis exogeneity turns on. So the decomposition must either show
+mislabelling is uncorrelated with the cycle or scope the claim accordingly; a proper
+downstream estimate would debias against a probability-sampled expert validation
+set [@angelopoulos_prediction-powered_2023; @egami_using_2023].*
+
+<!-- FIGURE PLACEHOLDER — procyclicality decomposition.
+     Needs: annual Malaysia real-GDP-growth series (WDI) as a target;
+            R/procyclicality.R for the decomposition + figure;
+            overlay signed exogenous vs endogenous fiscal actions on the cycle. -->
+
+# Limitations and roadmap
+
+*Intent: honest scoping. (i) **Timing and magnitude are not yet built** — C3
+(quarterly timing) and C4 (%GDP magnitude) are planned, so the current rows carry
+announced year and statutory Δpp / ringgit magnitude, not quarterly %GDP; the
+procyclicality use case is therefore annual. (ii) **Expert validation is pending** —
+the exogeneity column is a preliminary model read, not a finding; the Phase 2 expert
+pass is the intended next input. (iii) **Transfer is a claim to defend, not assume**
+— fixed text measures notoriously fail to transfer across domains
+[@gentzkow_text_2019] and cross-codebook fine-tuning overfits [@halterman2025], so
+the frozen country-agnostic codebooks must be shown to survive, which the EN/BM and
+regional legs test. (iv) **Regional scaling** — Indonesia, Thailand, the
+Philippines, and Vietnam follow the same pipeline. Prose sources: `CLAUDE.md`
+status, `docs/lit_review.qmd` §6.*
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
