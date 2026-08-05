@@ -196,7 +196,7 @@ Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.
 
 ### `tax_shocks.qmd` -- Statutory Tax-Shock Deliverable
 
-**Purpose:** The cross-instrument statutory tax-change deliverable. Binds the frozen per-instrument datasets (`bind_tax_shocks()` over `tax_shock_files`), re-runs C2a **only on the corpus chunks C1 omitted** (reusing existing `country_c2a_evidence` for the rest), runs the frozen C2b v0.9.1 classifier, and assembles the final table keeping **both** the preliminary narrative exogeneity read and C2b's `pred_exogenous`/`pred_sign`/reasoning. Pipeline tail in `R/tax_shock_dataset.R`.
+**Purpose:** The cross-instrument statutory tax-change deliverable. Binds the frozen per-instrument datasets (`bind_tax_shocks()` over `tax_shock_files`), runs C2a on **every member chunk, scoped to each shock's own `act_label`** (it deliberately does not reuse `country_c2a_evidence`, which is chunk-keyed and holds only the rank-1 measure's evidence), runs the frozen C2b v0.9.1 classifier, and assembles the final table keeping **both** the preliminary narrative exogeneity read and C2b's `pred_exogenous`/`pred_sign`/reasoning. Pipeline tail in `R/tax_shock_dataset.R`.
 
 **Key tests and decisions:**
 

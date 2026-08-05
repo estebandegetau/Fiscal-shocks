@@ -58,8 +58,8 @@ per row so they `tidyr::unnest()` cleanly.
 | `exogenous_preliminary` | chr | {`TRUE`, `FALSE`, `ambiguous`} — Claude's **preliminary** narrative read. Pending expert adjudication; kept *alongside* C2b's label, never overwriting it. |
 | `exogeneity_quote` | chr | The most diagnostic source quote supporting `exogenous_preliminary`. |
 | `id_reasoning` | chr | Identification/consolidation reasoning (distinct from C2b's motivation reasoning). |
-| `member_chunks` | **list-col** | tibble{`doc_id` chr, `chunk_id` int}; every corpus chunk that is evidence for this shock. Drives the C2a join / re-run. |
-| `recovered_chunks` | **list-col** | tibble{`doc_id` chr, `chunk_id` int}; subset of `member_chunks` that C1 did **not** surface (documentation + recall scorecard). May be empty. The C2a re-run is driven by an anti-join against existing evidence, not by this column, so it need not be exhaustive. |
+| `member_chunks` | **list-col** | tibble{`doc_id` chr, `chunk_id` int}; every corpus chunk that is evidence for this shock. Drives the C2a extraction: one call per row, scoped to this shock's `act_label`. |
+| `recovered_chunks` | **list-col** | tibble{`doc_id` chr, `chunk_id` int}; subset of `member_chunks` that C1 did **not** surface (documentation + recall scorecard). May be empty. Purely documentary — C2a now runs on *every* member chunk, so this column drives nothing and need not be exhaustive. |
 | `recovered_evidence` | **list-col** | tibble{`quote` chr, `signal` chr}; direct quotes for events with no usable chunk at all (rare). Folded into the evidence bundle as synthetic C2a records. Empty tibble when unused. |
 | `sources` | **list-col** | tibble{`doc_id` chr, `body` chr, `year` int, `pdf_url` chr, `doc_language` chr}; the citable documents, traced via `country_body`/`country_urls`. |
 | `recall_scorecard` | **list-col** | tibble{`stage` chr, `outcome` chr}; the `tbl-recall`-style search-completeness audit. **Mandatory** — every skill run must populate it. |
@@ -70,12 +70,21 @@ per row so they `tidyr::unnest()` cleanly.
 
 1. `bind_tax_shocks(files)` — read + row-bind the frozen `.qs`, validate these
    columns exist, assign a per-row `cluster_id`, check `shock_id` uniqueness.
-2. `assemble_shock_evidence(shocks, c2a_evidence, chunks, c2a_codebook, ...)` —
-   unnest `member_chunks`; left-join existing `country_c2a_evidence` by
-   (`doc_id`,`chunk_id`); for member chunks with **no** existing evidence, pull
-   `text` from `country_chunks` and run `run_c2a_deployment()` with `act_label`
+2. `assemble_shock_evidence(shocks, chunks, c2a_codebook, ...)` — unnest
+   `member_chunks`; for **every** (shock, member chunk) pair pull `text` from
+   `country_chunks` and run `run_c2a_deployment()` with that shock's `act_label`
    as the measure name; fold in `recovered_evidence`. Emits the exact
    `aggregate_c0_acts_deployment()` schema (`act_name` = `shock_id`).
+
+   This deliberately does **not** reuse `country_c2a_evidence`. That store is keyed
+   by (`doc_id`,`chunk_id`) and holds one evidence row per chunk, extracted under
+   whichever measure `filter_c1_measures()` ranked first (`measure_rank == 1L`). The
+   identification skills cite a chunk because the act's sentence is in it and are not
+   restricted to rank-1, so the old chunk-keyed join handed shocks another act's
+   motivation evidence — 95/100 tax member-chunk rows, and four wrong C2b
+   classifications. Extraction is keyed on (`shock_id`,`doc_id`,`chunk_id`), so a
+   chunk shared by two shocks is extracted once per shock. See `docs/deltas.md`
+   2026-08-05.
 3. `run_c2b_on_shocks(bundles, c2b_codebook, ...)` — reuses `run_c2b_deployment()`
    (C2b v0.9.1 frozen) unchanged.
 4. `assemble_tax_shock_deliverable(shocks, c2b_out)` — joins C2b

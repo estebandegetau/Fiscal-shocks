@@ -32,7 +32,8 @@ gated.
   deployed country (one whose `country_chunks` / `country_body` branch exists),
   enriched downstream with motivation + exogeneity by the frozen C2b.
 - Prerequisite: the country has completed C1 deployment and `country_body` /
-  `country_chunks` / `country_c2a_evidence` are populated.
+  `country_chunks` are populated. (`country_c2a_evidence` is no longer consumed by
+  this tail — C2a is run per shock, scoped to its own `act_label`.)
 
 ## Critical Rules
 

@@ -7,7 +7,7 @@
 # incentive-specific pipeline function -- `bind_incentive_shocks()` -- which
 # row-binds those frozen datasets and validates the incentive contract. The rest
 # of the tail is REUSED UNCHANGED from R/tax_shock_dataset.R:
-#   - assemble_shock_evidence()         (C2a reuse + re-run on omitted chunks)
+#   - assemble_shock_evidence()         (C2a per shock, scoped to its act_label)
 #   - run_c2b_on_shocks()               (frozen C2b v0.9.1)
 #   - assemble_tax_shock_deliverable()  (join preliminary + C2b reads side by side)
 # Those three are generic over the contract (they touch only member_chunks,

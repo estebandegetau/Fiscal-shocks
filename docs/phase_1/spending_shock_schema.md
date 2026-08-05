@@ -88,8 +88,8 @@ per row so they `tidyr::unnest()` cleanly. **Columns and types are identical to
 | `exogenous_preliminary` | chr | {`TRUE`, `FALSE`, `ambiguous`} — preliminary read via the **Das two-condition screen** (exogenous iff motive is non-cyclical AND the narrative does not cite contemporaneous growth/inflation/unemployment/FX/financing-stress as the rationale). Pending expert adjudication; kept *alongside* C2b's label, never overwriting it. |
 | `exogeneity_quote` | chr | The most diagnostic source quote supporting `exogenous_preliminary`. |
 | `id_reasoning` | chr | Identification/consolidation reasoning (distinct from C2b's motivation reasoning). |
-| `member_chunks` | **list-col** | tibble{`doc_id` chr, `chunk_id` int}; every corpus chunk that is evidence for this shock. Drives the C2a join / re-run. |
-| `recovered_chunks` | **list-col** | tibble{`doc_id` chr, `chunk_id` int}; subset of `member_chunks` that C1 did **not** surface. For spending this is expected to be **most** chunks (C1 is tax-scoped). May be empty. |
+| `member_chunks` | **list-col** | tibble{`doc_id` chr, `chunk_id` int}; every corpus chunk that is evidence for this shock. Drives the C2a extraction: one call per row, scoped to this shock's `act_label`. |
+| `recovered_chunks` | **list-col** | tibble{`doc_id` chr, `chunk_id` int}; subset of `member_chunks` that C1 did **not** surface. For spending this is expected to be **most** chunks (C1 is tax-scoped). May be empty. Purely documentary — C2a now runs on every member chunk regardless. |
 | `recovered_evidence` | **list-col** | tibble{`quote` chr, `signal` chr}; direct quotes for events with no usable chunk. Folded into the evidence bundle as synthetic C2a records. Empty tibble when unused. |
 | `sources` | **list-col** | tibble{`doc_id` chr, `body` chr, `year` int, `pdf_url` chr, `doc_language` chr}; the citable documents, traced via `country_body`/`country_urls`. |
 | `recall_scorecard` | **list-col** | tibble{`stage` chr, `outcome` chr}; the `tbl-recall`-style search-completeness audit. **Mandatory** — every run must populate it, including the near-empty-C1 finding. |
@@ -102,12 +102,13 @@ per row so they `tidyr::unnest()` cleanly. **Columns and types are identical to
    columns exist (`.spending_shock_required_cols`), assign a per-row `cluster_id`,
    check `shock_id` uniqueness. Does **not** enforce the `delta_pp`/`direction`
    sign-consistency check (rate fields are `NA`). Empty-input safe.
-2. `assemble_shock_evidence(shocks, c2a_evidence, chunks, c2a_codebook, ...)` —
-   **reused unchanged** from `R/tax_shock_dataset.R`. Unnests `member_chunks`,
-   left-joins existing `country_c2a_evidence`, re-runs `run_c2a_deployment()` on
-   member chunks with no existing evidence (most of them, for spending), folds in
-   `recovered_evidence`. Emits the `aggregate_c0_acts_deployment()` schema
-   (`act_name` = `shock_id`).
+2. `assemble_shock_evidence(shocks, chunks, c2a_codebook, ...)` — **reused
+   unchanged** from `R/tax_shock_dataset.R`. Unnests `member_chunks` and runs
+   `run_c2a_deployment()` on **every** (shock, member chunk) pair, each call scoped
+   to that shock's `act_label`; folds in `recovered_evidence`. Emits the
+   `aggregate_c0_acts_deployment()` schema (`act_name` = `shock_id`). It does not
+   reuse `country_c2a_evidence` — see `docs/phase_1/tax_shock_schema.md` step 2 and
+   `docs/deltas.md` 2026-08-05 for why the chunk-keyed reuse was removed.
 3. `run_c2b_on_shocks(bundles, c2b_codebook, ...)` — **reused unchanged**; C2b
    v0.9.1 frozen.
 4. `assemble_tax_shock_deliverable(shocks, c2b_out)` — **reused unchanged**; joins

@@ -84,17 +84,21 @@ Rscript -e 'library(targets); tar_config_set(store="_targets")
   print(tar_outdated(names = c("tax_shocks_identified","tax_shocks_evidence","tax_shocks_c2b","tax_shocks")))'
 ```
 
-#### PAUSE POINT 2 — approve the C2a re-run (API)
+#### PAUSE POINT 2 — approve the C2a extraction (API)
 
-The next target re-runs C2a only on member chunks lacking existing evidence (the
-chunks C1 omitted). Present the estimated count of omitted chunks and request
-explicit approval. On approval:
+The next target runs C2a once per (shock, member chunk) pair, each call scoped to
+that shock's own `act_label`. It does **not** reuse `country_c2a_evidence`: that
+store is keyed by chunk and holds only the rank-1 measure's evidence, so reusing it
+fed shocks another act's motivation (see `docs/deltas.md` 2026-08-05). Present the
+total member-chunk count across the bound shocks — that is the call count — and
+request explicit approval. On approval:
 
 ```r
 Rscript -e 'library(targets); tar_config_set(store="_targets"); tar_make(tax_shocks_evidence)'
 ```
 
-Confirm from the run log that C2a fired only on the omitted chunks.
+Confirm from the run log that C2a fired once per (shock, chunk) pair. A chunk shared
+by two shocks is expected to appear **twice**, once under each shock's label.
 
 #### PAUSE POINT 3 — approve C2b (API)
 
@@ -132,9 +136,11 @@ quarto render notebooks/tax_shocks.qmd
 
 - **A requested instrument was not frozen / stamped:** stop at PAUSE POINT 1; do
   not bind a partial set unless the user explicitly chooses to.
-- **`tax_shocks_evidence` re-runs C2a on more chunks than expected:** halt and
-  review the member-chunk manifests — likely a recall sweep that pulled in
-  non-evidence chunks.
+- **`tax_shocks_evidence` runs C2a on more (shock, chunk) pairs than expected:**
+  the expected count is the total number of member chunks across the bound shocks,
+  counting a shared chunk once per shock. If the count exceeds that, halt and review
+  the member-chunk manifests — likely a recall sweep that pulled in non-evidence
+  chunks.
 - **C2b degenerate output:** inspect `tar_read(tax_shocks_c2b)` for parse
   failures; C2b v0.9.1 is frozen, so the fix is in the evidence bundle, not the
   codebook.
