@@ -664,3 +664,109 @@ iterations:
       Proceed to build c2a_evidence (S2 extraction pass on the sensitivity
       superset of FISCAL_MEASURE chunks). v0.5.0 is S1-clean; no further
       C2a codebook changes pending.
+
+  - iteration: 17
+    codebook_version: "0.5.1"
+    date: "2026-08-05"
+    git_commit: "a10f834"
+    model: "claude-haiku-4-5-20251001"
+    stage: "s1"
+    changes: >
+      v0.5.1 evidence-scoping fix (commit 523d5e7). Extraction is now scoped
+      to the measure named in the `Act:` field rather than sweeping all
+      motivation evidence present in the chunk, plus a new multi-measure
+      worked example. Motivated by reviewer feedback on two Malaysian CIT
+      rows that exposed cross-act evidence contamination; harmless on
+      single-act US dev chunks in principle, but see below. No configuration
+      changes (max_tokens held at 16384).
+    results:
+      overall_pass: true
+      metrics:
+        - test: "I_legal_outputs"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "II_instruction_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+        - test: "III_example_recovery"
+          value: 1.0000
+          threshold: 1.0000
+          pass: true
+          skipped: true
+          note: "No per-class examples in C2a codebook"
+        - test: "IV_order_invariance"
+          value: ~
+          threshold: 0.0500
+          pass: true
+          skipped: true
+          note: "Structurally inapplicable — C2a has no classes block to reorder"
+      scoping_evidence:
+        note: >
+          Same seed (20251206) and unchanged c2_input_data, so the 10 test
+          chunks are identical to iterations 15 and 16 — the comparison is
+          chunk-for-chunk.
+        largest_response_chars: 3914
+        largest_response_act: "Taxpayer Relief Act of 1997 and Balanced Budget Act of 1997"
+        prev_largest_response_chars: 16760
+        response_volume_change: "-77%"
+        evidence_counts_by_chunk: [0, 7, 3, 0, 1, 1, 2, 2, 1, 1]
+        n_chunks_zero_evidence: 2
+        chunk_1_regression_check: >
+          Chunk 1 (Tax Reform Act of 1969) is the chunk that FAILED iteration
+          15 by truncating at max_tokens=4096 with >=17 evidence items and
+          14,305 chars. Iteration 15's own failure note records those items
+          as covering wagering tax, air ticket tax, ADR depreciation, social
+          security expansion and FUTA — none of which are the Tax Reform Act
+          of 1969. Under v0.5.1 the same chunk returns 0 evidence in 1,379
+          chars, correctly reasoning that the 1969 Act appears only as
+          regulatory follow-up and as the source of a cement-mixer excise
+          exemption. The contamination bug is therefore visible and fixed on
+          US dev data, not only on Malaysian multi-measure chunks.
+        chunk_4_zero_evidence: >
+          Chunk 4 (1997 acts referenced in a January 2002 CBO budget outlook)
+          also returns 0 evidence: the acts appear only in a footnote listing
+          laws excluded from PAYGO scorecard calculations. Correct rejection.
+        retained_evidence_spot_check: >
+          Chunk 2 (7 items, densest response) — all seven quotes are on the
+          two named 1997 acts (deficit-reduction package, $500 child credit,
+          education investment, $24bn state health insurance allocation,
+          Medicare structural reform). Chunk 3 (Revenue Act of 1950) — Korea
+          driven rate changes, the President's July 25 1950 interim-revenue
+          letter, Senate Finance Committee dates, June 30 1950 effective
+          date. No drift onto neighbouring measures in either.
+      headroom_check:
+        largest_response_chars: 3914
+        max_tokens_cap: 16384
+        approx_tokens_used: 1000
+        note: >
+          Cap is now ~16x over-provisioned following the volume collapse.
+          Left unchanged deliberately — output tokens bill on actual use, so
+          the headroom is free insurance for dense Malaysian budget-speech
+          chunks at deployment.
+    interpretation: >
+      The v0.5.1 fix performs as planned. All four S1 tests pass, and the
+      behavioural change is directly observable rather than inferred: with an
+      identical chunk sample, maximum response volume falls 77% and two of ten
+      chunks now correctly return empty evidence sets. The decisive case is
+      chunk 1, where v0.5.0 attributed a fiscal-year survey's entire measure
+      inventory to the Tax Reform Act of 1969 and v0.5.1 returns nothing with
+      correct reasoning. Retained evidence on the dense chunks remains
+      on-target, so this is scoping, not blanket suppression. Test II
+      (instruction recovery) holds at 4/4, so the scoping instruction did not
+      regress instruction-following on the synthetic single-measure passages.
+      Tests III and IV remain structurally auto-pass under the classless
+      extraction architecture, as in prior iterations.
+    decision: >
+      Proceed to S2. Run the joint C2 S2 re-validation (S3 deferred per the
+      2026-08-05 delta). Two things to watch there, neither blocking: (i)
+      recall is now the open risk rather than precision — v0.5.1 could refuse
+      evidence when an act is discussed under a variant name, a pronoun, or a
+      Malay-language rendering rather than the exact `Act:` string, so track
+      per-act evidence coverage and not only precision; (ii) `evidence: []`
+      is a new-in-v0.5.1 input condition for the downstream enrichment tails,
+      so confirm run_c2b_on_shocks() treats an empty evidence set as
+      "cannot classify" rather than classifying on an empty payload. The
+      tax, spending and incentive enrichment tails still require a re-run
+      after this fix.
