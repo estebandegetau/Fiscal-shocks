@@ -900,13 +900,14 @@ list(
     packages = c("tidyverse", "qs2", "purrr")
   ),
 
-  # C2a re-run on omitted chunks only (API). country_* are list targets;
-  # bind_rows collapses the per-country branches to a flat tibble.
+  # C2a extraction per (shock, member chunk), each scoped to the shock's own
+  # act_label (API). Does NOT reuse country_c2a_evidence: that store is keyed by
+  # chunk and holds only the rank-1 measure's evidence, which fed shocks another
+  # act's motivation. country_chunks is a list target; bind_rows flattens it.
   tar_target(
     tax_shocks_evidence,
     assemble_shock_evidence(
       tax_shocks_identified,
-      c2a_evidence = dplyr::bind_rows(country_c2a_evidence),
       chunks       = dplyr::bind_rows(country_chunks),
       c2a_codebook = c2a_codebook,
       model = "claude-haiku-4-5-20251001",
@@ -980,14 +981,12 @@ list(
     packages = c("tidyverse", "qs2", "purrr")
   ),
 
-  # C2a re-run on omitted chunks only (API). For spending, expect most member
-  # chunks to be omitted (C1 is tax-scoped). Reuses assemble_shock_evidence()
-  # unchanged.
+  # C2a extraction per (shock, member chunk), each scoped to the shock's own
+  # act_label (API). Reuses assemble_shock_evidence() unchanged.
   tar_target(
     spending_shocks_evidence,
     assemble_shock_evidence(
       spending_shocks_identified,
-      c2a_evidence = dplyr::bind_rows(country_c2a_evidence),
       chunks       = dplyr::bind_rows(country_chunks),
       c2a_codebook = c2a_codebook,
       model = "claude-haiku-4-5-20251001",
@@ -1078,14 +1077,12 @@ list(
     packages = c("tidyverse", "qs2", "purrr")
   ),
 
-  # C2a re-run on omitted chunks only (API). For incentives, expect most member
-  # chunks to be omitted (C1 is tax-rate-scoped, not incentive-scoped). Reuses
-  # assemble_shock_evidence() unchanged.
+  # C2a extraction per (shock, member chunk), each scoped to the shock's own
+  # act_label (API). Reuses assemble_shock_evidence() unchanged.
   tar_target(
     incentive_shocks_evidence,
     assemble_shock_evidence(
       incentive_shocks_identified,
-      c2a_evidence = dplyr::bind_rows(country_c2a_evidence),
       chunks       = dplyr::bind_rows(country_chunks),
       c2a_codebook = c2a_codebook,
       model = "claude-haiku-4-5-20251001",

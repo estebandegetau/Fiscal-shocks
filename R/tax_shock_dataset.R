@@ -88,35 +88,43 @@ bind_tax_shocks <- function(files) {
 }
 
 
-#' Assemble a per-shock C2a evidence bundle (reuse + re-run C2a on omitted chunks)
+#' Assemble a per-shock C2a evidence bundle (always extracted per shock)
 #'
-#' For each shock, gathers its `member_chunks`, attaches existing C2a evidence by
-#' (`doc_id`,`chunk_id`), and for any member chunk that has **no** existing
-#' evidence (the chunks C1 never surfaced as a measure), pulls the chunk text
-#' from `chunks` and runs `run_c2a_deployment()` with the shock's `act_label` as
-#' the measure name. Any `recovered_evidence` direct quotes are folded in as
+#' For each shock, gathers its `member_chunks`, pulls each chunk's text from
+#' `chunks`, and runs `run_c2a_deployment()` with the shock's `act_label` as the
+#' measure name — so every evidence bundle is extracted **for the shock it will be
+#' used to classify**. Any `recovered_evidence` direct quotes are folded in as
 #' synthetic C2a records. The output matches `aggregate_c0_acts_deployment()`'s
 #' schema, with `act_name = shock_id`, so `run_c2b_deployment()` consumes it
 #' unchanged.
 #'
-#' The C2a re-run is keyed on **distinct** missing (`doc_id`,`chunk_id`) pairs: a
-#' chunk shared by two shocks is extracted once (under one shock's label) and the
-#' evidence joined back to every member row. This is an accepted approximation
-#' (documented in docs/phase_1/tax_shock_schema.md) and is rare in practice.
+#' **Why this does not reuse `country_c2a_evidence`.** That store is keyed by
+#' (`doc_id`,`chunk_id`) and holds exactly one evidence row per chunk, extracted
+#' under whichever measure `filter_c1_measures()` ranked first (`measure_rank ==
+#' 1L`). The shocks come from the agentic `identify-*` skills, which cite a chunk
+#' because the act's sentence is physically in it and are not restricted to
+#' rank-1. Joining the two on (`doc_id`,`chunk_id`) therefore handed shocks another
+#' act's motivation evidence whenever the shock was not that chunk's rank-1
+#' measure — 95 of 100 tax member-chunk rows, and four demonstrably wrong C2b
+#' classifications (MY-CIT-08, MY-CIT-09, MY-PIT-01, MY-PIT-06). Extraction is
+#' cheap relative to being wrong, so every (shock, chunk) pair gets its own call.
+#'
+#' Extraction is keyed on distinct (`shock_id`,`doc_id`,`chunk_id`) triples, **not**
+#' on (`doc_id`,`chunk_id`): two shocks sharing a chunk legitimately need two
+#' differently-scoped extractions. This also retires the shared-chunk approximation
+#' previously carried as Open Q3 in the 2026-06-25 `docs/deltas.md` entry.
 #'
 #' @param shocks Bound tibble from `bind_tax_shocks()`.
-#' @param c2a_evidence Existing country C2a evidence (bind of `country_c2a_evidence`);
-#'   columns include `doc_id`, `chunk_id`, `evidence`, `enacted_signals`,
-#'   `timing_signals`, `c2a_valid`.
 #' @param chunks Country chunk text (bind of `country_chunks`); columns include
 #'   `doc_id`, `chunk_id`, `text`, `year`, and (optionally) `country`.
-#' @param c2a_codebook Validated C2a codebook (`load_validate_codebook()`).
+#' @param c2a_codebook Validated C2a codebook (`load_validate_codebook()`);
+#'   v0.5.1+, whose extraction is scoped to the named measure.
 #' @param model,max_tokens_c2a,provider,base_url,api_key Passed to
 #'   `run_c2a_deployment()`.
 #' @return Tibble in the `aggregate_c0_acts_deployment()` schema (one row per
 #'   shock × evidence-bearing chunk).
 #' @export
-assemble_shock_evidence <- function(shocks, c2a_evidence, chunks,
+assemble_shock_evidence <- function(shocks, chunks,
                                     c2a_codebook,
                                     model = "claude-haiku-4-5-20251001",
                                     max_tokens_c2a = 16384,
@@ -152,26 +160,15 @@ assemble_shock_evidence <- function(shocks, c2a_evidence, chunks,
 
   ev_cols <- c("doc_id", "chunk_id", "evidence", "enacted_signals",
                "timing_signals", "c2a_valid")
-  ev <- if (nrow(c2a_evidence) == 0L) {
-    tibble::tibble(doc_id = character(0), chunk_id = integer(0),
-                   evidence = list(), enacted_signals = list(),
-                   timing_signals = list(), c2a_valid = logical(0))
-  } else {
-    c2a_evidence |> dplyr::select(dplyr::all_of(ev_cols)) |>
-      dplyr::distinct(doc_id, chunk_id, .keep_all = TRUE)
-  }
 
-  have <- members |> dplyr::inner_join(ev, by = c("doc_id", "chunk_id"))
-  missing <- members |> dplyr::anti_join(ev, by = c("doc_id", "chunk_id"))
+  # --- C2a extraction, scoped per (shock, chunk) ------------------------------
+  # Keyed on the (shock_id, doc_id, chunk_id) triple: a chunk shared by two
+  # shocks is extracted once *per shock*, each under its own act_label.
+  fresh <- empty[0, ev_cols] |> dplyr::mutate(shock_id = character(0))
 
-  # --- C2a re-run on the omitted chunks (distinct doc_id × chunk_id) ----------
-  fresh <- empty[0, c("doc_id", "chunk_id", "evidence", "enacted_signals",
-                      "timing_signals", "c2a_valid")] |>
-    dplyr::mutate(shock_id = character(0))
-
-  if (nrow(missing) > 0L) {
-    miss_distinct <- missing |>
-      dplyr::distinct(doc_id, chunk_id, .keep_all = TRUE) |>
+  if (nrow(members) > 0L) {
+    targets <- members |>
+      dplyr::distinct(shock_id, doc_id, chunk_id) |>
       dplyr::left_join(dplyr::select(shock_meta, shock_id, canonical_name, year),
                        by = "shock_id") |>
       dplyr::left_join(
@@ -181,37 +178,59 @@ assemble_shock_evidence <- function(shocks, c2a_evidence, chunks,
         by = c("doc_id", "chunk_id")
       )
 
-    c1_like <- miss_distinct |>
-      dplyr::filter(!is.na(text)) |>
+    # run_c2a_deployment() silently drops rows with NA measure_name, which would
+    # misalign the positional bind below, so drop them here where we can say so.
+    n_no_text <- sum(is.na(targets$text))
+    n_no_name <- sum(!is.na(targets$text) & is.na(targets$canonical_name))
+    if (n_no_text > 0L) {
+      warning(sprintf(
+        "assemble_shock_evidence: %d member chunk(s) had no text in `chunks` and were dropped from C2a extraction",
+        n_no_text
+      ))
+    }
+    if (n_no_name > 0L) {
+      warning(sprintf(
+        "assemble_shock_evidence: %d member chunk(s) belong to a shock with NA act_label and were dropped from C2a extraction",
+        n_no_name
+      ))
+    }
+
+    keys <- targets |> dplyr::filter(!is.na(text), !is.na(canonical_name))
+
+    c1_like <- keys |>
       dplyr::transmute(
         chunk_id, doc_id,
-        country      = if ("country" %in% names(miss_distinct)) country else NA_character_,
+        country      = if ("country" %in% names(keys)) country else NA_character_,
         year         = as.integer(dplyr::coalesce(year, chunk_year)),
         measure_name = canonical_name,
         text
       )
 
-    n_no_text <- sum(is.na(miss_distinct$text))
-    if (n_no_text > 0L) {
-      warning(sprintf(
-        "assemble_shock_evidence: %d omitted chunk(s) had no text in `chunks` and were dropped from the C2a re-run",
-        n_no_text
-      ))
-    }
-
     if (nrow(c1_like) > 0L) {
       message(sprintf(
-        "assemble_shock_evidence: re-running C2a on %d omitted chunk(s) C1 did not surface",
+        "assemble_shock_evidence: extracting C2a evidence for %d (shock, chunk) pair(s), each scoped to its own act_label",
         nrow(c1_like)
       ))
       c2a_new <- run_c2a_deployment(
         c1_like, c2a_codebook, model = model, max_tokens_c2a = max_tokens_c2a,
         provider = provider, base_url = base_url, api_key = api_key
       )
-      fresh <- missing |>
-        dplyr::left_join(
-          c2a_new |> dplyr::select(dplyr::all_of(ev_cols)),
-          by = c("doc_id", "chunk_id")
+
+      # `run_c2a_deployment()` maps over its input in order and, after the NA
+      # filtering above, drops nothing — so rows correspond 1:1 with `keys` and
+      # the shock key binds back positionally. A chunk-keyed join would be wrong
+      # here: the whole point is that one chunk may appear under several shocks.
+      if (nrow(c2a_new) != nrow(keys)) {
+        stop(sprintf(
+          "assemble_shock_evidence: C2a returned %d row(s) for %d input(s); cannot align shock keys positionally",
+          nrow(c2a_new), nrow(keys)
+        ))
+      }
+
+      fresh <- keys |>
+        dplyr::select(shock_id, doc_id, chunk_id) |>
+        dplyr::bind_cols(
+          c2a_new |> dplyr::select(dplyr::all_of(setdiff(ev_cols, c("doc_id", "chunk_id"))))
         )
     }
   }
@@ -239,7 +258,7 @@ assemble_shock_evidence <- function(shocks, c2a_evidence, chunks,
   }
 
   # --- Combine and emit the aggregate_c0_acts_deployment() schema -------------
-  combined <- dplyr::bind_rows(have, fresh, rec_rows) |>
+  combined <- dplyr::bind_rows(fresh, rec_rows) |>
     dplyr::filter(!is.na(c2a_valid))
 
   if (nrow(combined) == 0L) return(empty)
