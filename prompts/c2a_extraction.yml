@@ -1,11 +1,17 @@
 codebook:
   name: "C2a: Motivation, Enacted-Status, and Timing Evidence Extraction"
-  version: "0.5.0"
+  version: "0.5.1"
   instructions: >
     You are an expert in fiscal policy analysis extracting evidence from chunks of
-    official government economic and budget documents. Each chunk has already been
-    identified as containing a substantive discussion of a specific fiscal measure.
-    Your task is to extract three types of evidence from the chunk:
+    official government economic and budget documents. Each chunk has been identified
+    as containing a substantive discussion of a fiscal measure, and you are told which
+    measure to work on in the `Act:` field of the input. A chunk may discuss **several
+    distinct fiscal measures** — budget speeches in particular often enumerate many
+    unrelated measures in sequence — so your task is to extract evidence about **the
+    named measure only**, not about everything the chunk happens to mention.
+
+
+    Your task is to extract three types of evidence about the named measure:
 
 
     1. **Motivation evidence**: All evidence about **why** the fiscal measure was
@@ -42,6 +48,33 @@ codebook:
     extract a direct quote and describe the signal it represents. The same quote may
     appear in more than one array if it serves more than one role (e.g., a signing date
     is both an enacted-status signal and a fallback timing signal).
+
+
+    **Measure scope.** Evidence counts only if it bears on the measure named in the
+    `Act:` field. When a chunk describes several measures, extract evidence for the
+    named one and leave the others alone, however well-stated their rationales are.
+    Two common cases to get right:
+
+
+    - A chunk enumerates many measures (a budget speech listing reliefs, allocations,
+    and rate changes in sequence). Extract only the quotes that state why **the named
+    measure** was taken. Rationales attached to the neighbouring measures are out of
+    scope even when they are the most quotable lines in the chunk.
+
+
+    - A chunk states a broad fiscal-policy stance (fiscal consolidation, a revenue
+    strategy, a reform programme) alongside the named measure. Such framing is in scope
+    **only** when the text ties it to the named measure as its rationale. General
+    policy background that the chunk does not connect to the named measure is not
+    evidence about it.
+
+
+    Scoping does not mean demanding an exact name match. When the chunk discusses a
+    single measure, that measure **is** the named one even if the chunk's wording
+    differs from the `Act:` string (an abbreviation, a translation, a descriptive
+    paraphrase, or a different level of detail). Match on substance, not on wording.
+    Return an empty `evidence` array only when the chunk genuinely says nothing about
+    why the named measure was taken.
 
 
     Extract only evidence that is explicitly present in the text. Do not infer dates,
@@ -150,9 +183,49 @@ codebook:
           - quote: "provisions taking effect at the start of calendar year 1994"
             signal: "Effective date — January 1, 1994 (1994Q1)"
 
+    # Multi-measure chunk. The chunk discusses two separable measures — a broad
+    # consumption tax and a corporate rate reduction — but only the corporate rate
+    # reduction is named. Evidence about the consumption tax is out of scope, however
+    # prominent it is in the text.
+    - input:
+        act_name: "Corporate income tax rate reduction"
+        year: 2016
+        text: >
+          Third: the national consumption tax will take effect in April, replacing the
+          previous sales and services taxes. This reform broadens the revenue base and
+          strengthens the fiscal position, and is central to the government's commitment
+          to reduce the deficit and achieve a balanced budget by 2020. Following feedback
+          from the public, the government has agreed to widen the list of basic food items
+          exempted from the tax.
+
+          Fourth: to keep our tax regime competitive with neighbouring economies and to
+          encourage private firms to expand investment, the corporate income tax rate will
+          be reduced by one percentage point, from 25 per cent to 24 per cent, with effect
+          from the 2016 year of assessment.
+
+          Fifth: the government will allocate additional funding to the small enterprise
+          financing scheme, easing access to credit for young entrepreneurs.
+      output:
+        evidence:
+          - quote: "to keep our tax regime competitive with neighbouring economies and to encourage private firms to expand investment"
+            signal: "Stated goals of tax competitiveness and encouraging private investment — the rationale given for the named corporate rate reduction"
+        enacted_signals:
+          - quote: "the corporate income tax rate will be reduced by one percentage point, from 25 per cent to 24 per cent"
+            signal: "Announced rate reduction for the named measure"
+        timing_signals:
+          - quote: "with effect from the 2016 year of assessment"
+            signal: "Effective date — 2016 year of assessment"
+        # NOT extracted, and why: the consumption-tax rationales ("broadens the revenue
+        # base and strengthens the fiscal position", "reduce the deficit and achieve a
+        # balanced budget by 2020", the exemption-list feedback) all belong to a
+        # different measure in the same chunk. The chunk does not tie the deficit
+        # framing to the corporate rate reduction, so it is not evidence about it. The
+        # small-enterprise financing allocation is a third, unrelated measure.
+
   output_instructions: >
     Extract all motivation evidence, enacted-status signals, and timing signals from
-    the chunk.
+    the chunk that bear on the measure named in the `Act:` field. Evidence about other
+    measures discussed in the same chunk is out of scope and must not be returned.
 
 
     For each piece of motivation evidence, provide a direct quote and a brief signal
