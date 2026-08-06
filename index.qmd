@@ -96,6 +96,8 @@ wedges they each cede — primary national documents, the tax side, full-richnes
 rows (measure × exo/endo × sign), and ground-truth-free validation. Prose sources:
 `docs/brainstorm.qmd`, `docs/lit_review.qmd` §1/§4/§7.*
 
+[Let's leave the Intro, Conclusion and Abstract to the end; they should write themselves with what we populate the body with.]{.aside}
+
 # The narrative specification and the validation philosophy
 
 *Intent: two ideas the rest of the paper depends on. (1) The **specification** —
@@ -142,6 +144,8 @@ tibble::tribble(
   tt_theme_report()
 ```
 
+[@tbl-pipeline is illegible, even to me. Separate into two tables, one for the RR procedure and other for the HK procedure. ]{.aside}
+
 ## What is one row
 
 ```{r}
@@ -161,6 +165,8 @@ tibble::tribble(
   tt() |>
   tt_theme_report()
 ```
+
+[@tbl-one-row is lazy. We should show what the data is through either (i) beautiful plots, or (ii) beautiful tables that convey the meaning and magnitudes of the data, i.e. summary stats of some sorts. This table sucks because the reader has not seen the data and is being asked to hold in memory some concepts she doesn't care about. Though we actually need a table like this; keep it and see if you can add some other visual to explain what the data is.]{.aside}
 
 ## What the pipeline produces: the Malaysia inventory
 
@@ -263,6 +269,8 @@ in-language Malaysia results in @sec-my-validation, where the documents are far
 less likely to have been seen. Prose sources: `notebooks/c1_measure_id.qmd`,
 `notebooks/c0_aggregator.qmd`, C2 iteration logs.*
 
+[Include here a beutiful visual, a flow chart, that explains how we took primary source government documents and came up with the dataset. Thjis figure should guide the reader thorugh this section.]{.aside}
+
 ```{r}
 #| label: pending-il
 #| eval: !expr "!have_il"
@@ -272,7 +280,13 @@ cat("::: {.callout-warning}\nThe `iteration_logs` target is unbuilt, so the H&K"
     "validation battery cannot render. Build it (API-free) and re-render.\n:::\n")
 ```
 
+[Include here a table describing HK's tests: what do they test for?]{.aside}
+
 ## C1 — Measure identification
+
+[Include the verbatim codebook prompt.]{.aside}
+
+
 
 ```{r}
 #| label: fig-c1-s1
@@ -282,12 +296,18 @@ cat("::: {.callout-warning}\nThe `iteration_logs` target is unbuilt, so the H&K"
 plot_s1_behavioral(latest(il$s1, "c1"))
 ```
 
+[It should say here that all the frontier commercial models perform equally good at S1, and that we used the test to see that there were no problems with the code/instructions. I'm unsure why I cannot see a stat Test IV in @fig-c1-s1, please check it out.]{.aside}
+
+[Include here an explanation for how we chose to evaluate C1: we wanted to maximize recall so that we can evaluate all of the fiscal policy that was available.]{.aside}
+
 ```{r}
 #| label: tbl-c1-s2
 #| tbl-cap: "C1 v0.7.0 S2 zero-shot metrics with 95% bootstrap CIs."
 #| eval: !expr have_il
 tt_s2_metrics_table(latest(il$s2, "c1"))
 ```
+
+[@tbl-c1-s2 is super tough in the eye. Let's try it with a plot instead. Also, fyi, this caption is totally illegible.]{.aside}
 
 ```{r}
 #| label: fig-c1-s3
@@ -297,12 +317,19 @@ tt_s2_metrics_table(latest(il$s2, "c1"))
 plot_s3_behavioral(latest(il$s3, "c1"), latest(il$s3_ablation, "c1"))
 ```
 
+[@fig-c1-s3 's aesthetics are inconsistent with @fig-c1-s1 's: stick to the point and line aesthetics.]{.aside}
+
+
+[Include here a description of how we carried through the manual analysis; how the IKA process was noisier than the codebook's performance]{.aside}
+
 ```{r}
 #| label: tbl-c1-manual
 #| tbl-cap: "C1 v0.7.0 manual error-analysis distribution (H&K six-category framework)."
 #| eval: !expr have_il
 tt_manual_analysis_table(latest(il$s3_manual, "c1"))
 ```
+
+
 
 ```{r}
 #| label: tbl-c1-biascorrected
@@ -311,7 +338,16 @@ tt_manual_analysis_table(latest(il$s3_manual, "c1"))
 tt_bias_corrected_table(latest(il$s3_manual_bias_corrected, "c1"))
 ```
 
+
+[Drop mentions of codebook versions everywhere and especially in captions. This methodological paper should discuss the current state of the project; not its development process.]{.aside}
+
+[@tbl-c1-biascorrected is important but aesthetically akward. Let's try moving the absolute figures to a confusion matrix, and keep only the performance stats in a separate table.]{.aside}
+
 ## C2 — Motivation and exogeneity
+
+[Describe here how we had to separate C2 into the extraction and classification parts, and how we tested it as a boundle]{.aside}
+
+[Also discuss the IKA process for C2, how it was imperfect. Include]{.aside}
 
 ```{r}
 #| label: fig-c2-s1
@@ -343,6 +379,9 @@ plot_s3_behavioral(latest(il$s3, "c2b"), latest(il$s3_ablation, "c2b"))
 tt_manual_analysis_table(latest(il$s3_manual, "c2b"))
 ```
 
+
+[Most of my notes on the C1 sections are applicable here. Also, we're missing the bias-corrected performance table(s), which are the most important methodological things we produced in this project.]{.aside}
+
 ## C0 — Act aggregation
 
 *Intent: C0 is a record-linkage step, scored not by H&K S0–S3 but by recovery of
@@ -350,6 +389,8 @@ the 49 Romer–Romer reference acts (coverage, spurious rate, fragmentation, yea
 alignment). The full five-method comparison lives in
 [c0_aggregator.qmd](notebooks/c0_aggregator.qmd); the headline of the leading
 method (M5, LLM canonical clustering) is reproduced below.*
+
+[I think we should drop this section entirely, as the final datasets we built did not use C0 at all (please verify this claim). Rather discuss how we used the agentic search to locate relevant information from every act that was a distinct act.]{.aside}
 
 ```{r}
 #| label: tbl-c0-m5
