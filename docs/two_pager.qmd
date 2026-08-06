@@ -60,7 +60,7 @@ Once methodology is validated on Malaysia (estimated 20-40 acts, 1980-2022), the
 
 -   Macro impulse responses estimated with local projections.
 -   Firm-level effects (investment, employment) using modern LP-DiD methods [@dube].
--   A methodological paper on LLM-assisted narrative identification, similar to [@romer].
+-   A methodological paper on LLM-assisted narrative identification, similar to [@romer]. *Drafted (August 2026): `index.qmd`, "Scaling the Narrative Identification of Fiscal Changes using LLMs" — full body; intro, abstract and conclusion pending.*
 
 ### C. Tooling and Capacity
 

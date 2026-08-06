@@ -2,6 +2,8 @@
 
 Research notebooks for the Fiscal Shocks project. Every notebook is a Quarto (`.qmd`) document that reads from the `{targets}` pipeline via `tar_read()`. Notebooks test, verify, and document the data and evaluation pipeline; they do not generate data (that belongs in `R/` functions called by `_targets.R`).
 
+The methodological **paper** lives outside this directory, at `index.qmd` in the repository root. It reads the same targets and reuses the same exhibit helpers (`R/iteration_reporting.R`, `R/parse_iteration_logs.R`, plus the paper-only `R/pipeline_diagram.R`, `R/dataset_summary.R`, `R/recall_scorecard.R`, `R/codebook_display.R`), so a change to a shared helper is paper-bound: render both HTML and Typst before committing.
+
 ## Configuration
 
 - `_metadata.yml` -- Shared Quarto defaults for all notebooks (HTML output, `echo: true`, `code-fold`, `lightbox`, `self-contained`).

@@ -78,6 +78,7 @@ These files represent deliberate research design decisions. Never edit them dire
 | `docs/proposal.qmd` | Research scope, questions, empirical plan, timelines |
 | `docs/two_pager.qmd` | Stakeholder framing, project outputs, timelines |
 | `docs/phase_1/malaysia_strategy.md` | Malaysia strategic decisions, four options, recommended path |
+| `index.qmd` | The methodological paper. Human-authored prose — never auto-edit, log deltas instead. Note that `docs/strategy.md` is authoritative on validation status; the paper's §"What is validated, and what is not" is its outward rendering, so a strategy status change implies a paper delta (added 2026-08-06) |
 
 ### Delta log location
 
