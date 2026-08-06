@@ -224,12 +224,16 @@ tt_ablation_table <- function(ablation_data) {
 #' @return tinytable object
 tt_manual_analysis_table <- function(manual_data) {
   category_labels <- c(
-    "A_llm_correct"         = "A: LLM correct",
-    "B_incorrect_gold"      = "B: Incorrect gold standard",
-    "C_document_error"      = "C: Document error",
-    "D_non_compliance"      = "D: LLM non-compliance",
-    "E_semantics_reasoning" = "E: Semantics/reasoning mistake",
-    "F_other"               = "F: Other"
+    "A_llm_correct"              = "A: LLM correct",
+    "B_incorrect_gold"           = "B: Incorrect gold standard",
+    # C2b records the same category under a name reflecting why its gold is
+    # wrong: the act is genuinely multi-motivation and the gold label follows a
+    # tie-breaking convention rather than the codebook.
+    "B_evaluation_framework_gap" = "B: Incorrect gold standard",
+    "C_document_error"           = "C: Document error",
+    "D_non_compliance"           = "D: LLM non-compliance",
+    "E_semantics_reasoning"      = "E: Semantics/reasoning mistake",
+    "F_other"                    = "F: Other"
   )
 
   tbl <- manual_data |>
@@ -253,14 +257,17 @@ tt_manual_analysis_table <- function(manual_data) {
 #' Bias-corrected manual-analysis metrics table (tinytable)
 #'
 #' Renders the label-noise-adjusted gate result (confusion matrix + metrics)
-#' for one manual-analysis iteration. Percentage metrics are stored in percent
-#' units (e.g. 81.8) in the iteration log.
+#' for one manual-analysis iteration. Rate metrics arrive as proportions
+#' (the parser normalises the two log dialects).
+#'
+#' Superseded by the `tt_confusion_matrix()` / `tt_gate_metrics()` pair, which
+#' separate the counts from the rates. Retained because the notebooks call it.
 #'
 #' @param bc_data one-row tibble from iteration_logs$s3_manual_bias_corrected
 #' @return tinytable object
 tt_bias_corrected_table <- function(bc_data) {
   bc <- bc_data[1, ]
-  pct <- function(x) if (is.na(x)) "—" else sprintf("%.1f%%", x)
+  pct <- function(x) if (is.na(x)) "—" else sprintf("%.1f%%", 100 * x)
   int <- function(x) if (is.na(x)) "—" else as.character(x)
 
   tbl <- tibble::tibble(
@@ -278,6 +285,122 @@ tt_bias_corrected_table <- function(bc_data) {
   )
 
   tinytable::tt(tbl) |> tt_theme_report()
+}
+
+#' Label-noise-adjusted confusion matrix (tinytable)
+#'
+#' The counts half of the bias-corrected gate result: a 2x2 predicted-by-actual
+#' matrix with margins, after the chunks whose gold label the manual analysis
+#' judged wrong (Category B, and Category C where present) have been excluded.
+#'
+#' @param bc_data one-row tibble from iteration_logs$s3_manual_bias_corrected
+#' @return tinytable object, or NULL when the entry logged no confusion matrix
+tt_confusion_matrix <- function(bc_data) {
+  bc <- bc_data[1, ]
+  if (is.na(bc$tp) || is.na(bc$tn) || is.na(bc$fp) || is.na(bc$fn)) return(NULL)
+
+  tbl <- tibble::tibble(
+    ` `                = c("Predicted positive", "Predicted negative", "Total"),
+    `Actual positive`  = c(bc$tp, bc$fn, bc$tp + bc$fn),
+    `Actual negative`  = c(bc$fp, bc$tn, bc$fp + bc$tn),
+    Total              = c(bc$tp + bc$fp, bc$fn + bc$tn,
+                           bc$tp + bc$fp + bc$fn + bc$tn)
+  )
+
+  tinytable::tt(tbl) |>
+    tinytable::style_tt(i = 1:2, j = 2:3, bold = TRUE) |>
+    tt_theme_report()
+}
+
+#' Label-noise-adjusted gate metrics (tinytable)
+#'
+#' The rates half of the bias-corrected gate result. Emits only the metrics the
+#' iteration actually recorded, so the same function serves C1 (tier-level
+#' recall) and C2b (exogenous precision, sign accuracy on true-exogenous).
+#'
+#' @param bc_data one-row tibble from iteration_logs$s3_manual_bias_corrected
+#' @param targets Named numeric vector of gate thresholds, keyed by the column
+#'   names of `bc_data` (e.g. `c(precision = 0.85, sign_accuracy = 0.90)`).
+#'   Metrics with no entry render an em dash in the Target column.
+#' @param labels Optional named character vector overriding the display name of
+#'   a metric, keyed the same way. Use it to name what a generic column means in
+#'   a given codebook (e.g. `c(precision = "Exogenous precision")`).
+#' @return tinytable object
+tt_gate_metrics <- function(bc_data, targets = NULL, labels = NULL) {
+  bc <- bc_data[1, ]
+
+  metric_labels <- c(
+    accuracy       = "Accuracy",
+    precision      = "Precision",
+    recall         = "Recall",
+    tier1_recall   = "Tier 1 recall",
+    tier2_recall   = "Tier 2 recall",
+    specificity    = "Specificity",
+    sign_accuracy  = "Sign accuracy on true-exogenous",
+    joint_accuracy = "Joint label-and-sign accuracy"
+  )
+  if (!is.null(labels)) metric_labels[names(labels)] <- unname(labels)
+
+  present <- names(metric_labels)[
+    names(metric_labels) %in% names(bc) &
+      !vapply(names(metric_labels), function(nm) {
+        !nm %in% names(bc) || is.na(bc[[nm]])
+      }, logical(1))
+  ]
+
+  tbl <- tibble::tibble(
+    Metric = unname(metric_labels[present]),
+    value  = vapply(present, function(nm) as.numeric(bc[[nm]]), numeric(1)),
+    target = vapply(present, function(nm) {
+      if (is.null(targets) || !nm %in% names(targets)) NA_real_ else targets[[nm]]
+    }, numeric(1))
+  ) |>
+    dplyr::mutate(
+      Estimate = sprintf("%.1f%%", 100 * value),
+      Target   = dplyr::if_else(is.na(target), "—",
+                                sprintf("≥ %.0f%%", 100 * target)),
+      Status   = dplyr::case_when(
+        is.na(target)    ~ "—",
+        value >= target  ~ "Pass",
+        TRUE             ~ "Below gate"
+      )
+    ) |>
+    dplyr::select(Metric, Estimate, Target, Status)
+
+  pass_rows <- which(tbl$Status == "Pass")
+  fail_rows <- which(tbl$Status == "Below gate")
+
+  out <- tinytable::tt(tbl)
+  if (length(pass_rows) > 0) {
+    out <- tinytable::style_tt(out, i = pass_rows, background = "#E8F5E9")
+  }
+  if (length(fail_rows) > 0) {
+    out <- tinytable::style_tt(out, i = fail_rows, background = "#FFEBEE")
+  }
+  tt_theme_report(out)
+}
+
+#' What each behavioural test probes (tinytable)
+#'
+#' A static reader's key to the H&K test battery. Tests I-IV run at S1 (before
+#' any evaluation data is touched); Tests V-VII run at S3 alongside the ablation
+#' and the manual error analysis.
+#'
+#' @return tinytable object
+tt_hk_tests_table <- function() {
+  tibble::tribble(
+    ~Stage, ~Test,                   ~`What it probes`,                                                                          ~`Passing means`,
+    "S1",   "I. Legal outputs",      "Every response is one of the labels the codebook defines",                                 "The model can express itself in the codebook's vocabulary",
+    "S1",   "II. Memorisation",      "Whether the model can recite the codebook's own definitions and instructions unprompted",   "Agreement later on is not recall of a document the model already knows",
+    "S1",   "III. Example recovery", "Whether the model reproduces the codebook's worked examples verbatim",                      "The examples teach rather than leak",
+    "S1",   "IV. Order invariance",  "Whether shuffling or reversing the class order changes the label",                          "The label tracks the definition, not its position in the prompt",
+    "S3",   "V. Exclusion criteria", "Whether the codebook's stated exclusions are applied when the document or codebook is perturbed", "Exclusion rules are enforced, not decorative",
+    "S3",   "VI. Generic labels",    "Accuracy when informative label names are replaced by neutral ones",                        "The model reads the definitions, not the label names",
+    "S3",   "VII. Swapped labels",   "Whether the model follows the definition or the name when the two are put in conflict",     "The construct lives in the definition the researcher wrote"
+  ) |>
+    tinytable::tt(width = c(0.08, 0.17, 0.42, 0.33)) |>
+    tt_theme_report() |>
+    tinytable::style_tt(j = 2:4, align = "l")
 }
 
 # =============================================================================
@@ -313,9 +436,12 @@ plot_s1_behavioral <- function(s1_data, group_by = "codebook") {
       iteration_label = sprintf("%s (iter %d)", codebook, iteration)
     )
 
-  # Separate Test IV (kappa scale) from Tests I-III (percent scale)
-  tests_pct <- plot_data |> dplyr::filter(!grepl("IV", test))
-  test_iv   <- plot_data |> dplyr::filter(grepl("IV", test))
+  # Separate Test IV (kappa scale) from Tests I-III (percent scale). Drop the
+  # unused factor levels in each panel, or each draws a blank row for the tests
+  # that belong to the other one.
+  tests_pct <- plot_data |> dplyr::filter(!grepl("IV", test)) |> droplevels()
+  test_iv   <- plot_data |> dplyr::filter(grepl("IV", test)) |>
+    dplyr::filter(!is.na(fleiss_kappa)) |> droplevels()
 
   # Top panel: Tests I-III (Percent Correct)
   p_top <- ggplot2::ggplot(tests_pct,
@@ -334,7 +460,8 @@ plot_s1_behavioral <- function(s1_data, group_by = "codebook") {
     ggplot2::labs(x = "Percent Correct", y = NULL, color = NULL) +
     ggplot2::theme_minimal(base_family = "Libertinus Serif") +
     ggplot2::theme(
-      legend.position = "top",
+      # A legend naming one codebook is noise; keep it only when comparing.
+      legend.position = if (dplyr::n_distinct(plot_data$group_var) > 1) "top" else "none",
       panel.grid.minor = ggplot2::element_blank()
     )
 
@@ -368,9 +495,73 @@ plot_s1_behavioral <- function(s1_data, group_by = "codebook") {
 }
 
 
+#' S2 zero-shot metrics with bootstrap intervals
+#'
+#' Point estimate and 95% bootstrap CI per metric, with the diagnostic
+#' benchmark drawn as an open marker. Replaces the S2 metrics table where the
+#' interval, not the third decimal, is the thing to read.
+#'
+#' @param s2_data tibble from iteration_logs$s2, pre-filtered to one iteration
+#' @return ggplot object, or NULL when there is nothing to plot
+plot_s2_metrics <- function(s2_data) {
+  plot_data <- s2_data |>
+    dplyr::filter(!is.na(value)) |>
+    dplyr::mutate(
+      metric_label = metric |>
+        gsub("tier1", "tier 1", x = _) |>
+        gsub("tier2", "tier 2", x = _) |>
+        gsub("_", " ", x = _) |>
+        stringr::str_to_sentence() |>
+        gsub("f1", "F1", x = _),
+      metric_label = factor(metric_label, levels = rev(unique(metric_label))),
+      Status = dplyr::case_when(
+        is.na(pass) ~ "No benchmark",
+        pass        ~ "Meets benchmark",
+        TRUE        ~ "Below benchmark"
+      )
+    )
+
+  if (nrow(plot_data) == 0) return(NULL)
+
+  p <- ggplot2::ggplot(plot_data,
+    ggplot2::aes(x = value, y = metric_label, colour = Status))
+
+  if (any(!is.na(plot_data$ci_lower))) {
+    p <- p + ggplot2::geom_errorbar(
+      ggplot2::aes(xmin = ci_lower, xmax = ci_upper),
+      orientation = "y", width = 0.18, linewidth = 0.5, na.rm = TRUE
+    )
+  }
+
+  p +
+    ggplot2::geom_point(size = 3) +
+    ggplot2::geom_point(
+      ggplot2::aes(x = target), shape = 4, size = 2.6, stroke = 0.9,
+      colour = "grey30", na.rm = TRUE
+    ) +
+    ggplot2::scale_x_continuous(
+      labels = scales::percent_format(), limits = c(0, 1.05),
+      breaks = c(0, 0.25, 0.5, 0.75, 1.0)
+    ) +
+    ggplot2::scale_colour_manual(values = c(
+      "Meets benchmark" = "#2E7D32",
+      "Below benchmark" = "#C62828",
+      "No benchmark"    = "#607D8B"
+    )) +
+    ggplot2::labs(x = "Estimate (bars: 95% bootstrap CI; x: benchmark)",
+                  y = NULL, colour = NULL) +
+    ggplot2::theme_minimal(base_family = "Libertinus Serif") +
+    ggplot2::theme(
+      legend.position = "top",
+      panel.grid.minor = ggplot2::element_blank()
+    )
+}
+
+
 #' H&K Figure 4-style S3 behavioral test chart
 #'
-#' Horizontal bars showing S3 Tests V-VII results for one iteration.
+#' Lollipop chart of S3 Tests V-VII for one iteration, in the same idiom as
+#' `plot_s1_behavioral()` so the two read as one battery.
 #'
 #' @param s3_data tibble from iteration_logs$s3, pre-filtered to one iteration
 #' @param ablation_data tibble from iteration_logs$s3_ablation, pre-filtered
@@ -410,26 +601,34 @@ plot_s3_behavioral <- function(s3_data, ablation_data = NULL) {
         dplyr::coalesce(field_labels[field], field),
         levels = rev(unname(field_labels))
       ),
+      # Most specific first: "VI_" and "VII_" both start with "V", so testing
+      # for "^V" ahead of them collapses all three groups into Test V.
       test_group = dplyr::case_when(
-        grepl("^V", test) ~ "Test V",
-        grepl("^VI", test) ~ "Test VI",
-        grepl("^VII", test) ~ "Test VII"
-      )
+        grepl("^VII_", test) ~ "Test VII",
+        grepl("^VI_",  test) ~ "Test VI",
+        grepl("^V_",   test) ~ "Test V"
+      ),
+      test_group = factor(test_group, levels = c("Test V", "Test VI", "Test VII"))
     )
 
   p <- ggplot2::ggplot(plot_data,
-    ggplot2::aes(x = value, y = field_label, fill = test_group)) +
-    ggplot2::geom_col(width = 0.6, alpha = 0.8) +
+    ggplot2::aes(x = value, y = field_label, colour = test_group)) +
+    ggplot2::geom_segment(
+      ggplot2::aes(xend = 0, yend = field_label),
+      linewidth = 0.6, alpha = 0.5
+    ) +
+    ggplot2::geom_point(size = 3) +
     ggplot2::scale_x_continuous(
       labels = scales::percent_format(),
-      limits = c(0, 1.05)
+      limits = c(0, 1.05),
+      breaks = c(0, 0.25, 0.5, 0.75, 1.0)
     ) +
-    ggplot2::scale_fill_manual(values = c(
-      "Test V"   = "#66BB6A",
-      "Test VI"  = "#42A5F5",
-      "Test VII" = "#FFA726"
+    ggplot2::scale_colour_manual(values = c(
+      "Test V"   = "#2E7D32",
+      "Test VI"  = "#1565C0",
+      "Test VII" = "#EF6C00"
     )) +
-    ggplot2::labs(x = "Value", y = NULL, fill = NULL) +
+    ggplot2::labs(x = "Value", y = NULL, colour = NULL) +
     ggplot2::theme_minimal(base_family = "Libertinus Serif") +
     ggplot2::theme(
       legend.position = "top",

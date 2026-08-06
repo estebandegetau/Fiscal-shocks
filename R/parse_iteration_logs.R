@@ -50,7 +50,18 @@ parse_s1_entry <- function(entry, codebook_id) {
   metrics <- entry$results$metrics
   if (is.null(metrics)) return(NULL)
 
+  # Two log dialects carry the Test IV order-invariance diagnostics: older
+  # entries nest them inside the IV metric object, newer ones (c1 iters 29-30)
+  # emit them as a `test_iv_diagnostics` sibling of `metrics`. Read the metric
+  # first and fall back to the sibling, so both dialects yield a kappa.
+  iv_diag <- entry$results$test_iv_diagnostics
+
   rows <- purrr::map(metrics, function(m) {
+    is_iv <- grepl("IV", m$test %||% "", fixed = TRUE)
+    iv_field <- function(nm, default) {
+      m[[nm]] %||% (if (is_iv) iv_diag[[nm]] else NULL) %||% default
+    }
+
     tibble::tibble(
       codebook              = codebook_id,
       iteration             = entry$iteration,
@@ -61,10 +72,10 @@ parse_s1_entry <- function(entry, codebook_id) {
       pass                  = m$pass %||% NA,
       skipped               = m$skipped %||% FALSE,
       # Test IV extras
-      change_rate_reversed  = as.numeric(m$change_rate_reversed %||% NA_real_),
-      change_rate_shuffled  = as.numeric(m$change_rate_shuffled %||% NA_real_),
-      fleiss_kappa          = as.numeric(m$fleiss_kappa %||% NA_real_),
-      kappa_interpretation  = m$kappa_interpretation %||% NA_character_
+      change_rate_reversed  = as.numeric(iv_field("change_rate_reversed", NA_real_)),
+      change_rate_shuffled  = as.numeric(iv_field("change_rate_shuffled", NA_real_)),
+      fleiss_kappa          = as.numeric(iv_field("fleiss_kappa", NA_real_)),
+      kappa_interpretation  = as.character(iv_field("kappa_interpretation", NA_character_))
     )
   })
 
@@ -331,6 +342,14 @@ parse_s3_manual_entry <- function(entry, codebook_id) {
 #' as an attribute that `bind_rows()` drops, so they are surfaced here as their
 #' own one-row tibble instead.
 #'
+#' Two schema dialects are in use and both are read here. C1 writes lowercase
+#' `tp/fp/fn/tn` with rate metrics in **percent** units (81.8) and tier-level
+#' recalls; C2b writes uppercase `TP/FP/FN/TN` with rate metrics in
+#' **proportion** units (0.833) under the gate-specific names
+#' `exogenous_precision` / `exogenous_recall` / `sign_accuracy_on_true_exo`.
+#' Rates are normalised to proportions on the way out so a single downstream
+#' formatter serves both.
+#'
 #' @param entry List — one element of the iterations array
 #' @param codebook_id Character codebook identifier
 #' @return One-row tibble, or NULL if not a manual stage / no bias-corrected block
@@ -341,21 +360,38 @@ parse_s3_bias_corrected_entry <- function(entry, codebook_id) {
   if (is.null(bc)) return(NULL)
 
   cm <- bc$confusion_matrix
+
+  # Case-insensitive cell lookup (c1 lowercase, c2b uppercase).
+  cell <- function(nm) {
+    v <- cm[[nm]] %||% cm[[toupper(nm)]] %||% NA
+    as.integer(v)
+  }
+
+  # Rates are stored as percent by c1 and as proportions by c2b. Anything above
+  # 1 is unambiguously percent (a rate metric cannot exceed 1 as a proportion).
+  as_prop <- function(x) {
+    x <- as.numeric(x %||% NA_real_)
+    if (!is.na(x) && x > 1) x / 100 else x
+  }
+
   tibble::tibble(
     codebook     = codebook_id,
     iteration    = entry$iteration,
     model        = entry$model %||% NA_character_,
     effective_n  = as.integer(bc$effective_n %||% NA_integer_),
-    tp           = as.integer(safe_pluck(cm, "tp", .default = NA)),
-    tn           = as.integer(safe_pluck(cm, "tn", .default = NA)),
-    fp           = as.integer(safe_pluck(cm, "fp", .default = NA)),
-    fn           = as.integer(safe_pluck(cm, "fn", .default = NA)),
-    accuracy     = as.numeric(bc$accuracy %||% NA_real_),
-    precision    = as.numeric(bc$precision %||% NA_real_),
-    recall       = as.numeric(bc$recall %||% NA_real_),
-    tier1_recall = as.numeric(bc$tier1_recall %||% NA_real_),
-    tier2_recall = as.numeric(bc$tier2_recall %||% NA_real_),
-    specificity  = as.numeric(bc$specificity %||% NA_real_)
+    tp           = cell("tp"),
+    tn           = cell("tn"),
+    fp           = cell("fp"),
+    fn           = cell("fn"),
+    accuracy     = as_prop(bc$accuracy),
+    # c2b names the gate metrics after the quantity they gate
+    precision    = as_prop(bc$precision %||% bc$exogenous_precision),
+    recall       = as_prop(bc$recall %||% bc$exogenous_recall),
+    tier1_recall = as_prop(bc$tier1_recall %||% bc$tier_1_recall),
+    tier2_recall = as_prop(bc$tier2_recall %||% bc$tier_2_recall),
+    specificity  = as_prop(bc$specificity),
+    sign_accuracy = as_prop(bc$sign_accuracy_on_true_exo),
+    joint_accuracy = as_prop(bc$joint_label_and_sign_accuracy)
   )
 }
 
