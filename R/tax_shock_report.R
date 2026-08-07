@@ -40,23 +40,49 @@ pretty_exogenous <- function(x) {
 #' narrative read are intentionally omitted here (they live in the exhibits and
 #' the internal notebook).
 #'
+#' Act labels run to ~75 characters, so the combined three-tax table overflows
+#' the Typst text block. Passing `tax_type` emits one table per tax and drops
+#' the then-constant `Tax` column, which frees the width the act names need.
+#'
 #' @param tax_shocks The `tax_shocks` deliverable tibble.
-#' @return A tinytable, or NULL if `tax_shocks` is empty.
+#' @param tax_type Optional single tax type (`"CIT"`, `"PIT"`,
+#'   `"CONSUMPTION"`). `NULL` keeps all three in one table.
+#' @return A tinytable, or NULL if there is nothing to show.
 #' @export
-tax_inventory_table <- function(tax_shocks) {
+tax_inventory_table <- function(tax_shocks, tax_type = NULL) {
   if (nrow(tax_shocks) == 0L) return(NULL)
-  tax_shocks |>
+
+  dat <- tax_shocks
+  if (!is.null(tax_type)) {
+    dat <- dplyr::filter(dat, .data$tax_type %in% .env$tax_type)
+    if (nrow(dat) == 0L) return(NULL)
+  }
+
+  out <- dat |>
     dplyr::arrange(tax_type, effective_year) |>
     dplyr::transmute(
       Act        = act_label,
-      Effective  = effective_year,
+      # "Year" rather than "Effective": the longer header hyphenates badly in
+      # a narrow Typst column, and the caption says which year it is.
+      Year       = effective_year,
       Tax        = tax_type,
       `Δpp`      = delta_pp,
       Motivation = as.character(pretty_motivation(c2b_label)),
       Exogenous  = as.character(pretty_exogenous(c2b_exogenous))
-    ) |>
-    tinytable::tt() |>
-    tt_theme_report()
+    )
+
+  if (!is.null(tax_type)) {
+    out <- dplyr::select(out, -Tax)
+    widths <- c(0.44, 0.08, 0.09, 0.22, 0.17)
+  } else {
+    widths <- c(0.34, 0.08, 0.11, 0.08, 0.21, 0.18)
+  }
+
+  out |>
+    tinytable::tt(width = widths) |>
+    tt_theme_report() |>
+    # After the theme, which centres every column as its last step.
+    tinytable::style_tt(j = 1, align = "l")
 }
 
 # ---- Headline figures ------------------------------------------------------
@@ -290,10 +316,16 @@ tax_exhibit <- function(tax_shocks, shock_id, exhibit_label = NULL, note = NULL)
     differs <- !is.na(row$c2b_exogenous) &&
       prelim_exo %in% c("TRUE", "true", "FALSE", "false") &&
       (prelim_truthy != isTRUE(row$c2b_exogenous))
+    # `exogenous_preliminary` is three-valued: an "ambiguous" read is not a
+    # vote for endogenous, and it neither agrees nor disagrees with C2b.
+    # (Same handling as the spending and incentive exhibits.)
+    prelim_word <- if (tolower(as.character(prelim_exo)) %in% c("ambiguous", "mixed"))
+      "ambiguous" else if (prelim_truthy) "exogenous" else "endogenous"
     sprintf(
       "*Preliminary narrative read:* %s%s",
-      ifelse(prelim_truthy, "exogenous", "endogenous"),
+      prelim_word,
       if (differs) " — **differs from the C2b verdict; this is exactly the kind of call an expert must adjudicate.**"
+      else if (prelim_word == "ambiguous") " — left for expert adjudication."
       else " (consistent with C2b)."
     )
   }

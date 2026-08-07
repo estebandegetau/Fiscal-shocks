@@ -72,8 +72,10 @@ dataset_summary_stats <- function(tax = NULL, spending = NULL, incentive = NULL)
                             max(d$year, na.rm = TRUE)),
       Documents   = length(docs),
       Chunks      = chunks,
-      Up          = sum(d$direction %in% c("Hike", "Increase")),
-      Down        = sum(d$direction %in% c("Cut", "Decrease")),
+      # One direction column suffices: `Events` carries the total, so the
+      # complement (hikes and the handful of neutral restructurings) is
+      # recoverable without a second column.
+      Cuts        = sum(d$direction %in% c("Cut", "Decrease")),
       Exogenous   = sprintf("%d (%.0f%%)", n_exo, 100 * n_exo / nrow(d))
     )
   }
@@ -154,15 +156,15 @@ plot_dataset_overview <- function(tax = NULL, spending = NULL, incentive = NULL)
     )
 }
 
-#' Corpus scope behind the deliverable
+#' Normalise the corpus frame to one row per document with a display series
 #'
-#' What was actually read: documents, pages and year coverage per series. Sits
-#' at the head of the dataset-construction section.
+#' Shared by the corpus table and the coverage figure so the two never disagree
+#' about which document belongs to which series.
 #'
-#' @param country_body Extracted-document tibble (or the list the branched
-#'   target returns) with body, doc_language, year and n_pages
-#' @return Tidy tibble, one row per document series plus a total
-corpus_scope_stats <- function(country_body) {
+#' @param country_body Extracted-document tibble, or the list the branched
+#'   target returns, with body, doc_language, year and n_pages
+#' @return Tibble with `Series` and `Language` added, or an empty tibble
+corpus_series_frame <- function(country_body) {
   docs <- if (is.list(country_body) && !is.data.frame(country_body)) {
     dplyr::bind_rows(country_body)
   } else {
@@ -170,7 +172,7 @@ corpus_scope_stats <- function(country_body) {
   }
   if (is.null(docs) || nrow(docs) == 0) return(tibble::tibble())
 
-  tidy <- docs |>
+  docs |>
     dplyr::mutate(
       Series = dplyr::case_when(
         grepl("economic_report", body, ignore.case = TRUE) ~
@@ -180,8 +182,82 @@ corpus_scope_stats <- function(country_body) {
       Language = dplyr::if_else(tolower(doc_language) == "bm",
                                 "Bahasa Malaysia", "English")
     )
+}
 
-  per_series <- tidy |>
+#' Corpus coverage across the deployment window
+#'
+#' Pages available per year, stacked by document series. Where the corpus table
+#' reports totals, this shows the shape of the record over time: which years
+#' rest on a single series, where the bilingual overlap sits, and the gaps no
+#' series covers.
+#'
+#' @param country_body Extracted-document tibble or branched list
+#' @return ggplot object, or NULL if there is nothing to plot
+plot_corpus_coverage <- function(country_body) {
+  tidy <- corpus_series_frame(country_body)
+  if (nrow(tidy) == 0) return(NULL)
+
+  per_year <- tidy |>
+    # Documents catalogued but not yet acquired carry zero pages; they are
+    # absent from the corpus, so they are absent from the coverage picture.
+    dplyr::filter(!is.na(year), n_pages > 0) |>
+    dplyr::mutate(
+      # Split the one series that exists in both languages, so the bilingual
+      # decade the cross-language test depends on is visible in the figure.
+      key = dplyr::if_else(Language == "Bahasa Malaysia",
+                           paste0(Series, " (BM)"), Series),
+      key = stringr::str_wrap(key, width = 26)
+    ) |>
+    dplyr::group_by(key, year) |>
+    dplyr::summarise(Pages = sum(n_pages, na.rm = TRUE), .groups = "drop")
+
+  if (nrow(per_year) == 0) return(NULL)
+
+  ggplot2::ggplot(per_year, ggplot2::aes(x = year, y = Pages, fill = key)) +
+    ggplot2::geom_col(width = 0.85) +
+    ggplot2::scale_fill_brewer(palette = "Set2") +
+    ggplot2::scale_x_continuous(breaks = scales::breaks_width(5)) +
+    ggplot2::scale_y_continuous(labels = scales::comma,
+                                expand = ggplot2::expansion(mult = c(0, 0.05))) +
+    ggplot2::labs(x = NULL, y = "Extracted pages", fill = NULL) +
+    ggplot2::guides(fill = ggplot2::guide_legend(ncol = 2)) +
+    ggplot2::theme(
+      legend.position = "top",
+      legend.text = ggplot2::element_text(size = ggplot2::rel(0.75)),
+      legend.key.size = ggplot2::unit(0.8, "lines"),
+      legend.margin = ggplot2::margin(0, 0, 0, 0),
+      panel.grid.major.x = ggplot2::element_blank(),
+      panel.grid.minor = ggplot2::element_blank()
+    )
+}
+
+#' Corpus scope behind the deliverable
+#'
+#' What was actually read: documents, pages and year coverage per series. Sits
+#' at the head of the dataset-construction section.
+#'
+#' @param country_body Extracted-document tibble (or the list the branched
+#'   target returns) with body, doc_language, year and n_pages
+#' @return Tidy tibble, one row per document series plus a total
+#'
+#' @details The corpus target catalogues every document the acquisition pass
+#'   identified, including those whose PDF has not been obtained yet
+#'   (`n_pages == 0`, `access_status == "manual_pending"`). Counting those as
+#'   corpus would overstate what the codebooks actually read, so `Documents`,
+#'   `Pages` and `Year span` describe only the extracted documents, and the
+#'   outstanding ones are reported separately in `Pending`.
+corpus_scope_stats <- function(country_body) {
+  tidy <- corpus_series_frame(country_body)
+  if (nrow(tidy) == 0) return(tibble::tibble())
+
+  read  <- dplyr::filter(tidy, n_pages > 0)
+  if (nrow(read) == 0) return(tibble::tibble())
+
+  pending <- tidy |>
+    dplyr::filter(n_pages == 0 | is.na(n_pages)) |>
+    dplyr::count(Series, Language, name = "Pending")
+
+  per_series <- read |>
     dplyr::group_by(Series, Language) |>
     dplyr::summarise(
       Documents   = dplyr::n(),
@@ -189,17 +265,21 @@ corpus_scope_stats <- function(country_body) {
       `Year span` = sprintf("%d–%d", min(year, na.rm = TRUE), max(year, na.rm = TRUE)),
       .groups = "drop"
     ) |>
-    dplyr::arrange(Series, Language)
+    dplyr::left_join(pending, by = c("Series", "Language")) |>
+    dplyr::mutate(Pending = tidyr::replace_na(Pending, 0L)) |>
+    dplyr::arrange(Series, Language) |>
+    dplyr::relocate(Pending, .after = Documents)
 
   dplyr::bind_rows(
     per_series,
     tibble::tibble(
       Series      = "All series",
       Language    = "—",
-      Documents   = nrow(tidy),
-      Pages       = sum(tidy$n_pages, na.rm = TRUE),
-      `Year span` = sprintf("%d–%d", min(tidy$year, na.rm = TRUE),
-                            max(tidy$year, na.rm = TRUE))
+      Documents   = nrow(read),
+      Pending     = nrow(tidy) - nrow(read),
+      Pages       = sum(read$n_pages, na.rm = TRUE),
+      `Year span` = sprintf("%d–%d", min(read$year, na.rm = TRUE),
+                            max(read$year, na.rm = TRUE))
     )
   )
 }

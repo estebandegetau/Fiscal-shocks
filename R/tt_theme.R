@@ -4,10 +4,15 @@
 #' header separator and bottom rule only.
 #'
 #' @param tt_tbl A tinytable object.
+#' @param breakable Allow the table to split across pages. Typst floats are
+#'   unbreakable by default, so a table longer than a page runs off the bottom
+#'   silently. `theme_tt("multipage")` emits the `breakable: true` show rule
+#'   that fixes it, and is inert for short tables and for HTML.
 #' @return A styled tinytable object.
-tt_theme_report <- function(tt_tbl) {
+tt_theme_report <- function(tt_tbl, breakable = TRUE) {
   n_col <- ncol(tt_tbl)
   n_row <- nrow(tt_tbl)
+  if (breakable) tt_tbl <- tinytable::theme_tt(tt_tbl, "multipage")
   tt_tbl |>
     # Start from a borderless base so no interior row rules survive (matters in
     # Typst/PDF, where the default draws per-row borders). Then add only the

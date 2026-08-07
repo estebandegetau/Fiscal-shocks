@@ -44,6 +44,21 @@ pretty_incentive_category <- function(x) {
   unname(out)
 }
 
+# Display labels for the underlying tax base. `CONSUMPTION` is the wide column
+# in an otherwise narrow set; the shortened form is display-only, so the frozen
+# dataset keeps the schema enum from docs/phase_1/incentive_shock_schema.md.
+.tax_base_labels <- c(CIT = "CIT", PIT = "PIT", CONSUMPTION = "Consumption")
+
+#' Human-readable underlying tax base
+#' @param x Character vector of `tax_type` values (may contain NA).
+#' @return Character vector; NA and unmapped values render as an em dash.
+#' @export
+pretty_tax_base <- function(x) {
+  out <- .tax_base_labels[as.character(x)]
+  out[is.na(out)] <- "—"
+  unname(out)
+}
+
 # ---- Clean inventory table (external reader) -------------------------------
 
 #' Tax-incentive shock inventory as a styled tinytable
@@ -64,12 +79,16 @@ incentive_inventory_table <- function(incentive_shocks) {
     dplyr::transmute(
       Act       = act_label,
       Category  = pretty_incentive_category(incentive_category),
-      Base      = tax_type,
-      Effective = effective_year,
+      Base      = pretty_tax_base(tax_type),
+      Year      = effective_year,
       Exogenous = as.character(pretty_exogenous(c2b_exogenous))
     ) |>
-    tinytable::tt() |>
-    tt_theme_report()
+    # Act labels are the long column; the enum columns are narrow. Without
+    # explicit widths Typst gives them equal shares and the table overflows.
+    tinytable::tt(width = c(0.42, 0.19, 0.15, 0.07, 0.17)) |>
+    tt_theme_report() |>
+    # After the theme, which centres every column as its last step.
+    tinytable::style_tt(j = 1:2, align = "l")
 }
 
 # ---- Headline figure -------------------------------------------------------

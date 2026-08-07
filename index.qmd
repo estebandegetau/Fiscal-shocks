@@ -69,6 +69,15 @@ country_body   <- tryCatch(bind_rows(tar_read(country_body)),   error = \(e) tib
 country_chunks <- tryCatch(bind_rows(tar_read(country_chunks)), error = \(e) tibble())
 have_corpus    <- nrow(country_body) > 0
 
+# Corpus headline figures, so the prose can cite them inline without repeating
+# the summary call. The last row of corpus_scope_stats() is the "All series"
+# total; `Pending` counts catalogued-but-unacquired documents (zero pages).
+corpus_stats  <- if (have_corpus) corpus_scope_stats(country_body) else tibble()
+corpus_total  <- if (nrow(corpus_stats) > 0) dplyr::slice_tail(corpus_stats, n = 1) else NULL
+n_docs_read   <- if (is.null(corpus_total)) NA_integer_ else corpus_total$Documents
+n_docs_catlg  <- if (is.null(corpus_total)) NA_integer_ else corpus_total$Documents + corpus_total$Pending
+n_pages_read  <- if (is.null(corpus_total)) NA_integer_ else corpus_total$Pages
+
 # H&K validation logs (API-free; parsed from prompts/iterations/*.yml)
 il      <- tryCatch(tar_read(iteration_logs), error = \(e) NULL)
 have_il <- !is.null(il)
@@ -88,13 +97,14 @@ have_malay           <- nrow(malay_inv) > 0
 ```
 
 ::: {.callout-note}
-**Draft status.** The body sections and their exhibits are in place. The
-introduction, abstract, and conclusion are written last, from the populated
-body. Figures whose upstream targets are API-gated and not yet built render as
-a "pending" note rather than an error.
+**Draft status.** The body and its exhibits are in place, as is the
+introduction. The abstract and the conclusion are written last, from the
+populated body, and the procyclicality use case in @sec-usecase is still a stub
+pending a data decision. Figures whose upstream targets are API-gated and not
+yet built render as a "pending" note rather than an error.
 
 The Malaysia figures below are built from the deliverable as frozen in June
-2026. An evidence-scoping defect found in August 2026 (§[-@sec-defect]) has been
+2026. An evidence-scoping defect found in August 2026 (@sec-defect) has been
 fixed in the pipeline but the enrichment tails have not yet been re-run, so four
 of the 51 motivation labels are known to be wrong and are corrected in the
 narrative, not yet in the exhibits.
@@ -102,55 +112,192 @@ narrative, not yet in the exhibits.
 
 # Introduction
 
-*Intent: the "why" and the "what is new." For most emerging markets we lack
-consistent, comparable measures of exogenous fiscal shocks — the input credible
-fiscal analysis needs [@vegh_how_2015; @romer2010]. LLMs make the narrative
-approach scalable for the first time. Our contribution is a **method plus a
-demonstration dataset**: country-agnostic codebooks, validated on the US and
-deployed to Malaysia, that hand an expert an audit-ready inventory of fiscal-change
-events. We position against the three LLM-narrative competitors
-[@das_ai_2026; @bhasin_identifying_2026; @fritsch_high-frequency_nodate] on four
-wedges they each cede — primary national documents, the tax side, full-richness
-rows (measure × exo/endo × sign), and ground-truth-free validation. Prose sources:
-`docs/brainstorm.qmd`, `docs/lit_review.qmd` §1/§4/§7.*
+Credible fiscal policy analysis needs to know which changes in taxes and
+spending were responses to the economy and which were not. For the United
+States that distinction was drawn by hand: @romer2010 read decades of
+presidential messages, budget documents and congressional records to recover,
+act by act, *why* each tax change was legislated, and kept only the acts whose
+stated motivation was unrelated to current output. The resulting series has
+become the reference input for a generation of work on fiscal multipliers, and
+the method has since been shown to travel, at least to another rich country
+with a comparable archive [@cloyne_discretionary_2013].
 
-# The narrative specification and the validation philosophy
+For almost every emerging market, that input does not exist. What exists instead
+is a well-documented empirical regularity with no agreed explanation: fiscal
+policy in developing countries is procyclical, and @vegh_how_2015 show this holds
+for statutory tax rates and not only for revenues. They are explicit that the
+correlation they document could reflect either policy responding to the cycle or
+the cycle responding to policy, and that separating the two requires exactly the
+narrative, motivation-level information nobody has assembled outside the OECD.
+Building it by hand costs years per country. That is the constraint this paper
+attacks.
 
-*Intent: two ideas the rest of the paper depends on. (1) The **specification** —
-Romer & Romer's narrative method reads documents to recover, per act, the fiscal
-*measure*, its *motivation* (the 4-way taxonomy), the *exogenous* filter, the
-*sign*, and — in full — *timing* and *magnitude* [@romer2010; @romer_presidential_2023].
-(2) The **discipline** — Halterman & Keith's five-stage framework treats codebook
-conceptualisation as a first-order concern and shows off-the-shelf LLMs follow real
-codebooks imperfectly zero-shot, so every codebook must pass behavioural tests,
-zero-shot evaluation, and error analysis before it is trusted [@halterman2025].
-Prose sources: `docs/lit_review.qmd` §2/§5, `docs/strategy.md`,
-`docs/codebook_sources.md`.*
+## What this paper does
 
-[Please give a go at this section.]{.aside}
+Large language models make the reading step cheap, and a small but fast-moving
+literature has already used them for narrative fiscal identification. Its three
+leading entries share a design choice: each reads a **secondary, harmonised,
+English-language source**, precisely to avoid the cost of primary national
+documents. @das_ai_2026 code Economist Intelligence Unit country reports for 64
+countries, recovering the direction of spending actions but explicitly not their
+magnitude. @bhasin_identifying_2026 read IMF Article IV reports for 17 OECD
+countries, restricted to austerity episodes. @fritsch_high-frequency_nodate read
+news wires at high frequency, for the United States alone. All three validate
+the same way, by concordance against a pre-existing narrative series, which is
+a strategy that only works where such a series already exists and therefore
+cannot travel to the countries the method is meant to serve.
+
+We take the opposite side of each of those trades. This paper builds and
+validates a pipeline that reads **primary national documents in the local
+language**, covers the **tax side** as well as spending, returns a **full row
+per act** (the measure, its direction, its motivation, and a preliminary
+exogeneity read, each traceable to a quoted passage), and is validated
+**without assuming ground truth exists**. It is applied end to end to Malaysia,
+1980–2023, producing an inventory of 51 announced fiscal events across
+statutory tax, spending, and tax incentives.
+
+The contribution is a method and a demonstration dataset, not a claim of
+automation. The pipeline hands a domain expert an audit-ready inventory; the
+expert still decides what is exogenous. Where our design differs most from a
+single end-to-end prompt is that it separates the parts that can be validated
+from the parts that cannot, and says which is which.
+
+## Research questions {#sec-introduction-rq}
+
+The project this paper reports on is organised around four questions. This
+paper answers the first two in part and delivers the fourth for one country.
+
+1. **Can an LLM reproduce the narrative identification of fiscal changes for
+   the United States, given the same documents and judged against
+   Romer and Romer's own labels?** We answer this for three of the five
+   quantities the narrative method recovers: which passages describe a fiscal
+   measure, the motivation behind each act and whether it is exogenous, and the
+   direction of the change. Magnitude in percent of GDP and quarterly timing
+   are not yet built, and we say so rather than approximating them.
+2. **Do the same codebooks, frozen, transfer to a country with no labelled
+   data?** Malaysia is the test. Because no ground truth exists there, the
+   question is answered by consistency evidence and by expert agreement rather
+   than by an accuracy rate.
+3. **Can the resulting series support comparable cross-country fiscal
+   multipliers?** Out of scope here: it needs magnitude and quarterly timing,
+   and more than one country.
+4. **Can the pipeline produce a fiscal-change dataset local researchers can
+   actually use?** The Malaysia inventory is the demonstration, and its
+   provenance chain is the reason it is usable.
+
+## Roadmap
+
+@sec-frameworks sets out the two frameworks the pipeline implements: the
+narrative specification we are automating, and the validation discipline we
+hold it to. @sec-pipeline describes the pipeline and the dataset it produces.
+@sec-build reconstructs how the Malaysia dataset was built, including a defect
+the provenance chain caught after deployment. @sec-us-validation and
+@sec-my-validation report the two validation legs, the US benchmark and
+Malaysia. @sec-coverage states plainly which stages carry evidence and which do
+not. @sec-usecase sketches the procyclicality decomposition the dataset was
+built to make possible.
+
+# The narrative specification and the validation philosophy {#sec-frameworks}
+
+Two ideas carry the rest of the paper. The first is the **specification**: what
+the narrative method actually asks a reader to extract from a document. The
+second is the **discipline**: what has to be true before an LLM's output of that
+extraction can be treated as a measurement. They come from different literatures
+and they constrain each other, so it is worth stating both before any machinery
+appears.
+
+## The specification: what narrative identification asks for
+
+@romer_presidential_2023 set out four requirements for narrative analysis to
+count as evidence rather than anecdote: a reliable source, a clear idea of the
+information being sought, a dispassionate and consistent approach to the source,
+and careful documentation of the narrative evidence behind each judgement. Those
+four requirements are what this pipeline has to satisfy, and they map onto it
+directly. The reliable source is a corpus of primary government documents. The
+clear idea of the information sought is a written codebook. The dispassionate
+and consistent approach is a frozen prompt read at temperature zero, which is
+consistency of a stronger kind than a human coder can offer. The documentation
+requirement is met by carrying the verbatim evidence forward with every label,
+so that each row of the output points back at the sentence that produced it.
+
+Applied to a fiscal act, the method recovers five things: the **measure** (what
+was changed), the **motivation** (why), the **sign** (whether liabilities rose
+or fell), the **timing** (when liabilities actually changed, which is not when
+the law passed), and the **magnitude** (how large the change was). This paper
+builds the first three and defers the last two, a boundary @sec-coverage returns
+to.
+
+Motivation is where the identification lives. @romer2010 sort each act into one
+of four categories according to the reason its own proponents gave for it. Two
+are responses to the economy: **spending-driven** changes, which finance a
+decision already taken on the expenditure side, and **countercyclical** changes,
+which aim to return output growth to normal. Two are not: **deficit-driven**
+changes, which address a budget deficit inherited from past decisions, and
+**long-run** changes, which pursue growth, fairness, efficiency, or a different
+size of government. Only the second pair is exogenous to current output, and
+only that pair survives into the shock series.
+
+The two boundaries that do the most work are the ones a coder gets wrong.
+Between countercyclical and long-run, the test is directional: an act meant to
+return growth to *normal* is countercyclical, while an act meant to raise growth
+*above* normal is long-run, and an act proposed in normal times for long-run
+reasons stays long-run even if the economy has weakened by the time it passes.
+Between spending-driven and deficit-driven, the test is temporal: a tax increase
+paying for a spending increase enacted within the past year is spending-driven,
+and the same increase more than a year later is deficit-driven. @das_ai_2026
+add a clarifier we adopt verbatim, because it corrects a failure mode LLMs fall
+into readily: acknowledging current conditions does not by itself make an act
+endogenous if the stated motive is explicitly non-cyclical.
+
+## The discipline: what makes an LLM output a measurement
+
+The obvious way to scale this is to describe the task to a capable model and
+read off the answers. @halterman2025 show why that is not enough. Their premise
+is that codebook conceptualisation remains a first-order concern even when the
+coder is a machine, and their finding is that off-the-shelf models follow real
+codebooks only imperfectly zero-shot: they attend to label *names* more than to
+the definitions a researcher wrote under them, they lean on lexical overlap, and
+they import background concepts a codebook explicitly excludes. An accuracy
+number computed on top of that behaviour does not establish that the model
+measured the construct the codebook defines. It may have measured something
+adjacent that happens to correlate.
+
+Their response is a staged framework, and we adopt it as the paper's validation
+spine: write the codebook so both humans and models can read it, run behavioural
+tests that probe whether the model can follow it at all, then evaluate zero-shot
+against labelled data, then analyse the errors, and only then consider changing
+the model itself. Each codebook here goes through that sequence, and none of
+them is trusted before it does.
+
+This project needs the discipline more than most, for a specific reason. The
+published Romer and Romer act list, and the US documents it was built from, are
+almost certainly in the pretraining data of any frontier model. Strong agreement
+on US data is therefore consistent with the model recognising an act by name
+rather than reasoning from the passage in front of it, and extractable
+memorisation is known to rise with model size, with duplication in the training
+corpus, and with the length of the prompt context [@carlini_quantifying_2022].
+This is why the behavioural battery includes an explicit memorisation probe, and
+it is the deeper reason the deployment country carries as much of the argument
+as the benchmark does: Malaysian budget speeches in Bahasa Malaysia are the part
+of the evidence a model is least likely to have already seen.
 
 # The pipeline and what it produces {#sec-pipeline}
 
 The method reads primary-source government documents and returns an inventory of
 fiscal-change events, each carrying a motivation, a sign, and a preliminary
-exogeneity read. @fig-pipeline represents the route we adopted to go from one to the other, and it is the map for the rest of the paper: §[-@sec-build] walks the route for Malaysia,
-§[-@sec-us-validation] reports what the US benchmark certifies about the blue
-stages, and §[-@sec-coverage] states what the other stages rest on instead.
-
-[In general, use Quarto's default section references i.e. @sec-whatever; instead of the § notation.]{.aside}
-
-[Notice I changed the language from "@fig-pipeline is the pipeline" to "@fig-pipeline represents the ...". This is important because we use artifacts (figures, tables and numbers) to represent features of the world; they are not themselves the features we want to talk about. They are always representations of the phenomena we try to describe. Please adhere to this language throughout the paper.]{.aside}
-
+exogeneity read. @fig-pipeline represents the route we adopted to go from one to
+the other, and it is the map for the rest of the paper: @sec-build walks the
+route for Malaysia, @sec-us-validation reports what the US benchmark certifies
+about the blue stages, and @sec-coverage states what the other stages rest on
+instead.
 
 ```{r}
 #| label: fig-pipeline
 #| fig-cap: "**From primary sources to an event inventory.** Two LLM codebook stages (blue) are validated against US ground truth; the act-identification step between them (orange) is an agentic narrative search whose output a human stamps before it enters the chain."
-#| fig-width: 7
-#| fig-height: 3
-plot_pipeline_flow("none")
+#| fig-width: 6.5
+#| fig-height: 4.2
+plot_pipeline_flow("none", scale = 1.4)
 ```
-
-[I tried tinkering with @fig-pipeline. It's awesome, it just needs to be a tad larger to be legible in the PDF, especially the font. I'm reviewing directly on PDF because it will be the primary communication artifact. HTML is nice to have but secondary.]{.aside}
 
 Two design commitments distinguish this route from a single end-to-end prompt.
 The first is that **classification and discovery are separated**. Deciding
@@ -165,24 +312,29 @@ to the passage rather than to the model.
 
 ## The two frameworks the pipeline implements
 
-The pipeline implements one methodological specification and one validation
-discipline. @tbl-rr-steps maps the specification: what @romer2010 do by
-hand, and which component does it here. @tbl-hk-stages maps the discipline: the
-stages a codebook must clear before we trust its output.
+@sec-frameworks stated the specification and the discipline as ideas; the two
+tables here state them as work. @tbl-rr-steps maps the specification: what
+@romer2010 do by hand, and which component does it here. One row carries no step
+number, because the hand method never has to name it. A human reading a budget
+speech does not need a rule for deciding that two mentions of a rate cut are the
+same act; a pipeline does, and @sec-no-c0 is about how badly that goes when it
+is automated. @tbl-hk-stages maps the discipline: the stages a codebook must
+clear before its output is trusted.
 
 ```{r}
 #| label: tbl-rr-steps
-#| tbl-cap: "**The narrative specification.** Romer and Romer's -@romer2010 procedure and the component that carries each step here. Steps RR5 and RR6 are where classification credibility lives; RR3 is deliberately not automated."
+#| tbl-cap: "**The narrative specification.** Romer and Romer's -@romer2010 procedure and the component that carries each step here. Step RR5 is where classification credibility lives; act consolidation, which their hand method never has to name as a separate step, is deliberately not automated."
 tibble::tribble(
   ~Step,  ~`Romer & Romer's step`,                          ~`Our component`,                     ~Status,
-  "RR1",  "Read primary-source policy documents",           "Corpus acquisition and chunking",    "Built",
-  "RR2",  "Identify legislated fiscal changes",             "C1 measure identification (LLM)",    "Validated on US",
-  "RR3",  "Consolidate mentions into distinct acts",        "Agentic narrative identification",   "Human-stamped",
-  "RR4",  "Record the size of each change",                 "Extracted with the act",             "Not separately validated",
+  "RR1",  "Compile primary-source policy documents",        "Corpus acquisition and chunking",    "Built",
+  "RR2",  "Identify significant legislated fiscal changes", "C1 measure identification (LLM)",    "Validated on US",
+  "—",    "Consolidate mentions into distinct acts",        "Agentic narrative identification",   "Human-stamped",
+  "RR3",  "Record the sign and size of each change",        "Sign from C2b; size extracted with the act", "Sign validated; size not",
+  "RR4",  "Date the change to the quarter of effect",       "Announced and effective year",       "Annual only; C3 not built",
   "RR5",  "Classify the motivation, filter to exogenous",   "C2a evidence, C2b classification (LLM)", "Validated on US",
-  "RR6",  "Date the change and assemble the series",        "Announced and effective year",       "Annual only; C3 pending"
+  "RR6",  "Aggregate exogenous acts into a shock series",   "Signed annual event inventory",      "Built"
 ) |>
-  tt(width = c(0.08, 0.34, 0.32, 0.26)) |>
+  tt(width = c(0.07, 0.31, 0.34, 0.28)) |>
   tt_theme_report() |>
   style_tt(j = 2:4, align = "l")
 ```
@@ -203,8 +355,32 @@ tibble::tribble(
   style_tt(j = 2, align = "l")
 ```
 
+The last row of @tbl-hk-stages deserves more than a "not needed". Fine-tuning is
+the obvious lever when a zero-shot codebook underperforms, and we ruled it out
+before running anything, for reasons that are about the research design rather
+than about the results.
 
-[Explain why fine-tuning was avoided.]{.aside}
+The first is that fine-tuning and country-agnosticism are in direct conflict.
+The only labelled data in existence is American, so a fine-tuned model would
+have been fitted to US legislative vocabulary, US institutions, and US fiscal
+history. The property the deployment depends on is that the same frozen codebook
+can be pointed at a Malaysian budget speech and behave the same way, and
+training on the benchmark is the most reliable way to destroy it. @halterman2025
+find directly that fine-tuning across codebooks overfits, and @gentzkow_text_2019
+make the more general point that fixed text measures notoriously fail to
+transfer across domains. The second is arithmetic: 44 labelled acts is two
+orders of magnitude below the 4,000 to 20,000 examples per dataset that the
+fine-tuning results in @halterman2025 rest on. The third is replication. A
+frozen prompt is a document another researcher can read, criticise, and re-run;
+a set of fitted weights is not, and @das_ai_2026 make the same choice for the
+same reason. The practical constraint, that our access is API-only so
+fine-tuning would mean moving to a weaker open-weight model, is real but comes
+fourth.
+
+The consequence is that every improvement in this project had to come from
+rewriting codebooks rather than from training, which is slower and leaves a
+visible audit trail of what was changed and why. @sec-us-validation reports what
+that bought, and where it fell short.
 
 ## What the pipeline produces {#sec-what-it-produces}
 
@@ -218,15 +394,49 @@ cat("::: {.callout-warning}\nThe Malaysia deliverable targets are empty or",
     "below render once they are built.\n:::\n")
 ```
 
-@fig-dataset-overview is the whole Malaysia dataset in one frame: 51
-narratively-announced fiscal events between 1980 and 2023, split into the three
-instrument families the pipeline covers. Three features of the data are visible
-before any table is read. Statutory tax changes are dominated by rate *cuts*
-spread evenly across the period and are mostly read as exogenous. Spending
-events cluster tightly on 1998, 2009, and 2020–21 and are almost all read as
-endogenous — which is what a crisis-response spending record should look like.
-Tax incentives run the full period and are almost uniformly liability-reducing
-and exogenous, which is what a long-run investment-promotion regime looks like.
+The pipeline covers three instrument families, and the boundaries between them
+are definitional choices worth stating before any number is read, because they
+determine what counts as one event.
+
+**Statutory tax** changes are changes to a standing headline rate, and they
+split three ways. Corporate income tax tracks the general statutory rate on
+company profits, with SME, sectoral, and petroleum rates recorded separately.
+Personal income tax is a progressive schedule rather than a single rate, so the
+headline series is the top marginal rate and bracket or threshold changes are
+recorded alongside it. Consumption tax is the broad statutory tax on
+value added or on sales of goods and services, in whatever local form it takes;
+introducing such a regime counts as an increase and abolishing it as a cut,
+which is what makes Malaysia's 2015 GST introduction and its 2018 repeal two
+events rather than an administrative footnote.
+
+**Spending** covers discretionary changes: deliberate policy choices such as
+stimulus and relief packages, subsidy-policy changes, large allocations,
+Five-Year Plan launches, and consolidation or restraint. It excludes automatic
+stabilisers and the routine year-on-year drift of the baseline, and it is typed
+by the component families of @das_ai_2026.
+
+**Tax incentives** are changes to selective relief: holidays, investment and
+reinvestment allowances, concessionary investor rates, zones, sectoral and R&D
+incentives, and personal reliefs.
+
+Incentives and statutory rates both operate on tax liabilities, so they need a
+rule that keeps them disjoint. Following @klemm_empirical_2012, the test is
+selectivity, temporariness, and mechanism: a measure that is targeted on an
+investor, sector, region, or activity, or is time-bounded, or works through the
+base rather than the standing rate, is an incentive, and a universal, permanent
+change to a standing statutory rate is not. Every event lives in exactly one
+component, so the three inventories can be read together without
+double-counting.
+
+@fig-dataset-overview represents the whole Malaysia dataset in one frame: 51
+narratively-announced fiscal events between 1980 and 2023, split into those
+three families. Three features of the data are visible before any table is read.
+Statutory tax changes are dominated by rate *cuts* spread evenly across the
+period and are mostly read as exogenous. Spending events cluster tightly on
+1998, 2009, and 2020–21 and are almost all read as endogenous, which is what a
+crisis-response spending record should look like. Tax incentives run the full
+period and are almost uniformly liability-reducing and exogenous, which is what
+a long-run investment-promotion regime looks like.
 
 ```{r}
 #| label: fig-dataset-overview
@@ -238,8 +448,13 @@ p <- plot_dataset_overview(tax_shocks, spending_shocks, incentive_shocks)
 if (is.null(p)) cat("No component data available.\n") else p
 ```
 
-
-[@fig-dataset-overview requires a concise description of each of the fiscal instruments in body. Go to Claude's / agentic search commands for the definition we used to assemble the dataset.]{.aside}
+@tbl-dataset-summary puts numbers on that picture. Two columns in it are about
+provenance rather than about fiscal policy: the source documents and evidence
+chunks count the primary-source passages behind each component, and they are
+what makes the exogenous share in the last column checkable rather than merely
+reported. That share is the model's preliminary read, and the spread across
+components (77% of tax events, 14% of spending events) is doing real work later
+in the paper.
 
 ```{r}
 #| label: tbl-dataset-summary
@@ -250,12 +465,9 @@ dataset_summary_stats(tax_shocks, spending_shocks, incentive_shocks) |>
   tt_theme_report()
 ```
 
-
-[@tbl-dataset-summary doesn't need both Up and Down columns; one suffices. Also, use "Cuts" language instead of "Down".]{.aside}
-
 The unit of observation is one narratively-announced act, per instrument.
-@tbl-one-row is the schema; Exhibit 1 below is one real row printed in full,
-which is the faster way to see what a row means.
+@tbl-one-row sets out the schema. Exhibit 1 below then reproduces one real row
+in full, which is the faster way to see what a row means.
 
 ```{r}
 #| label: tbl-one-row
@@ -277,8 +489,33 @@ tibble::tribble(
   style_tt(j = 2, align = "l")
 ```
 
+Exhibit 1 reproduces `MY-CIT-01`, the 1993 announcement cutting Malaysia's
+corporate rate from 34% to 32% with effect in 1994, and it is worth reading
+slowly, because every block in it comes from somewhere different and the
+differences are the point.
 
-[Discuss the elements of @exm-anatomy in-body.]{.aside}
+The header block is read from the documents: the tax, the announced and
+effective years, the rate before and after, and the resulting signed effect on
+liabilities. The **identification** note is the human's, and it records a
+judgement rather than a fact. This cut was one step of a longer reduction, and
+the researcher decided to keep it as its own row because the steps were
+announced in separate budgets rather than legislated once as a schedule. A
+different, defensible decision would have produced one row instead of several,
+which is why the note names the decision and the reasoning rather than hiding
+them. The **motivation** paragraph and the exogeneity verdict come from the
+classification codebook, reading only the evidence extracted for this act, and
+the quoted passage below it is that evidence. The **preliminary narrative read**
+is a second, independent opinion formed during act identification, and printing
+both is deliberate: where they disagree, the act is flagged rather than
+resolved. Here the narrative pass could not settle the question and recorded
+`ambiguous`, so the row goes to the expert with the disagreement visible.
+Finally, the **sources** are live links to the documents the act was built from.
+
+The general property this illustrates is that no field in the dataset is
+free-floating. Each is either read from a named primary source, produced by a
+validated codebook from quoted evidence, or stamped by a human whose reasoning
+is recorded. A reviewer who disagrees with the label has somewhere to go that is
+not the model.
 
 ```{r}
 #| label: exm-anatomy
@@ -296,14 +533,10 @@ tax_exhibit(
 
 ## The Malaysia inventory in detail
 
-The figures below are the headline output of the pipeline, for Malaysia
-(1980–2023). Downloads, data dictionaries, and the full worked exhibits live on
-the reviewer-facing dataset page,
-[malaysia_dataset.qmd](notebooks/malaysia_dataset.qmd).
-
-[In body, we don't renference other notebooks. Either we replicate a finding here, or we add it to the appendix and reference it there]{.aside}
-
-
+The exhibits below represent the headline output of the pipeline for Malaysia,
+1980–2023, component by component. The three frozen datasets, their data
+dictionaries, and the full set of worked act write-ups ship with the paper's
+replication material.
 
 ### Statutory tax changes
 
@@ -317,17 +550,64 @@ cat("::: {.callout-warning}\nThe `tax_shocks` deliverable target is empty or",
     "once it is built.\n:::\n")
 ```
 
+The statutory tax component holds 22 acts: 9 corporate, 9 personal, and 4 on the
+consumption base. The three tables that follow report them one tax at a time,
+each row naming the act, the year the change took effect, the change in the
+headline rate in percentage points, and the motivation and exogeneity the
+classification codebook assigned.
 
-[@tbl-tax-inventory is not rendering properly in PDF. Maybe try to separate it into distinct tables by tax type.]{.aside}
-
-[Please populate the body in this section. Describe the data shown in the artifacts.]{.aside}
+The corporate record in @tbl-tax-inventory-cit is the cleanest downward path in
+the dataset: seven cuts between 1994 and 2016 against a single increase, the
+2022 Cukai Makmur one-off surcharge. Motivations are almost uniformly long-run,
+with the model reading the sequence as investment-climate policy rather than
+demand management. The two departures are informative. The 1998 cut is the one
+corporate act read as countercyclical, and it lands in the middle of the Asian
+Financial Crisis. The 2016 cut and the 2022 surcharge are both read as
+deficit-driven, which is a different exogenous route into the series and one
+that only appears once fiscal consolidation is on the agenda.
 
 ```{r}
-#| label: tbl-tax-inventory
-#| tbl-cap: "**Statutory tax-change inventory.** One row per announced act × tax type; Δpp is the headline-rate change; motivation and exogeneity from the validated classification codebook."
+#| label: tbl-tax-inventory-cit
+#| tbl-cap: "**Corporate income tax inventory.** One row per announced act; Δpp is the headline-rate change; motivation and exogeneity from the validated classification codebook."
 #| eval: !expr have_tax
-tax_inventory_table(tax_shocks)
+tax_inventory_table(tax_shocks, tax_type = "CIT")
 ```
+
+The personal record in @tbl-tax-inventory-pit is less monotone, because a
+progressive schedule can move in two directions at once. Six of the nine acts
+cut the top marginal rate, but three raise it, and the recent entries are
+restructurings rather than simple cuts: the 2016 and 2020 acts add high-earner
+bands above RM1m and RM2m, and the 2023 act cuts the middle of the schedule
+while raising its top. Reading the top marginal rate alone would record that
+last act as roughly neutral, which is why the inventory carries the structural
+note alongside the rate change.
+
+```{r}
+#| label: tbl-tax-inventory-pit
+#| tbl-cap: "**Personal income tax inventory.** One row per announced act; Δpp is the change in the top marginal rate, which for restructuring acts understates the change to the schedule."
+#| eval: !expr have_tax
+tax_inventory_table(tax_shocks, tax_type = "PIT")
+```
+
+The consumption record in @tbl-tax-inventory-consumption is the shortest and the
+most eventful, because Malaysia changed regime twice in seven years:
+the 2015 introduction of a 6% Goods and Services Tax, its 2018 repeal, and the
+immediate reinstatement of the Sales and Services Tax in its place. The
+introduction is read as deficit-driven and the repeal as countercyclical, which
+tracks the documented politics of each.
+
+```{r}
+#| label: tbl-tax-inventory-consumption
+#| tbl-cap: "**Consumption tax inventory.** One row per announced act. The 2018 repeal and the SST reinstatement that replaced it are two rows, since they are two changes to statutory liabilities."
+#| eval: !expr have_tax
+tax_inventory_table(tax_shocks, tax_type = "CONSUMPTION")
+```
+
+@fig-tax-rate-paths turns the rate-bearing acts back into the statutory rate
+paths they imply, which is the form a user of the dataset will want: not a list
+of changes but the level of each headline rate in each year. It also functions
+as a check, since a path with an implausible jump or a missing step is a sign
+that an act was missed.
 
 ```{r}
 #| label: fig-tax-rate-paths
@@ -335,6 +615,12 @@ tax_inventory_table(tax_shocks)
 #| eval: !expr have_tax
 plot_tax_rate_paths(tax_shocks)
 ```
+
+@fig-tax-timeline shows when the acts happened and what the model made of them.
+The visible pattern is that tax policy activity is spread fairly evenly across
+the period rather than bunched in crises, and that the bars are dominated by the
+long-run label, with the countercyclical readings concentrated in 1998, 2002,
+and 2018.
 
 ```{r}
 #| label: fig-tax-timeline
@@ -354,12 +640,31 @@ cat("::: {.callout-warning}\nThe `spending_shocks` deliverable target is empty o
     "unbuilt. The spending figures below render once it is built.\n:::\n")
 ```
 
+The spending component in @tbl-spending-inventory holds 14 acts, and it is the
+component that looks least like the tax side. Twelve of the fourteen are
+increases, and the named packages are immediately recognisable as crisis
+responses: the 1998 and 2001 stimulus packages, the two 2009 packages around the
+global financial crisis, and the six COVID-era packages from PRIHATIN in 2020
+through PEMULIH in 2021. The classification codebook reads twelve of the
+fourteen as countercyclical and therefore endogenous. Only the two subsidy
+rationalisations, in 2008 and 2010, come out exogenous, and they come out
+deficit-driven, which is the reading their documents support.
+
+That 14% exogenous share is not a weakness of the pipeline. A spending record
+composed largely of endogenous crisis response is what the fiscal history of an
+emerging market ought to produce, and the fact that the codebook recovers it
+without being told to is one of the more reassuring results in the paper.
+
 ```{r}
 #| label: tbl-spending-inventory
 #| tbl-cap: "**Government spending-shock inventory.** One row per announced spending act; exogeneity from the validated classification codebook, alongside the @das_ai_2026 two-condition preliminary screen."
 #| eval: !expr have_spending
 spending_inventory_table(spending_shocks)
 ```
+
+@fig-spending-timeline makes the clustering visible. Three episodes carry almost
+the whole component, and the years between them are close to empty, which is the
+signature of a discretionary spending record rather than a budget series.
 
 ```{r}
 #| label: fig-spending-timeline
@@ -370,7 +675,21 @@ plot_spending_timeline(spending_shocks)
 
 ### Tax incentives and holidays
 
-[@tbl-incentive-inventory also renders improperly in PDF. Try changing the CONSUMPTION label to CIT (As it hould be, no?), reducing the width of that column and increasing the width of the first column]{.aside}
+The incentive component in @tbl-incentive-inventory holds 15 acts and is the
+only one spanning the full period, from the 1980 New Economic Policy equity
+exemption to the 2023 electric-vehicle package. Every one of the fifteen reduces
+liabilities, which is what an investment-promotion regime does: incentives are
+announced and extended far more readily than they are repealed. Fourteen are
+read as long-run, the exception being the 2020 relocation incentive announced
+inside the PENJANA recovery package, which the classifier read as
+countercyclical on the strength of the vehicle it arrived in. That single
+disagreement is worked through in @sec-my-validation.
+
+The `Base` column records the tax the incentive operates on. Thirteen sit on
+corporate income, one on personal income, and one on the consumption base: the
+2023 electric-vehicle package works through import-duty, excise, and sales-tax
+exemptions rather than through a profits rate. That row is a reminder that the
+component is defined by mechanism, not by base.
 
 ```{r}
 #| label: pending-incentives
@@ -387,6 +706,11 @@ cat("::: {.callout-warning}\nThe `incentive_shocks` deliverable target is empty 
 #| eval: !expr have_incentives
 incentive_inventory_table(incentive_shocks)
 ```
+
+@fig-incentive-timeline shows the resulting timeline: a steady drip of
+liability-reducing measures across four decades with no repeals, which is a
+different fiscal object from either of the other two components and the reason
+they are kept apart.
 
 ```{r}
 #| label: fig-incentive-timeline
@@ -423,35 +747,69 @@ report the rates they replace; Economic Reports carry the retrospective rate
 tables; Bank Negara annual reports carry the macro framing that motivation
 classification depends on; and the Five-Year Plans carry the structural and
 development-expenditure commitments. The corpus takes all four, plus the
-standalone crisis packages, and it is bilingual: ten Economic Reports are
-available only in Bahasa Malaysia, which is what makes the cross-language test
-in §[-@sec-my-validation] possible.
+standalone crisis packages. It is also bilingual: ten Economic Reports were
+published in both English and Bahasa Malaysia, and that parallel decade is what
+makes the cross-language test in @sec-my-validation possible.
 
-[Include here a neat plot of the coverage across years by source. Y axis shoudl be pages available in year X.]{.aside}
+@tbl-corpus reports what was actually read. The distinction the `Pending` column
+draws is important and easy to lose: the acquisition pass catalogued
+`r n_docs_catlg` documents, but `r n_docs_catlg - n_docs_read` of them sit in
+archives we have not yet obtained, so the corpus the codebooks actually read is
+`r n_docs_read` documents and `r scales::comma(n_pages_read)` extracted pages.
+Counting the catalogue rather than the corpus would overstate coverage by a
+third.
 
 ```{r}
 #| label: tbl-corpus
-#| tbl-cap: "**The deployment corpus.** Primary-source document series behind the Malaysia dataset. Pages are extracted pages, before chunking."
+#| tbl-cap: "**The deployment corpus.** Primary-source document series behind the Malaysia dataset. Documents, pages and year span describe the extracted corpus; `Pending` counts documents catalogued by the acquisition pass whose PDFs have not yet been obtained and which therefore contributed nothing."
 #| eval: !expr have_corpus
 corpus_scope_stats(country_body) |>
-  tt(width = c(0.36, 0.20, 0.14, 0.12, 0.18)) |>
+  tt(width = c(0.30, 0.15, 0.14, 0.12, 0.12, 0.17)) |>
+  format_tt(j = "Pages", digits = 0, num_mark_big = ",") |>
   tt_theme_report() |>
   style_tt(j = 1, align = "l")
 ```
 
+@fig-corpus-coverage shows how those pages are distributed over time, and it
+carries a caveat the totals hide. The deep archive is recent. Before the
+mid-1990s only the Five-Year Plans are available to us, and the annual series
+begin in 1995 (Economic Reports), 1997 (Bank Negara) and 1999 (Budget
+Speeches). The dataset nonetheless contains events back to 1980, because the
+Economic Reports and Plan documents carry retrospective rate tables and
+historical narrative. That is a legitimate route to an early event, but it is a
+weaker one: an act recovered from a later document's summary table has less
+motivation evidence attached than an act read from the speech that announced it.
+Early-period rows should be read with that in mind.
+
 ```{r}
-#| label: corpus-chunks
-#| echo: false
-#| output: asis
-#| eval: !expr "nrow(country_chunks) > 0"
-cat(sprintf(
-  "\nAfter extraction and cleaning, the corpus was segmented into %s chunks across %d documents, which is the unit the measure-identification codebook reads.\n\n",
-  scales::comma(nrow(country_chunks)),
-  dplyr::n_distinct(country_chunks$doc_id)
-))
+#| label: fig-corpus-coverage
+#| fig-cap: "**Corpus coverage by year and series.** Extracted pages available in each year, stacked by document series. The bilingual Economic Reports (BM) mark the decade the cross-language consistency test uses."
+#| fig-width: 6.5
+#| fig-height: 3.6
+#| eval: !expr have_corpus
+p <- plot_corpus_coverage(country_body)
+if (is.null(p)) cat("No corpus coverage data available.\n") else p
 ```
 
-[The above should be written inline and the programmatic figures included using Quartos language for inline code additions. Describe the chunking method. ]{.aside}
+Extraction and cleaning produce a page-level text stream, which is then
+segmented into the unit the measure-identification codebook actually reads:
+`r scales::comma(nrow(country_chunks))` chunks across
+`r dplyr::n_distinct(country_chunks$doc_id)` documents. The segmentation is a
+sliding window over pages rather than a token
+splitter: ten pages per chunk, advancing seven pages at a time, so consecutive
+chunks overlap by three pages. Pages are joined with an explicit page-break
+marker, chunks shorter than 100 characters are dropped as extraction artifacts,
+and a 40,000-token ceiling raises a warning rather than splitting a chunk.
+
+The choice of a page window over a semantic or token-based splitter is
+deliberate. A budget speech states a measure in one sentence and its
+justification several paragraphs later, sometimes on the next page; a splitter
+that cuts on token count would routinely separate the two, and the motivation
+stage would then be asked to classify a measure whose stated reason is in a
+different chunk. The overlap exists for the same reason, so that a measure near
+a page boundary appears whole in at least one chunk. The cost is redundancy,
+since the same passage is read more than once, and that cost is paid at the
+identification stage rather than passed to the reader.
 
 ## The codebook scan and what it is for {#sec-scan}
 
@@ -459,7 +817,7 @@ The measure-identification codebook reads every chunk and returns the fiscal
 measures discussed in it. On the Malaysia corpus it surfaced **7,676
 measure-mentions** across 1,193 chunks, at a median of five measures per chunk
 and a maximum of 42 — a density that matters twice below, once here and once in
-§[-@sec-defect].
+@sec-defect.
 
 That scan is a *seed*, not the event list, for two reasons. The first is
 mechanical: the handoff to the motivation stage keeps only the highest-ranked
@@ -505,40 +863,41 @@ directly, in seven steps.
    contents back from the frozen file so the write-up cannot drift from the
    artifact.
 
-The step that carries the method's honesty is the recall audit
-(@tbl-recall-cit). Precision can be checked by anyone holding the dataset:
-each row names its sources and quotes. Recall cannot — a reader cannot see what
-was never found. The scorecard is therefore the only record of what was
-searched, what the scan missed, and how each miss was recovered, and it is
-frozen alongside the data.
+**The agentic step earns its place at step 4.** The codebook scan is a strong
+first pass, and better than the design expected. Although it is scoped to tax
+liabilities, it surfaced 189 spending measures and 151 incentive measures,
+because Malaysian budget and central-bank documents discuss stimulus, subsidy,
+and incentive policy in the same breath as tax. On the track it should have been
+best at, though, the statutory rate path, it was not sufficient on its own.
+Reconstructing the corporate rate path and asking which mentions account for
+each step exposed gaps that no amount of reading the scan's output would have
+revealed, and reading the anchor documents directly, behind the chunked view,
+recovered them. Malaysia's 2016 corporate rate cut and its 2022 Cukai Makmur
+surcharge both entered the dataset that way.
 
-[This is imprecise. I asked the human experts to assess the recall, as an expert should know what other significant tax policies were enacted that are missing from the dataset. That being said this is a very subjective approach (the whole procedure).]{.aside}
+That is a specific claim about division of labour, not a claim that the codebook
+underperformed. A chunk-level classifier answers "does this passage discuss a
+fiscal measure", which is the question it was validated on. It was never asked
+"is the rate path complete", because a chunk cannot answer that: completeness is
+a property of the corpus, not of any passage in it. The agentic pass is what
+turns the second question into something answerable, by holding a model of the
+instrument and checking the corpus against it.
 
+Recall is nonetheless the property this dataset can least defend on its own.
+Precision is checkable by anyone holding it, since each row names its sources
+and quotes. Recall is not: no reader can see what was never found. The recall
+scorecards frozen with each component (reproduced in @sec-appendix-recall)
+record what was searched for and what the search returned, and they are useful
+as a transparency record, but they are not a recall measurement. They are the
+search describing itself, and a search cannot certify its own coverage.
 
-The corporate income tax audit is reproduced below (@tbl-recall-cit); the other
-four instruments carry the same structure and are in @sec-appendix-recall.
-
-```{r}
-#| label: tbl-recall-cit
-#| tbl-cap: "**Recall audit, corporate income tax.** Frozen with the component dataset. Rows naming a recall miss record an event the codebook scan did not surface and the direct-reading pass recovered; outcome text is truncated for display."
-#| eval: !expr have_tax
-tb <- recall_scorecard_table(tax_shocks, instrument = "Corporate income tax")
-if (is.null(tb)) cat("No recall scorecard available.\n") else tb
-```
-
-[I really don't get what @tbl-recall-cit is doing here. We'll only have a more honest recall assessment after we get the human expert's reviews. Again, we shouldn't waste time talking about what didn't work; rather, we should talk about what did work.]{.aside}
-
-Two results in that audit are worth stating plainly because they cut against the
-design's own expectations. First, the keyword floor was **not** near-empty for
-spending and incentives, as a tax-scoped scan would predict: 189 spending
-measures and 151 incentive measures were surfaced, because Malaysian budget and
-central-bank documents discuss stimulus, subsidy, and incentive policy alongside
-tax. The scan is a genuinely rich first pass across all three instrument
-families. Second, and against that, the tax passes still recorded six recall
-misses on the single track the scan should have been best at — the statutory
-rate path — each recovered only by reading the anchor documents directly.
-
-[Is the above paragraph trysing to sell the agentic search vis-a-vis the rudimentary codebook machinery? That would be okay, but it should be more explicit: The agentic search step proved important becasue...]{.aside}
+The honest assessment has to come from outside, and it is the assessment
+currently being collected: domain experts on Malaysian fiscal history are being
+asked which significant acts are missing from the inventory, which is a question
+only someone holding an independent mental list can answer. That procedure is
+subjective, and we would rather say so than substitute a number that looks
+objective and measures the wrong thing. @sec-my-validation sets out the design;
+its results are not yet in.
 
 ## Act consolidation without automated record linkage {#sec-no-c0}
 
@@ -548,20 +907,18 @@ against the 49 Romer–Romer reference acts, where it recovers most of them. On
 the Malaysia pool of 877 distinct surface forms it fails in the way that matters
 for an event layer: it fragments the instrument tracks that need to stay whole —
 the corporate-rate track shattered into near-singletons, the consumption-tax
-track split across nine clusters — and it never bridged the English and Bahasa
+track split across nine clusters, and it never bridged the English and Bahasa
 Malaysia names of the same act. Both failures are recorded in the frozen recall
-audits above.
+audits in @sec-appendix-recall.
 
 The finding is a negative result about clustering, not about LLMs: consolidating
 mentions into acts requires knowing which mentions describe the same *statutory
 instrument*, and surface-form similarity does not carry that. The agentic
-procedure of §[-@sec-agentic] succeeds where clustering fails because it works
-from the instrument down — reconstruct the rate path, then ask which mentions
-account for each step — rather than from the mentions up. That is also why it
-needs a human stamp: the reconstruction is a judgement about what counts as one
-act, and the researcher owns it.
-
-[The above account is really useful.]{.aside}
+procedure of @sec-agentic succeeds where clustering fails because it works
+from the instrument down, reconstructing the rate path and then asking which
+mentions account for each step, rather than from the mentions up. That is also
+why it needs a human stamp: the reconstruction is a judgement about what counts
+as one act, and the researcher owns it.
 
 ## A defect the evidence chain surfaced {#sec-defect}
 
@@ -572,7 +929,7 @@ corporate-tax rows in August 2026, both codebooks turned out to be reading the
 wrong act's evidence, through two independent mechanisms.
 
 The first was a join. Evidence had been extracted once per chunk, under whichever
-measure the scan ranked first — the 84.5% discard of §[-@sec-scan] — and events
+measure the scan ranked first — the 84.5% discard of @sec-scan — and events
 were matched to that store on chunk identity alone. But the identification
 procedure cites a chunk because the act's sentence is in it, not because the act
 was ranked first. 95 of 100 tax member-chunk rows, and every spending and
@@ -598,41 +955,73 @@ cost is quantified because the provenance chain made it quantifiable: four wrong
 labels out of 51, found by following each label back to the passage it came
 from. A pipeline without that chain would have shipped them.
 
-# Validation 
+# Validation
+
+The pipeline described so far produces an inventory. This section asks whether
+that inventory should be believed, and it does so in two places, because the two
+research questions of @sec-introduction-rq demand different evidence.
+
+The **US benchmark** (@sec-us-validation) answers the first question: given the
+same documents Romer and Romer read, and judged against the labels they
+published, can an LLM reproduce their identification? That question has a
+correct answer to score against, so it is answered with accuracy statistics.
+
+**Malaysia** (@sec-my-validation) answers the second: do the same codebooks,
+frozen, still work in a country with no labelled data? That question has no
+correct answer to score against, so it is answered by consistency evidence and
+expert agreement instead. The second is the harder question and the more
+important one.
 
 ## The US benchmark {#sec-us-validation}
 
-[Let's frame this section within a research question: Can we use RR's labels to "train" (loosly stated) an LLM how to replicate their US dataset of fiscal changes, given the same inputs? Let's frame the sections along their research question, including the set of questions we address in this project in the introduction.]{.aside}
+**Can an LLM, given the same primary documents and judged against Romer and
+Romer's own labels, reproduce their identification of US fiscal changes?**
 
-[Because this is a new section, its first paragraph(s) should somewhat restate what was previously given, to account for non-linear readers. It's a bit of an art restating in a useful manner and not land in overly repetitive. Here, an outside reader won't know what are "44 labelled US Romer-Romer acts"]{.aside}
+The ground truth we score against needs stating plainly, because everything in
+this section depends on what it is and is not. @romer2010 published, alongside
+their results, an act-level record: for each of the significant federal tax
+actions between 1945 and 2007, the act's name, its motivation category, and the
+narrative reasoning behind that classification. After matching that record to
+the US source documents our pipeline reads, 44 acts carry both a published label
+and locatable passages in the corpus. Those 44 acts are the only ground truth
+that exists for this task anywhere in the world, which is both why the US is the
+benchmark and why the benchmark is small.
 
-[This subsection is long enough to require a roadmap.]{.aside}
+The labels are act-level, but the codebooks work on chunks of documents, so the
+gold standard has to be projected from one grain to the other. That projection
+is itself a procedure with error in it, and the error turns out to matter more
+than any modelling choice in this section, so @sec-appendix-ika documents how
+it was done and @sec-c1-manual quantifies what it cost.
 
-The codebooks are validated on 44 labelled US Romer–Romer acts, under the
-Halterman & Keith stage sequence: behavioural tests, then zero-shot evaluation,
-then error analysis. @fig-pipeline-validated marks what this covers, and the
-gap is as important as the coverage: the benchmark certifies the two LLM
-classification stages and says nothing about corpus construction or act
-identification, which are validated in other ways or not at all
-(§[-@sec-coverage]).
+This subsection proceeds in three parts. It first states what the benchmark
+covers and the one caveat that qualifies all of it. It then takes the two
+codebooks in pipeline order: measure identification (@sec-c1), then motivation
+and exogeneity (@sec-c2). Each runs the same sequence, behavioural tests, then
+zero-shot evaluation, then a manual error analysis that corrects for noise in
+the gold labels, and in each case the manual analysis is the gate rather than
+the automated metrics.
+
+@fig-pipeline-validated marks what the benchmark covers. The gap is as important
+as the coverage: it certifies the two LLM classification stages and says nothing
+about corpus construction or act identification, which are attested in other
+ways or not at all (@sec-coverage).
 
 ```{r}
 #| label: fig-pipeline-validated
 #| fig-cap: "**What the US benchmark covers.** Stages carrying a formal validation record against US ground truth are lit; the rest are attested by other means."
 #| fig-width: 6.5
-#| fig-height: 2.4
-plot_pipeline_flow("validated")
+#| fig-height: 4.2
+plot_pipeline_flow("validated", scale = 1.4)
 ```
 
-[@fig-pipeline-validated is fire.]{.aside}
-
-One caveat frames everything that follows. The published Romer–Romer shock list
-and the US source documents are almost certainly in the models' pretraining
-data, so strong US agreement may be **consistent with memorisation**
+One caveat frames everything that follows, and @sec-frameworks has already named
+it. The published Romer–Romer shock list and the US source documents are almost
+certainly in the models' pretraining data, so strong US agreement is
+**consistent with memorisation** rather than proof against it
 [@carlini_quantifying_2022]. This is why the behavioural battery includes an
-explicit memorisation probe, and why the burden of proof sits on the
-in-language Malaysia evidence in §[-@sec-my-validation], where the documents are
-far less likely to have been seen during model training.
+explicit memorisation probe, and why the burden of proof sits on the in-language
+Malaysia evidence in @sec-my-validation, where the documents are far less likely
+to have been seen during model training.
 
 ```{r}
 #| label: pending-il
@@ -643,35 +1032,41 @@ cat("::: {.callout-warning}\nThe `iteration_logs` target is unbuilt, so the H&K"
     "validation battery cannot render. Build it (API-free) and re-render.\n:::\n")
 ```
 
+Both codebooks are put through the same battery of behavioural tests, and
+@tbl-hk-tests serves as the reader's key to it. The column that matters is the last
+one: each test licenses a specific claim, and a codebook that fails one has lost
+the right to that claim regardless of how well it scores later. The tests divide
+into two groups by when they run. Tests I to IV run before any evaluation data
+is touched and ask whether the model can follow the codebook at all. Tests V to
+VII run alongside the error analysis and ask the harder question of whether it
+is following the codebook or something it already believed.
+
 ```{r}
 #| label: tbl-hk-tests
 #| tbl-cap: "**The behavioural battery.** What each test probes and what passing it licenses. Tests I–IV run before any evaluation data is touched; Tests V–VII run alongside the ablation and the manual error analysis [@halterman2025]."
 tt_hk_tests_table()
 ```
 
-[Remove the Stage column from @tbl-hk-tests.]{.aside}
-
 ### Measure identification {#sec-c1}
 
 The measure-identification codebook decides whether a chunk substantively
-discusses a specific fiscal measure, and names the measures it finds. The
-instruction block is reproduced verbatim below; the full codebook, with all
-inclusion and exclusion clarifications, is in @sec-appendix-codebooks.
-
-
-[I deleted the codebook section here because I think it suffices the complete version in the Appendix. This should be carried through all the codebooks.]{.aside}
-
+discusses a specific fiscal measure, and names the measures it finds.
+@tbl-c1-classes gives the two labels it chooses between and the definitions it
+chooses by. Those definitions are the short form; each carries a set of
+inclusion and exclusion clarifications that do most of the discriminating work
+in practice, and the codebook is reproduced in full, exactly as the model reads
+it, in @sec-appendix-codebooks. The same holds for every codebook in this
+paper: the body gives the labels and definitions, the appendix gives the
+artifact.
 
 ```{r}
 #| label: tbl-c1-classes
-#| tbl-cap: "**Measure-identification classes.** The two labels and their definitions, with the count of inclusion and exclusion clarifications the codebook attaches to each."
+#| tbl-cap: "**Measure-identification classes.** The two labels the codebook chooses between, and the definitions it chooses by."
 codebook_classes_table(here("prompts/c1_measure_id.yml")) |>
-  tt(width = c(0.20, 0.60, 0.10, 0.10)) |>
+  tt(width = c(0.24, 0.76)) |>
   tt_theme_report() |>
   style_tt(j = 2, align = "l")
 ```
-
-[Remove the tab of inclusion/restriction instructions in @tbl-c1-classes.]{.aside}
 
 **This codebook is tuned for recall, deliberately.** It sits at the front of the
 pipeline, and a measure it misses is invisible to every stage after it, while a
@@ -682,16 +1077,16 @@ recoverable rather than binding. The diagnostic benchmarks reflect that ordering
 — Tier 1 recall ≥95%, combined recall ≥90%, precision ≥70% — and none of them is
 a hard gate. The gate is the manual error analysis below.
 
-[In general, all artifacts (tables and figures) should be addressed in-body, preferably before the artifact. The body text should escribe what an artifact is showing and briefly say in English what the artifact is trying to say. Do not try to describe all the elements of the artifact.]{.aside}
-
 #### Behavioural tests
 
-@fig-c1-s1 shows the battery of behavioral tests passes cleanly, and that is the expected result rather than an achievement: every frontier commercial model we tried clears these tests on this codebook. Their purpose is not to discriminate between models but to prove the
-harness is sound — that the schema, the parsing, and the token budget let the
-model express what the codebook asks for. They earned that keep twice. An
-apparent Test I failure turned out to be an output-token cap truncating long
-measure lists rather than a codebook defect, and it was the test, not the
-evaluation, that isolated it.
+@fig-c1-s1 shows the battery passing cleanly, and that is the expected result
+rather than an achievement: every frontier commercial model we tried clears
+these tests on this codebook. Their purpose is not to discriminate between
+models but to prove the harness is sound, that the schema, the parsing, and the
+token budget let the model express what the codebook asks for. They earned their
+keep anyway. An apparent Test I failure turned out to be an output-token cap
+truncating long measure lists rather than a codebook defect, and it was the
+test, not the evaluation, that isolated it.
 
 ```{r}
 #| label: fig-c1-s1
@@ -701,9 +1096,27 @@ evaluation, that isolated it.
 plot_s1_behavioral(latest(il$s1, "c1"))
 ```
 
-@fig-c1-s2 shows the zero-shot evaluation results. Although we were aiming to maximize recall over precision, we arrived at an instrument that has better precision overall. 
+#### Zero-shot evaluation
 
-[Please include here a brief discussion of what Tier 1 and Tier 2 are, and reference to the section where we discuss IKA more thoroughly. If there is no section where we discuus such process, please write one (See notebooks/identifying_known_acts.qmd). Said section should either be inside this evaluation section or in the appendix.]{.aside}
+@fig-c1-s2 represents the zero-shot evaluation against the projected gold
+labels, and it reports recall at two tiers, which needs a word of explanation.
+Because Romer and Romer's labels are attached to *acts* and the codebook reads
+*chunks*, positives have to be located in the corpus, and they are located two
+different ways with two different degrees of confidence. **Tier 1** chunks
+contain an act's narrative passage verbatim, so they are as close to a certain
+positive as this construction gets. **Tier 2** chunks merely *name* a known act,
+matched through whitespace-normalised substring search, decomposition of
+compound act names, and a small set of co-occurrence rules. Tier 2 is
+deliberately loose, because an act name appears in the corpus in many more
+places than its passage does, and @sec-appendix-ika documents the construction
+in full.
+
+The headline is that the codebook we tuned for recall is in fact stronger on
+precision: 94.7% precision against 80.0% combined recall, with Tier 1 recall at
+88.2%. Both recall figures sit below their diagnostic benchmarks. Read at face
+value, that is a codebook that misses one positive chunk in five, which would be
+bad news given where it sits in the pipeline. The manual analysis below is what
+establishes that this is not what is happening.
 
 ```{r}
 #| label: fig-c1-s2
@@ -714,7 +1127,13 @@ p <- plot_s2_metrics(latest(il$s2, "c1"))
 if (is.null(p)) cat("No S2 metrics available.\n") else p
 ```
 
-@tbl-c1-s3 shows test results that allow us to know if the model is being correct for the right reasons.
+#### Codebook adherence
+
+Accuracy alone cannot distinguish a model that read the codebook from one that
+already agreed with it. @fig-c1-s3 reports the three adherence tests that can:
+they perturb the codebook rather than the data, and ask whether the model's
+output moves with it. This is asking whether the model is right for the right
+reasons.
 
 ```{r}
 #| label: fig-c1-s3
@@ -766,7 +1185,20 @@ if (is.null(tb)) cat("No corrected confusion matrix available.\n") else tb
 ```
 
 
-Although the evaluation did not cleanly meet the pre-set gates, we decided to call it close enough. @tbl-c1-gates shows the bias-corrected evaluation results along their recall and precision gates.
+@tbl-c1-gates reports the corrected rates against the diagnostic benchmarks. The
+correction moves the picture substantially: on the 33 chunks that survive it,
+recall rises to 87.5% and Tier 1 recall to 80.0%, against raw figures of 80.0%
+and 88.2%. Neither reaches its benchmark. We nonetheless took the codebook
+forward, and the reasoning should be visible rather than buried in a "passed".
+The benchmarks were set as diagnostics, not gates, precisely because we
+anticipated that the projected gold labels would be noisy, and the manual
+analysis confirmed that anticipation in a specific and correctable form. The
+effective sample after correction is small enough that these rates carry wide
+intervals. And the quantity the pipeline actually depends on is whether real
+fiscal content reaches the identification stage, which the Malaysia deployment
+then tests directly: the agentic pass found the corpus richly populated, and the
+misses it did record were rate-path steps rather than whole measures. That is a
+judgement call, made once, recorded here, and open to disagreement.
 
 ```{r}
 #| label: tbl-c1-gates
@@ -798,31 +1230,51 @@ becomes the audit trail a reviewer reads instead of the label, and the
 classification step can be evaluated on clean evidence independently of
 retrieval quality.
 
-The split does not, however, let us validate the two halves separately and
-declare the chain sound. What the pipeline deploys is the composition, so the
-gate is applied to the composition: extraction runs on real chunks, and the
-classifier is scored on whatever evidence extraction actually produced, errors
-included. The extraction codebook carries its own behavioural and zero-shot
-record; there is no separate error analysis for it, because the analysis that
-matters is of the bundle. §[-@sec-defect] is what that choice bought — a defect
-in the *interface* between the two stages, which neither stage's own metrics
-would have surfaced.
+The split creates a problem for validation, though, and the way we resolve it is
+worth stating because it is the reason @sec-defect happened. The Halterman and
+Keith framework is built to evaluate **classification**: its behavioural tests
+perturb label names and definitions, its zero-shot stage compares a predicted
+label against a gold label, and its error taxonomy sorts disagreements between
+two labels. None of that has a natural analogue for a free-form extraction step
+whose output is a set of quotes. There is no gold set of correct quotes to score
+against, and no meaningful confusion matrix over spans of text.
 
-[The argument for evaluating the codebooks as a boundle is more that the HK framework works to evaluate classification tasks, not extraction tasks.]{.aside}
+So the framework is applied where it fits, to the classifier, and the extraction
+step is evaluated only through its effect on the classifier's output. In
+practice that means the gate is applied to the composition: extraction runs on
+real chunks, and the classifier is scored on whatever evidence extraction
+actually produced, errors included, rather than on clean evidence hand-picked
+for it. The extraction codebook carries its own behavioural and zero-shot record
+but no separate error analysis, because the only errors we can adjudicate are
+the ones that reach a label.
 
+That choice has a cost, and @sec-defect is what it bought. The defect lived in
+the *interface* between the two stages, not inside either one, and no metric
+either stage carries could have surfaced it. Scoring the composition means such
+a defect shows up as a slightly worse number rather than as a diagnosis, and
+here it did not show up at all, because the composition was scored on US chunks
+where the defect is inert.
+
+@tbl-c2-classes gives the four motivation labels and their definitions as
+implemented. The order matters: the first two are responses to the economy and
+therefore endogenous, and the last two are the pair the shock series keeps.
 
 ```{r}
 #| label: tbl-c2-classes
-#| tbl-cap: "**Motivation classes.** The Romer–Romer four-way taxonomy as implemented, with the count of inclusion and exclusion clarifications attached to each label. The first two are endogenous to current output; the last two are exogenous."
+#| tbl-cap: "**Motivation classes.** The Romer–Romer four-way taxonomy as implemented. The first two are endogenous to current output; the last two are exogenous and are the ones that survive into the shock series."
 codebook_classes_table(here("prompts/c2b_classification.yml")) |>
-  tt(width = c(0.22, 0.58, 0.10, 0.10)) |>
+  tt(width = c(0.26, 0.74)) |>
   tt_theme_report() |>
   style_tt(j = 2, align = "l")
 ```
 
-[Also remove the inclusion/explusion tallies from @tbl-c2-classes]{.aside}
-
 #### Behavioural tests and zero-shot evaluation
+
+The behavioural battery is the same one @tbl-hk-tests describes, and
+@fig-c2-s1 shows the classification codebook clearing it. Test II carries more
+weight here than it did for measure identification, because it is the
+memorisation probe and this is the codebook whose ground truth is a published,
+widely-cited act list.
 
 ```{r}
 #| label: fig-c2-s1
@@ -831,6 +1283,16 @@ codebook_classes_table(here("prompts/c2b_classification.yml")) |>
 #| eval: !expr have_il
 plot_s1_behavioral(latest(il$s1, "c2b"))
 ```
+
+@fig-c2-s2 shows the zero-shot evaluation. Two of these metrics are the ones a
+downstream user depends on. Exogenous precision, the share of acts handed over
+as exogenous that really are, lands at 80.0% against an 85% gate, though on a
+sample small enough that the interval runs from 63% to 96%. Sign accuracy on
+truly-exogenous acts, at 91.3%, clears its 90% gate. The rest of the panel is
+diagnostic: the four-way task is harder than the binary one, and exogenous
+recall in particular is weak, which matters much less than precision because a
+missed exogenous act shrinks the series while a wrongly-included one
+contaminates it.
 
 ```{r}
 #| label: fig-c2-s2
@@ -841,16 +1303,21 @@ p <- plot_s2_metrics(latest(il$s2, "c2b"))
 if (is.null(p)) cat("No S2 metrics available.\n") else p
 ```
 
+@fig-c2-s3 reports the adherence tests, and it is the most consequential
+exhibit in this section. It asks not how often the classifier is right but
+whether it is reading our codebook to get there, by perturbing the codebook and
+watching what happens to the output.
+
 ```{r}
 #| label: fig-c2-s3
-#| fig-cap: "**Motivation classification, codebook-adherence tests.** Tests V–VII against the full-codebook baseline."
+#| fig-cap: "**Motivation classification, codebook-adherence tests.** Tests V–VII against the full-codebook baseline. Test VI compares accuracy under informative and neutral label names; Test VII puts label names and definitions in conflict; the ablation strips codebook components one at a time."
 #| fig-height: 5
 #| eval: !expr have_il
 plot_s3_behavioral(latest(il$s3, "c2b"), latest(il$s3_ablation, "c2b"))
 ```
 
-The adherence tests carry an uncomfortable result that we report rather than
-bury. When label names and label definitions are put in conflict (Test VII), the
+The result is uncomfortable and we report it rather than bury it. When label
+names and label definitions are put in conflict (Test VII), the
 model follows the *names* almost always and the definitions almost never. Read
 together with a small ablation penalty — stripping the codebook's definitions
 and clarifications costs only a few points of accuracy, and even the fully
@@ -869,6 +1336,11 @@ evidence, not the US benchmark, has to carry the argument.
 
 #### Manual error analysis and the label-noise correction
 
+As with measure identification, the gate is a human reading every disagreement
+between the model and the gold label and sorting it into the same six
+categories. @tbl-c2-manual gives the distribution, adjudicated on the composed
+extraction-and-classification chain rather than on either codebook alone.
+
 ```{r}
 #| label: tbl-c2-manual
 #| tbl-cap: "**Manual error analysis.** Distribution over the six-category framework for the motivation codebooks, adjudicated on the composed extraction-and-classification chain."
@@ -876,7 +1348,7 @@ evidence, not the US benchmark, has to carry the argument.
 tt_manual_analysis_table(latest(il$s3_manual, "c2b"))
 ```
 
-The label noise here has a different source than in §[-@sec-c1-manual] and is
+The label noise here has a different source than in @sec-c1-manual and is
 harder to correct. Motivation gold labels come from Romer and Romer's own
 classifications, which are act-level judgements published with their reasoning.
 Where a chunk discusses an act only glancingly, or where the act's motivation is
@@ -918,26 +1390,50 @@ methodological output of the US benchmark.
 
 ## Malaysia {#sec-my-validation}
 
-*Intent: the credibility pillar in the deployment country, where no ground truth
-exists. Three legs: (1) an **EN/BM cross-language consistency test** — the pipeline
-should reason equivalently regardless of input language
-[@ahuja_mega_2023; @rathje_gpt_2024]; (2) **worked disagreement exhibits** —
-Romer–Romer-style act write-ups chosen where the model's read and the preliminary
-narrative read diverge, the cases an expert must settle; and (3) the
-**ground-truth-free expert-agreement protocol**, framed as human-parity
-(model-vs-consensus against leave-one-out human-vs-consensus) rather than agreement
-with absolute truth [@asirvatham_gpt_2026]. Prose sources:
-`notebooks/malay_consistency.qmd`, `docs/phase_1/expert_review_protocol.md`.*
+**Do the same codebooks, frozen, still work in a country with no labelled
+data?**
+
+This is the question the project exists to answer, and it cannot be answered the
+way the last section was. There is no Malaysian equivalent of the Romer–Romer
+act list, so there is nothing to compute an accuracy against. That is not a
+temporary inconvenience: if a validated narrative series already existed for a
+country, the pipeline would have little to offer it. The absence of ground truth
+is the condition the method has to work under, not an obstacle on the way to
+working under better conditions.
+
+What replaces an accuracy rate is three separate lines of evidence, none
+sufficient alone. The first is an **internal consistency test** that needs no
+ground truth at all, exploiting a property of the corpus to check that the
+pipeline reasons about fiscal substance rather than about English. The second is
+a set of **worked disagreement cases**, printed in full so a reader can judge
+the pipeline's reasoning directly rather than through a summary statistic. The
+third is **expert agreement**, which is the only external check available and is
+currently being collected.
 
 ### Cross-language (EN/BM) consistency
 
-The test exploits an accident of the corpus: ten Economic Reports exist in both
-English and Bahasa Malaysia. The same fiscal year, the same underlying acts, two
-languages. A pipeline that reasons about fiscal substance should return
-comparable inventories from both; a pipeline anchored on English surface
-patterns should not. Because no ground truth exists on either side, the
-comparison is distributional — measure counts, act counts, and the motivation
-label mix — rather than a matched act-by-act agreement rate.
+The test exploits an accident of the corpus. Ten Economic Reports were published
+in both English and Bahasa Malaysia: the same fiscal year, the same underlying
+acts, two languages. A pipeline that reasons about fiscal substance should
+return comparable inventories from both. A pipeline that has learned English
+surface patterns, or that is retrieving remembered facts cued by English
+phrasing, should not.
+
+This is a sharper instrument here than it would be in most applications, for two
+reasons. Multilingual evaluations consistently find degradation on
+lower-resource languages relative to English [@ahuja_mega_2023;
+@rathje_gpt_2024], so equivalence is a real hypothesis and not a foregone
+conclusion. And the paired-document design isolates the language effect from
+item difficulty, since both versions describe identical events, which is exactly
+the design those evaluations recommend.
+
+Because no ground truth exists on either side, the comparison is distributional:
+measure counts, act counts, and the motivation label mix, rather than a matched
+act-by-act agreement rate. That is a weaker test than matched agreement would
+be, and we prefer it to the alternative, which would be to build the matching
+with a third model and then validate two unvalidated things against each other.
+Comparable distributions are consistent with language-robust reasoning without
+proving it; sharply different ones would have been decisive evidence against.
 
 ```{r}
 #| label: pending-malay
@@ -948,6 +1444,11 @@ cat("::: {.callout-warning}\nThe Malaysia EN/BM consistency targets are unbuilt,
     "the cross-language figures cannot render. See malay_consistency.qmd.\n:::\n")
 ```
 
+@fig-malay-c1 takes the first stage of the pipeline: how many distinct fiscal
+measures the codebook surfaces from each report year, read in each language. The
+question it answers is whether the scan sees the same amount of fiscal content
+in a document regardless of the language it is written in.
+
 ```{r}
 #| label: fig-malay-c1
 #| fig-cap: "**Measure identification across languages.** Distinct fiscal measures surfaced per Economic Report year, by language. Comparable counts indicate the extraction step is language-robust."
@@ -956,6 +1457,11 @@ cat("::: {.callout-warning}\nThe Malaysia EN/BM consistency targets are unbuilt,
 p <- plot_malay_c1_comparability(malay_er_c1_measures)
 if (is.null(p)) cat("No C1 measure data available.\n") else p
 ```
+
+@fig-malay-timeline carries the test through to the end of the chain, comparing
+the act inventories the two language runs produce and the motivation labels
+attached to them. This is the more demanding comparison, because it accumulates
+whatever divergence the earlier stages introduced.
 
 ```{r}
 #| label: fig-malay-timeline
@@ -968,10 +1474,24 @@ if (is.null(p)) cat("No act inventory available.\n") else p
 
 ### Worked acts (disagreement cases)
 
-We reproduce three acts in full — one per component — each chosen where the
-model's classification and the preliminary narrative read **diverge**, in the
-style of @romer2010 (their Exhibits 1–2). These are the methodologically
-consequential cases an expert must adjudicate.
+Aggregate evidence has a limit: it can show that two runs agree without showing
+whether either is reasoning well. So we do what @romer2010 do in their own
+Exhibits 1 and 2, and print acts in full for the reader to judge.
+
+The three below are chosen adversarially. Each is a case where the pipeline's
+two independent reads, the preliminary narrative read formed during act
+identification and the classification codebook's verdict, **disagree** about
+exogeneity. These are not the pipeline at its best; they are the cases where it
+cannot settle the question itself, and they are the ones an expert has to
+adjudicate. Printing them is the point, because a method that hides its
+disagreements is asking to be trusted rather than checked.
+
+Read them with @sec-defect in mind. Two of the four labels that section
+identifies as built on the wrong act's evidence are corporate-tax rows, and the
+exhibits below are drawn from the June freeze, so a disagreement shown here may
+be an artifact of that defect rather than a genuine interpretive tension. That
+is itself instructive: without the evidence chain printed alongside the label, a
+reader would have no way to tell the two apart.
 
 ```{r}
 #| label: exhibit-cit
@@ -1011,14 +1531,37 @@ incentive_exhibit(
 
 ### The expert-agreement protocol
 
-*Intent: prose describing the ground-truth-free validation design — sampled acts
-for expert coding, the ≥80% (measure identification) and ≥70% (motivation)
-agreement targets read as parity with an individual expert rather than with
-truth, and expert-vs-expert agreement reported as the ceiling. Source:
-`docs/phase_1/expert_review_protocol.md`.*
+The external check is expert review, and its design has to answer a question
+that does not arise when ground truth exists: what does agreement with a human
+*mean*, when the human is not an oracle either?
+
+The protocol asks regional fiscal-policy experts to code sampled acts
+independently, using the same codebook definitions the model was given, and then
+compares the two codings. Two headline targets are pre-registered: at least 80%
+agreement on measure identification, and at least 70% on motivation. Those
+thresholds are lower than an accuracy target would be, deliberately, because
+they are **parity** targets rather than correctness targets. Experts disagree
+with each other about motivation, sometimes substantially, and a model that
+agrees with one expert as often as a second expert would is doing as well as the
+task allows. Following @asirvatham_gpt_2026, the right comparison is therefore
+model-versus-consensus against leave-one-out human-versus-consensus, with
+expert-versus-expert agreement reported as the ceiling. Without that ceiling, a
+70% figure is uninterpretable: it could be a weak model or a genuinely
+contested construct, and only the human baseline separates them.
+
+Three further features of the design are worth stating. Review is
+**risk-stratified** rather than uniform: acts predicted exogenous in a recession
+year are reviewed in full, because that is the cell where an error does the most
+damage to any downstream estimate, as are acts carrying either of the two labels
+the error analysis found most confusable. The remainder is spot-checked. The
+protocol also asks a question the dataset cannot ask itself, namely which
+significant acts are **missing**, which is the recall assessment @sec-agentic
+defers to. And it separates genuine model error from irreducible ambiguity:
+where two experts disagree with each other, the case is recorded as ambiguous
+rather than scored against the model.
 
 One gap in the protocol as currently written should be closed before it is run,
-because §[-@sec-usecase] depends on it. The protocol selects acts for review by
+because @sec-usecase depends on it. The protocol selects acts for review by
 purposive triage — every act predicted exogenous in a recession year, every act
 carrying one of the two confusable motivation labels, and a convenience
 spot-check of the rest. That is the right design for *finding* errors and the
@@ -1039,8 +1582,8 @@ inverts @fig-pipeline-validated: it lights the stages the US benchmark does
 #| label: fig-pipeline-unvalidated
 #| fig-cap: "**What the US benchmark does not cover.** The complement of @fig-pipeline-validated. These stages are attested by construction, by audit, or not yet at all."
 #| fig-width: 6.5
-#| fig-height: 2.4
-plot_pipeline_flow("unvalidated")
+#| fig-height: 4.2
+plot_pipeline_flow("unvalidated", scale = 1.4)
 ```
 
 ```{r}
@@ -1069,7 +1612,7 @@ over-read.
 preliminary reads — one from the narrative identification pass, one from the
 validated classification codebook — and where they disagree the act is flagged
 rather than resolved. Those disagreements are the worked exhibits in
-§[-@sec-my-validation]. Adjudicating them is the expert's job and it has not
+@sec-my-validation. Adjudicating them is the expert's job and it has not
 happened yet.
 
 **Magnitude and timing have no validation record at all.** They are extracted
@@ -1078,7 +1621,7 @@ the codebooks that would validate them are not built. Any use of the magnitude
 column inherits that.
 
 **The deployment distribution was never validated.** This is the general form of
-§[-@sec-defect] and the most transferable lesson here. The codebooks were
+@sec-defect and the most transferable lesson here. The codebooks were
 validated on US chunks that discuss one act each and deployed on Malaysian
 budget speeches that discuss many. That gap produced a real defect that no US
 test could have caught, and it is a gap any cross-country transfer of this kind
@@ -1124,7 +1667,7 @@ fail to transfer across domains [@gentzkow_text_2019], and cross-codebook
 fine-tuning overfits [@halterman2025], so frozen country-agnostic codebooks have
 to be shown to survive contact with a new country rather than assumed to. The
 cross-language test and the regional extension are what put that claim at risk.
-The finding in §[-@sec-c2] that the classifier appears to be running on a
+The finding in @sec-c2 that the classifier appears to be running on a
 pretrained prior cuts both ways here: it is why transfer is plausible, and it is
 why demonstrating transfer on US-adjacent material proves little.
 
@@ -1139,19 +1682,36 @@ the grain, per instrument, per country. The pipeline reduces months of work to
 weeks; it does not remove the expert, and the claim in this paper is explicitly
 about assistance, not automation.
 
-### References {.unnumbered}
+# References {.unnumbered}
 
 ::: {#refs}
 :::
 
+::: {.content-visible when-format="typst"}
+{{< appendix >}}
+:::
 
+::: {.content-hidden when-format="typst"}
 # Appendix {.unnumbered}
+:::
 
-[Appendix subsections should be numbered with letters (A, B, ...). Check if this is manageable inside this document. Alternatively, separate the appendix into its own .qmd]{.aside}
+# Recall audits {#sec-appendix-recall}
 
-## Recall audits {#sec-appendix-recall}
+The per-instrument recall audits, frozen with their datasets. As @sec-agentic
+says, these record what the identification pass searched for and what it
+returned; they are a transparency record, not a recall measurement, and the
+recall assessment that matters is the expert review described in
+@sec-my-validation. Rows naming a recall miss record an event the codebook scan
+did not surface and the direct-reading pass recovered. Outcome text is truncated
+for display.
 
-The remaining per-instrument recall audits, frozen with their datasets.
+```{r}
+#| label: tbl-recall-cit
+#| tbl-cap: "**Recall audit, corporate income tax.**"
+#| eval: !expr have_tax
+tb <- recall_scorecard_table(tax_shocks, instrument = "Corporate income tax")
+if (is.null(tb)) cat("No recall scorecard available.\n") else tb
+```
 
 ```{r}
 #| label: tbl-recall-pit
@@ -1181,11 +1741,68 @@ recall_scorecard_table(spending = spending_shocks, instrument = "Spending")
 recall_scorecard_table(incentive = incentive_shocks, instrument = "Tax incentives")
 ```
 
-## Codebooks {#sec-appendix-codebooks}
+# How the US gold labels were built {#sec-appendix-ika}
+
+Romer and Romer publish act-level classifications. The measure-identification
+codebook reads chunks of documents. Evaluating one against the other requires
+deciding, for every chunk in the US corpus, whether it is a positive: whether a
+known act is substantively discussed in it. There is no published answer to that
+question, so it has to be constructed, and this appendix records how, because
+@sec-c1-manual shows the construction is the largest single source of error in
+the US benchmark.
+
+Two obvious approaches fail. Hand-coding twelve thousand chunks is infeasible.
+Exact string matching of act names fails for a more interesting reason:
+government PDFs from the 1940s to
+the 1990s were digitised by OCR, which routinely breaks an act name across a
+line, so "Revenue Act of 1962" appears in the extracted text as `Revenue Act
+of\n1962` and matches nothing. Normalising whitespace recovers a large number of
+matches, and for several acts it doubles the count, but it does not rescue acts
+that are never named in the form the reference list uses.
+
+The construction therefore assigns chunks to two tiers of positive, plus a
+negative pool.
+
+**Tier 1** chunks contain an act's own narrative passage verbatim. Romer and
+Romer publish, with each act, the passages of presidential messages and
+committee testimony that document its motivation. Searching the corpus for the
+first 100 characters of each passage, with a 60-character fallback, locates the
+chunk that passage came from. These are as close to certain positives as the
+construction reaches, and there are few of them, because one act contributes
+only as many Tier 1 chunks as it has published passages.
+
+**Tier 2** chunks name a known act without containing its passage. Because act
+names are unreliable strings, three matching strategies are used: whitespace-
+normalised substring search; decomposition of compound names into searchable
+subcomponents, which is what makes "Revenue Act of 1962" findable inside
+"Expiration of Excess Profits Tax and of Temporary Income Tax Increases"; and a
+small set of hand-written co-occurrence rules for acts that no substring reaches.
+Deliberately, no year window and no keyword filter is applied. The tier is built
+to maximise recall on the theory that downstream stages can filter.
+
+**Negatives** are every remaining chunk, scored with a continuous relevance-key
+density rather than excluded by a threshold. An earlier design excluded any
+chunk containing fiscal vocabulary, which left 35 clean negatives out of
+thousands and made precision essentially untestable.
+
+The resulting split is heavily imbalanced: on the US corpus, Tier 1 accounts for
+0.6% of chunks, Tier 2 for 12.2%, and negatives for 90.4%.
+
+The weakness is in Tier 2, and it is structural rather than a tuning problem. An
+act *name* appears in many places its substance does not: book indexes, tables
+of contents, glossaries, running heads, and administrative appendices listing
+every statute touched. Those chunks enter the evaluation carrying a positive
+gold label and containing no fiscal content at all. When the codebook correctly
+declines to call a table of contents a fiscal measure, the evaluation records a
+false negative. That is the mechanism behind the Category B count in
+@sec-c1-manual, and it is why the corrected gate, rather than the raw recall
+figure, is the number to read.
+
+# Codebooks {#sec-appendix-codebooks}
 
 The codebooks are reproduced verbatim, as the model would read them.
 
-### Measure identification
+## Measure identification
 
 ```{r}
 #| label: appendix-c1
@@ -1194,7 +1811,7 @@ The codebooks are reproduced verbatim, as the model would read them.
 codebook_verbatim_md(here("prompts/c1_measure_id.yml"))
 ```
 
-### Motivation evidence extraction
+## Motivation evidence extraction
 
 ```{r}
 #| label: appendix-c2a
@@ -1203,7 +1820,7 @@ codebook_verbatim_md(here("prompts/c1_measure_id.yml"))
 codebook_verbatim_md(here("prompts/c2a_extraction.yml"))
 ```
 
-### Motivation classification
+## Motivation classification
 
 ```{r}
 #| label: appendix-c2b

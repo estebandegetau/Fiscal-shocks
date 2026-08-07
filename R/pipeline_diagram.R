@@ -23,7 +23,7 @@ pipeline_nodes <- function() {
     ~id,        ~x, ~y, ~label,             ~detail,                            ~evaluated, ~kind,
     "docs",      1,  2, "Primary\nsources", "Budget speeches, economic reports, plans (EN + BM)", FALSE, "corpus",
     "corpus",    2,  2, "Corpus",           "Extract, clean, chunk",             FALSE,     "corpus",
-    "c1",        3,  2, "C1\nMeasure ID",   "Scan every chunk for fiscal measures", TRUE,   "codebook",
+    "c1",        3,  2, "C1\nMeasures",     "Scan every chunk for fiscal measures", TRUE,   "codebook",
     "agentic",   4,  3, "Agentic\nsearch",  "Per-instrument narrative sweep, recall recovery", FALSE, "agentic",
     "freeze",    5,  3, "Frozen acts",      "One row per announced act, human-stamped", FALSE, "agentic",
     "c2a",       6,  2, "C2a\nEvidence",    "Motivation evidence for the named act", TRUE,  "codebook",
@@ -52,12 +52,32 @@ pipeline_edges <- function() {
 #' @param highlight One of "none" (all stages equally weighted), "validated"
 #'   (stages with a US H&K validation record lit, the rest faded), or
 #'   "unvalidated" (the complement).
+#' @param scale Multiplier on the type size. The eight-node chain has to span
+#'   the text block, so the horizontal geometry is fixed by the page and only
+#'   the vertical geometry can absorb larger type: node y-positions, box
+#'   heights and the y limits all scale with it, and the caller must scale
+#'   `fig-height` by the same factor for the type to come out `scale` times
+#'   larger. The wrap width moves inversely, since a fixed-width box holds
+#'   fewer characters of a bigger font.
 #' @return ggplot object
-plot_pipeline_flow <- function(highlight = c("none", "validated", "unvalidated")) {
+plot_pipeline_flow <- function(highlight = c("none", "validated", "unvalidated"),
+                               scale = 1) {
   highlight <- match.arg(highlight)
+  stopifnot(is.numeric(scale), length(scale) == 1, scale > 0)
+
+  # Type sizes are ggplot's mm; everything vertical tracks them.
+  size_title  <- 2.5 * scale
+  size_detail <- 1.9 * scale
+  size_key    <- 1.9 * scale
+  half_w      <- 0.47              # fixed: node spacing is 1 x-unit
+  half_h      <- 0.46 * scale
+  wrap_width  <- max(8, round(21 / scale))
+  # Titles are bold and so run wider per character than the detail text.
+  title_wrap  <- max(6, round(13 / scale))
 
   nodes <- pipeline_nodes() |>
     dplyr::mutate(
+      y   = y * scale,
       lit = switch(highlight,
         none        = TRUE,
         validated   = evaluated,
@@ -72,8 +92,11 @@ plot_pipeline_flow <- function(highlight = c("none", "validated", "unvalidated")
       ),
       line_col = dplyr::if_else(lit, "grey25", "grey80"),
       text_col = dplyr::if_else(lit, "grey10", "grey60"),
-      # Wrap the descriptions to the box, not to the plotting device.
-      detail   = stringr::str_wrap(detail, width = 18)
+      # Wrap both texts to the box, not to the plotting device. The labels
+      # carry hand-placed breaks for the default size; re-flow them so a
+      # larger `scale` cannot push a title past its box edge.
+      label    = stringr::str_wrap(gsub("\n", " ", label), width = title_wrap),
+      detail   = stringr::str_wrap(detail, width = wrap_width)
     )
 
   # Compact colour key, drawn as three swatches on a row beneath the spine so
@@ -83,6 +106,7 @@ plot_pipeline_flow <- function(highlight = c("none", "validated", "unvalidated")
     label = c("Corpus building", "Validated codebook (LLM)", "Agentic + human"),
     fill_col = c("#EFEFEF", "#DDEBF7", "#FDE9D9")
   )
+  key_y <- 1.23 * scale   # the legend row sits below the spine
 
   edges <- pipeline_edges() |>
     dplyr::left_join(
@@ -93,9 +117,6 @@ plot_pipeline_flow <- function(highlight = c("none", "validated", "unvalidated")
       nodes |> dplyr::select(to = id, x1 = x, y1 = y),
       by = "to"
     )
-
-  half_w <- 0.47
-  half_h <- 0.42
 
   # Trim each edge to the box boundary so arrowheads land on the edge, not
   # inside the node.
@@ -113,41 +134,44 @@ plot_pipeline_flow <- function(highlight = c("none", "validated", "unvalidated")
     ggplot2::geom_segment(
       data = edges,
       ggplot2::aes(x = xs, y = ys, xend = xe, yend = ye),
-      arrow = ggplot2::arrow(length = ggplot2::unit(0.16, "cm"), type = "closed"),
-      colour = "grey45", linewidth = 0.4
+      arrow = ggplot2::arrow(length = ggplot2::unit(0.16 * scale, "cm"),
+                             type = "closed"),
+      colour = "grey45", linewidth = 0.4 * scale
     ) +
     ggplot2::geom_rect(
       data = nodes,
       ggplot2::aes(xmin = x - half_w, xmax = x + half_w,
                    ymin = y - half_h, ymax = y + half_h,
                    fill = fill_col, colour = line_col),
-      linewidth = 0.35
+      linewidth = 0.35 * scale
     ) +
     ggplot2::geom_text(
       data = nodes,
-      ggplot2::aes(x = x, y = y + 0.24, label = label, colour = text_col),
-      family = "Libertinus Serif", fontface = "bold", size = 2.5,
+      ggplot2::aes(x = x, y = y + 0.24 * scale, label = label, colour = text_col),
+      family = "Libertinus Serif", fontface = "bold", size = size_title,
       lineheight = 0.9, vjust = 1
     ) +
     ggplot2::geom_text(
       data = nodes,
-      ggplot2::aes(x = x, y = y - 0.05, label = detail, colour = text_col),
-      family = "Libertinus Serif", size = 1.9, lineheight = 0.95, vjust = 1
+      ggplot2::aes(x = x, y = y - 0.05 * scale, label = detail, colour = text_col),
+      family = "Libertinus Serif", size = size_detail, lineheight = 0.95, vjust = 1
     ) +
     ggplot2::geom_rect(
       data = key,
       ggplot2::aes(xmin = x - 0.10, xmax = x + 0.10,
-                   ymin = 1.16, ymax = 1.30, fill = fill_col),
-      colour = "grey45", linewidth = 0.25
+                   ymin = key_y - 0.07 * scale, ymax = key_y + 0.07 * scale,
+                   fill = fill_col),
+      colour = "grey45", linewidth = 0.25 * scale
     ) +
     ggplot2::geom_text(
       data = key,
-      ggplot2::aes(x = x + 0.18, y = 1.23, label = label),
-      family = "Libertinus Serif", size = 1.9, hjust = 0, colour = "grey25"
+      ggplot2::aes(x = x + 0.18, y = key_y, label = label),
+      family = "Libertinus Serif", size = size_key, hjust = 0, colour = "grey25"
     ) +
     ggplot2::scale_fill_identity() +
     ggplot2::scale_colour_identity() +
-    ggplot2::coord_cartesian(xlim = c(0.45, 8.55), ylim = c(1.12, 3.5)) +
+    ggplot2::coord_cartesian(xlim = c(0.45, 8.55),
+                             ylim = c(1.12 * scale, 3.5 * scale)) +
     ggplot2::theme_void(base_family = "Libertinus Serif") +
     ggplot2::theme(plot.margin = ggplot2::margin(2, 2, 2, 2))
 }

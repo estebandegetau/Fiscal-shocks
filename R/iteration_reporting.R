@@ -389,18 +389,18 @@ tt_gate_metrics <- function(bc_data, targets = NULL, labels = NULL) {
 #' @return tinytable object
 tt_hk_tests_table <- function() {
   tibble::tribble(
-    ~Stage, ~Test,                   ~`What it probes`,                                                                          ~`Passing means`,
-    "S1",   "I. Legal outputs",      "Every response is one of the labels the codebook defines",                                 "The model can express itself in the codebook's vocabulary",
-    "S1",   "II. Memorisation",      "Whether the model can recite the codebook's own definitions and instructions unprompted",   "Agreement later on is not recall of a document the model already knows",
-    "S1",   "III. Example recovery", "Whether the model reproduces the codebook's worked examples verbatim",                      "The examples teach rather than leak",
-    "S1",   "IV. Order invariance",  "Whether shuffling or reversing the class order changes the label",                          "The label tracks the definition, not its position in the prompt",
-    "S3",   "V. Exclusion criteria", "Whether the codebook's stated exclusions are applied when the document or codebook is perturbed", "Exclusion rules are enforced, not decorative",
-    "S3",   "VI. Generic labels",    "Accuracy when informative label names are replaced by neutral ones",                        "The model reads the definitions, not the label names",
-    "S3",   "VII. Swapped labels",   "Whether the model follows the definition or the name when the two are put in conflict",     "The construct lives in the definition the researcher wrote"
+    ~Test,                   ~`What it probes`,                                                                          ~`Passing means`,
+    "I. Legal outputs",      "Every response is one of the labels the codebook defines",                                 "The model can express itself in the codebook's vocabulary",
+    "II. Memorisation",      "Whether the model can recite the codebook's own definitions and instructions unprompted",   "Agreement later on is not recall of a document the model already knows",
+    "III. Example recovery", "Whether the model reproduces the codebook's worked examples verbatim",                      "The examples teach rather than leak",
+    "IV. Order invariance",  "Whether shuffling or reversing the class order changes the label",                          "The label tracks the definition, not its position in the prompt",
+    "V. Exclusion criteria", "Whether the codebook's stated exclusions are applied when the document or codebook is perturbed", "Exclusion rules are enforced, not decorative",
+    "VI. Generic labels",    "Accuracy when informative label names are replaced by neutral ones",                        "The model reads the definitions, not the label names",
+    "VII. Swapped labels",   "Whether the model follows the definition or the name when the two are put in conflict",     "The construct lives in the definition the researcher wrote"
   ) |>
-    tinytable::tt(width = c(0.08, 0.17, 0.42, 0.33)) |>
+    tinytable::tt(width = c(0.19, 0.45, 0.36)) |>
     tt_theme_report() |>
-    tinytable::style_tt(j = 2:4, align = "l")
+    tinytable::style_tt(j = 1:3, align = "l")
 }
 
 # =============================================================================

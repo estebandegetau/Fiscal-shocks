@@ -31,9 +31,9 @@ codebook_instructions_md <- function(path) {
 
 #' The codebook's class definitions
 #'
-#' One row per label with its definition, plus counts of the inclusion and
-#' exclusion clarifications that sit under it. The clarifications themselves
-#' are long; the appendix carries them verbatim.
+#' One row per label with its definition. The inclusion and exclusion
+#' clarifications that sit under each label are long, and their *count* says
+#' nothing a reader can use, so the appendix carries them verbatim instead.
 #'
 #' @param path Path to a codebook YAML
 #' @return Tidy tibble
@@ -53,10 +53,8 @@ codebook_classes_table <- function(path) {
 
   purrr::map(classes, function(cl) {
     tibble::tibble(
-      Label          = cl$label %||% NA_character_,
-      Definition     = plain(cl$label_definition %||% ""),
-      `Inclusions`   = length(cl$clarification %||% list()),
-      `Exclusions`   = length(cl$negative_clarification %||% list())
+      Label      = cl$label %||% NA_character_,
+      Definition = plain(cl$label_definition %||% "")
     )
   }) |>
     dplyr::bind_rows()
