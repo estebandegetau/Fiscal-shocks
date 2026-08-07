@@ -14,6 +14,7 @@ abstract: |
   dataset with a first procyclicality decomposition.
 number-sections: true
 section-numbering: "1.1.1"
+number-depth: 3
 format:
   html:
     toc: true
@@ -21,7 +22,8 @@ format:
       hypothesis: true
   docx: default
   jats: default
-  academic-typst: default
+  academic-typst: 
+    colorlinks: true
 execute:
   echo: false
   warning: false
@@ -125,22 +127,30 @@ zero-shot evaluation, and error analysis before it is trusted [@halterman2025].
 Prose sources: `docs/lit_review.qmd` §2/§5, `docs/strategy.md`,
 `docs/codebook_sources.md`.*
 
+[Please give a go at this section.]{.aside}
+
 # The pipeline and what it produces {#sec-pipeline}
 
 The method reads primary-source government documents and returns an inventory of
 fiscal-change events, each carrying a motivation, a sign, and a preliminary
-exogeneity read. @fig-pipeline is the route from one to the other, and it is the
-map for the rest of the paper: §[-@sec-build] walks the route for Malaysia,
+exogeneity read. @fig-pipeline represents the route we adopted to go from one to the other, and it is the map for the rest of the paper: §[-@sec-build] walks the route for Malaysia,
 §[-@sec-us-validation] reports what the US benchmark certifies about the blue
 stages, and §[-@sec-coverage] states what the other stages rest on instead.
+
+[In general, use Quarto's default section references i.e. @sec-whatever; instead of the § notation.]{.aside}
+
+[Notice I changed the language from "@fig-pipeline is the pipeline" to "@fig-pipeline represents the ...". This is important because we use artifacts (figures, tables and numbers) to represent features of the world; they are not themselves the features we want to talk about. They are always representations of the phenomena we try to describe. Please adhere to this language throughout the paper.]{.aside}
+
 
 ```{r}
 #| label: fig-pipeline
 #| fig-cap: "**From primary sources to an event inventory.** Two LLM codebook stages (blue) are validated against US ground truth; the act-identification step between them (orange) is an agentic narrative search whose output a human stamps before it enters the chain."
-#| fig-width: 6.5
-#| fig-height: 2.4
+#| fig-width: 7
+#| fig-height: 3
 plot_pipeline_flow("none")
 ```
+
+[I tried tinkering with @fig-pipeline. It's awesome, it just needs to be a tad larger to be legible in the PDF, especially the font. I'm reviewing directly on PDF because it will be the primary communication artifact. HTML is nice to have but secondary.]{.aside}
 
 Two design commitments distinguish this route from a single end-to-end prompt.
 The first is that **classification and discovery are separated**. Deciding
@@ -156,13 +166,13 @@ to the passage rather than to the model.
 ## The two frameworks the pipeline implements
 
 The pipeline implements one methodological specification and one validation
-discipline. @tbl-rr-steps maps the specification: what Romer and Romer do by
+discipline. @tbl-rr-steps maps the specification: what @romer2010 do by
 hand, and which component does it here. @tbl-hk-stages maps the discipline: the
 stages a codebook must clear before we trust its output.
 
 ```{r}
 #| label: tbl-rr-steps
-#| tbl-cap: "**The narrative specification.** Romer & Romer's procedure and the component that carries each step here. Steps RR5 and RR6 are where classification credibility lives; RR3 is deliberately not automated."
+#| tbl-cap: "**The narrative specification.** Romer and Romer's -@romer2010 procedure and the component that carries each step here. Steps RR5 and RR6 are where classification credibility lives; RR3 is deliberately not automated."
 tibble::tribble(
   ~Step,  ~`Romer & Romer's step`,                          ~`Our component`,                     ~Status,
   "RR1",  "Read primary-source policy documents",           "Corpus acquisition and chunking",    "Built",
@@ -179,7 +189,7 @@ tibble::tribble(
 
 ```{r}
 #| label: tbl-hk-stages
-#| tbl-cap: "**The validation discipline.** Halterman & Keith's stages and how far each codebook has been taken. S4 is a last resort we have not needed."
+#| tbl-cap: "**The validation discipline.** Halterman and Keith's -@halterman2025 stages and how far each codebook has been taken. S4 is a last resort we have not needed."
 tibble::tribble(
   ~Stage, ~`What it establishes`,                                          ~C1,        ~C2,
   "S0",   "Machine-readable codebook, expert-approved",                    "Complete", "Complete",
@@ -192,6 +202,9 @@ tibble::tribble(
   tt_theme_report() |>
   style_tt(j = 2, align = "l")
 ```
+
+
+[Explain why fine-tuning was avoided.]{.aside}
 
 ## What the pipeline produces {#sec-what-it-produces}
 
@@ -225,6 +238,9 @@ p <- plot_dataset_overview(tax_shocks, spending_shocks, incentive_shocks)
 if (is.null(p)) cat("No component data available.\n") else p
 ```
 
+
+[@fig-dataset-overview requires a concise description of each of the fiscal instruments in body. Go to Claude's / agentic search commands for the definition we used to assemble the dataset.]{.aside}
+
 ```{r}
 #| label: tbl-dataset-summary
 #| tbl-cap: "**Inventory summary.** Coverage and composition per component. Source documents and evidence chunks count the primary-source passages each event was built from; the exogenous share is the model's preliminary read, not an adjudicated finding."
@@ -233,6 +249,9 @@ dataset_summary_stats(tax_shocks, spending_shocks, incentive_shocks) |>
   tt() |>
   tt_theme_report()
 ```
+
+
+[@tbl-dataset-summary doesn't need both Up and Down columns; one suffices. Also, use "Cuts" language instead of "Down".]{.aside}
 
 The unit of observation is one narratively-announced act, per instrument.
 @tbl-one-row is the schema; Exhibit 1 below is one real row printed in full,
@@ -258,8 +277,11 @@ tibble::tribble(
   style_tt(j = 2, align = "l")
 ```
 
+
+[Discuss the elements of @exm-anatomy in-body.]{.aside}
+
 ```{r}
-#| label: exhibit-anatomy
+#| label: exm-anatomy
 #| echo: false
 #| output: asis
 #| eval: !expr have_tax
@@ -270,12 +292,18 @@ tax_exhibit(
 )
 ```
 
+
+
 ## The Malaysia inventory in detail
 
 The figures below are the headline output of the pipeline, for Malaysia
 (1980–2023). Downloads, data dictionaries, and the full worked exhibits live on
 the reviewer-facing dataset page,
 [malaysia_dataset.qmd](notebooks/malaysia_dataset.qmd).
+
+[In body, we don't renference other notebooks. Either we replicate a finding here, or we add it to the appendix and reference it there]{.aside}
+
+
 
 ### Statutory tax changes
 
@@ -288,6 +316,11 @@ cat("::: {.callout-warning}\nThe `tax_shocks` deliverable target is empty or",
     "unbuilt (its C2a/C2b enrichment is API-gated). The tax figures below render",
     "once it is built.\n:::\n")
 ```
+
+
+[@tbl-tax-inventory is not rendering properly in PDF. Maybe try to separate it into distinct tables by tax type.]{.aside}
+
+[Please populate the body in this section. Describe the data shown in the artifacts.]{.aside}
 
 ```{r}
 #| label: tbl-tax-inventory
@@ -337,6 +370,8 @@ plot_spending_timeline(spending_shocks)
 
 ### Tax incentives and holidays
 
+[@tbl-incentive-inventory also renders improperly in PDF. Try changing the CONSUMPTION label to CIT (As it hould be, no?), reducing the width of that column and increasing the width of the first column]{.aside}
+
 ```{r}
 #| label: pending-incentives
 #| eval: !expr "!have_incentives"
@@ -370,6 +405,7 @@ narrative search that was audited for recall and stamped by a human, and only
 then were the validated motivation codebooks run against each act's own
 evidence.
 
+
 ## The corpus {#sec-corpus}
 
 ```{r}
@@ -390,6 +426,8 @@ development-expenditure commitments. The corpus takes all four, plus the
 standalone crisis packages, and it is bilingual: ten Economic Reports are
 available only in Bahasa Malaysia, which is what makes the cross-language test
 in §[-@sec-my-validation] possible.
+
+[Include here a neat plot of the coverage across years by source. Y axis shoudl be pages available in year X.]{.aside}
 
 ```{r}
 #| label: tbl-corpus
@@ -412,6 +450,8 @@ cat(sprintf(
   dplyr::n_distinct(country_chunks$doc_id)
 ))
 ```
+
+[The above should be written inline and the programmatic figures included using Quartos language for inline code additions. Describe the chunking method. ]{.aside}
 
 ## The codebook scan and what it is for {#sec-scan}
 
@@ -472,6 +512,9 @@ was never found. The scorecard is therefore the only record of what was
 searched, what the scan missed, and how each miss was recovered, and it is
 frozen alongside the data.
 
+[This is imprecise. I asked the human experts to assess the recall, as an expert should know what other significant tax policies were enacted that are missing from the dataset. That being said this is a very subjective approach (the whole procedure).]{.aside}
+
+
 The corporate income tax audit is reproduced below (@tbl-recall-cit); the other
 four instruments carry the same structure and are in @sec-appendix-recall.
 
@@ -483,6 +526,8 @@ tb <- recall_scorecard_table(tax_shocks, instrument = "Corporate income tax")
 if (is.null(tb)) cat("No recall scorecard available.\n") else tb
 ```
 
+[I really don't get what @tbl-recall-cit is doing here. We'll only have a more honest recall assessment after we get the human expert's reviews. Again, we shouldn't waste time talking about what didn't work; rather, we should talk about what did work.]{.aside}
+
 Two results in that audit are worth stating plainly because they cut against the
 design's own expectations. First, the keyword floor was **not** near-empty for
 spending and incentives, as a tax-scoped scan would predict: 189 spending
@@ -492,6 +537,8 @@ tax. The scan is a genuinely rich first pass across all three instrument
 families. Second, and against that, the tax passes still recorded six recall
 misses on the single track the scan should have been best at — the statutory
 rate path — each recovered only by reading the anchor documents directly.
+
+[Is the above paragraph trysing to sell the agentic search vis-a-vis the rudimentary codebook machinery? That would be okay, but it should be more explicit: The agentic search step proved important becasue...]{.aside}
 
 ## Act consolidation without automated record linkage {#sec-no-c0}
 
@@ -513,6 +560,8 @@ from the instrument down — reconstruct the rate path, then ask which mentions
 account for each step — rather than from the mentions up. That is also why it
 needs a human stamp: the reconstruction is a judgement about what counts as one
 act, and the researcher owns it.
+
+[The above account is really useful.]{.aside}
 
 ## A defect the evidence chain surfaced {#sec-defect}
 
@@ -549,7 +598,15 @@ cost is quantified because the provenance chain made it quantifiable: four wrong
 labels out of 51, found by following each label back to the passage it came
 from. A pipeline without that chain would have shipped them.
 
-# Validation I — the US benchmark {#sec-us-validation}
+# Validation 
+
+## The US benchmark {#sec-us-validation}
+
+[Let's frame this section within a research question: Can we use RR's labels to "train" (loosly stated) an LLM how to replicate their US dataset of fiscal changes, given the same inputs? Let's frame the sections along their research question, including the set of questions we address in this project in the introduction.]{.aside}
+
+[Because this is a new section, its first paragraph(s) should somewhat restate what was previously given, to account for non-linear readers. It's a bit of an art restating in a useful manner and not land in overly repetitive. Here, an outside reader won't know what are "44 labelled US Romer-Romer acts"]{.aside}
+
+[This subsection is long enough to require a roadmap.]{.aside}
 
 The codebooks are validated on 44 labelled US Romer–Romer acts, under the
 Halterman & Keith stage sequence: behavioural tests, then zero-shot evaluation,
@@ -567,13 +624,15 @@ identification, which are validated in other ways or not at all
 plot_pipeline_flow("validated")
 ```
 
+[@fig-pipeline-validated is fire.]{.aside}
+
 One caveat frames everything that follows. The published Romer–Romer shock list
 and the US source documents are almost certainly in the models' pretraining
-data, so strong US agreement is **consistent with memorisation**
+data, so strong US agreement may be **consistent with memorisation**
 [@carlini_quantifying_2022]. This is why the behavioural battery includes an
 explicit memorisation probe, and why the burden of proof sits on the
 in-language Malaysia evidence in §[-@sec-my-validation], where the documents are
-far less likely to have been seen.
+far less likely to have been seen during model training.
 
 ```{r}
 #| label: pending-il
@@ -586,23 +645,22 @@ cat("::: {.callout-warning}\nThe `iteration_logs` target is unbuilt, so the H&K"
 
 ```{r}
 #| label: tbl-hk-tests
-#| tbl-cap: "**The behavioural battery.** What each test probes and what passing it licenses. Tests I–IV run before any evaluation data is touched; Tests V–VII run alongside the ablation and the manual error analysis."
+#| tbl-cap: "**The behavioural battery.** What each test probes and what passing it licenses. Tests I–IV run before any evaluation data is touched; Tests V–VII run alongside the ablation and the manual error analysis [@halterman2025]."
 tt_hk_tests_table()
 ```
 
-## Measure identification {#sec-c1}
+[Remove the Stage column from @tbl-hk-tests.]{.aside}
+
+### Measure identification {#sec-c1}
 
 The measure-identification codebook decides whether a chunk substantively
 discusses a specific fiscal measure, and names the measures it finds. The
 instruction block is reproduced verbatim below; the full codebook, with all
 inclusion and exclusion clarifications, is in @sec-appendix-codebooks.
 
-```{r}
-#| label: c1-instructions
-#| echo: false
-#| output: asis
-codebook_instructions_md(here("prompts/c1_measure_id.yml"))
-```
+
+[I deleted the codebook section here because I think it suffices the complete version in the Appendix. This should be carried through all the codebooks.]{.aside}
+
 
 ```{r}
 #| label: tbl-c1-classes
@@ -613,6 +671,8 @@ codebook_classes_table(here("prompts/c1_measure_id.yml")) |>
   style_tt(j = 2, align = "l")
 ```
 
+[Remove the tab of inclusion/restriction instructions in @tbl-c1-classes.]{.aside}
+
 **This codebook is tuned for recall, deliberately.** It sits at the front of the
 pipeline, and a measure it misses is invisible to every stage after it, while a
 measure it wrongly surfaces is cheap: the act-identification pass discards it,
@@ -622,24 +682,28 @@ recoverable rather than binding. The diagnostic benchmarks reflect that ordering
 — Tier 1 recall ≥95%, combined recall ≥90%, precision ≥70% — and none of them is
 a hard gate. The gate is the manual error analysis below.
 
-### Behavioural tests
+[In general, all artifacts (tables and figures) should be addressed in-body, preferably before the artifact. The body text should escribe what an artifact is showing and briefly say in English what the artifact is trying to say. Do not try to describe all the elements of the artifact.]{.aside}
 
-```{r}
-#| label: fig-c1-s1
-#| fig-cap: "**Measure identification, behavioural tests.** Tests I–III as percent correct; Test IV as Fleiss' kappa across label orderings. Test II is the memorisation probe."
-#| fig-height: 5
-#| eval: !expr have_il
-plot_s1_behavioral(latest(il$s1, "c1"))
-```
+#### Behavioural tests
 
-The battery passes cleanly, and that is the expected result rather than an
-achievement: every frontier commercial model we tried clears these tests on this
-codebook. Their purpose is not to discriminate between models but to prove the
+@fig-c1-s1 shows the battery of behavioral tests passes cleanly, and that is the expected result rather than an achievement: every frontier commercial model we tried clears these tests on this codebook. Their purpose is not to discriminate between models but to prove the
 harness is sound — that the schema, the parsing, and the token budget let the
 model express what the codebook asks for. They earned that keep twice. An
 apparent Test I failure turned out to be an output-token cap truncating long
 measure lists rather than a codebook defect, and it was the test, not the
 evaluation, that isolated it.
+
+```{r}
+#| label: fig-c1-s1
+#| fig-cap: "**Measure identification, behavioural tests.** Tests I–III as percent correct; Test IV as Fleiss' kappa across label orderings. See @tbl-hk-tests for more information on the tests."
+#| fig-height: 5
+#| eval: !expr have_il
+plot_s1_behavioral(latest(il$s1, "c1"))
+```
+
+@fig-c1-s2 shows the zero-shot evaluation results. Although we were aiming to maximize recall over precision, we arrived at an instrument that has better precision overall. 
+
+[Please include here a brief discussion of what Tier 1 and Tier 2 are, and reference to the section where we discuss IKA more thoroughly. If there is no section where we discuus such process, please write one (See notebooks/identifying_known_acts.qmd). Said section should either be inside this evaluation section or in the appendix.]{.aside}
 
 ```{r}
 #| label: fig-c1-s2
@@ -650,6 +714,8 @@ p <- plot_s2_metrics(latest(il$s2, "c1"))
 if (is.null(p)) cat("No S2 metrics available.\n") else p
 ```
 
+@tbl-c1-s3 shows test results that allow us to know if the model is being correct for the right reasons.
+
 ```{r}
 #| label: fig-c1-s3
 #| fig-cap: "**Measure identification, codebook-adherence tests.** Tests V–VII against the full-codebook baseline. Test VI compares accuracy under informative and neutral label names; Test VII puts label names and definitions in conflict."
@@ -658,7 +724,7 @@ if (is.null(p)) cat("No S2 metrics available.\n") else p
 plot_s3_behavioral(latest(il$s3, "c1"), latest(il$s3_ablation, "c1"))
 ```
 
-### Manual error analysis and the label-noise correction {#sec-c1-manual}
+#### Manual error analysis and the label-noise correction {#sec-c1-manual}
 
 The gate is a human reading of every disagreement between model and gold label,
 sorted into the six-category framework of @halterman2025: the model was right
@@ -699,6 +765,9 @@ tb <- tt_confusion_matrix(latest(il$s3_manual_bias_corrected, "c1"))
 if (is.null(tb)) cat("No corrected confusion matrix available.\n") else tb
 ```
 
+
+Although the evaluation did not cleanly meet the pre-set gates, we decided to call it close enough. @tbl-c1-gates shows the bias-corrected evaluation results along their recall and precision gates.
+
 ```{r}
 #| label: tbl-c1-gates
 #| tbl-cap: "**Measure identification, corrected performance.** Label-noise-adjusted rates against the diagnostic benchmarks. Recall is the binding quantity here; precision is recoverable downstream."
@@ -709,9 +778,9 @@ tt_gate_metrics(
 )
 ```
 
-## Motivation and exogeneity {#sec-c2}
+### Motivation and exogeneity {#sec-c2}
 
-### Why this is two codebooks {#sec-c2-split}
+#### Why this is two codebooks {#sec-c2-split}
 
 Assigning a Romer–Romer motivation label to a passage is two tasks wearing one
 name. The first is evidentiary: find, in a document that discusses many things,
@@ -739,12 +808,8 @@ matters is of the bundle. §[-@sec-defect] is what that choice bought — a defe
 in the *interface* between the two stages, which neither stage's own metrics
 would have surfaced.
 
-```{r}
-#| label: c2b-instructions
-#| echo: false
-#| output: asis
-codebook_instructions_md(here("prompts/c2b_classification.yml"))
-```
+[The argument for evaluating the codebooks as a boundle is more that the HK framework works to evaluate classification tasks, not extraction tasks.]{.aside}
+
 
 ```{r}
 #| label: tbl-c2-classes
@@ -755,7 +820,9 @@ codebook_classes_table(here("prompts/c2b_classification.yml")) |>
   style_tt(j = 2, align = "l")
 ```
 
-### Behavioural tests and zero-shot evaluation
+[Also remove the inclusion/explusion tallies from @tbl-c2-classes]{.aside}
+
+#### Behavioural tests and zero-shot evaluation
 
 ```{r}
 #| label: fig-c2-s1
@@ -800,7 +867,7 @@ meaning should not assume the model will follow, and because agreement on US
 data is weaker evidence than it appears. It is the sharpest reason the Malaysia
 evidence, not the US benchmark, has to carry the argument.
 
-### Manual error analysis and the label-noise correction
+#### Manual error analysis and the label-noise correction
 
 ```{r}
 #| label: tbl-c2-manual
@@ -849,7 +916,7 @@ Sign accuracy on truly-exogenous acts clears its gate. These two corrected
 numbers, and the correction procedure that produces them, are the central
 methodological output of the US benchmark.
 
-# Validation II — Malaysia {#sec-my-validation}
+## Malaysia {#sec-my-validation}
 
 *Intent: the credibility pillar in the deployment country, where no ground truth
 exists. Three legs: (1) an **EN/BM cross-language consistency test** — the pipeline
@@ -862,7 +929,7 @@ narrative read diverge, the cases an expert must settle; and (3) the
 with absolute truth [@asirvatham_gpt_2026]. Prose sources:
 `notebooks/malay_consistency.qmd`, `docs/phase_1/expert_review_protocol.md`.*
 
-## Cross-language (EN/BM) consistency
+### Cross-language (EN/BM) consistency
 
 The test exploits an accident of the corpus: ten Economic Reports exist in both
 English and Bahasa Malaysia. The same fiscal year, the same underlying acts, two
@@ -899,7 +966,7 @@ p <- plot_malay_act_timeline(malay_inv, timing = "act_name")
 if (is.null(p)) cat("No act inventory available.\n") else p
 ```
 
-## Worked acts (disagreement cases)
+### Worked acts (disagreement cases)
 
 We reproduce three acts in full — one per component — each chosen where the
 model's classification and the preliminary narrative read **diverge**, in the
@@ -942,7 +1009,7 @@ incentive_exhibit(
 )
 ```
 
-## The expert-agreement protocol
+### The expert-agreement protocol
 
 *Intent: prose describing the ground-truth-free validation design — sampled acts
 for expert coding, the ≥80% (measure identification) and ≥70% (motivation)
@@ -1072,7 +1139,17 @@ the grain, per instrument, per country. The pipeline reduces months of work to
 weeks; it does not remove the expert, and the claim in this paper is explicitly
 about assistance, not automation.
 
-# Appendix: recall audits {#sec-appendix-recall}
+### References {.unnumbered}
+
+::: {#refs}
+:::
+
+
+# Appendix {.unnumbered}
+
+[Appendix subsections should be numbered with letters (A, B, ...). Check if this is manageable inside this document. Alternatively, separate the appendix into its own .qmd]{.aside}
+
+## Recall audits {#sec-appendix-recall}
 
 The remaining per-instrument recall audits, frozen with their datasets.
 
@@ -1104,11 +1181,11 @@ recall_scorecard_table(spending = spending_shocks, instrument = "Spending")
 recall_scorecard_table(incentive = incentive_shocks, instrument = "Tax incentives")
 ```
 
-# Appendix: codebooks {#sec-appendix-codebooks}
+## Codebooks {#sec-appendix-codebooks}
 
-The codebooks are reproduced verbatim, as the pipeline reads them.
+The codebooks are reproduced verbatim, as the model would read them.
 
-## Measure identification
+### Measure identification
 
 ```{r}
 #| label: appendix-c1
@@ -1117,7 +1194,7 @@ The codebooks are reproduced verbatim, as the pipeline reads them.
 codebook_verbatim_md(here("prompts/c1_measure_id.yml"))
 ```
 
-## Motivation evidence extraction
+### Motivation evidence extraction
 
 ```{r}
 #| label: appendix-c2a
@@ -1126,7 +1203,7 @@ codebook_verbatim_md(here("prompts/c1_measure_id.yml"))
 codebook_verbatim_md(here("prompts/c2a_extraction.yml"))
 ```
 
-## Motivation classification
+### Motivation classification
 
 ```{r}
 #| label: appendix-c2b
@@ -1135,7 +1212,3 @@ codebook_verbatim_md(here("prompts/c2a_extraction.yml"))
 codebook_verbatim_md(here("prompts/c2b_classification.yml"))
 ```
 
-## References {.unnumbered}
-
-::: {#refs}
-:::
