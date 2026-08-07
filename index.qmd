@@ -112,9 +112,9 @@ have_malay           <- nrow(malay_inv) > 0
 
 ::: {.callout-note}
 **Draft status.** The body and its exhibits are in place, as is the
-introduction. The abstract and the conclusion are written last, from the
-populated body, and the procyclicality use case in @sec-usecase is still a stub
-pending a data decision. Figures whose upstream targets are API-gated and not
+introduction, which is now sectioned and carries the literature. The abstract and
+the conclusion are written last, from the populated body, and the procyclicality
+use case in @sec-usecase is still a stub pending a data decision. Figures whose upstream targets are API-gated and not
 yet built render as a "pending" note rather than an error.
 
 The Malaysia figures below are built from the deliverable as frozen in June
@@ -128,39 +128,181 @@ narrative, not yet in the exhibits.
 
 Credible fiscal policy analysis needs to know which changes in taxes and
 spending were responses to the economy and which were not. For the United
-States that distinction was drawn by hand: @romer2010 read decades of
+States that distinction was drawn by hand. @romer2010 read decades of
 presidential messages, budget documents and congressional records to recover,
 act by act, *why* each tax change was legislated, and kept only the acts whose
-stated motivation was unrelated to current output. The resulting series has
-become the reference input for a generation of work on fiscal multipliers, and
-the method has since been shown to travel, at least to another rich country
-with a comparable archive [@cloyne_discretionary_2013].
+stated motivation was unrelated to current output. What they produced was less a
+finding than an input. The resulting series has been used to show that personal
+and corporate income tax changes have sharply different macroeconomic effects
+[@mertens2013], to discipline the anticipation problem that makes fiscal shocks
+hard even to date [@ramey_identifying_2011], and to reconcile narrative and
+time-series estimates of the tax multiplier that had disagreed for a decade
+[@mertens_reconciliation_2014]. The method itself has been shown to travel, at
+least to another rich country with a comparable archive
+[@cloyne_discretionary_2013]. Four decades of documents, read by hand, became
+infrastructure.
 
-For almost every emerging market, that input does not exist. What exists instead
-is a well-documented empirical regularity with no agreed explanation: fiscal
-policy in developing countries is procyclical, and @vegh_how_2015 show this holds
-for statutory tax rates and not only for revenues. They are explicit that the
-correlation they document could reflect either policy responding to the cycle or
-the cycle responding to policy, and that separating the two requires exactly the
-narrative, motivation-level information nobody has assembled outside the OECD.
-Building it by hand costs years per country. That is the constraint this paper
-attacks.
+It is infrastructure that exists for essentially one country.
+
+## Why exogenous fiscal measures matter {#sec-intro-motivation}
+
+The countries that would gain most from that input are the least likely to have
+it, and the gap is not a curiosity of data coverage. It sits directly on top of
+the best-documented regularity in development macroeconomics.
+
+Fiscal policy in developing countries is procyclical: it amplifies booms and
+busts rather than smoothing them. The stylized fact was named by
+@kaminsky_when_2004, and @vegh_how_2015 sharpen it in the way that matters here,
+showing that procyclicality holds for statutory tax *policy* and not merely for
+realised tax revenue, which moves with the cycle mechanically whatever
+policymakers do. They are also explicit about what their evidence cannot settle.
+The correlation they document could reflect policy responding to the cycle or the
+cycle responding to policy, and separating the two requires knowing why each
+measure was enacted. They name the @romer2010 narrative classification as the
+missing input. That is the gap this paper attacks.
+
+What hangs on it is the credibility of essentially every fiscal policy
+recommendation made outside the OECD. Fiscal multipliers are not a constant to be
+borrowed from the United States: they vary with the exchange-rate regime, with
+openness, and with the level of debt [@ilzetzki_how_2013], and whether a country
+escapes procyclicality at all appears to turn on the quality of its institutions
+rather than on its income [@frankel_graduation_2013]. For developing Asia
+specifically, @jha_effectiveness_2014 find that tax cuts do more countercyclical
+work than spending increases, while conceding that roughly 70% of the revenue
+variation in their data is non-discretionary. That concession states the whole
+problem in one number, because the non-discretionary component is exactly what
+narrative motivation removes, and an estimate that leaves it in is answering a
+different question.
+
+The scarcity is easy to document. @ramey_macroeconomic_2016 survey
+macroeconomic shocks and their propagation for the *Handbook of
+Macroeconomics*; the fiscal portion is essentially United States evidence, and
+the words "emerging" and "developing" do not appear in it.
+
+## Narrative identification and who has used it {#sec-intro-narrative}
+
+Because the narrative method is the object this paper automates, it is worth
+being precise about what it is, how well established it is, and where it has been
+attacked.
+
+**The method.** Narrative identification reads the documentary record of a policy
+decision to recover the decision's stated motive, and then uses the motive to
+decide whether the resulting change can be treated as a shock. @romer2010 and
+their companion narrative analysis [@romer] apply this to every significant
+federal tax action in the United States between 1945 and 2007, sorting each into
+one of four motivation categories and keeping only those whose stated purpose was
+unrelated to current output. @romer_presidential_2023 later set out the
+methodological doctrine explicitly, and @sec-frameworks takes those requirements
+as the specification this pipeline has to satisfy. Two properties make the
+approach attractive to automate: the evidence for every judgement is a passage
+another researcher can re-read, and the judgement itself is a reading task rather
+than an estimation task.
+
+**Who has used it.** The approach has been replicated and extended into a small
+industry. @cloyne_discretionary_2013 built the United Kingdom equivalent from
+Budget documents and found magnitudes remarkably close to the American ones,
+which is the single most important precedent for the transfer claim in this
+paper. @mertens2013 exploited the act-level detail to separate personal from
+corporate income tax changes, a decomposition no aggregate revenue series can
+support. A parallel action-based tradition grew up at the IMF, where
+@pescatori_new_2011 coded fiscal consolidation episodes from national policy
+documents rather than from budget outturns, and @guajardo_expansionary_2014 used
+that dataset to show the identification choice is not innocuous: action-based
+measures overturn the "expansionary austerity" reading that conventional
+cyclically-adjusted measures produce. @dabla-norris_macroeconomic_2023 extend the
+same logic to more than 2,000 consolidation-era tax measures, coding each one's
+yield, motivation, and date, which is close to the record this paper's pipeline
+is built to produce.
+
+**Where it has been attacked.** The narrative approach is contested, and the
+contest bears directly on how the results below should be read.
+@mertens_reconciliation_2014 show that structural VARs cannot recover the tax
+multiplier without assuming the output-elasticity of revenue, that narrative
+series used as external instruments deliver substantially larger multipliers,
+and, most relevant here, that measurement error in the narrative series is itself
+consequential rather than a rounding concern. @hebous_revisiting_2018 press
+harder: the widely-used narrative tax measures correlate only weakly with
+cyclically-adjusted revenues in both the United States and the United Kingdom,
+and under weak-instrument-robust inference the implied multipliers are frequently
+insignificant, so the literature understates how uncertain narrative-based
+estimates are.
+
+We take that as the standard rather than as an objection. The benchmark this
+paper scores itself against is a hand-built series with acknowledged measurement
+error, produced by two economists reading documents and exercising judgement. The
+useful question is therefore not whether an LLM reproduces it exactly, which
+would be a suspicious result, but whether the disagreements are of the same
+character as the disagreements two careful human coders would have.
+@sec-us-validation is organised around that question, and @sec-c1-manual reports
+a class of disagreement that turned out to be the benchmark's fault rather than
+the model's.
+
+## Related work: LLMs and narrative fiscal identification {#sec-intro-related}
 
 Large language models make the reading step cheap, and a small but fast-moving
 literature has already used them for narrative fiscal identification. Its three
-leading entries share a design choice: each reads a **secondary, harmonised,
-English-language source**, precisely to avoid the cost of primary national
-documents. @das_ai_2026 code Economist Intelligence Unit country reports for 64
-countries, recovering the direction of spending actions but explicitly not their
-magnitude. @bhasin_identifying_2026 read IMF Article IV reports for 17 OECD
-countries, restricted to austerity episodes. @fritsch_high-frequency_nodate read
-news wires at high frequency, for the United States alone. All three validate
-the same way, by concordance against a pre-existing narrative series, which is
-a strategy that only works where such a series already exists and therefore
-cannot travel to the countries the method is meant to serve.
+leading entries share a design choice.
 
-We take the opposite side of each of those trades. This paper builds and
-validates a pipeline that reads **primary national documents in the local
+Each reads a **secondary, harmonised, English-language source**, precisely to
+avoid the cost of primary national documents. @das_ai_2026 code Economist
+Intelligence Unit country reports for 64 countries, recovering the direction of
+spending actions but explicitly not their magnitude.
+@bhasin_identifying_2026 read IMF Article IV reports for 17 OECD countries,
+restricted to austerity episodes. @fritsch_high-frequency_nodate read news wires
+at daily frequency and do recover magnitudes in percent of GDP, for the United
+States alone, and for an expectations series rather than a realised one. All
+three validate the same way, by concordance against a pre-existing narrative or
+action-based series, which is a strategy that only works where such a series
+already exists and therefore cannot travel to the countries the method is meant
+to serve. @tbl-related-work sets the four designs side by side.
+
+```{r}
+#| label: tbl-related-work
+#| tbl-cap: "**The three closest papers, and this one.** LLM-based narrative fiscal identification designs compared on the dimensions this paper inverts [@das_ai_2026; @bhasin_identifying_2026; @fritsch_high-frequency_nodate]."
+tibble::tribble(
+  ~Dimension,     ~`Das et al.`,               ~`Bhasin et al.`,              ~`Fritsch et al.`,            ~`This paper`,
+  "Source",       "EIU country reports",       "IMF Article IV reports",      "News wires",                 "National budget speeches, economic reports, plans",
+  "Language",     "English",                   "English",                     "English",                    "English and Bahasa Malaysia",
+  "Countries",    "64",                        "17, all OECD",                "1, the United States",       "1 pilot, 4 planned",
+  "Instruments",  "Spending",                  "Austerity episodes",          "Tax and spending",           "Statutory tax, spending, incentives",
+  "Output unit",  "Direction of action",       "Episode",                     "Daily surprise",             "One row per act and instrument",
+  "Magnitude",    "Not recovered",             "Percent of GDP",              "Percent of GDP",             "Extracted, not validated",
+  "Validation",   "Concordance with benchmark", "Concordance with benchmark", "Correlation with benchmark",  "US benchmark, then two no-ground-truth legs"
+) |>
+  tt(width = c(0.15, 0.20, 0.20, 0.20, 0.25)) |>
+  tt_theme_report() |>
+  style_tt(j = 1:5, align = "l")
+```
+
+The alternative to concordance validation is visible just outside fiscal policy.
+@aruoba_identifying_nodate identify monetary policy shocks from Federal Reserve
+narrative records and validate not against an existing shock list but against
+forecast-error predictability and theory-consistent impulse responses. That is
+the right instinct for a country with no labelled data, and @sec-my-validation
+explains why we cannot yet follow it.
+
+The prior question, whether an LLM can stand in for a human coder at all, has
+been answered fairly encouragingly. @gilardi_chatgpt_2023 find that zero-shot
+models beat crowd workers on text annotation by a wide margin and with higher
+intercoder agreement, and @tornberg_large_2025 find they beat expert coders and
+supervised classifiers at multi-country political labelling. @ziems_can_2024
+bound the claim, documenting taxonomic tasks where fine-tuned models still win
+and concluding that LLMs augment the research pipeline rather than replace it.
+That is the position this paper occupies. It is also a position @sec-c2 gives a
+mechanism for: the models arrive already knowing the conventional constructs,
+which is a strength on conventional tasks and a liability on bespoke ones.
+
+Two further literatures constrain the design and are introduced where they bind
+rather than here. @halterman2025 supply the validation framework the paper adopts
+wholesale (@sec-frameworks). @gentzkow_text_2019 supply the standing objection
+that fixed text measures notoriously fail to transfer across domains, which is
+precisely the property our frozen codebooks claim and @sec-my-validation has to
+defend.
+
+## This paper {#sec-introduction-rq}
+
+We take the opposite side of each trade in @tbl-related-work. This paper builds
+and validates a pipeline that reads **primary national documents in the local
 language**, covers the **tax side** as well as spending, returns a **full row
 per act** (the measure, its direction, its motivation, and a preliminary
 exogeneity read, each traceable to a quoted passage), and is validated
@@ -174,6 +316,14 @@ expert still decides what is exogenous. Where our design differs most from a
 single end-to-end prompt is that it separates the parts that can be validated
 from the parts that cannot, and says which is which.
 
+A second and more portable contribution came out of the validation rather than
+the pipeline. Scoring the codebooks turned out to be harder than building them,
+because **the label-generating process is noisier than the thing it is
+measuring**. Projecting Romer and Romer's published act-level classifications
+[@romer_replication_2019] down to the level of a document chunk imports exactly
+the errors the evaluation exists to detect, and the correction we build for it
+(@sec-c1-manual) is a procedure any project evaluating a codebook at this scale
+will need.
 
 The project this paper reports on is organised around four questions. This
 paper answers the first two in part and delivers the fourth for one country.
@@ -196,14 +346,14 @@ paper answers the first two in part and delivers the fourth for one country.
    actually use?** The Malaysia inventory is the demonstration, and its
    provenance chain is the reason it is usable.
 
-
-The remainder of the paper is organized as follows. @sec-frameworks sets out the two frameworks the pipeline implements: the narrative specification we are automating, and the validation discipline we
-hold it to. @sec-pipeline describes the pipeline and the dataset it produces.
-@sec-build reconstructs how the Malaysia dataset was built, including a defect
-the provenance chain caught after deployment. @sec-validation and
-reports the two validation legs, the US benchmark and
-Malaysia. @sec-coverage states plainly which stages carry evidence and which do
-not. @sec-usecase sketches the procyclicality decomposition the dataset was
+The remainder of the paper is organized as follows. @sec-frameworks sets out the
+two frameworks the pipeline implements: the narrative specification we are
+automating, and the validation discipline we hold it to. @sec-pipeline describes
+the pipeline and the dataset it produces. @sec-build reconstructs how the
+Malaysia dataset was built, including a defect the provenance chain caught after
+deployment. @sec-validation reports the two validation legs, the US benchmark
+and Malaysia. @sec-coverage states plainly which stages carry evidence and which
+do not. @sec-usecase sketches the procyclicality decomposition the dataset was
 built to make possible.
 
 # The narrative specification and the validation philosophy {#sec-frameworks}
@@ -217,10 +367,12 @@ appears.
 
 ## The specification: what narrative identification asks for
 
-@romer_presidential_2023 set out four requirements for narrative analysis to
-count as evidence rather than anecdote: a reliable source, a clear idea of the
-information being sought, a dispassionate and consistent approach to the source,
-and careful documentation of the narrative evidence behind each judgement. Those
+@sec-intro-narrative described the method and its lineage. This is the
+specification it hands a coder. @romer_presidential_2023 set out four
+requirements for narrative analysis to count as evidence rather than anecdote: a
+reliable source, a clear idea of the information being sought, a dispassionate
+and consistent approach to the source, and careful documentation of the
+narrative evidence behind each judgement. Those
 four requirements are what this pipeline has to satisfy, and they map onto it
 directly. The reliable source is a corpus of primary government documents. The
 clear idea of the information sought is a written codebook. The dispassionate
@@ -625,6 +777,22 @@ that an act was missed.
 plot_tax_rate_paths(tax_shocks)
 ```
 
+Those paths admit an external check we have not run. @vegh_how_2015 assemble a
+hand-built statutory-rate panel covering a large set of countries, Malaysia among
+them, over part of this period. Comparing our reconstructed paths against theirs
+is the most direct external validation this component admits, and it is the
+obvious next step for anyone using it. @tbl-coverage records it as missing
+evidence rather than claiming it.
+
+The act-level record also carries a distinction an aggregate rate series cannot,
+and the personal-income acts above are the case in point: several of them move a
+bracket structure or a base rather than a headline rate. That separation is
+consequential rather than bookkeeping. @dabla-norris_macroeconomic_2023, coding
+more than 2,000 tax measures, find base-broadening markedly less contractionary
+than rate increases, and @crispolti_cross-country_2022 show revenue yields differ
+systematically by instrument and by whether a reform moves the rate or the base.
+A dataset that recorded only the headline rate would collapse that distinction.
+
 @fig-tax-timeline shows when the acts happened and what the model made of them.
 The visible pattern is that tax policy activity is spread fairly evenly across
 the period rather than bunched in crises, and that the bars are dominated by the
@@ -664,6 +832,19 @@ composed largely of endogenous crisis response is what the fiscal history of an
 emerging market ought to produce, and the fact that the codebook recovers it
 without being told to is one of the more reassuring results in the paper.
 
+It is worth being explicit that there is nothing to check this component against.
+The action-based consolidation datasets [@pescatori_new_2011;
+@guajardo_expansionary_2014; @adler_updated_2024] are the benchmark class for
+narrative spending and consolidation measures, and they are also the series the
+LLM-based papers validate their own output against. Malaysia is not in them. That
+absence is simultaneously the reason this pipeline exists and the reason this
+component reports no concordance statistic. The contrast with @das_ai_2026 is the
+sharpest available: they reach 64 countries by reading a harmonised secondary
+source and recover the direction of each spending action without its size, while
+the ringgit amounts in @tbl-spending-inventory are the trade made in the other
+direction. Ours are extracted from the announcing document and traceable to it;
+they are not validated.
+
 ```{r}
 #| label: tbl-spending-inventory
 #| tbl-cap: "**Government spending-shock inventory.** One row per announced spending act; exogeneity from the validated classification codebook, alongside the @das_ai_2026 two-condition preliminary screen."
@@ -699,6 +880,20 @@ corporate income, one on personal income, and one on the consumption base: the
 2023 electric-vehicle package works through import-duty, excise, and sales-tax
 exemptions rather than through a profits rate. That row is a reminder that the
 component is defined by mechanism, not by base.
+
+The nearest existing comparator is @klemm_empirical_2012, who assemble tax
+holidays, allowances, credits, and corporate rates for more than 40 countries in
+Latin America, the Caribbean, and Africa between 1985 and 2004. That is an
+instrument inventory rather than a narrative one: it records what each incentive
+was, not why it was granted, and it covers neither Malaysia nor this period. The
+motivation column in @tbl-incentive-inventory is what this pipeline adds to that
+class of dataset, and it is also the column carrying the most interpretive risk,
+because an incentive's stated rationale is almost always developmental whatever
+the timing of its announcement. The 2020 relocation incentive is the visible
+instance. That these measures move real behaviour is not itself in doubt:
+@agarwal_consumption_2017 find temporary consumption-tax holidays produce
+substantial increases in spending on covered goods that are not offset before or
+after.
 
 ```{r}
 #| label: pending-incentives
@@ -920,6 +1115,22 @@ track split across nine clusters, and it never bridged the English and Bahasa
 Malaysia names of the same act. Both failures are recorded in the frozen recall
 audits in @sec-appendix-recall.
 
+What we ran into is the oldest problem in record linkage, and it helps to name it
+as such. Deciding whether two mentions refer to the same underlying entity is the
+decision problem @fellegi_theory_1969 formalised, and the modern taxonomy of
+approaches to it is surveyed by @binette_almost_2022. Every method in that
+literature trades off the same two errors we hit: merging records that belong
+apart, and splitting records that belong together. Economics has shown the
+trade-off can be managed well at scale, with @abramitzky_automated_2021
+documenting automated historical linkage whose false-positive and match rates
+stand comparison with hand linkage. Two features of our problem sit badly with
+those results. Their linkage keys are person-level attributes with stable
+distributions, whereas an act's surface form is a phrase a speechwriter chose. And
+their algorithms are tuned and audited against hand-linked training pairs, which
+for Malaysian acts do not exist. The conventional finding, that record linkage
+automates well, is therefore compatible with ours, that this instance of it does
+not.
+
 The finding is a negative result about clustering, not about LLMs: consolidating
 mentions into acts requires knowing which mentions describe the same *statutory
 instrument*, and surface-form similarity does not carry that. The agentic
@@ -927,7 +1138,10 @@ procedure of @sec-agentic succeeds where clustering fails because it works
 from the instrument down, reconstructing the rate path and then asking which
 mentions account for each step, rather than from the mentions up. That is also
 why it needs a human stamp: the reconstruction is a judgement about what counts
-as one act, and the researcher owns it.
+as one act, and the researcher owns it. Keeping a human in that loop is the
+conventional position in the linkage literature rather than a concession, since
+the algorithm-versus-human comparisons that would license full automation are
+exactly what a country with no hand-linked acts cannot run.
 
 ## A defect the evidence chain surfaced {#sec-defect}
 
@@ -964,7 +1178,7 @@ cost is quantified because the provenance chain made it quantifiable: four wrong
 labels out of 51, found by following each label back to the passage it came
 from. A pipeline without that chain would have shipped them.
 
-# Validation
+# Validation {#sec-validation}
 
 The pipeline described so far produces an inventory. This section asks whether
 that inventory should be believed, and it does so in two places, because the two
@@ -988,9 +1202,11 @@ Romer's own labels, reproduce their identification of US fiscal changes?**
 
 The ground truth we score against needs stating plainly, because everything in
 this section depends on what it is and is not. @romer2010 published, alongside
-their results, an act-level record: for each of the significant federal tax
-actions between 1945 and 2007, the act's name, its motivation category, and the
-narrative reasoning behind that classification. After matching that record to
+their results, an act-level record, since archived as replication data
+[@romer_replication_2019]: for each of the significant federal tax actions
+between 1945 and 2007, the act's name, its motivation category, and the narrative
+reasoning behind that classification, set out at length in their companion
+narrative analysis [@romer]. After matching that record to
 the US source documents our pipeline reads, 44 acts carry both a published label
 and locatable passages in the corpus. Those 44 acts are the only ground truth
 that exists for this task anywhere in the world, which is both why the US is the
@@ -1179,7 +1395,11 @@ evaluation scores it a false negative.
 **The label-generating process is noisier than the thing it is measuring**, and
 that is a general hazard for LLM content analysis at this scale: automating gold
 label construction to make evaluation feasible imports exactly the errors the
-evaluation is meant to detect. The response is not to discard the noisy labels
+evaluation is meant to detect. It is the specific form, at scale, of the warning
+that runs through the economics text-as-data literature: measurement from text
+must be validated rather than assumed valid, and a validation is only ever as
+good as its own labels [@ash_text_2023]. The response is not to discard the noisy
+labels
 but to quantify them. The manual analysis identifies which disagreements are
 label noise, and the gate is recomputed with those chunks excluded from the
 denominator, as @tbl-c1-confusion and @tbl-c1-gates report. Ambiguous cases are
@@ -1343,6 +1563,27 @@ meaning should not assume the model will follow, and because agreement on US
 data is weaker evidence than it appears. It is the sharpest reason the Malaysia
 evidence, not the US benchmark, has to carry the argument.
 
+There is a name for the property this result is about. @asirvatham_gpt_2026
+separate two requirements an LLM measurement has to meet: **accuracy**, agreement
+with a benchmark, and **directness**, the property that the rating comes from the
+text being rated rather than from something merely correlated with it. Test VII is
+a directness result, and it is the test we do worst on. Their diagnostic is
+signal-stripping: remove the rated content and confirm the rating collapses. The
+analogue here is to mask the stated motivation in a chunk and re-classify, and if
+the exogeneity call survives, the model is reading the act's name, its era, and
+its sponsor rather than its rationale. We have not run that test. It is the single
+most informative check missing from this paper, and @tbl-coverage records it as
+such.
+
+The finding also puts the encouraging annotation literature in context. Where
+@gilardi_chatgpt_2023 and @tornberg_large_2025 find models matching or beating
+human coders, the constructs at issue are conventional ones a model has seen
+defined many times over, and @ziems_can_2024 find the advantage narrows precisely
+where labels are bespoke and taxonomic. A pretrained prior is the most plausible
+reason our classifier does well on Romer and Romer's categories, which are
+canonical in fiscal economics. It is equally a reason to expect less of any
+category a researcher invents.
+
 #### Manual error analysis and the label-noise correction
 
 As with measure identification, the gate is a human reading every disagreement
@@ -1419,6 +1660,16 @@ the pipeline's reasoning directly rather than through a summary statistic. The
 third is **expert agreement**, which is the only external check available and is
 currently being collected.
 
+A fourth line exists in principle and we cannot yet use it.
+@aruoba_identifying_nodate, identifying monetary policy shocks from narrative
+records, validate not against an existing shock list but against forecast-error
+predictability and against whether the recovered series produces
+theory-consistent impulse responses. Neither test needs labels, which makes the
+strategy the natural one for a country like Malaysia. Both need magnitude and
+quarterly timing, which @tbl-coverage records as unbuilt. So the strategy is
+available to this method and not yet to this dataset, and it is a further reason
+@sec-coverage treats magnitude as a binding gap rather than a refinement.
+
 ### Cross-language (EN/BM) consistency
 
 The test exploits an accident of the corpus. Ten Economic Reports were published
@@ -1434,7 +1685,8 @@ lower-resource languages relative to English [@ahuja_mega_2023;
 @rathje_gpt_2024], so equivalence is a real hypothesis and not a foregone
 conclusion. And the paired-document design isolates the language effect from
 item difficulty, since both versions describe identical events, which is exactly
-the design those evaluations recommend.
+the design the multilingual benchmarks adopt to separate the two
+[@singh_indicgenbench_2024; @xuan_mmlu-prox_2025].
 
 Because no ground truth exists on either side, the comparison is distributional:
 measure counts, act counts, and the motivation label mix, rather than a matched
@@ -1604,8 +1856,8 @@ tibble::tribble(
   "Measure identification",  "Full behavioural, zero-shot and error-analysis record on 44 US acts",        "Deployment-corpus performance; the top-ranked-measure filter discards 84.5% of mentions",
   "Act identification",      "Per-instrument recall scorecards, frozen; human stamp on every event",       "No gold standard, so no recall or precision rate — only an audit of what was searched",
   "Act consolidation",       "Automated clustering built and scored against 49 US reference acts",         "Rejected for deployment, not validated for it",
-  "Motivation and sign",     "Full record on US acts; label-noise-corrected gates",                        "Validated on single-act chunks, deployed on multi-measure speeches",
-  "Magnitude",               "Extracted with each act and traceable to a quoted rate or amount",           "No codebook, no behavioural tests, no external rate anchor",
+  "Motivation and sign",     "Full record on US acts; label-noise-corrected gates",                        "Validated on single-act chunks, deployed on multi-measure speeches; no signal-stripping test of directness",
+  "Magnitude",               "Extracted with each act and traceable to a quoted rate or amount",           "No codebook, no behavioural tests; published statutory-rate panels never compared against our rate paths",
   "Timing",                  "Announced and effective year, from the document",                            "No quarterly timing; the annual grain limits the downstream use case",
   "Exogeneity of the output", "Two independent preliminary reads per act, and their disagreements flagged", "Expert adjudication not yet run; the column is a model read"
 ) |>
@@ -1636,6 +1888,36 @@ budget speeches that discuss many. That gap produced a real defect that no US
 test could have caught, and it is a gap any cross-country transfer of this kind
 will have in some form.
 
+The same accounting is worth doing for the closest related work, because the
+comparison in @tbl-related-work was about design and this one is about evidence.
+@tbl-rival-evidence sets it out. The instructive column is the last: on magnitude,
+the dimension a multiplier estimate needs most, the four methods fail differently
+rather than uniformly. @fritsch_high-frequency_nodate do recover percent-of-GDP
+magnitudes and validate them against the Romer and Romer series, but for one
+country and for an expectations series rather than realised liabilities.
+@das_ai_2026 decline magnitude outright and are explicit about it.
+@bhasin_identifying_2026 size their episodes and, where they diverge from the
+benchmark, argue the benchmark is the inflated one rather than conceding an
+accuracy limit, which is a defensible position and an unresolved one. Ours are
+extracted from the announcing document and traceable to a quoted rate, and carry
+no validation record at all. No method in this literature yet has a magnitude
+series that is both externally validated and portable.
+
+```{r}
+#| label: tbl-rival-evidence
+#| tbl-cap: "**What the evidence in each method supports.** The complement of @tbl-related-work: not what each design does, but what its validation licenses and what it does not. Read alongside @tbl-coverage, which does the same job stage by stage for this paper."
+tibble::tribble(
+  ~Method,             ~`Validation evidence`,                                                        ~`Scored against`,                                    ~`Not supported by that evidence`,
+  "Das et al.",        "Concordance on overlapping country-years",                                    "Action-based consolidation datasets",                 "Magnitudes; countries with no benchmark series",
+  "Bhasin et al.",     "Divergence from benchmark decomposed into sizing and event selection",         "OECD action-based benchmark",                         "Transfer beyond the OECD; which of the two series is closer to the truth",
+  "Fritsch et al.",    "High correlation with the narrative tax-shock series",                         "Romer and Romer, United States",                      "Realised liabilities (the series is expectations); any non-US setting",
+  "This paper",        "Behavioural, zero-shot and manual error analysis on 44 US acts; cross-language consistency", "Romer and Romer labels; no Malaysian ground truth", "Magnitude; quarterly timing; the exogeneity column pending expert adjudication"
+) |>
+  tt(width = c(0.15, 0.29, 0.22, 0.34)) |>
+  tt_theme_report() |>
+  style_tt(j = 1:4, align = "l")
+```
+
 # A first use case: procyclicality decomposition {#sec-usecase}
 
 ::: {.callout-note}
@@ -1651,6 +1933,16 @@ tax-policy procyclicality was exogenous all along — the decomposition
 @vegh_how_2015 name as the missing input and could not perform with a statutory-rate
 series. The value added of the paper is the dataset and the method; this is one use
 case.*
+
+*The question the decomposition speaks to is the one @kaminsky_when_2004 opened
+and @frankel_graduation_2013 sharpened: whether a country's procyclical fiscal
+record reflects deliberate response to the cycle or the accumulation of measures
+taken for unrelated reasons that happened to land badly. A motivation-coded
+inventory is the only kind of dataset that can tell those apart, which is why
+@vegh_how_2015 could document the pattern and not attribute it. The natural
+estimator is a local projection on the signed exogenous events
+[@jorda_estimation_2005], at annual frequency, which the timing gap in
+@tbl-coverage constrains and does not preclude.*
 
 *Generated-regressor caveat (load-bearing here): once an estimate is built on the
 labels, valid inference is a measurement-error problem, not a classification-accuracy
