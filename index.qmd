@@ -1,7 +1,21 @@
 ---
-title: "Scaling the Narrative Identification of Fiscal Changes using LLMs"
+header: Please click [HERE](https://www.estebandegetau.com/Fiscal-shocks/index.pdf) for the latest version.
+title: Call it Exogenous
+subtitle: Scaling the Narrative Identification of Fiscal Changes using LLMs
 date: last-modified
-date-format: long
+date-format: full
+author: 
+  - name: "Esteban Degetau"
+    email: "estebandegetau@gmail.com"
+    orcid: 0009-0004-4095-8819
+    affiliation: 
+      - World Bank
+      - Barcelona School of Economics
+    corresponding: true
+    url: https://www.estebandegetau.com/
+  - name: "Agustín Samano"
+    email: "asamanopenaloza@worldbank.org"
+    affiliation: "World Bank"
 abstract: |
   *Draft abstract (written last, once the body is settled).* We build and
   validate an LLM-assisted pipeline that transfers the Romer & Romer (2010)
@@ -12,18 +26,18 @@ abstract: |
   inventory of statutory tax, spending, and tax-incentive changes — each
   carrying a motivation and a preliminary exogeneity read. We demonstrate the
   dataset with a first procyclicality decomposition.
+thanks: |
+  This research project was supported by the World Bank's Development Research Group.
+keywords:
+  - Fiscal policy
+  - AI for social science
 number-sections: true
 section-numbering: "1.1.1"
 number-depth: 3
+colorlinks: true
 format:
-  html:
-    toc: true
-    comments:
-      hypothesis: true
-  docx: default
   jats: default
-  academic-typst: 
-    colorlinks: true
+  academic-typst: default
 execute:
   echo: false
   warning: false
@@ -132,8 +146,6 @@ narrative, motivation-level information nobody has assembled outside the OECD.
 Building it by hand costs years per country. That is the constraint this paper
 attacks.
 
-## What this paper does
-
 Large language models make the reading step cheap, and a small but fast-moving
 literature has already used them for narrative fiscal identification. Its three
 leading entries share a design choice: each reads a **secondary, harmonised,
@@ -162,7 +174,6 @@ expert still decides what is exogenous. Where our design differs most from a
 single end-to-end prompt is that it separates the parts that can be validated
 from the parts that cannot, and says which is which.
 
-## Research questions {#sec-introduction-rq}
 
 The project this paper reports on is organised around four questions. This
 paper answers the first two in part and delivers the fourth for one country.
@@ -185,14 +196,12 @@ paper answers the first two in part and delivers the fourth for one country.
    actually use?** The Malaysia inventory is the demonstration, and its
    provenance chain is the reason it is usable.
 
-## Roadmap
 
-@sec-frameworks sets out the two frameworks the pipeline implements: the
-narrative specification we are automating, and the validation discipline we
+The remainder of the paper is organized as follows. @sec-frameworks sets out the two frameworks the pipeline implements: the narrative specification we are automating, and the validation discipline we
 hold it to. @sec-pipeline describes the pipeline and the dataset it produces.
 @sec-build reconstructs how the Malaysia dataset was built, including a defect
-the provenance chain caught after deployment. @sec-us-validation and
-@sec-my-validation report the two validation legs, the US benchmark and
+the provenance chain caught after deployment. @sec-validation and
+reports the two validation legs, the US benchmark and
 Malaysia. @sec-coverage states plainly which stages carry evidence and which do
 not. @sec-usecase sketches the procyclicality decomposition the dataset was
 built to make possible.

@@ -27,17 +27,6 @@ project:
     # - "!notebooks/c1*.qmd"
     # - "!notebooks/identifying_known_acts.qmd"
 
-author: 
-  - name: "Esteban Degetau"
-    email: "estebandegetau@gmail.com"
-    affiliation: "World Bank"
-  - name: "Agustín Samano"
-    email: "asamanopenaloza@worldbank.org"
-    affiliation: "World Bank"
-  
-keywords:
-  - Fiscal policy
-  - AI for social science
 
 website: 
   reader-mode: true
@@ -106,7 +95,7 @@ format:
 
 title-block-banner: true
 lightbox: true
-reference-location: margin
+
 
 code-links: repo
 
