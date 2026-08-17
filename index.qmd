@@ -36,8 +36,10 @@ section-numbering: "1.1.1"
 number-depth: 3
 colorlinks: true
 format:
+  academic-typst: 
+    # citeproc: true
+    csl: chicago-author-date
   jats: default
-  academic-typst: default
 execute:
   echo: false
   warning: false
@@ -126,35 +128,24 @@ narrative, not yet in the exhibits.
 
 # Introduction
 
-Credible fiscal policy analysis needs to know which changes in taxes and
-spending were responses to the economy and which were not. For the United
-States that distinction was drawn by hand. @romer2010 read decades of
+Credible fiscal policy analysis needs to distinguish which changes in taxes and
+spending were responses to the economy and which were not.  @romer2010 read decades of
 presidential messages, budget documents and congressional records to recover,
 act by act, *why* each tax change was legislated, and kept only the acts whose
-stated motivation was unrelated to current output. What they produced was less a
-finding than an input. The resulting series has been used to show that personal
+stated motivation was unrelated to current output--calling them exogenous fiscal shocks. The resulting series has been used to show that personal
 and corporate income tax changes have sharply different macroeconomic effects
 [@mertens2013], to discipline the anticipation problem that makes fiscal shocks
 hard even to date [@ramey_identifying_2011], and to reconcile narrative and
 time-series estimates of the tax multiplier that had disagreed for a decade
 [@mertens_reconciliation_2014]. The method itself has been shown to travel, at
 least to another rich country with a comparable archive
-[@cloyne_discretionary_2013]. Four decades of documents, read by hand, became
-infrastructure.
-
-It is infrastructure that exists for essentially one country.
-
-## Why exogenous fiscal measures matter {#sec-intro-motivation}
-
-The countries that would gain most from that input are the least likely to have
-it, and the gap is not a curiosity of data coverage. It sits directly on top of
-the best-documented regularity in development macroeconomics.
+[@cloyne_discretionary_2013]. 
 
 Fiscal policy in developing countries is procyclical: it amplifies booms and
 busts rather than smoothing them. The stylized fact was named by
 @kaminsky_when_2004, and @vegh_how_2015 sharpen it in the way that matters here,
 showing that procyclicality holds for statutory tax *policy* and not merely for
-realised tax revenue, which moves with the cycle mechanically whatever
+realized tax revenue, which moves with the cycle mechanically whatever
 policymakers do. They are also explicit about what their evidence cannot settle.
 The correlation they document could reflect policy responding to the cycle or the
 cycle responding to policy, and separating the two requires knowing why each
@@ -174,16 +165,6 @@ problem in one number, because the non-discretionary component is exactly what
 narrative motivation removes, and an estimate that leaves it in is answering a
 different question.
 
-The scarcity is easy to document. @ramey_macroeconomic_2016 survey
-macroeconomic shocks and their propagation for the *Handbook of
-Macroeconomics*; the fiscal portion is essentially United States evidence, and
-the words "emerging" and "developing" do not appear in it.
-
-## Narrative identification and who has used it {#sec-intro-narrative}
-
-Because the narrative method is the object this paper automates, it is worth
-being precise about what it is, how well established it is, and where it has been
-attacked.
 
 **The method.** Narrative identification reads the documentary record of a policy
 decision to recover the decision's stated motive, and then uses the motive to
@@ -237,7 +218,6 @@ character as the disagreements two careful human coders would have.
 a class of disagreement that turned out to be the benchmark's fault rather than
 the model's.
 
-## Related work: LLMs and narrative fiscal identification {#sec-intro-related}
 
 Large language models make the reading step cheap, and a small but fast-moving
 literature has already used them for narrative fiscal identification. Its three
@@ -299,7 +279,6 @@ that fixed text measures notoriously fail to transfer across domains, which is
 precisely the property our frozen codebooks claim and @sec-my-validation has to
 defend.
 
-## This paper {#sec-introduction-rq}
 
 We take the opposite side of each trade in @tbl-related-work. This paper builds
 and validates a pipeline that reads **primary national documents in the local
@@ -328,23 +307,50 @@ will need.
 The project this paper reports on is organised around four questions. This
 paper answers the first two in part and delivers the fourth for one country.
 
-1. **Can an LLM reproduce the narrative identification of fiscal changes for
-   the United States, given the same documents and judged against
-   Romer and Romer's own labels?** We answer this for three of the five
-   quantities the narrative method recovers: which passages describe a fiscal
-   measure, the motivation behind each act and whether it is exogenous, and the
-   direction of the change. Magnitude in percent of GDP and quarterly timing
-   are not yet built, and we say so rather than approximating them.
-2. **Do the same codebooks, frozen, transfer to a country with no labelled
-   data?** Malaysia is the test. Because no ground truth exists there, the
-   question is answered by consistency evidence and by expert agreement rather
-   than by an accuracy rate.
-3. **Can the resulting series support comparable cross-country fiscal
-   multipliers?** Out of scope here: it needs magnitude and quarterly timing,
-   and more than one country.
-4. **Can the pipeline produce a fiscal-change dataset local researchers can
-   actually use?** The Malaysia inventory is the demonstration, and its
-   provenance chain is the reason it is usable.
+:::{#cnj-1}
+
+Can an LLM reproduce the narrative identification of fiscal changes for
+the United States, given the same documents and judged against
+Romer and Romer's own labels? 
+
+:::
+
+We answer this for three of the five
+quantities the narrative method recovers: which passages describe a fiscal
+measure, the motivation behind each act and whether it is exogenous, and the
+direction of the change. Magnitude in percent of GDP and quarterly timing
+are not yet built.
+
+:::{#cnj-2}
+
+Do the same codebooks, frozen, transfer to a country with no labelled
+data?
+
+:::
+
+Malaysia is the test. Because no ground truth exists there, the
+question is answered by consistency evidence and by expert agreement rather
+than by an accuracy rate.
+
+:::{#cnj-3}
+
+Can the resulting series support comparable cross-country fiscal
+multipliers?
+   
+:::
+
+Out of scope here: it needs magnitude and quarterly timing,
+and more than one country.
+
+:::{#cnj-4}
+
+Can the pipeline produce a fiscal-change dataset local researchers can
+actually use?
+   
+:::
+
+The Malaysia inventory is the demonstration, and its
+provenance chain is the reason it is usable.
 
 The remainder of the paper is organized as follows. @sec-frameworks sets out the
 two frameworks the pipeline implements: the narrative specification we are
@@ -367,7 +373,7 @@ appears.
 
 ## The specification: what narrative identification asks for
 
-@sec-intro-narrative described the method and its lineage. This is the
+This is the
 specification it hands a coder. @romer_presidential_2023 set out four
 requirements for narrative analysis to count as evidence rather than anecdote: a
 reliable source, a clear idea of the information being sought, a dispassionate
@@ -1983,10 +1989,10 @@ the grain, per instrument, per country. The pipeline reduces months of work to
 weeks; it does not remove the expert, and the claim in this paper is explicitly
 about assistance, not automation.
 
-# References {.unnumbered}
+<!-- # References {.unnumbered}
 
 ::: {#refs}
-:::
+::: -->
 
 ::: {.content-visible when-format="typst"}
 {{< appendix >}}

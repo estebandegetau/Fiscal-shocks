@@ -91,19 +91,13 @@ format:
     theme: 
       light: flatly
       dark: darkly
-
-
-title-block-banner: true
-lightbox: true
+    title-block-banner: true
+    lightbox: true
 
 
 code-links: repo
 
 execute:
   freeze: auto  # re-render only when source changes
-
-
-citeproc: true
-csl: chicago-author-date-classic-no-url.csl
 
 bibliography: references.bib
