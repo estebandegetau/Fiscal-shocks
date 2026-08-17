@@ -1129,6 +1129,78 @@ list(
   ),
 
   # =============================================================================
+  # Procyclicality Decomposition + External Statutory-Rate Benchmark
+  # Reads a cross-country annual macro-fiscal panel (data/raw, provenance in
+  # docs/data_sources.md) to give the Malaysia deliverable a business cycle to
+  # be read against, and to give its narrative CIT/PIT rate paths their first
+  # external referent. Consumes the three frozen component deliverables; makes
+  # no API calls. See R/procyclicality.R, index.qmd §sec-usecase and
+  # §sec-my-validation.
+  # =============================================================================
+
+  tar_target(
+    macro_panel_file,
+    here::here("data", "raw", "Full_sample_filtered.dta"),
+    format = "file",
+    packages = "here"
+  ),
+
+  tar_target(
+    macro_panel,
+    clean_macro_panel(haven::read_dta(macro_panel_file)),
+    packages = c("tidyverse", "haven")
+  ),
+
+  # Malaysia's annual cycle. Carries two cycle-state definitions (HP-filtered
+  # gap and growth-below-median) so the decomposition can report the second as
+  # a robustness row rather than committing silently to the first.
+  tar_target(
+    my_cycle,
+    build_country_cycle(macro_panel, iso = "MYS",
+                        year_min = 1980L, year_max = 2023L),
+    packages = "tidyverse"
+  ),
+
+  # The Vegh-Vuletin statutory-rate cyclicality statistic for every country in
+  # the panel, so the manuscript can say how thin that measure is in general
+  # rather than only in Malaysia.
+  tar_target(
+    cross_country_cyclicality,
+    compute_vv_cyclicality(macro_panel, min_years = 20L),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    procyclicality_events,
+    assemble_procyclicality_events(tax_shocks, spending_shocks,
+                                   incentive_shocks, my_cycle),
+    packages = "tidyverse"
+  ),
+
+  # Same assembly dated by announcement rather than effect, contributing one
+  # robustness row to the decomposition below.
+  tar_target(
+    procyclicality_events_announced,
+    assemble_procyclicality_events(tax_shocks, spending_shocks,
+                                   incentive_shocks, my_cycle,
+                                   timing = "announced"),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    procyclicality_decomposition,
+    decompose_procyclicality(procyclicality_events, my_cycle,
+                             events_announced = procyclicality_events_announced),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    rate_path_concordance,
+    compare_rate_paths(tax_shocks, macro_panel, iso = "MYS"),
+    packages = "tidyverse"
+  ),
+
+  # =============================================================================
   # Malaysia EN/BM Cross-Language Consistency Test
   # Self-contained sub-pipeline that slices country_chunks to Economic Report
   # documents with parallel EN+BM coverage, runs its own C1 -> C2a -> C2b on

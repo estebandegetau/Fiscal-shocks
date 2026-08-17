@@ -14,6 +14,12 @@ data/*
 data/manual/**/*.pdf
 !data/manual/**/README.md
 !data/manual/**/MANIFEST.csv
+# Raw reference inputs consumed by file targets must be tracked so the pipeline
+# builds on a fresh clone. Git cannot re-include a file whose parent directory
+# is excluded, so data/raw/ is un-ignored and then re-ignored file-by-file.
+!data/raw/
+data/raw/*
+!data/raw/Full_sample_filtered.dta
 *_cache/
 *.json
 !.devcontainer/devcontainer.json

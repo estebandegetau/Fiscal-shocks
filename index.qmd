@@ -17,15 +17,33 @@ author:
     email: "asamanopenaloza@worldbank.org"
     affiliation: "World Bank"
 abstract: |
-  *Draft abstract (written last, once the body is settled).* We build and
-  validate an LLM-assisted pipeline that transfers the Romer & Romer (2010)
-  narrative approach to fiscal-shock identification from the United States to
-  emerging markets. Country-agnostic codebooks are validated on 44 labelled US
-  acts under the Halterman & Keith (2025) framework, then deployed to Malaysia
-  (1980–2023), where an agentic component layer produces an expert-ready
-  inventory of statutory tax, spending, and tax-incentive changes — each
-  carrying a motivation and a preliminary exogeneity read. We demonstrate the
-  dataset with a first procyclicality decomposition.
+  Credible fiscal policy analysis needs to know why each tax or spending change
+  was enacted, and outside a handful of rich countries nobody has read the
+  documents. We build an LLM-assisted pipeline that transfers the narrative
+  identification of Romer and Romer (2010) to countries with no labelled data,
+  and we hold it to the validation discipline of Halterman and Keith (2025)
+  rather than to a headline accuracy number. Country-agnostic codebooks are
+  validated against 44 labelled US acts through behavioural tests, zero-shot
+  evaluation and manual error analysis, then frozen and deployed to Malaysia
+  (1980–2023), where an agentic identification layer produces an expert-ready
+  inventory of 51 statutory tax, spending and tax-incentive events, each
+  carrying a magnitude, a motivation, a direction and two independent
+  preliminary reads of exogeneity. With no motivation ground truth available,
+  transfer is evidenced three ways: a bilingual corpus that returns comparable
+  inventories in English and Bahasa Malaysia, worked disagreement cases printed
+  in full, and statutory rate paths that reproduce the Végh and Vuletin (2015)
+  cross-country rate panel exactly wherever the corpus is dense, with every miss
+  predating corpus coverage and every extra an act a top-rate series cannot
+  represent. We
+  demonstrate the dataset with a procyclicality decomposition: Malaysia's
+  statutory-rate cyclicality is statistically indistinguishable from zero, as is
+  the median country's in the same panel, while the narrative labels show that
+  the great majority of Malaysian fiscal actions whose timing looks procyclical
+  carried motivations unrelated to the cycle. We report that as a demonstration
+  and bound it with a label-fragility index rather than a p-value. The
+  exogeneity column is a model read pending expert adjudication, and magnitude
+  and quarterly timing carry no validation record; we state throughout which
+  stages rest on evidence and which do not.
 thanks: |
   This research project was supported by the World Bank's Development Research Group.
 keywords:
@@ -68,6 +86,7 @@ source(here("R/pipeline_diagram.R"))      # plot_pipeline_flow()
 source(here("R/dataset_summary.R"))       # cross-component summaries
 source(here("R/codebook_display.R"))      # verbatim codebook exhibits
 source(here("R/recall_scorecard.R"))      # frozen recall audits
+source(here("R/procyclicality.R"))        # cycle + procyclicality decomposition
 theme_set(theme_minimal())
 
 # ---- Empty-safe reads (rendering is read-only: tar_read only, never tar_make) --
@@ -105,6 +124,29 @@ latest <- function(tbl, cb) {
     dplyr::filter(iteration == max(iteration))
 }
 
+# Business cycle, decomposition and the external rate benchmark (API-free)
+my_cycle       <- tryCatch(tar_read(my_cycle),                     error = \(e) tibble())
+procyc_events  <- tryCatch(tar_read(procyclicality_events),        error = \(e) tibble())
+procyc_decomp  <- tryCatch(tar_read(procyclicality_decomposition), error = \(e) NULL)
+vv_cross       <- tryCatch(tar_read(cross_country_cyclicality),    error = \(e) tibble())
+rate_concord   <- tryCatch(tar_read(rate_path_concordance),        error = \(e) NULL)
+have_cycle     <- nrow(my_cycle) > 0
+have_procyc    <- have_cycle && nrow(procyc_events) > 0 && !is.null(procyc_decomp)
+have_concord   <- !is.null(rate_concord) && nrow(rate_concord$events) > 0
+
+# Headline decomposition figures, so the prose can cite them inline rather than
+# restating what the exhibit already computed. `pc_*` are all NA when unbuilt.
+pc_tab   <- if (have_procyc) procyc_decomp$table else NULL
+pc_proc  <- if (is.null(pc_tab)) NA_integer_ else sum(pc_tab["Procyclical", ])
+pc_exo   <- if (is.null(pc_tab)) NA_integer_ else pc_tab["Procyclical", "Exogenous"]
+pc_n     <- if (is.null(pc_tab)) NA_integer_ else sum(pc_tab)
+pc_p     <- if (is.null(pc_tab)) NA_real_    else procyc_decomp$fisher$p_value
+pc_frag  <- if (is.null(pc_tab)) NA_integer_ else procyc_decomp$fragility
+pc_flag  <- if (is.null(pc_tab)) NA_integer_ else procyc_decomp$disagree_n
+# The excluding-spending robustness row, cited inline where the caveat is made.
+pc_nospend <- if (is.null(pc_tab)) NULL else
+  dplyr::filter(procyc_decomp$robustness, spec == "Excluding spending")
+
 # Malaysia EN/BM consistency targets (precomputed; may be unbuilt)
 malay_er_c1_measures <- tryCatch(tar_read(malay_er_c1_measures), error = \(e) tibble())
 malay_metrics        <- tryCatch(tar_read(malay_er_consistency_metrics), error = \(e) NULL)
@@ -113,17 +155,19 @@ have_malay           <- nrow(malay_inv) > 0
 ```
 
 ::: {.callout-note}
-**Draft status.** The body and its exhibits are in place, as is the
-introduction, which is now sectioned and carries the literature. The abstract and
-the conclusion are written last, from the populated body, and the procyclicality
-use case in @sec-usecase is still a stub pending a data decision. Figures whose upstream targets are API-gated and not
-yet built render as a "pending" note rather than an error.
+**Draft status.** The body, the introduction and the exhibits are in place,
+including the procyclicality use case in @sec-usecase. Figures whose upstream
+targets are API-gated and not yet built render as a "pending" note rather than
+an error.
 
 The Malaysia figures below are built from the deliverable as frozen in June
 2026. An evidence-scoping defect found in August 2026 (@sec-defect) has been
 fixed in the pipeline but the enrichment tails have not yet been re-run, so four
 of the 51 motivation labels are known to be wrong and are corrected in the
-narrative, not yet in the exhibits.
+narrative, not yet in the exhibits. This now has a quantitative consequence
+rather than only a cosmetic one: @sec-usecase-belief reports that four
+relabellings would overturn the decomposition, so the exhibits there should be
+read as provisional until the tails are re-run.
 :::
 
 # Introduction
@@ -328,9 +372,9 @@ data?
 
 :::
 
-Malaysia is the test. Because no ground truth exists there, the
-question is answered by consistency evidence and by expert agreement rather
-than by an accuracy rate.
+Malaysia is the test. Because no motivation ground truth exists there, the
+question is answered by consistency evidence, by an external check on the
+statutory rate paths, and by expert agreement rather than by an accuracy rate.
 
 :::{#cnj-3}
 
@@ -359,7 +403,7 @@ the pipeline and the dataset it produces. @sec-build reconstructs how the
 Malaysia dataset was built, including a defect the provenance chain caught after
 deployment. @sec-validation reports the two validation legs, the US benchmark
 and Malaysia. @sec-coverage states plainly which stages carry evidence and which
-do not. @sec-usecase sketches the procyclicality decomposition the dataset was
+do not. @sec-usecase reports the procyclicality decomposition the dataset was
 built to make possible.
 
 # The narrative specification and the validation philosophy {#sec-frameworks}
@@ -783,12 +827,13 @@ that an act was missed.
 plot_tax_rate_paths(tax_shocks)
 ```
 
-Those paths admit an external check we have not run. @vegh_how_2015 assemble a
-hand-built statutory-rate panel covering a large set of countries, Malaysia among
-them, over part of this period. Comparing our reconstructed paths against theirs
-is the most direct external validation this component admits, and it is the
-obvious next step for anyone using it. @tbl-coverage records it as missing
-evidence rather than claiming it.
+Those paths admit an external check. @vegh_how_2015 assemble a hand-built
+statutory-rate panel covering a large set of countries, Malaysia among them,
+over part of this period. Comparing our reconstructed paths against theirs is
+the most direct external validation this component admits.
+@sec-rate-benchmark runs it: the paths agree exactly wherever the corpus is
+dense, and every disagreement is either a year the corpus does not cover or an
+act a top-rate series cannot represent.
 
 The act-level record also carries a distinction an aggregate rate series cannot,
 and the personal-income acts above are the case in point: several of them move a
@@ -1657,14 +1702,24 @@ country, the pipeline would have little to offer it. The absence of ground truth
 is the condition the method has to work under, not an obstacle on the way to
 working under better conditions.
 
-What replaces an accuracy rate is three separate lines of evidence, none
+What replaces an accuracy rate is four separate lines of evidence, none
 sufficient alone. The first is an **internal consistency test** that needs no
 ground truth at all, exploiting a property of the corpus to check that the
 pipeline reasons about fiscal substance rather than about English. The second is
 a set of **worked disagreement cases**, printed in full so a reader can judge
 the pipeline's reasoning directly rather than through a summary statistic. The
-third is **expert agreement**, which is the only external check available and is
-currently being collected.
+third is the **@vegh_how_2015 statutory-rate panel**, which is an external
+referent for one narrow part of the output and no part of the motivation. The
+fourth is
+**expert agreement**, which is the only external check on the judgement itself
+and is currently being collected.
+
+The third deserves a word, because it qualifies the claim just made. No external
+referent exists for *motivation*, which is the quantity the method is about. One
+does exist for the *rate path*, which is a by-product the method has to get right
+along the way, and it turns out to be checkable against published data for two
+of the five instruments. That is a narrower thing than validation of the
+pipeline, and it is more than nothing.
 
 A fourth line exists in principle and we cannot yet use it.
 @aruoba_identifying_nodate, identifying monetary policy shocks from narrative
@@ -1796,6 +1851,89 @@ incentive_exhibit(
 )
 ```
 
+### The Végh–Vuletin statutory-rate panel {#sec-rate-benchmark}
+
+This section opened by saying no external referent exists for Malaysia. For
+motivation that is true and will stay true. For the *rate path* it is not: the
+statutory top rates the narrative pass reconstructs, shown as @fig-tax-rate-paths,
+also appear in the hand-built cross-country rate panel @vegh_how_2015 assemble,
+which covers Malaysia over this period. That comparison is the most direct
+external validation the magnitude side admits. It is run here.
+
+The benchmark is well chosen for more than convenience. It is the same series
+whose procyclicality finding @sec-usecase takes as its starting point, so the
+check and the use case are run against one another's data: we validate our rate
+paths against the panel, then show what the panel's own cyclicality statistic
+cannot resolve on the country it covers.
+
+The check is narrow and worth stating precisely. It scores whether we recovered
+the right rate, in the right year, on the two instruments that have a headline
+rate. It says nothing about motivation, about spending, or about incentives,
+because a rate panel carries a number per year and no record of why it moved.
+
+```{r}
+#| label: pending-concord
+#| eval: !expr "!have_concord"
+#| echo: false
+#| output: asis
+cat("::: {.callout-warning}\nThe rate-path concordance target is unbuilt, so",
+    "the external benchmark cannot render. Run `tar_make()` on",
+    "`rate_path_concordance`.\n:::\n")
+```
+
+```{r}
+#| label: fig-rate-validation
+#| fig-cap: "**Narrative rate paths against the Végh–Vuletin panel.** The thick grey line is their published series [@vegh_how_2015]; the thin dark line with markers is the path implied by the acts this pipeline identified. Exact agreement reads as the dark line sitting inside the grey one. The dark line starts where the corpus becomes dense, not where the rate series starts."
+#| fig-width: 6.5
+#| fig-height: 3.6
+#| eval: !expr have_concord
+p <- plot_rate_path_validation(rate_concord)
+if (is.null(p)) cat("No concordance data available.\n") else p
+```
+
+@tbl-rate-concordance scores it event by event. Three patterns, and each says
+something different.
+
+**Where the corpus is dense, the paths agree exactly.** Every corporate rate
+change the panel records from 1994 onward is matched by an act we identified,
+at the same year and with the same change in percentage points. The personal
+rate is comparable from 1999. This is a stronger result than a correlation
+would be, because the match is on the level and the year, not on co-movement.
+
+**Every miss predates the corpus.** The unmatched panel changes are all early:
+the corpus holds a single document in each of several years before the mid-1990s
+and only becomes dense afterwards, as @fig-corpus-coverage shows. That is a
+statement about what we gave the pipeline to read, not about how it read. It is
+also the cleanest available illustration of the point @sec-agentic makes about
+recall: the ceiling is set by acquisition.
+
+**Every extra is something the panel cannot represent.** The acts we identify
+that the panel does not are not false positives. A one-off corporate surcharge,
+a change to the imputation system, a cut to a middle band, a restructure that
+leaves the top rate untouched: each moves real liabilities and none of them
+moves a headline top rate, so a rate panel is blind to them by construction.
+This is the asymmetry that motivates the whole exercise. The rate panel is the
+better instrument for the narrow question of what the top rate was; the
+narrative inventory is the only one of the two that can see the rest of the tax
+policy.
+
+```{r}
+#| label: tbl-rate-concordance
+#| tbl-cap: "**Event-level concordance.** Every rate change recorded by either source; the two numeric columns are the change in percentage points. Matched rows agree on year and magnitude. The timing row is one panel step the narrative pass resolves into two annual steps, agreeing on the level by the end of it."
+#| eval: !expr have_concord
+tb <- rate_concordance_table(rate_concord, detail = TRUE)
+if (is.null(tb)) cat("No concordance data available.\n") else tb
+```
+
+Two limits on how far this evidence reaches. It covers corporate and personal
+income tax only: the panel carries no consumption-tax rate for Malaysia, so the
+GST introduction and repeal, which are the largest tax events in the inventory,
+get no external check at all. And a matching rate path is consistent with, but
+does not establish, a correct reading of the document, since a model could in
+principle recover a well-known rate history without reading anything. The
+cross-language test above is the evidence that bears on that, and it is
+separate.
+
 ### The expert-agreement protocol
 
 The external check is expert review, and its design has to answer a question
@@ -1826,6 +1964,13 @@ significant acts are **missing**, which is the recall assessment @sec-agentic
 defers to. And it separates genuine model error from irreducible ambiguity:
 where two experts disagree with each other, the case is recorded as ambiguous
 rather than scored against the model.
+
+The first of those strata is more load-bearing than it looks. Acts predicted
+exogenous in a downturn are precisely the cell the decomposition in
+@sec-usecase rests on, and @sec-usecase-belief reports how few of them would
+have to be relabelled to overturn it. So the review burden that section implies
+is not open-ended: it is a specific, countable set of acts, and the protocol was
+already routing them to full review before anyone had computed the number.
 
 One gap in the protocol as currently written should be closed before it is run,
 because @sec-usecase depends on it. The protocol selects acts for review by
@@ -1863,8 +2008,8 @@ tibble::tribble(
   "Act identification",      "Per-instrument recall scorecards, frozen; human stamp on every event",       "No gold standard, so no recall or precision rate — only an audit of what was searched",
   "Act consolidation",       "Automated clustering built and scored against 49 US reference acts",         "Rejected for deployment, not validated for it",
   "Motivation and sign",     "Full record on US acts; label-noise-corrected gates",                        "Validated on single-act chunks, deployed on multi-measure speeches; no signal-stripping test of directness",
-  "Magnitude",               "Extracted with each act and traceable to a quoted rate or amount",           "No codebook, no behavioural tests; published statutory-rate panels never compared against our rate paths",
-  "Timing",                  "Announced and effective year, from the document",                            "No quarterly timing; the annual grain limits the downstream use case",
+  "Magnitude",               "Traceable to a quoted rate or amount; CIT and PIT top-rate paths reproduce the Végh and Vuletin (2015) statutory-rate panel exactly over the corpus window", "No codebook, no behavioural tests; the external check reaches only headline top rates, not surcharges, band changes, consumption taxes or spending amounts",
+  "Timing",                  "Announced and effective year, from the document; effective years match the Végh and Vuletin panel where both cover",  "No quarterly timing; the annual grain limits the downstream use case",
   "Exogeneity of the output", "Two independent preliminary reads per act, and their disagreements flagged", "Expert adjudication not yet run; the column is a model read"
 ) |>
   tt(width = c(0.20, 0.42, 0.38)) |>
@@ -1882,10 +2027,15 @@ rather than resolved. Those disagreements are the worked exhibits in
 @sec-my-validation. Adjudicating them is the expert's job and it has not
 happened yet.
 
-**Magnitude and timing have no validation record at all.** They are extracted
-agentically alongside each act and are traceable to a quoted rate or amount, but
-the codebooks that would validate them are not built. Any use of the magnitude
-column inherits that.
+**Magnitude has a partial record and timing has none.** Both are extracted
+agentically alongside each act, and the codebooks that would validate them are
+not built. What magnitude now has is a scope-limited external check:
+@sec-rate-benchmark shows the corporate and personal top-rate paths reproducing
+the @vegh_how_2015 statutory-rate panel exactly wherever the corpus is dense. That
+covers the rate-bearing acts on two instruments. It does not cover the
+consumption taxes, the surcharges and band changes a top-rate series cannot
+represent, or any spending amount, and those are most of the magnitude column.
+Quarterly timing has no check of any kind.
 
 **The deployment distribution was never validated.** This is the general form of
 @sec-defect and the most transferable lesson here. The codebooks were
@@ -1917,7 +2067,7 @@ tibble::tribble(
   "Das et al.",        "Concordance on overlapping country-years",                                    "Action-based consolidation datasets",                 "Magnitudes; countries with no benchmark series",
   "Bhasin et al.",     "Divergence from benchmark decomposed into sizing and event selection",         "OECD action-based benchmark",                         "Transfer beyond the OECD; which of the two series is closer to the truth",
   "Fritsch et al.",    "High correlation with the narrative tax-shock series",                         "Romer and Romer, United States",                      "Realised liabilities (the series is expectations); any non-US setting",
-  "This paper",        "Behavioural, zero-shot and manual error analysis on 44 US acts; cross-language consistency", "Romer and Romer labels; no Malaysian ground truth", "Magnitude; quarterly timing; the exogeneity column pending expert adjudication"
+  "This paper",        "Behavioural, zero-shot and manual error analysis on 44 US acts; cross-language consistency; top-rate concordance with the Végh and Vuletin rate panel", "Romer and Romer labels; Végh and Vuletin Malaysian CIT and PIT statutory rates; no Malaysian motivation ground truth", "Magnitudes beyond the headline top rate; quarterly timing; the exogeneity column pending expert adjudication"
 ) |>
   tt(width = c(0.15, 0.29, 0.22, 0.34)) |>
   tt_theme_report() |>
@@ -1926,43 +2076,251 @@ tibble::tribble(
 
 # A first use case: procyclicality decomposition {#sec-usecase}
 
-::: {.callout-note}
-**Section stub.** The figure for this section is deferred: it needs an annual
-Malaysia real-GDP-growth (business-cycle) series added via a `{targets}` target
-plus `R/procyclicality.R`, a data decision not yet taken. The framing and
-caveats below stand; the estimate does not yet.
-:::
+This section is a demonstration, not an inferential claim. It exists to show
+what a motivation-coded inventory lets a researcher ask that a statutory-rate
+series does not, and the question is the one @kaminsky_when_2004 opened and
+@frankel_graduation_2013 sharpened: when a country's fiscal record looks
+procyclical, is that deliberate response to the cycle, or the accumulation of
+measures taken for unrelated reasons that happened to land badly? A
+motivation-coded inventory is the only kind of dataset that can tell those
+apart, which is why @vegh_how_2015 could document the pattern and explicitly
+decline to attribute it.
 
-*Intent: a demonstration, not an inferential claim. Using the exogenous/endogenous
-split against the annual business cycle, decompose how much of Malaysia's
-tax-policy procyclicality was exogenous all along — the decomposition
-@vegh_how_2015 name as the missing input and could not perform with a statutory-rate
-series. The value added of the paper is the dataset and the method; this is one use
-case.*
+```{r}
+#| label: pending-procyc
+#| eval: !expr "!have_procyc"
+#| echo: false
+#| output: asis
+cat("::: {.callout-warning}\nThe procyclicality targets are unbuilt, so the",
+    "decomposition exhibits cannot render. Run `tar_make()` on `macro_panel`,",
+    "`my_cycle` and `procyclicality_decomposition`.\n:::\n")
+```
 
-*The question the decomposition speaks to is the one @kaminsky_when_2004 opened
-and @frankel_graduation_2013 sharpened: whether a country's procyclical fiscal
-record reflects deliberate response to the cycle or the accumulation of measures
-taken for unrelated reasons that happened to land badly. A motivation-coded
-inventory is the only kind of dataset that can tell those apart, which is why
-@vegh_how_2015 could document the pattern and not attribute it. The natural
-estimator is a local projection on the signed exogenous events
-[@jorda_estimation_2005], at annual frequency, which the timing gap in
-@tbl-coverage constrains and does not preclude.*
+## What the statutory-rate measure can see {#sec-usecase-vv}
 
-*Generated-regressor caveat (load-bearing here): once an estimate is built on the
-labels, valid inference is a measurement-error problem, not a classification-accuracy
-one [@ludwig_large_2025; @battaglia_inference_2024]. The bias equals the correlation
-of label error with the regressor, and the dangerous regressor is the business cycle
-— the exact axis exogeneity turns on. So the decomposition must either show
-mislabelling is uncorrelated with the cycle or scope the claim accordingly; a proper
-downstream estimate would debias against a probability-sampled expert validation
-set [@angelopoulos_prediction-powered_2023; @egami_using_2023].*
+The standard measure of tax-policy cyclicality correlates the change in a
+statutory rate with the cyclical component of output. Run on Malaysia it
+returns nothing: `r if (have_procyc) sprintf("%.2f for the corporate rate and %.2f for the personal rate, neither remotely distinguishable from zero", vv_cross$corr_cit_cycle[vv_cross$ccode == "MYS"], vv_cross$corr_pit_cycle[vv_cross$ccode == "MYS"]) else "a correlation indistinguishable from zero"`.
 
-<!-- FIGURE PLACEHOLDER — procyclicality decomposition.
-     Needs: annual Malaysia real-GDP-growth series (WDI) as a target;
-            R/procyclicality.R for the decomposition + figure;
-            overlay signed exogenous vs endogenous fiscal actions on the cycle. -->
+The reason is not that Malaysian tax policy is acyclical. It is that a headline
+statutory rate moves rarely, and a correlation computed on
+`r if (have_procyc) vv_cross$n_cit_changes[vv_cross$ccode == "MYS"] else "a handful of"`
+corporate rate changes in
+`r if (have_procyc) vv_cross$n_years[vv_cross$ccode == "MYS"] else "forty-odd"`
+years has almost no information in it. This is not a Malaysian peculiarity.
+@fig-vv-context computes the same statistic for every country in the panel with
+enough data, and the median one changed its corporate rate
+`r if (have_procyc) stats::median(vv_cross$n_cit_changes[!is.na(vv_cross$corr_cit_cycle)]) else "a handful of"`
+times in four decades. The measure is thin nearly everywhere, and Malaysia sits
+close to the middle of the resulting spread.
+
+```{r}
+#| label: fig-vv-context
+#| fig-cap: "**The statutory-rate measure is thin nearly everywhere.** Distribution across countries of the correlation between the annual change in the corporate statutory rate and the output gap. Malaysia is marked. The spread is centred near zero and is dominated by how few times a headline rate moves."
+#| fig-width: 6.5
+#| fig-height: 3.0
+#| eval: !expr have_procyc
+p <- plot_vv_context(vv_cross, highlight = "MYS")
+if (is.null(p)) cat("No cross-country panel available.\n") else p
+```
+
+Two things follow. The measure is under-powered, which more data would fix. And
+it is silent on attribution, which more data would not: a correlation between
+rate changes and the cycle cannot distinguish a rate cut enacted *because*
+output was strong from one enacted for unrelated reasons that happened to arrive
+in a boom. That second limitation is the one the narrative inventory addresses.
+
+## The fiscal record against the cycle {#sec-usecase-overlay}
+
+@fig-procyclicality-overlay lays the inventory over Malaysia's business cycle.
+The upper panel is the output gap; the lower panel is one mark per fiscal
+action, placed at the year it took effect, above the line if it was
+expansionary and below if contractionary, coloured by whether the codebook
+judged its motivation exogenous.
+
+Note that the signing axis here is the **fiscal impulse**, not the direction of
+the change in liabilities. A spending increase and a tax cut are both
+expansionary; the inventory figures earlier in the paper sign by liability
+direction, which is the right axis for describing a tax system and the wrong one
+for describing a stance.
+
+```{r}
+#| label: fig-procyclicality-overlay
+#| fig-cap: "**The Malaysian fiscal record against the cycle.** Shaded bands are below-trend years, drawn behind both panels so a reader can drop from a downturn straight into the actions taken during it. Marks are stacked within a year rather than jittered, since the year is the claim."
+#| fig-width: 6.5
+#| fig-height: 4.8
+#| eval: !expr have_procyc
+p <- plot_procyclicality_overlay(my_cycle, procyc_events)
+if (is.null(p)) cat("No procyclicality data available.\n") else p
+```
+
+## The decomposition {#sec-usecase-decomposition}
+
+Crossing the impulse with the cycle state gives each action a **stance**. An
+action is procyclical when it pushes the way the cycle is already going:
+expansionary in a boom, contractionary in a bust. Crossing stance with the
+motivation label gives @tbl-procyclicality, and with it the quantity
+@vegh_how_2015 named as missing.
+
+Of the `r if (have_procyc) pc_n else "N"` actions that carry both a stance and a
+motivation, `r if (have_procyc) pc_proc else "M"` look procyclical on timing.
+**`r if (have_procyc) pc_exo else "K"` of them carried a motivation unrelated to
+the cycle.** Malaysia's procyclical-looking fiscal record is, on this reading,
+overwhelmingly not a record of deliberate procyclical policy. It is long-run and
+deficit-driven measures that happened to land against the cycle.
+
+```{r}
+#| label: tbl-procyclicality
+#| tbl-cap: "**The decomposition.** Upper block: stance against motivation, all components. Lower block: the procyclical row under alternative cycle definitions, event timing, and component scope. The reported p is Fisher's exact test, which for a 2×2 with both margins fixed *is* the permutation test."
+#| eval: !expr have_procyc
+tb <- procyclicality_table(procyc_decomp)
+if (is.null(tb)) cat("No decomposition available.\n") else tb
+```
+
+@fig-procyclicality-decomposition shows where each column's mass comes from, and
+makes the split legible: the countercyclical column is dominated by acts the
+codebook labelled countercyclical, which is close to a definitional result. The
+procyclical column is long-run and deficit-driven measures, which is not.
+
+```{r}
+#| label: fig-procyclicality-decomposition
+#| fig-cap: "**Stance by motivation.** The countercyclical column is mostly acts labelled countercyclical, which is near-definitional. The procyclical column is not, and it is the one the decomposition is about."
+#| fig-width: 6.5
+#| fig-height: 3.2
+#| eval: !expr have_procyc
+p <- plot_procyclicality_decomposition(procyc_events)
+if (is.null(p)) cat("No decomposition available.\n") else p
+```
+
+@tbl-vv-comparison sets the two measures side by side. The point is not that the
+narrative decomposition is more precise than the correlation. It is that they
+answer different questions, and only one of them is the question about
+attribution.
+
+```{r}
+#| label: tbl-vv-comparison
+#| tbl-cap: "**What each measure supports.** The @vegh_how_2015 statutory-rate statistic and the narrative decomposition, on the same country and the same years."
+#| eval: !expr have_procyc
+tb <- vv_comparison_table(procyc_decomp, vv_cross, iso = "MYS")
+if (is.null(tb)) cat("No comparison available.\n") else tb
+```
+
+## How much to believe it {#sec-usecase-belief}
+
+Three reasons for caution, in descending order of how much they should worry a
+reader.
+
+**The labels are model output, and a p-value cannot speak to that.** At this
+sample size the binding uncertainty is not sampling noise. So the quantity we
+report instead is a **fragility index**: the number of exogenous acts in the
+procyclical cell that would have to be relabelled endogenous before the
+association stopped being significant. It is
+`r if (have_procyc) pc_frag else "K"`, out of
+`r if (have_procyc) pc_exo else "K"`. Set against that, the pipeline already
+flags `r if (have_procyc) pc_flag else "some"` of the procyclical acts as cases
+where its two independent reads disagree — below the breaking point, but not by
+much. This is also the concrete cost of the defect in @sec-defect: four of the
+51 motivation labels are known to be wrong in these exhibits, the same order of
+magnitude as the fragility index, which is why the correction is a prerequisite
+for the estimate rather than a tidying-up exercise.
+
+**The result thins when spending is removed.** The last row of
+@tbl-procyclicality drops the spending component and the exact test stops being
+significant. That is expected and worth stating plainly: the stimulus packages
+are both endogenous and countercyclical, so they supply most of the contrast.
+What survives without them is the point estimate rather than the test
+(`r if (have_procyc) sprintf("%d of the %d", pc_nospend$proc_exo, pc_nospend$proc_total) else "most"`
+procyclical tax and incentive actions still carry an exogenous motivation), and
+at this sample size a point estimate is the honest object anyway.
+
+**Generated regressors.** Once an estimate is built on the labels, valid
+inference is a measurement-error problem, not a classification-accuracy one
+[@ludwig_large_2025; @battaglia_inference_2024]. The bias equals the correlation
+of label error with the regressor, and the dangerous regressor is the business
+cycle, the exact axis exogeneity turns on. So a downstream estimate must either
+show mislabelling is uncorrelated with the cycle or scope the claim accordingly,
+and would properly debias against a probability-sampled expert validation set
+[@angelopoulos_prediction-powered_2023; @egami_using_2023]. The expert protocol
+in @sec-my-validation already routes every act predicted exogenous in a
+downturn to full review, which is exactly the fragility set; @sec-coverage notes
+that it needs a probability sample as well as a purposive one.
+
+One supporting diagnostic. Shifting the cycle series circularly through every
+lag, which preserves its serial correlation and the events' clustering in time,
+`r if (have_procyc) sprintf("puts the observed association ahead of all %d shifted alternatives", procyc_decomp$phase_perm$n_shifts) else "leaves the observed association ahead of the shifted alternatives"`.
+Only as many distinct shifts exist as there are years, so this is a coarse check
+rather than a second test, and it is reported as one.
+
+**What is deliberately not here.** The natural next estimator is a local
+projection of output on the signed exogenous events [@jorda_estimation_2005].
+We do not run one. It would need the magnitude column, and @tbl-coverage records
+that magnitudes carry no validation record beyond the headline statutory rate;
+an impulse response built on an unvalidated regressor would look like the
+paper's main result while being its weakest. It is the first thing a validated
+magnitude codebook would unlock, and it is the reason @sec-coverage treats
+magnitude as a binding gap rather than a refinement.
+
+# Conclusion
+
+The introduction set out four questions. This paper settles two of them in part,
+leaves one alone, and delivers the fourth for one country.
+
+On @cnj-1: **an LLM can reproduce narrative identification against Romer and
+Romer's own labels for three of the five quantities the method
+recovers.** Which passages describe a fiscal measure, what motivated
+each act and whether that motivation was independent of current output, and the
+direction of the change: each carries a full behavioural, zero-shot and
+error-analysis record. Magnitude in percent of GDP and quarterly timing do not,
+and we have been careful not to let the validated parts lend credibility to the
+unvalidated ones. The most useful thing we learned here was not a score. It was
+that a class of apparent model errors turned out to be errors in the benchmark,
+which is a finding about evaluating codebooks against projected human labels
+that any project at this scale will run into.
+
+On @cnj-2: **the evidence that frozen codebooks transfer to a country with no
+labelled data is favourable, and it is not an accuracy rate.** It cannot
+be, because the absence of ground truth is the condition the method exists to
+work under rather than an obstacle on the way to better conditions. What we have
+instead is a bilingual corpus returning comparable inventories in both
+languages, a set of disagreement cases printed in full for the reader to judge,
+and statutory rate paths that reproduce the @vegh_how_2015 cross-country rate
+panel exactly wherever the corpus is dense. None of the three is sufficient, and the one that
+would be, expert adjudication, is running now. There is also a result here that
+cuts against the paper's own interest: the ablation in @sec-c2 suggests the
+classifier is running substantially on a pretrained prior rather than on our
+codebook, which is why transfer is plausible and equally why demonstrating it on
+US-adjacent material would prove little.
+
+On @cnj-3: **we have nothing to report on comparable cross-country multipliers,
+and the reason is now specific.** It needs magnitude, quarterly timing, and more
+than one country. @sec-usecase declines to run the local projection that would be
+the natural first step, because the magnitude column has no validation record
+beyond the headline statutory rate. That is not a caution about ambition; it is
+the concrete price of the next codebook.
+
+On @cnj-4: **the Malaysia inventory is a dataset a local researcher can use, and
+its provenance chain is the reason.** Every event traces to a quoted passage in a named primary-source
+document. That is what let a reviewer's objection to two corporate-tax rows
+surface a machinery defect that had silently mislabelled events across all three
+components (@sec-defect), and it is what makes @sec-usecase's decomposition
+checkable rather than merely reported. A dataset whose errors can be found is
+worth more than one whose errors are invisible.
+
+The use case in @sec-usecase is the clearest statement of what the exercise
+buys. Malaysia's statutory-rate cyclicality is indistinguishable from zero, and
+so is the median country's, because a headline rate moves a handful of times in
+four decades and a correlation on those few movements cannot separate policy
+responding to the cycle from policy that merely arrived during one. The
+narrative inventory answers that second question directly, and its answer for
+Malaysia is that the procyclical-looking record is overwhelmingly *not*
+deliberate procyclical policy. We report that as a demonstration of what the
+data supports, hedged by a fragility index rather than a p-value, because the
+labels are model output and four relabellings would overturn it.
+
+Which is the honest summary of the whole paper. The claim is not that the
+pipeline replaces the expert. It is that it changes what the expert spends
+months doing, and that the resulting dataset carries, alongside every number, an
+account of how much weight that number will bear.
 
 # Limitations and roadmap
 
