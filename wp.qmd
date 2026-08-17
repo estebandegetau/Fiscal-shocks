@@ -4,7 +4,7 @@ format:
     brand: false
     # citeproc: true
     csl: chicago-author-date
-    header: Please click [HERE](https://www.estebandegetau.com/Fiscal-shocks/index.pdf) for the latest version.
+    header: Please click [HERE](https://www.estebandegetau.com/Fiscal-shocks/) for the latest version.
     number-sections: true
     section-numbering: "1.1.1"
     number-depth: 3
