@@ -1,103 +1,78 @@
 project:
   type: website
-  output-dir: _manuscript
-  resources:
-    # Downloadable clean dataset (linked from notebooks/malaysia_dataset.qmd);
-    # written by the tax_shocks_clean_files target. Copied verbatim into the site.
-    - data/validated/MY_tax_shocks_clean.csv
-    - data/validated/MY_tax_shocks_clean.xlsx
-    - data/validated/MY_tax_shocks_clean.dta
-
-    - data/validated/MY_spending_shocks_clean.csv
-    - data/validated/MY_spending_shocks_clean.xlsx
-    - data/validated/MY_spending_shocks_clean.dta
-
-    - data/validated/MY_incentive_shocks_clean.csv
-    - data/validated/MY_incentive_shocks_clean.xlsx
-    - data/validated/MY_incentive_shocks_clean.dta
+  output-dir: _publish
   render:
-    - docs/*.qmd
-    - docs/codebook_sources.md
-    - notebooks/*.qmd
-    - reports/*.qmd
-    - "!reports/20260121-model-a.qmd"
-    - "!reports/20260117.qmd"
     - index.qmd
-    - "!*unused/"
-    # - "!notebooks/c1*.qmd"
-    # - "!notebooks/identifying_known_acts.qmd"
+    - wp.qmd
+
+website:
+  navbar:
+    left:
+      - text: "Home"
+        href: index.qmd
+      - text: "Article"
+        href: wp.qmd
+    tools:
+      - icon: github
+        href: https://github.com/estebandegetau/Fiscal-shocks
+    
+
+title: Call it Exogenous
+subtitle: Scaling the Narrative Identification of Fiscal Changes using LLMs
+date: last-modified
+date-format: full
+author: 
+  - name: "Esteban Degetau"
+    email: "estebandegetau@gmail.com"
+    orcid: 0009-0004-4095-8819
+    affiliation: 
+      - World Bank
+      - Barcelona School of Economics
+    corresponding: true
+    url: https://www.estebandegetau.com/
+  - name: "Agustín Samano"
+    email: "asamanopenaloza@worldbank.org"
+    affiliation: "World Bank"
+    url: https://www.worldbank.org/en/about/people/a/agustin-samano
+abstract: |
+  Credible fiscal policy analysis needs to know why each tax or spending change
+  was enacted, and outside a handful of rich countries nobody has read the
+  documents. We build an LLM-assisted pipeline that transfers the narrative
+  identification of Romer and Romer (2010) to countries with no labelled data,
+  and we hold it to the validation discipline of Halterman and Keith (2025)
+  rather than to a headline accuracy number. Country-agnostic codebooks are
+  validated against 44 labelled US acts through behavioural tests, zero-shot
+  evaluation and manual error analysis, then frozen and deployed to Malaysia
+  (1980–2023), where an agentic identification layer produces an expert-ready
+  inventory of 51 statutory tax, spending and tax-incentive events, each
+  carrying a magnitude, a motivation, a direction and two independent
+  preliminary reads of exogeneity. With no motivation ground truth available,
+  transfer is evidenced three ways: a bilingual corpus that returns comparable
+  inventories in English and Bahasa Malaysia, worked disagreement cases printed
+  in full, and statutory rate paths that reproduce the Végh and Vuletin (2015)
+  cross-country rate panel exactly wherever the corpus is dense, with every miss
+  predating corpus coverage and every extra an act a top-rate series cannot
+  represent. We
+  demonstrate the dataset with a procyclicality decomposition: Malaysia's
+  statutory-rate cyclicality is statistically indistinguishable from zero, as is
+  the median country's in the same panel, while the narrative labels show that
+  the great majority of Malaysian fiscal actions whose timing looks procyclical
+  carried motivations unrelated to the cycle. We report that as a demonstration
+  and bound it with a label-fragility index rather than a p-value. The
+  exogeneity column is a model read pending expert adjudication, and magnitude
+  and quarterly timing carry no validation record; we state throughout which
+  stages rest on evidence and which do not.
+thanks: |
+  This research project was supported by the World Bank's Development Research Group.
+keywords:
+  - Fiscal policy
+  - AI for social science
 
 
-website: 
-  reader-mode: true
-  sidebar: 
-    style: "floating"
-    search: true
-    title: "Scaling Narrative Identification"
-    contents:
-      - index.qmd
-      - section: "Tax-Change Dataset"
-        contents:
-          - notebooks/malaysia_dataset.qmd
-      - section: "Data Foundation"
-        contents:
-          - notebooks/review_data.qmd
-          - notebooks/verify_body.qmd
-          - notebooks/data_overview.qmd
-          - notebooks/verify_c2_inputs.qmd
-      - section: "Data Quality"
-        contents:
-          - notebooks/test_text_extraction.qmd
-      - section: "Pipeline Design"
-        contents:
-          - notebooks/identifying_known_acts.qmd
-          - notebooks/verify_chunk_tiers.qmd
-          - notebooks/verify_api_inputs.qmd
-      - section: "Codebook Evaluation"
-        contents:
-          - notebooks/iteration_summary.qmd
-          - notebooks/c0_aggregator.qmd
-          - notebooks/c1_measure_id.qmd
-      - section: "Deployment"
-        contents: 
-          - notebooks/verify_malaysia_urls.qmd
-          - notebooks/malay_consistency.qmd
-          - notebooks/verify_country_body.qmd
-          - notebooks/deployment.qmd
-          - section: "Tax changes"
-            contents:
-            - notebooks/cit_identification.qmd
-            - notebooks/pit_identification.qmd
-            - notebooks/vat_identification.qmd
-            - notebooks/tax_shocks.qmd
-          - section: "Spending"
-            contents:
-            - notebooks/spending_identification.qmd
-          - section: "Incentives"
-            contents:
-            - notebooks/incentives_identification.qmd
-      - section: "Internal Notes"
-        contents:
-          - docs/onboarding.qmd
-          - docs/proposal.qmd
-          - docs/brainstorm.qmd
-          - docs/CIT_forward.qmd
-          - docs/lit_review.qmd
-          - docs/lit_base.qmd
-          - docs/codebook_sources.md
 
-format: 
-  html:
-    theme: 
-      light: flatly
-      dark: darkly
-    title-block-banner: true
-    lightbox: true
-
-
-code-links: repo
+# code-links: repo
 
 execute:
-  freeze: auto  # re-render only when source changes
+  freeze: false  
 
 bibliography: references.bib

@@ -1,0 +1,90 @@
+project:
+  type: website
+  output-dir: _manuscript
+  resources:
+    # Downloadable clean dataset (linked from notebooks/malaysia_dataset.qmd);
+    # written by the tax_shocks_clean_files target. Copied verbatim into the site.
+    - data/validated/MY_tax_shocks_clean.csv
+    - data/validated/MY_tax_shocks_clean.xlsx
+    - data/validated/MY_tax_shocks_clean.dta
+
+    - data/validated/MY_spending_shocks_clean.csv
+    - data/validated/MY_spending_shocks_clean.xlsx
+    - data/validated/MY_spending_shocks_clean.dta
+
+    - data/validated/MY_incentive_shocks_clean.csv
+    - data/validated/MY_incentive_shocks_clean.xlsx
+    - data/validated/MY_incentive_shocks_clean.dta
+  render:
+    - docs/*.qmd
+    - docs/codebook_sources.md
+    - notebooks/*.qmd
+    - reports/*.qmd
+    - "!reports/20260121-model-a.qmd"
+    - "!reports/20260117.qmd"
+    - index.qmd
+    - wp.qmd
+    - "!*unused/"
+    # - "!notebooks/c1*.qmd"
+    # - "!notebooks/identifying_known_acts.qmd"
+
+execute:
+  freeze: auto
+  
+website: 
+  reader-mode: true
+  sidebar: 
+    style: "floating"
+    search: true
+    title: "Scaling Narrative Identification"
+    contents:
+      - index.qmd
+      - section: "Tax-Change Dataset"
+        contents:
+          - notebooks/malaysia_dataset.qmd
+      - section: "Data Foundation"
+        contents:
+          - notebooks/review_data.qmd
+          - notebooks/verify_body.qmd
+          - notebooks/data_overview.qmd
+          - notebooks/verify_c2_inputs.qmd
+      - section: "Data Quality"
+        contents:
+          - notebooks/test_text_extraction.qmd
+      - section: "Pipeline Design"
+        contents:
+          - notebooks/identifying_known_acts.qmd
+          - notebooks/verify_chunk_tiers.qmd
+          - notebooks/verify_api_inputs.qmd
+      - section: "Codebook Evaluation"
+        contents:
+          - notebooks/iteration_summary.qmd
+          - notebooks/c0_aggregator.qmd
+          - notebooks/c1_measure_id.qmd
+      - section: "Deployment"
+        contents: 
+          - notebooks/verify_malaysia_urls.qmd
+          - notebooks/malay_consistency.qmd
+          - notebooks/verify_country_body.qmd
+          - notebooks/deployment.qmd
+          - section: "Tax changes"
+            contents:
+            - notebooks/cit_identification.qmd
+            - notebooks/pit_identification.qmd
+            - notebooks/vat_identification.qmd
+            - notebooks/tax_shocks.qmd
+          - section: "Spending"
+            contents:
+            - notebooks/spending_identification.qmd
+          - section: "Incentives"
+            contents:
+            - notebooks/incentives_identification.qmd
+      - section: "Internal Notes"
+        contents:
+          - docs/onboarding.qmd
+          - docs/proposal.qmd
+          - docs/brainstorm.qmd
+          - docs/CIT_forward.qmd
+          - docs/lit_review.qmd
+          - docs/lit_base.qmd
+          - docs/codebook_sources.md
