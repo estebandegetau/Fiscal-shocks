@@ -35,13 +35,10 @@ author:
     affiliation: "World Bank"
     url: https://www.worldbank.org/en/about/people/a/agustin-samano
 abstract: |
-  Credible fiscal policy analysis needs to know why each tax or spending change
-  was enacted, and outside a handful of rich countries nobody has read the
-  documents. We build an LLM-assisted pipeline that transfers the narrative
-  identification of Romer and Romer (2010) to countries with no labelled data,
-  and we hold it to the validation discipline of Halterman and Keith (2025)
-  rather than to a headline accuracy number. Country-agnostic codebooks are
-  validated against 44 labelled US acts through behavioural tests, zero-shot
+  We build an LLM-assisted pipeline that transfers the narrative
+  identification framework of Romer and Romer (2010) to developing countries,
+  and we hold it to a robust validation discipline. Country-agnostic codebooks are
+  validated against 44 labelled US acts (1945-2003) through behavioral tests, zero-shot
   evaluation and manual error analysis, then frozen and deployed to Malaysia
   (1980–2023), where an agentic identification layer produces an expert-ready
   inventory of 51 statutory tax, spending and tax-incentive events, each
@@ -49,11 +46,10 @@ abstract: |
   preliminary reads of exogeneity. With no motivation ground truth available,
   transfer is evidenced three ways: a bilingual corpus that returns comparable
   inventories in English and Bahasa Malaysia, worked disagreement cases printed
-  in full, and statutory rate paths that reproduce the Végh and Vuletin (2015)
+  in full, and statutory rate paths that reproduce the Vegh and Vuletin (2015)
   cross-country rate panel exactly wherever the corpus is dense, with every miss
   predating corpus coverage and every extra an act a top-rate series cannot
-  represent. We
-  demonstrate the dataset with a procyclicality decomposition: Malaysia's
+  represent. We demonstrate the dataset with a procyclicality decomposition: Malaysia's
   statutory-rate cyclicality is statistically indistinguishable from zero, as is
   the median country's in the same panel, while the narrative labels show that
   the great majority of Malaysian fiscal actions whose timing looks procyclical
@@ -66,6 +62,7 @@ thanks: |
   This research project was supported by the World Bank's Development Research Group.
 keywords:
   - Fiscal policy
+  - Narrative analysis
   - AI for social science
 
 

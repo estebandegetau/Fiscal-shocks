@@ -156,22 +156,18 @@ escapes procyclicality at all appears to turn on the quality of its institutions
 rather than on its income [@frankel_graduation_2013]. For developing Asia
 specifically, @jha_effectiveness_2014 find that tax cuts do more countercyclical
 work than spending increases, while conceding that roughly 70% of the revenue
-variation in their data is non-discretionary. That concession states the whole
-problem in one number, because the non-discretionary component is exactly what
-narrative motivation removes, and an estimate that leaves it in is answering a
-different question.
-
+variation in their data is non-discretionary. 
 
 **The method.** Narrative identification reads the documentary record of a policy
 decision to recover the decision's stated motive, and then uses the motive to
-decide whether the resulting change can be treated as a shock. @romer2010 and
-their companion narrative analysis [@romer] apply this to every significant
+decide whether the resulting change can be treated as a shock--calling it exogenous. @romer2010 and
+their companion methodological paper [@romer] apply this to every significant
 federal tax action in the United States between 1945 and 2007, sorting each into
 one of four motivation categories and keeping only those whose stated purpose was
 unrelated to current output. @romer_presidential_2023 later set out the
 methodological doctrine explicitly, and @sec-frameworks takes those requirements
 as the specification this pipeline has to satisfy. Two properties make the
-approach attractive to automate: the evidence for every judgement is a passage
+approach attractive to automate using Large Language Models (LLMs): the evidence for every judgement is a passage
 another researcher can re-read, and the judgement itself is a reading task rather
 than an estimation task.
 
@@ -180,8 +176,7 @@ industry. @cloyne_discretionary_2013 built the United Kingdom equivalent from
 Budget documents and found magnitudes remarkably close to the American ones,
 which is the single most important precedent for the transfer claim in this
 paper. @mertens2013 exploited the act-level detail to separate personal from
-corporate income tax changes, a decomposition no aggregate revenue series can
-support. A parallel action-based tradition grew up at the IMF, where
+corporate income tax changes. A parallel action-based tradition grew up at the IMF, where
 @pescatori_new_2011 coded fiscal consolidation episodes from national policy
 documents rather than from budget outturns, and @guajardo_expansionary_2014 used
 that dataset to show the identification choice is not innocuous: action-based
@@ -191,7 +186,7 @@ same logic to more than 2,000 consolidation-era tax measures, coding each one's
 yield, motivation, and date, which is close to the record this paper's pipeline
 is built to produce.
 
-**Where it has been attacked.** The narrative approach is contested, and the
+**Where it has been attacked.** As one might expect from a subjective classification, the narrative approach is contested, and the
 contest bears directly on how the results below should be read.
 @mertens_reconciliation_2014 show that structural VARs cannot recover the tax
 multiplier without assuming the output-elasticity of revenue, that narrative
@@ -201,19 +196,16 @@ consequential rather than a rounding concern. @hebous_revisiting_2018 press
 harder: the widely-used narrative tax measures correlate only weakly with
 cyclically-adjusted revenues in both the United States and the United Kingdom,
 and under weak-instrument-robust inference the implied multipliers are frequently
-insignificant, so the literature understates how uncertain narrative-based
+insignificant, so previous literature may understate how uncertain narrative-based
 estimates are.
 
-We take that as the standard rather than as an objection. The benchmark this
-paper scores itself against is a hand-built series with acknowledged measurement
+
+The benchmark this paper scores itself against is a hand-built series with acknowledged measurement
 error, produced by two economists reading documents and exercising judgement. The
 useful question is therefore not whether an LLM reproduces it exactly, which
 would be a suspicious result, but whether the disagreements are of the same
 character as the disagreements two careful human coders would have.
-@sec-us-validation is organised around that question, and @sec-c1-manual reports
-a class of disagreement that turned out to be the benchmark's fault rather than
-the model's.
-
+@sec-us-validation is organised around that question.
 
 Large language models make the reading step cheap, and a small but fast-moving
 literature has already used them for narrative fiscal identification. Its three
@@ -230,7 +222,7 @@ States alone, and for an expectations series rather than a realised one. All
 three validate the same way, by concordance against a pre-existing narrative or
 action-based series, which is a strategy that only works where such a series
 already exists and therefore cannot travel to the countries the method is meant
-to serve. @tbl-related-work sets the four designs side by side.
+to serve. @tbl-related-work sets the three designs against our own, side by side.
 
 ```{r}
 #| label: tbl-related-work
@@ -288,17 +280,8 @@ statutory tax, spending, and tax incentives.
 The contribution is a method and a demonstration dataset, not a claim of
 automation. The pipeline hands a domain expert an audit-ready inventory; the
 expert still decides what is exogenous. Where our design differs most from a
-single end-to-end prompt is that it separates the parts that can be validated
-from the parts that cannot, and says which is which.
+single end-to-end prompt is that it separates each task to provide the most rigurous validation available.
 
-A second and more portable contribution came out of the validation rather than
-the pipeline. Scoring the codebooks turned out to be harder than building them,
-because **the label-generating process is noisier than the thing it is
-measuring**. Projecting Romer and Romer's published act-level classifications
-[@romer_replication_2019] down to the level of a document chunk imports exactly
-the errors the evaluation exists to detect, and the correction we build for it
-(@sec-c1-manual) is a procedure any project evaluating a codebook at this scale
-will need.
 
 The project this paper reports on is organised around four questions. This
 paper answers the first two in part and delivers the fourth for one country.
@@ -347,6 +330,8 @@ actually use?
 
 The Malaysia inventory is the demonstration, and its
 provenance chain is the reason it is usable.
+
+[Include a brief (1-2 paragraphs) summary of conclusions]{.aside}
 
 The remainder of the paper is organized as follows. @sec-frameworks sets out the
 two frameworks the pipeline implements: the narrative specification we are
