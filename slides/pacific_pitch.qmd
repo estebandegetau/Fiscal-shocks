@@ -1,0 +1,180 @@
+---
+title: "Narrative Fiscal Shocks for the Pacific"
+subtitle: "Extending a validated LLM-assisted pipeline beyond the Malaysia pilot"
+author: "Esteban Degetau and Agustín Samano"
+date: today
+format:
+    pptx:
+        smaller: true
+execute:
+    echo: false
+    warning: false
+    message: false
+---
+
+```{r}
+#| label: setup
+#| cache: false
+
+pacman::p_load(targets, tidyverse, here, scales)
+
+here::i_am("slides/pacific_pitch.qmd")
+tar_config_set(store = here("_targets"))
+
+source(here("R/tt_theme.R"))
+source(here("R/malay_consistency.R"))
+source(here("R/tax_shock_report.R"))
+source(here("R/local_projections.R"))
+source(here("R/pacific_coverage.R"))
+
+theme_set(theme_minimal())
+
+# Rendering is read-only: tar_read only, never tar_make.
+tax_shocks  <- tryCatch(tar_read(tax_shocks),           error = \(e) tibble::tibble())
+lp_cit      <- tryCatch(tar_read(lp_results_cit_event_effective), error = \(e) tibble::tibble())
+lp_pooled   <- tryCatch(tar_read(lp_results_effective),           error = \(e) tibble::tibble())
+coverage    <- tryCatch(tar_read(pacific_coverage),     error = \(e) tibble::tibble())
+
+# Held back pending the C2a/C2b re-run (docs/deltas.md 2026-08-05). Same list as
+# the `lp_shocks_*` targets, so both figures describe the same events.
+deck_excluded <- c("MY-CIT-08", "MY-CIT-09", "MY-PIT-01", "MY-PIT-06")
+
+have_shocks   <- nrow(tax_shocks) > 0
+have_lp       <- nrow(lp_cit) > 0
+have_coverage <- nrow(coverage) > 0
+```
+
+## Malaysia: every statutory tax change, read from the budget speech that announced it
+
+```{r}
+#| label: tax-events
+#| eval: !expr have_shocks
+#| fig-width: 10
+#| fig-height: 5.0
+
+plot_tax_events_slide(tax_shocks, exclude_ids = deck_excluded,
+                      timing = "effective", base_size = 15)
+```
+
+::: {.notes}
+Corporate, personal and consumption tax changes, 1980-2019, identified from
+Malaysian primary-source budget documents by the LLM pipeline and stamped by a
+human reviewer. Bar height is the statutory rate change in percentage points;
+hollow markers are acts with no headline rate change (regime introductions,
+one-off levies). Colour is the pipeline's exogeneity verdict: was the change
+motivated by something other than the current state of the economy.
+
+Every event traces back to a quoted passage in a named document. That chain is
+what let a reviewer's objection to two corporate-tax rows surface a machinery
+defect earlier this year.
+:::
+
+## Local projections from a single country are suggestive at most
+
+```{r}
+#| label: lp-irf
+#| eval: !expr have_lp
+#| fig-width: 10
+#| fig-height: 4.6
+
+plot_lp_irf(
+  lp_cit, band = "exo",
+  variant_labels = c(all = "All corporate rate cuts",
+                     exo = "Exogenous corporate rate cuts"),
+  y_lab = "Response to one corporate rate cut",
+  base_size = 15
+)
+```
+
+::: {.notes}
+Local projections (Jorda 2005) of each outcome on Malaysian statutory corporate
+income tax cuts, annual, 1980-2019, dated by the year the change took effect.
+Shaded band is 90%, Newey-West. Six rate-bearing CIT acts fall in the window;
+five are classified exogenous. The two lines differ by exactly one act: the 1998
+Asian-crisis cut, which the pipeline classifies COUNTERCYCLICAL.
+
+HOW TO READ THE SIGN. In the source data a rate cut is a negative number:
+delta_pp is rate_to minus rate_from, so 28% to 27% is -1. The shock enters as
+minus that, so a cut is a positive shock. Every coefficient on this slide is
+therefore the response to a corporate rate CUT, and a positive value means the
+outcome is higher after a cut - that is, expansionary. A negative value means
+the outcome is lower after a cut.
+
+THE UNITS ARE NOT THE SAME ACROSS PANELS, which is why they are on the strips
+rather than the axis. Real GDP enters as 100 x log, so its numbers are
+cumulative percent deviations of the level of GDP. Private investment and FDI
+are already ratios to GDP measured in percent, so their numbers are percentage
+points of GDP. The dependent variable is the outcome at t+h minus the outcome
+at t-1, so every point is cumulative from the year before the change and
+horizon 0 is the impact year.
+
+THE SHOCK IS AN EVENT INDICATOR, NOT A SIZE. Each cut counts once regardless of
+how many percentage points it moved, so these are average responses per cut, not
+per percentage point. We began with a percentage-point shock and abandoned it:
+the five exogenous cuts take only two sizes, 2pp in 1994-95 and 1pp across
+2007-09, and those sizes line up with the eras they fell in - the tail of the
+1990s boom and the global financial crisis. A continuous specification then
+measures the gap between two decades and reports it as a dose-response. It
+returned +3.2% of GDP per percentage point, which is roughly an order of
+magnitude too large. Removing the size information removes that confound.
+
+NO SYMMETRY CLAIM. All five exogenous events are cuts, so nothing here speaks to
+what a rate increase would do.
+
+WHAT THE SLIDE CLAIMS, AND WHAT IT DOES NOT. The grey line includes the one cut
+that was made because output was collapsing, and it runs sharply negative
+(-4.5% of GDP on impact). The blue line removes that single act and the estimate
+moves to roughly zero (-0.7% on impact, +1.5% by year two, t = 0.23). So the
+claim is about the direction and size of the bias that endogenous events
+introduce, and about the fact that removing them leaves an answer we cannot
+distinguish from nothing. It is not a finding that corporate tax cuts raise
+output in Malaysia. Nothing on this slide is statistically significant except
+the FDI panel, where both lines are negative and we treat the result as
+unresolved rather than as evidence.
+
+Three of the five exogenous cuts take effect in 2007-09, so the short-horizon
+response partly reflects the crisis and its rebound. No crisis control is added,
+because that would be a specification choice made after seeing the result.
+
+ROBUSTNESS. Pooling all three instruments instead - corporate, personal and
+consumption, 8 exogenous event-years - gives a GDP response of +0.67% at horizon
+2 that is stable whether or not magnitude is used. That pooled series mixes
+percentage points across different tax bases, which is why it is not the
+headline, but it is the more identified of the two.
+
+This is the argument for the regional programme rather than against the method.
+The pipeline produced a usable regressor from primary documents; one country's
+corporate-tax record is simply too short to estimate a response from. More
+countries is the fix.
+:::
+
+## The Pacific is in the growth data, and in no fiscal-shock dataset
+
+```{r}
+#| label: coverage
+#| eval: !expr have_coverage
+#| fig-width: 10
+#| fig-height: 5.0
+
+plot_pacific_coverage(coverage, base_size = 15)
+```
+
+::: {.notes}
+Years of usable data per country, 1990-2019, in the compiled cross-country panel
+this project benchmarks against - the same statutory-rate series used by the
+published cross-country procyclicality literature.
+
+Eight of the ten Pacific countries in the panel have three decades of real GDP
+and FDI and zero years of statutory tax-rate data. Samoa, Palau, the Cook
+Islands and Nauru are not in the panel at all. Fiji and Papua New Guinea are the
+only exceptions.
+
+These countries therefore appear in every cross-country growth study and in no
+fiscal-shock study. That is not because nobody wants the evidence; it is because
+the documents have never been read. The Malaysia pilot shows the reading can now
+be done in weeks rather than months, and most Pacific budget documents are in
+English, so the corpus cost is below Malaysia's bilingual case.
+
+What the funding buys: the cross-country variation that turns the middle slide
+from a sign into a magnitude.
+:::

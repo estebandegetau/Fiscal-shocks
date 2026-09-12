@@ -1201,6 +1201,141 @@ list(
   ),
 
   # =============================================================================
+  # Local Projections + Pacific Coverage for the replication pitch deck
+  # Estimates Jorda (2005) responses of Malaysian real GDP, private investment
+  # and FDI to the statutory tax changes in `tax_shocks`, 1980-2019, and counts
+  # statutory-rate data coverage across Pacific Island Countries. The shock is
+  # denominated in percentage points of statutory rate, not percent of GDP, so
+  # this stays inside the one magnitude the project has validated; it does not
+  # license a multiplier, and wp.qmd still declines to run a local projection.
+  # Reads macro_panel_file DIRECTLY rather than `macro_panel`, because
+  # clean_macro_panel() drops pvt_investment / fdi_net_in and widening
+  # .macro_panel_cols would re-hash six paper-bound targets for no benefit to
+  # the paper (Workflow Convention #14). Makes no API calls.
+  # See R/local_projections.R, R/pacific_coverage.R, slides/pacific_pitch.qmd.
+  # =============================================================================
+
+  # 2019 is the cutoff because pvt_investment ends there. Since the projections
+  # take a lead of the outcome, the last observation entering an h=5 regression
+  # is 2014, so no pandemic year reaches any horizon.
+  tar_target(
+    lp_outcomes,
+    load_lp_outcomes(macro_panel_file, iso = "MYS",
+                     year_min = 1980L, year_max = 2019L),
+    packages = c("tidyverse", "haven")
+  ),
+
+  # The four shock_ids whose C2b exogeneity labels were built on another act's
+  # evidence (docs/deltas.md 2026-08-05) are held back until the enrichment is
+  # re-run. Listed literally here rather than defaulted inside the function so
+  # the exclusion is visible in the dependency graph.
+  tar_target(
+    lp_shocks_effective,
+    build_lp_shock_series(
+      tax_shocks, timing = "effective",
+      exclude_ids = c("MY-CIT-08", "MY-CIT-09", "MY-PIT-01", "MY-PIT-06"),
+      year_min = 1980L, year_max = 2019L
+    ),
+    packages = "tidyverse"
+  ),
+
+  # Same series keyed on announcement rather than effect. Investment and FDI
+  # can respond to an announced rate change before it binds, so which keying
+  # the deck shows is decided after seeing both, not assumed.
+  tar_target(
+    lp_shocks_announced,
+    build_lp_shock_series(
+      tax_shocks, timing = "announced",
+      exclude_ids = c("MY-CIT-08", "MY-CIT-09", "MY-PIT-01", "MY-PIT-06"),
+      year_min = 1980L, year_max = 2019L
+    ),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    lp_results_effective,
+    estimate_lp(lp_outcomes, lp_shocks_effective, horizons = 0:5),
+    packages = c("tidyverse", "sandwich")
+  ),
+
+  tar_target(
+    lp_results_announced,
+    estimate_lp(lp_outcomes, lp_shocks_announced, horizons = 0:5),
+    packages = c("tidyverse", "sandwich")
+  ),
+
+  tar_target(
+    pacific_coverage,
+    summarise_pacific_coverage(macro_panel_file, year_min = 1990L,
+                               year_max = 2019L),
+    packages = c("tidyverse", "haven")
+  ),
+
+  # Corporate-rate-only variants. Pooling percentage points across CIT, PIT and
+  # consumption is not revenue-weighted -- and in Malaysia the consumption
+  # events run opposite to the income-tax cuts and largely cancel them -- so the
+  # deck's projection uses the one instrument whose percentage points are
+  # comparable to each other. The pooled targets above are kept as robustness.
+  tar_target(
+    lp_shocks_cit_effective,
+    build_lp_shock_series(
+      tax_shocks, timing = "effective", tax_types = "CIT",
+      exclude_ids = c("MY-CIT-08", "MY-CIT-09", "MY-PIT-01", "MY-PIT-06"),
+      year_min = 1980L, year_max = 2019L
+    ),
+    packages = "tidyverse"
+  ),
+
+  # The keying changes the event structure here rather than merely shifting it:
+  # MY-CIT-04 and MY-CIT-05 were both announced in Budget 2007, so they collapse
+  # into a single 2006 event of -2pp, and two of the three events that take
+  # effect during the GFC move out of that window.
+  tar_target(
+    lp_shocks_cit_announced,
+    build_lp_shock_series(
+      tax_shocks, timing = "announced", tax_types = "CIT",
+      exclude_ids = c("MY-CIT-08", "MY-CIT-09", "MY-PIT-01", "MY-PIT-06"),
+      year_min = 1980L, year_max = 2019L
+    ),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    lp_results_cit_effective,
+    estimate_lp(lp_outcomes, lp_shocks_cit_effective, horizons = 0:5),
+    packages = c("tidyverse", "sandwich")
+  ),
+
+  tar_target(
+    lp_results_cit_announced,
+    estimate_lp(lp_outcomes, lp_shocks_cit_announced, horizons = 0:5),
+    packages = c("tidyverse", "sandwich")
+  ),
+
+  # The deck's slide 2. Event-indicator form, because the five exogenous CIT
+  # cuts take only two distinct sizes and those sizes are collinear with the
+  # period they fell in (2pp in the 1994-95 boom, 1pp across the 2007-09 GFC):
+  # a continuous-pp slope on this subsample measures the difference between
+  # those two eras, not a tax effect. Stripping magnitude out removes the
+  # confound at the cost of any claim about size. See docs/deltas.md 2026-09-12.
+  tar_target(
+    lp_shocks_cit_event_effective,
+    build_lp_shock_series(
+      tax_shocks, timing = "effective", tax_types = "CIT",
+      shock_form = "indicator",
+      exclude_ids = c("MY-CIT-08", "MY-CIT-09", "MY-PIT-01", "MY-PIT-06"),
+      year_min = 1980L, year_max = 2019L
+    ),
+    packages = "tidyverse"
+  ),
+
+  tar_target(
+    lp_results_cit_event_effective,
+    estimate_lp(lp_outcomes, lp_shocks_cit_event_effective, horizons = 0:5),
+    packages = c("tidyverse", "sandwich")
+  ),
+
+  # =============================================================================
   # Malaysia EN/BM Cross-Language Consistency Test
   # Self-contained sub-pipeline that slices country_chunks to Economic Report
   # documents with parallel EN+BM coverage, runs its own C1 -> C2a -> C2b on
