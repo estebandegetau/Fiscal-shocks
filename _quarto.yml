@@ -1,9 +1,24 @@
 project:
   type: website
   output-dir: _publish
+  resources:
+    # Downloadable clean datasets (linked from notebooks/malaysia_dataset.qmd);
+    # written by the *_shocks_clean_files targets. Copied verbatim into the site.
+    - data/validated/MY_tax_shocks_clean.csv
+    - data/validated/MY_tax_shocks_clean.xlsx
+    - data/validated/MY_tax_shocks_clean.dta
+
+    - data/validated/MY_spending_shocks_clean.csv
+    - data/validated/MY_spending_shocks_clean.xlsx
+    - data/validated/MY_spending_shocks_clean.dta
+
+    - data/validated/MY_incentive_shocks_clean.csv
+    - data/validated/MY_incentive_shocks_clean.xlsx
+    - data/validated/MY_incentive_shocks_clean.dta
   render:
     - index.qmd
     - wp.qmd
+    - notebooks/malaysia_dataset.qmd
 
 website:
   navbar:
@@ -12,6 +27,8 @@ website:
         href: index.qmd
       - text: "Article"
         href: wp.qmd
+      - text: "Data"
+        href: notebooks/malaysia_dataset.qmd
     tools:
       - icon: github
         href: https://github.com/estebandegetau/Fiscal-shocks
